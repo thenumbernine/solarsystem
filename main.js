@@ -141,7 +141,7 @@ Planets = makeClass({
 	],
 
 	init : function() {
-		for (var i=0; i < this.planetClasses.length; ++i) {
+		for (var i = 0; i < this.planetClasses.length; ++i) {
 			this[i] = new (this.planetClasses[i])();
 			this[i].index = i;	// does anyone use this anymore?
 		}
@@ -245,9 +245,10 @@ var orbitPlanetIndex;
 var orbitGeodeticLocation;
 var orbitDistance;
 var orbitTargetDistance;
-var orbitZoomFactor = .9;	// upon mousewheel
+var orbitZoomFactor = .0003;	// upon mousewheel
 
 var mouse;
+var mouseDir;
 
 var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^20
 
@@ -259,27 +260,28 @@ function calcTidalForce(srcPlanet, pos) {
 	vec3.sub(srcPlanetToPos, pos, srcPlanet.pos);
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		var planet = planets[planetIndex];
-		if (planet != srcPlanet) {
-			var x = vec3.create();
-			vec3.sub(x, pos, planet.pos);
-			var xLength = vec3.length(x);
-			var xToTheSecond = xLength * xLength;
-			var xToTheThird = xLength * xToTheSecond;
-			var xToTheFourth = xLength * xToTheThird;
-			var xToTheFifth = xLength * xToTheFourth;
-			
-			// a^i = -R^i_jkl dt^j dx^k dt^l = -R^i_tjt = R^i_ttj = -phi_,ij
-			// looks like dt^j = [1,0,0,0] so that we only get the t part of R (which is zero)
-			// but what if phi changes wrt time? then phi_,tt is nonzero, and how does our Riemann metric change?
-			for (i = 0; i < 3; ++i) {
-				for (j = 0; j < 3; ++j) { 
-					if (i == j) {
-						phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[i] / xToTheFifth - 1 / xToTheThird);
-					} else {
-						phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[j]) / xToTheFifth;
-					}
-					accel[i] -= phi_ij * srcPlanetToPos[j];
+		if (!planetInfluences[planetIndex]) continue;
+		if (planet == srcPlanet) continue;
+		
+		var x = vec3.create();
+		vec3.sub(x, pos, planet.pos);
+		var xLength = vec3.length(x);
+		var xToTheSecond = xLength * xLength;
+		var xToTheThird = xLength * xToTheSecond;
+		var xToTheFourth = xLength * xToTheThird;
+		var xToTheFifth = xLength * xToTheFourth;
+		
+		// a^i = -R^i_jkl dt^j dx^k dt^l = -R^i_tjt = R^i_ttj = -phi_,ij
+		// looks like dt^j = [1,0,0,0] so that we only get the t part of R (which is zero)
+		// but what if phi changes wrt time? then phi_,tt is nonzero, and how does our Riemann metric change?
+		for (i = 0; i < 3; ++i) {
+			for (j = 0; j < 3; ++j) { 
+				if (i == j) {
+					phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[i] / xToTheFifth - 1 / xToTheThird);
+				} else {
+					phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[j]) / xToTheFifth;
 				}
+				accel[i] -= phi_ij * srcPlanetToPos[j];
 			}
 		}
 	}
@@ -289,6 +291,7 @@ function calcTidalForce(srcPlanet, pos) {
 function calcGravitationForce(pos) {
 	var accel = vec3.create();
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		if (!planetInfluences[planetIndex]) continue;
 		var planet = planets[planetIndex];
 		var x = vec3.create();
 		vec3.sub(x, pos, planet.pos);
@@ -304,12 +307,12 @@ function calcGravitationForce(pos) {
 
 function planetCartesianToSolarSystemBarycentric(planet, x) {
 	x = vec3.clone(x);
-	vec3.transformQuat(x, planet.angle, x);		// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
+	vec3.transformQuat(x, x, planet.angle);		// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
 	
 	// now rotate by axial tilt (along
 	var tiltAngle = planet.tiltAngle;
 	if (tiltAngle !== undefined) {
-		vec3.transformQuat(x, tiltAngle, x);
+		vec3.transformQuat(x, x, tiltAngle);
 	}
 	
 	vec3.add(x, x, planet.pos);
@@ -324,15 +327,13 @@ function planetGeodeticToSolarSystemBarycentric(planet, lat, lon, height) {
 }
 
 function mouseRay() {
-	var w = canvas.width;
-	var h = canvas.height;
-	var aspectRatio = w / h;
+	var aspectRatio = canvas.width / canvas.height;
 	// ray intersect
-	var fx = mouse.xf * 2 - 1
-	var fy = mouse.yf * 2 - 1
-	var tanFovY = Math.tan(GL.view.fovY * Math.PI / 360);
-	var v = vec3.fromValues(fx * aspectRatio * tanFovX, fy * tanFovY, -1);
-	vec3.transformQuat(v, GL.view.angle, v);
+	var v = vec3.fromValues(2 * mouse.xf - 1, 1 - 2 * mouse.yf, -1);
+	// I want to inverse transform the matrices ... especially the infinite projection matrix ...
+	v[0] = aspectRatio * v[0] / GL.projMat[0];
+	v[1] = aspectRatio * v[1] / GL.projMat[5];
+	vec3.transformQuat(v, v, GL.view.angle);
 	vec3.normalize(v, v);
 	return v;
 }
@@ -343,8 +344,8 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	for (var i = 0; i < planets.length; ++i) {
 		var planet = planets[i];
 		var delta = vec3.create();
-		vec3.sub(delta, planet.pos, viewPos);
-		vec3.normalize(delta, delta);
+		vec3.sub(delta, planet.pos, GL.view.pos);
+		vec3.normalize(delta, delta);	
 		var dot = vec3.dot(delta, mouseDir);
 		if (dot > bestDot) {
 			bestDot = dot;
@@ -352,13 +353,22 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		}
 	}
 	if (bestPlanet !== undefined) {
-		planetText.text(bestPlanet.name);
+		hoverPlanetText.text(bestPlanet.name);
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
 			orbitPlanetIndex = bestPlanet.index;
-			orbitDistance = vec3.distance(viewPos, bestPlanet.pos);
+			orbitDistance = vec3.distance(GL.view.pos, bestPlanet.pos);
 			orbitTargetDistance = 2 * bestPlanet.radius;
+			refreshOrbitTargetDistanceText();
+			orbitPlanetText.text(bestPlanet.name);
+			refreshMeasureText();
 		}
 	}
+}
+
+function refreshMeasureText() {
+	var planet = planets[orbitPlanetIndex];
+	measureMin.text(planet.measureMin.toExponential() + ' m/s^3');
+	measureMax.text(planet.measureMax.toExponential() + ' m/s^3');
 }
 
 // routines for calculating the earth's angle ...
@@ -459,13 +469,159 @@ function getEarthAngle(jd) {
 var gl;
 var canvas;
 var panel;
+var measureMin;
+var measureMax;
+var orbitTargetDistanceText;
+
 var hsvTex;
 var colorShader;
 var texShader;
 var hsvShader;
+var displayMethods = [
+	'Plain',
+	'Tangential Tidal Acceleration',
+	'Normal Tidal Acceleration',
+	'Total Tidal Acceleration',
+	'Tangential Gravitational Acceleration',
+	'Normal Gravitational Acceleration',
+	'Total Gravitational Acceleration'
+];
+var displayMethod = 'Plain';
+var planetInfluences = [];
+var hoverPlanetText;
+var orbitPlanetText;
 
-var showTide = false;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
+
+function drawScene() {
+	//gl.clear(gl.DEPTH_BUFFER_BIT);
+
+	mat4.identity(GL.mvMat);
+	
+	var viewAngleInv = quat.create();
+	quat.conjugate(viewAngleInv, GL.view.angle);
+	var invRotMat = mat4.create();
+	mat4.fromQuat(invRotMat, viewAngleInv);
+	mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
+	
+	var viewPosInv = vec3.create();
+	vec3.negate(viewPosInv, GL.view.pos);
+	mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
+
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+
+		//update vis ratio
+		planet.visRatio = planet.radius / vec3.distance(planet.pos, GL.view.pos);
+
+		//update scene object
+		vec3.copy(planetClassPrototype.sceneObj.pos, planet.pos);
+		quat.copy(planetClassPrototype.sceneObj.angle, planet.angle);
+
+		//update tide attributes
+		var showTide = displayMethod != 'Plain';
+		if (!showTide) {
+			if (planetClassPrototype.tex === undefined) {
+				planetClassPrototype.sceneObj.shader = colorShader;
+				planetClassPrototype.sceneObj.texs = [];
+			} else {
+				planetClassPrototype.sceneObj.shader = texShader;
+				planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex];
+			}
+		} else {
+			planetClassPrototype.sceneObj.shader = hsvShader;
+			planetClassPrototype.sceneObj.texs = [hsvTex];
+			if (planetClassPrototype.lastTideCalcDate !== julianDate) {
+				planetClassPrototype.lastTideCalcDate = julianDate;
+				var tidalMin = undefined;
+				var tidalMax = undefined;
+				var vertexIndex = 0;
+				for (var tideIndex = 0; tideIndex < planet.sceneObj.attrs.tide.data.length; ++tideIndex) {
+					var planetX = vec3.fromValues(
+						planet.sceneObj.attrs.vertex.data[vertexIndex++],
+						planet.sceneObj.attrs.vertex.data[vertexIndex++],
+						planet.sceneObj.attrs.vertex.data[vertexIndex++]);
+					var x = planetCartesianToSolarSystemBarycentric(planet, planetX);
+					
+					var accel;
+					switch (displayMethod) {
+					case 'Tangential Tidal Acceleration':
+					case 'Normal Tidal Acceleration':
+					case 'Total Tidal Acceleration':
+						accel = calcTidalForce(planet, x);
+						break;
+					case 'Tangential Gravitational Acceleration':
+					case 'Normal Gravitational Acceleration':
+					case 'Total Gravitational Acceleration':
+						var accel = calcGravitationForce(x);
+						break;	
+					}
+					
+					var norm = vec3.create();
+					vec3.sub(norm, x, planet.pos);
+					vec3.normalize(norm, norm);
+					//var toTheMoon = (planets[planets.indexes.moon].pos - x):normalize()
+					//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
+					//var tangentTowardsMoon = normCrossMoon:cross(norm)
+					//var tidalAccel = accel:dot(tangentTowardsMoon)
+					//var tidalAccel = accel:dot(norm)	// normal component
+					//var tidalAccel = accel:dot(toTheMoon)	// moonward component
+				
+					var t;
+					switch (displayMethod) {
+					case 'Tangential Tidal Acceleration':
+					case 'Tangential Gravitational Acceleration':
+						var dot = vec3.dot(accel, norm);
+						var proj = vec3.create();
+						vec3.scale(proj, norm, dot);
+						t = vec3.distance(accel, proj);	// tangent component
+						break;	
+					case 'Normal Tidal Acceleration':
+					case 'Normal Gravitational Acceleration':
+						t = vec3.dot(accel, norm);
+						break;	
+					case 'Total Tidal Acceleration':
+					case 'Total Gravitational Acceleration':
+						t = vec3.length(accel);	// magnitude
+						break;	
+					}
+					
+					if (tidalMin === undefined || t < tidalMin) tidalMin = t;
+					if (tidalMax === undefined || t > tidalMax) tidalMax = t;
+					planet.sceneObj.attrs.tide.data[tideIndex] = t;
+				}
+				planetClassPrototype.measureMin = tidalMin;
+				planetClassPrototype.measureMax = tidalMax;
+				for (var i = 0; i < planet.sceneObj.attrs.tide.data.length; ++i) {
+					planet.sceneObj.attrs.tide.data[i] = (255/256 - (planet.sceneObj.attrs.tide.data[i] - tidalMin) / (tidalMax - tidalMin) * 254/256) * colorBarHSVRange;
+				}
+				planet.sceneObj.attrs.tide.updateData();
+				//if it updated...
+				if (planetIndex == orbitPlanetIndex) {
+					refreshMeasureText();
+				}
+			}
+		}
+
+
+		//if (planet.visRatio >= .005) {
+			planetClassPrototype.sceneObj.draw();
+		//} else {
+			var push = mat4.clone(GL.mvMat);
+			mat4.translate(GL.mvMat, GL.mvMat, planet.pos);
+			
+			pointObj.draw({
+				uniforms : {
+					color : planetClassPrototype.color
+				}
+			});
+		
+			mat4.copy(GL.mvMat, push);
+		//}
+	}
+}
+
 
 //quad of tris 
 var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
@@ -480,14 +636,42 @@ function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	GL.resize();
+
+/**/
+	//setup infinite projection matrix
+	//http://www.terathon.com/gdc07_lengyel.pdf
+	var focalLength = 1 / Math.tan(GL.view.fovY/2);
+	var aspectRatio = canvas.height / canvas.width;
+	mat4.identity(GL.projMat);
+	GL.projMat[0] = focalLength;
+	GL.projMat[5] = focalLength / aspectRatio;
+	GL.projMat[10] = -1;
+	GL.projMat[11] = -2 * GL.view.zNear;
+	GL.projMat[14] = -1;
+	GL.projMat[15] = 0;
+/**/
 }
 
+function invalidateForces() {
+	//invalidate all
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+		planetClassPrototype.lastTideCalcDate = undefined;
+	}
+}
+
+function refreshOrbitTargetDistanceText() {
+	orbitTargetDistanceText.text(orbitTargetDistance.toExponential()+' m');
+}
 
 $(document).ready(init1);
 
 function init1() {
 	panel = $('#panel');
-
+	measureMin = $('#measureMin');
+	measureMax = $('#measureMax');
+	orbitTargetDistanceText = $('#orbitTargetDistance');
 	canvas = $('<canvas>', {
 		css : {
 			left : 0,
@@ -496,26 +680,69 @@ function init1() {
 			background : 'red'
 		}
 	}).prependTo(document.body).get(0);
-	
+
 	$(canvas).disableSelection();
 
-
 	try {
-		gl = GL.init(canvas);
+		gl = GL.init(canvas, {debug:true});
 	} catch (e) {
 		panel.remove();
 		$(canvas).remove();
 		$('#webglfail').show();
 		throw e;
 	}
+	
+	GL.view.zNear = 1;
+	GL.view.zFar = 1e+7;//Infinity;
 
+	$('<span>', {text:'Display Method:'}).appendTo(panel);
+	$('<br>').appendTo(panel);
+	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
+		var radio = $('<input>', {
+			type : 'radio',
+			value : displayMethodIndex,
+			click : function() {
+				displayMethod = thisDisplayMethod;
+				invalidateForces();
+			}
+		})
+			.attr('name', 'display')
+			.appendTo(panel);
+		if (thisDisplayMethod == displayMethod) radio.attr('checked', 'checked');
+		$('<span>', {text:thisDisplayMethod}).appendTo(panel);
+		$('<br>').appendTo(panel);
+	});
+	$('<br>').appendTo(panel);
+	$('<span>', {text:'Influencing Planets:'}).appendTo(panel);
+	$('<br>').appendTo(panel);
+	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
+		planetInfluences[planetIndex] = true;
+		var planetName = planetClass.prototype.name;
+		var checkbox;
+		checkbox = $('<input>', {
+			type : 'checkbox',
+			value : '1',
+			change : function() {
+				planetInfluences[planetIndex] = checkbox.is(':checked');
+				invalidateForces();
+			}
+		})
+			.attr('checked', 'checked')
+			.appendTo(panel);
+		$('<span>', {text:planetName}).appendTo(panel);
+		$('<br>').appendTo(panel);
+	});
+	hoverPlanetText = $('#hoverPlanetText');
+	orbitPlanetText = $('#orbitPlanetText');
+	
 	$(window).resize(resize);
 	resize();
 
 	var planetNames = [];
-	$.each(Planets.prototype.planetClasses, function(_,planetClass) {
+	for (var planetIndex = 0; planetIndex < Planets.prototype.planetClasses.length; ++planetIndex) {
+		planetClass = Planets.prototype.planetClasses[planetIndex];
 		planetNames.push(planetClass.prototype.name);
-	});
+	}
 	//var url = 'http://www.astro-phys.com/api/de406/states?date=' + encodeURIComponent(dateStr) + '&bodies=' + planetNames.join(',');
 	var url = 'astro-phys-state.json';
 	console.log('reading from '+url);
@@ -532,6 +759,8 @@ function init1() {
 }
 
 function init2() {
+	hsvTex = new GL.HSVTexture(256);
+
 	colorShader = new GL.ShaderProgram({
 		vertexCodeID : 'color-vsh',
 		fragmentCodeID : 'color-fsh',
@@ -540,7 +769,7 @@ function init2() {
 		}
 	});
 
-	texShader : new GL.ShaderProgram({
+	texShader = new GL.ShaderProgram({
 		vertexCodeID : 'tex-vsh',
 		fragmentCodeID : 'tex-fsh',
 		uniforms : {
@@ -548,14 +777,25 @@ function init2() {
 		}
 	});
 
-	hsvShader : new GL.ShaderProgram({
+	hsvShader = new GL.ShaderProgram({
 		vertexCodeID : 'heat-vsh',
 		fragmentCodeID : 'heat-fsh',
 		uniforms : {
-			hsvTex : 0
+			tex : 0
 		}
 	});
-	
+
+	pointObj = new GL.SceneObject({
+		mode : gl.POINTS,
+		shader : colorShader,
+		attrs : {
+			vertex : new GL.ArrayBuffer({data:[0,0,0]})
+		},
+		pos : vec3.create(),
+		parent : null,
+		static : false
+	});
+
 	var colors = {
 		sun:[1,1,0],
 		mercury:[.7,0,.2],
@@ -570,40 +810,19 @@ function init2() {
 		pluto:[0,.5,1]
 	};
 	var planetsDone = 0;
-	var checkDone = function() {
-		++planetsDone;
-		if (planetsDone == planets.length) {
-			init3();
-		}
-	};
-	$.each(planets, function(i,planet) {
+
+	for (var planetIndex_ = 0; planetIndex_ < planets.length; ++planetIndex_) { (function(){
+		var planetIndex = planetIndex_;
+		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
 		planetClassPrototype.color = colors[planet.name];
-		// load texture
-		var img = new Image();
-		img.onload = function() {
-			console.log('loading tex for planet '+planet.name);
-			checkDone();
-			planetClassPrototype.tex = new GL.Texture2D({
-				flipY : true,
-				data : img,
-				minFilter : gl.LINEAR_MIPMAP_LINEAR,
-				magFilter : gl.LINEAR,
-				generateMipmap : true
-			});
-		};
-		img.onerror = function() {
-			console.log('failed to find texture for planet '+planet.name);
-			checkDone();
-		};
-		img.src = 'textures/'+planet.name+'.png';
 		
 		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
 
-		planetClassPrototype.elementArray = [];
-		planetClassPrototype.vertexArray = [];
-		planetClassPrototype.texCoordArray = [];
-		planetClassPrototype.tideArray = [];
+		var elementArray = [];
+		var vertexArray = [];
+		var texCoordArray = [];
+		var tideArray = [];
 
 		var latdiv = Math.floor((latMax-latMin)/latStep);
 		var londiv = Math.floor((lonMax-lonMin)/lonStep);
@@ -614,76 +833,111 @@ function init2() {
 				
 				var vtx = planetClassPrototype.geodeticPosition(lat, lon, 0);
 				for (var j = 0; j < 3; ++j) {
-					planetClassPrototype.vertexArray.push(vtx[j]);
+					vertexArray.push(vtx[j]);
 				}
 				
-				planetClassPrototype.texCoordArray.push(lon / 360 + .5);
-				planetClassPrototype.texCoordArray.push(-lat / 180 + .5);
+				texCoordArray.push(lon / 360 + .5);
+				texCoordArray.push(-lat / 180 + .5);
 
-				planetClassPrototype.tideArray.push(0);
+				tideArray.push(0);
 
 				if (loni < londiv && lati < latdiv) {
 					for (var j = 0; j < quad.length; ++j) {
 						var ofs = quad[j];
 						var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-						planetClassPrototype.elementArray.push(index);
+						elementArray.push(index);
 					}
 				}
 			}
 		}
+		
+		var checkDone = function() {
+			planetClassPrototype.sceneObj = new GL.SceneObject({
+				mode : gl.TRIANGLES,
+				indexes : new GL.ElementArrayBuffer({data:elementArray}),
+				attrs : {
+					vertex : new GL.ArrayBuffer({data:vertexArray, keep:true}),
+					texCoord : new GL.ArrayBuffer({dim:2, data:texCoordArray}),
+					tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
+				},
+				uniforms : {
+					color : planetClassPrototype.color
+				},
+				pos : vec3.create(),
+				angle : quat.create(),
+				parent : null,
+				static : false
+			});
+			
+			++planetsDone;
+			if (planetsDone == planets.length) {
+				init3();
+			}
+		};
 
-		planetClassPrototype.indexBuffer = new GL.ElementArrayBuffer({data:planetClassPrototype.elementArray});
-		planetClassPrototype.vertexBuffer = new GL.ArrayBuffer({data:planetClassPrototype.vertexArray});
-		planetClassPrototype.texCoordBUffer = new GL.ArrayBuffer({dim:2, data:planetClassPrototype.texCoordArray});
-		planetClassPrototype.tideBuffer = new GL.ArrayBuffer({dim:1, data:planetClassPrototype.tideArray, keep:true, usage:gl.DYNAMIC_DRAW});
+		// load texture
+		var img = new Image();
+		img.onload = function() {
+			planetClassPrototype.tex = new GL.Texture2D({
+				flipY : true,
+				data : img,
+				minFilter : gl.LINEAR_MIPMAP_LINEAR,
+				magFilter : gl.LINEAR,
+				generateMipmap : true
+			});
+			checkDone();
+		};
+		img.onerror = function() {
+			console.log('failed to find texture for planet '+planet.name);
+			checkDone();
+		};
+		img.src = 'textures/'+planet.name+'.png';
 
-		planetClassPrototype.sceneObj = new GL.SceneObject({
-			mode : gl.TRIANGLES,
-			indexes : planetClassPrototype.indexBuffer,
-			attrs : {
-				vertex : planetClassPrototype.vertexBuffer,
-				texCoords : planetClassPrototype.texCoordBUffer,
-				tide : planetClassPrototype.tideBuffer
-			},
-			shader : planetClassPrototype.tex !== undefined ? texShader : colorShader,
-			texs : [planetClassPrototype.tex],
-			uniforms : {
-				color : planetClassPrototype.color
-			},
-			pos : vec3.create(),
-			angle : quat.create()
-		});
-	});
+
+	})(); }
 }
 
 function init3() {
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-	gl.enable(gl.DEPTH_TEST);
+	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+	//gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
-	gl.depthFunc(gl.LEQUAL);
+	//gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
-	hsvTex = new GL.HSVTexture(256);
-
-	var earth = planets[planets.indexes.earth];
-	orbitPlanetIndex = earth.index;
-	orbitTargetDistance = 2. * earth.radius;
+	var trackPlanet = planets[planets.indexes.earth];
+	orbitPlanetIndex = trackPlanet.index;
+	orbitTargetDistance = 2. * trackPlanet.radius;
+	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
+	orbitPlanetText.text(trackPlanet.name);
 
+	var dragging = false;
+	var tmpQ = quat.create();	
 	mouse = new Mouse3D({
 		pressObj : canvas,
 		mousedown : function() {
+			dragging = false;
 		},
-		move : function() {
-			var mouseDir = mouseRay();
+		move : function(dx,dy) {
+			dragging = true;
+			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
+			quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
+			quat.multiply(GL.view.angle, GL.view.angle, tmpQ);
+			quat.normalize(GL.view.angle, GL.view.angle);
+		},
+		passiveMove : function() {
+			mouseDir = mouseRay();
 			chooseNewPlanet(mouseDir, false);
 		},
 		zoom : function(zoomChange) {
+			dragging = true;
 			var scale = Math.exp(-orbitZoomFactor * zoomChange);
 			orbitTargetDistance *= scale;
+			refreshOrbitTargetDistanceText();
 		},
 		click : function() {
-			var mouseDir = mouseRay();
+			if (dragging) return;
+			mouseDir = mouseRay();
 			chooseNewPlanet(mouseDir, true);
 		}
 	});
@@ -692,7 +946,6 @@ function init3() {
 }
 
 function update() {
-	
 	if (mouse.leftClick) {
 		if (mouseOverEvent) {
 			targetJulianDate = mouseOverEvent.julianDate;
@@ -703,15 +956,13 @@ function update() {
 			var normDelta = vec2.fromValues(mouse.deltaX / magn, mouse.deltaY / magn);
 			var r = quat.create();
 			quat.fromAxisAngle(r, [-normDelta[2], normDelta[1], 0], -magn);
-			quat.mul(viewAngle, viewAngle, r);
-			quat.normalize(viewAngle, viewAngle);
+			quat.mul(GL.view.angle, GL.view.angle, r);
+			quat.normalize(GL.view.angle, GL.view.angle);
 		}
 	}
 
 	// track ball orbit
-	
-	var earth = planets[planets.indexes.earth];
-	
+
 	var orbitCenter;
 	if (orbitGeodeticLocation !== undefined) {
 		orbitCenter = planetGeodeticToSolarSystemBarycentric(
@@ -728,7 +979,6 @@ function update() {
 	GL.view.pos[0] = orbitCenter[0] + viewAngleZAxisX * orbitDistance;
 	GL.view.pos[1] = orbitCenter[1] + viewAngleZAxisY * orbitDistance;
 	GL.view.pos[2] = orbitCenter[2] + viewAngleZAxisZ * orbitDistance;
-	
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
@@ -755,67 +1005,9 @@ function update() {
 	}
 */
 
-	//drawScene:
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-		var planet = planets[planetIndex];
-		var planetClassPrototype = planet.init.prototype;
-	
-		planet.visRatio = planet.radius / vec3.distance(planet.pos, GL.view.pos);
-		//if (planet.visRatio >= .005) draw the whole planet, otherwise just a dot
-		
-		//update scene object
-		vec3.copy(planetClassPrototype.sceneObj.pos, planet.pos);
-		quat.copy(planetClassPrototype.sceneObj.angle, planet.angle);
-	
-		//update tide attributes
-		if (!showTide) {
-			planetClassPrototype.sceneObj.shader = planetClassPrototype.tex !== undefined ? texShader : colorShader;
-			planetClassPrototype.sceneObj.texs[0] = planetClassPrototype.tex;
-		} else {
-			planetClassPrototype.sceneObj.shader = hsvShader;
-			planetClassPrototype.sceneObj.texs[0] = hsvTex;
-			if (planetClassPrototype.lastTideCalcDate !== julianDate) {
-				planetClassPrototype.lastTideCalcDate = julianDate;
-				var tidalMin = undefined;
-				var tidalMax = undefined;
-				var vertexIndex = 0;
-				for (var tideIndex = 0; tideIndex < planet.tideArray.length; ++tideIndex) {
-					var planetX = vec3.fromValues(
-						planet.vertexArray[vertexIndex++],
-						planet.vertexArray[vertexIndex++],
-						planet.vertexArray[vertexIndex++]);
-					var x = planetCartesianToSolarSystemBarycentric(planet, planetX);
-					var accel = calcTidalForce(planet, x);
-					//var accel = calcGravitationalForce(x);
-					var norm = vec3.create();
-					vec3.sub(norm, x, planet.pos);
-					vec3.normalize(norm, norm);
-					//var toTheMoon = (planets[planets.indexes.moon].pos - x):normalize()
-					//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
-					//var tangentTowardsMoon = normCrossMoon:cross(norm)
-					//var tidalAccel = accel:dot(tangentTowardsMoon)
-					//var tidalAccel = accel:dot(norm)	// normal component
-					//var tidalAccel = accel:dot(toTheMoon)	// moonward component
-					var dot = vec3.dot(accel, norm);
-					var proj = vec3.create();
-					vec3.scale(proj, norm, dot);
-					var tidalAccel = vec3.distance(accel, proj);	// tangent component
-					//var tidalAccel = accel:length()	// magnitude
-					var t = tidalAccel;
-					if (tidalMin === undefined || t < tidalMin) tidalMin = t;
-					if (tidalMax === undefined || t > tidalMax) tidalMax = t;
-					planet.tideArray[tideIndex] = t
-				}
-				for (var i = 0; i < planet.tideArray.length; ++i) {
-					planet.tideArray[i] = (255/256 - (planet.tideArray[i] - tidalMin) / (tidalMax - tidalMin) * 254/256) * colorBarHSVRange;
-				}
-				planet.tideBuffer.updateData();
-				gl.bindBuffer(gl.ARRAY_BUFFER, null);
-			}
-		}
-	}
-	//should draw these manually while debugging ...
+	GL.ondraw = drawScene;
 	GL.draw();
-//	requestAnimFrame(update);
+
+	requestAnimFrame(update);
 }
 

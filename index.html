@@ -28,6 +28,7 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 void main() {
 	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+	gl_PointSize = 4.;
 }
 		</script>
 		<script id='color-fsh' type='x-shader/x-fragment'>
@@ -57,7 +58,6 @@ void main() {
 	gl_FragColor = texture2D(tex, texCoordv);
 }
 		</script>
-	
 		<script id='heat-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute float tide;
@@ -72,14 +72,53 @@ void main() {
 		<script id='heat-fsh' type='x-shader/x-fragment'>
 precision mediump float;
 varying float tidev; 
-uniform sampler2D hsvTex;
+uniform sampler2D tex;
 void main() {
-	gl_FragColor = texture2D(hsvTex, vec2(tidev, .5));
+	gl_FragColor = texture2D(tex, vec2(tidev, .5));
 }
 		</script>
 
+		<style type='text/css'>
+
+body {
+	background-color:black;
+	color:white;
+}
+
+a:link {
+	cursor:pointer;
+	color:#00FFFF;
+}
+
+a:visited {
+	cursor:pointer;
+	color:#00FFFF;
+}
+
+a:hover {
+	cursor:pointer;
+	color:#00FFFF;
+}
+
+a:active {
+	cursor:pointer;
+	color:#00FFFF;
+}
+		</style>
+	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
+		<div id='panel' style='overflow-x:hidden; width:400px; z-index:1, width:300px; position:absolute; background-color:rgba(0,0,0,.75)'>
+			Your Friendly Neighborhood Solar System<br>
+			Orbitting: <span id='orbitPlanetText'></span><br>
+			Mouse Over: <span id='hoverPlanetText'></span><br>
+			<br>
+			Distance: <span id='orbitTargetDistance'></span><br>
+			<br>
+			Min: <span id='measureMin'></span><br>
+			Max: <span id='measureMax'></span><br>
+			<br>
+		</div>
 		<div id='webglfail' style='display:none'>
 			Sorry, your browser does not support WebGL<br>
 			Try one of these other, better browsers:<br>
