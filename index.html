@@ -1,15 +1,27 @@
 <html>
 	<head>
 		<title>Solar System - WebGL</title>
+		<meta name='viewport' content='width=device-width, initial-scale=1'>
+		<meta name='apple-mobile-web-app-capable' content='yes'/>
+		<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'/>
+		
+		<link rel='stylesheet' href='themes/base/jquery.ui.all.css'></link>
 
-		<script type='text/javascript' src='/js/jquery-1.9.0.min.js'></script>
+		<script type='text/javascript' src='/js/jquery-1.10.0.min.js'></script>
+		
+		<script src='ui/jquery.ui.widget.js'></script>
+		<script src='ui/jquery.ui.mouse.js'></script>
+		<script src='ui/jquery.ui.slider.js'></script>
+		
 		<script type='text/javascript' src='/js/gl-matrix-min.js'></script>
 		<script type='text/javascript' src='/js/webgl-debug.js'></script>
 		<script type='text/javascript' src='/js/util.js'></script>
 		<script type='text/javascript' src='/js/gl-util.js'></script>
 		<script type='text/javascript' src='/js/gl-util-gradient.js'></script>
 		<script type='text/javascript' src='/js/mouse3d.js'></script>
+		
 		<script type='text/javascript' src='main.js'></script>
+		
 		<script type='text/javascript'>
 var _gaq = _gaq || [];
 _gaq.push(['_setAccount', 'UA-17312646-1']);
@@ -60,21 +72,29 @@ void main() {
 		</script>
 		<script id='heat-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
+attribute vec2 texCoord;
 attribute float tide;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 varying float tidev;
+varying vec2 texCoordv;
 void main() {
 	tidev = tide;
+	texCoordv = texCoord;
 	gl_Position = projMat * mvMat * vec4(vertex, 1.);
 }
 		</script>
 		<script id='heat-fsh' type='x-shader/x-fragment'>
 precision mediump float;
-varying float tidev; 
+varying float tidev;
+varying vec2 texCoordv;
 uniform sampler2D tex;
+uniform sampler2D hsvTex;
+uniform float heatAlpha;
 void main() {
-	gl_FragColor = texture2D(tex, vec2(tidev, .5));
+	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
+	vec4 planetColor = texture2D(tex, texCoordv);
+	gl_FragColor = mix(hsvColor, planetColor, heatAlpha);
 }
 		</script>
 
@@ -108,16 +128,18 @@ a:active {
 	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
-		<div id='panel' style='overflow-x:hidden; width:400px; z-index:1, width:300px; position:absolute; background-color:rgba(0,0,0,.75)'>
-			Your Friendly Neighborhood Solar System<br>
+		<div id='panel' style='overflow-x:hidden; z-index:1; width:300px; height:100%; position:absolute; background-color:rgba(0,0,0,.75)'>
 			Orbitting: <span id='orbitPlanetText'></span><br>
 			Mouse Over: <span id='hoverPlanetText'></span><br>
 			<br>
 			Distance: <span id='orbitTargetDistance'></span><br>
 			<br>
-			Min: <span id='measureMin'></span><br>
-			Max: <span id='measureMax'></span><br>
+			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
+			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
 			<br>
+			Overlay:
+			<div id='overlay-slider'></div><br>
+			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
 		</div>
 		<div id='webglfail' style='display:none'>
 			Sorry, your browser does not support WebGL<br>
@@ -135,3 +157,4 @@ a:active {
 		</div>
 	</body>
 </html>
+

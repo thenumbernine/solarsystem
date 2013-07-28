@@ -7,3 +7,15 @@
 
 Somewhere in this repo is the original Lua version, designed to pull from astro-phys.com or from NASA's Ephemeris 406 data, and to subsequentially integrate forward or backwards in time with a RK45 integrator.
 I've since been corrected that I should be using a Gauss Cubic integrator.  Expect to see the integrator, and a cross-domain pull from astro-phys.com.  Don't expect me to keep a copy of the Ephemeris data.  After parsing it was someting like 400mb.  Play with the Lua scripts if you want to mess with that yourself.
+
+The textures are (c) NASA.  
+
+Sun is from http://commons.m.wikimedia.org/wiki/File:Map_of_the_full_sun.jpg
+Mercury is from http://laps.noaa.gov/albers/sos/sos.html
+Venus is from http://laps.noaa.gov/albers/sos/sos.html
+Earth is from http://m.earthobservatory.nasa.gov/Features/BlueMarble
+Mars from http://maps.jpl.nasa.gov
+Jupiter is from http://laps.noaa.gov/albers/sos/sos.html
+Saturn from http://www.mmedia.is/~bjj/data/saturn/
+Neptune from http://www.mmedia.is/~bjj/data/neptune/
+Pluto from http://www.johnstonsarchive.net/spaceart/cylmaps.html
