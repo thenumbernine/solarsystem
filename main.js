@@ -613,8 +613,11 @@ function drawScene() {
 
 		//update scene object
 		vec3.copy(planetClassPrototype.sceneObj.pos, planet.pos);
-		quat.copy(planetClassPrototype.sceneObj.angle, planet.angle);
-
+		if (planet.tiltAngle) {
+			quat.multiply(planetClassPrototype.sceneObj.angle, planet.tiltAngle, planet.angle);
+		} else {
+			quat.copy(planetClassPrototype.sceneObj.angle, planet.angle);
+		}
 
 		if (planet.visRatio >= .005) {
 			updatePlanetClassSceneObj(planet);
@@ -703,7 +706,7 @@ function init1() {
 		$('#webglfail').show();
 		throw e;
 	}
-	
+
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
 
@@ -755,11 +758,12 @@ function init1() {
 		planetClass = Planets.prototype.planetClasses[planetIndex];
 		planetNames.push(planetClass.prototype.name);
 	}
-	//var url = 'http://www.astro-phys.com/api/de406/states?date=' + encodeURIComponent(dateStr) + '&bodies=' + planetNames.join(',');
-	var url = 'astro-phys-state.json';
+	var url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
+	//var url = 'astro-phys-state.json';
 	console.log('reading from '+url);
 	$.ajax({
-		url : url
+		url : url,
+		dataType : 'jsonp'
 	}).done(function(d) {
 		//console.log('results');
 		//console.log(JSON.stringify(d.results));

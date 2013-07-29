@@ -94,9 +94,36 @@ uniform float heatAlpha;
 void main() {
 	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
 	vec4 planetColor = texture2D(tex, texCoordv);
-	gl_FragColor = mix(hsvColor, planetColor, heatAlpha);
+	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
 }
 		</script>
+		<script id='perpixel-heat-vsh' type='x-shader/x-vertex'>
+attribute vec3 vertex;
+attribute vec2 texCoord;
+attribute float tide;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+varying vec2 texCoordv;
+void main() {
+	tidev = tide;
+	texCoordv = texCoord;
+	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+}
+		</script>
+		<script id='tangent-tidal-fsh' type='x-shader/x-fragment'>
+precision mediump float;
+varying float tidev;
+varying vec2 texCoordv;
+uniform sampler2D tex;
+uniform sampler2D hsvTex;
+uniform float heatAlpha;
+void main() {
+	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
+	vec4 planetColor = texture2D(tex, texCoordv);
+	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+}
+		</script>
+
 
 		<style type='text/css'>
 
@@ -154,6 +181,12 @@ a:active {
 			<b>IE Users:</b><br>
 			Sorry guys, IE doesn't plan to support WebGL.<br>
 			Consider using a more <a href='http://www.w3schools.com/browsers/browsers_stats.asp'>standard compliant</a> browser.<br>
+			<br>
+			<center>
+				<a href='screenshot.png'>
+					<img src='screenshot.png'></img>
+				</a><br>
+			</center>
 		</div>
 	</body>
 </html>
