@@ -1,0 +1,7 @@
+The standalone method works on Ephemeris 406 and from astro-phys.com API responses.
+
+To get the Ephemeris 406 data:
+1) download all the files at ftp://ssd.jpl.nasa.gov/pub/eph/planets/ascii/de406/
+1B) optionally use the download.lua script, requires lua sockets
+2) run the asc2fits.lua script to compress the files
+

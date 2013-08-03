@@ -149,7 +149,7 @@ local lfs = require 'lfs'
 --lfs.mkdir(denum..'/fits/')
 lfs.mkdir(denum..'/f64/')
 
-require 'ffi.c.stdio'
+require 'ffi.C.stdio'
 
 -- one lump file
 local file = ffi.C.fopen(denum..'/f64/de'..denum..'.f64.raw', 'wb')
