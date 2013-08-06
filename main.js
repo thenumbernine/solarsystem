@@ -797,7 +797,10 @@ var displayMethods = [
 	'Total Tidal',
 	'Tangent Gravitational',
 	'Normal Gravitational',
-	'Total Gravitational'
+	'Total Gravitational',
+	'Tangent Total',
+	'Normal Total',
+	'Total'
 ];
 var displayMethod = 'Plain';
 var planetInfluences = [];
@@ -861,6 +864,12 @@ var updatePlanetClassSceneObj;
 					case 'Total Gravitational':
 						calcGravitationForce(accel, x);
 						break;	
+					case 'Tangent Total':
+					case 'Normal Total':
+					case 'Total':
+						calcTidalForce(accel, x, planet);
+						calcGravitationForce(accel, x);
+						break;
 					}
 					
 					vec3.sub(norm, x, planet.pos);
@@ -875,16 +884,19 @@ var updatePlanetClassSceneObj;
 					switch (displayMethod) {
 					case 'Tangent Tidal':
 					case 'Tangent Gravitational':
+					case 'Tangent Total':
 						var dot = vec3.dot(accel, norm);
 						vec3.scale(proj, norm, dot);
 						t = vec3.distance(accel, proj);	// tangent component
 						break;	
 					case 'Normal Tidal':
 					case 'Normal Gravitational':
+					case 'Normal Total':
 						t = vec3.dot(accel, norm);
 						break;	
 					case 'Total Tidal':
 					case 'Total Gravitational':
+					case 'Total':
 						t = vec3.length(accel);	// magnitude
 						break;	
 					}
@@ -1067,11 +1079,15 @@ function init1() {
 		throw e;
 	}
 
-	if (gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT)) {
+	var vtxhigh = gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT)
+	console.log('vertex high? '+vtxhigh.rangeMin+' '+vtxhigh.rangeMax+' '+vtxhigh.precision);
+	if (vtxhigh.rangeMin !== 0 && vtxhigh.rangeMax !== 0 && vtxhigh.precision !== 0) {
 		console.log('vertex using high precision float');
 		vertexPrecision = 'precision highp float;\n';
 	}
-	if (gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT)) {
+	var fraghigh = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT)
+	console.log('fragment high? '+fraghigh.rangeMin+' '+fraghigh.rangeMax+' '+fraghigh.precision);
+	if (fraghigh.rangeMin !== 0 && fraghigh.rangeMax !== 0 && fraghigh.precision !== 0) {
 		console.log('fragment using high precision float');
 		fragmentPrecision = 'precision highp float;\n';
 	}
