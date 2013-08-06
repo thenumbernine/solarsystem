@@ -3,7 +3,8 @@
  lets you see gravitational / tidal forces of various planets on various other planets
 
  Calculations are done using Newtonian coefficients rewritten in terms of Riemann metric tensor.  See Ch. 12 of "Gravitation" by Misner, Thorne, and Wheeler.
- Maybe later I'll do it in terms of linearized perturbations (Ch. 18), if there is much of a difference in measurements.  Can't do much with float32's.  Stupid JavaScript.
+This is equivalent to linearized gravity when the velocity is assumed to be purely timelike.  I have a cartesian Schwarzschild metric in black-hole-skymap,
+remind me to use that for this.  Until then, linearized/Newtonian will just have to do.
 
 Somewhere in this repo is the original Lua version, designed to pull from astro-phys.com or from NASA's Ephemeris 406 data, and to subsequentially integrate forward or backwards in time with a RK45 integrator.
 I've since been corrected that I should be using a Gauss Cubic integrator.  Expect to see the integrator, and a cross-domain pull from astro-phys.com.  Don't expect me to keep a copy of the Ephemeris data.  After parsing it was someting like 400mb.  Play with the Lua scripts if you want to mess with that yourself.

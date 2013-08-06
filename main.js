@@ -1,3 +1,318 @@
+// with a little help from
+// http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
+// ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/jpl_eph.cc
+// http://www.astro-phys.com/js/astro/api.js
+var EphemerisData = makeClass({
+
+	//parsed from header.406
+	hdr : {
+		"numCoeffs" : 728, 
+		"epoch1" : 625360.5,
+		"epoch2" : 2816912.5,
+		"title" : "JPL Planetary Ephemeris DE406\/DE406\nStart Epoch :  JED=   625360.5-3000 FEB 23 00 : 00 : 00\nFinal Epoch :  JED=  2816912.5 3000 MAY 06 00 : 00 : 00",
+		"au" : 149597870.691,
+		"DEnumber" : 406,
+		"interval" : 64,
+		"emrat" : 81.30056,
+		"vars" : {
+			"XD4" : 0.014481653059735,
+			"YD4" : 0.0002424631177603,
+			"ZD4" : -0.00028152073424801,
+			"AM" : 1738,
+			"LBET" : 0.00063161213421947,
+			"Z7" : -0.25010348393738,
+			"GM2" : 7.2434524861627e-10,
+			"Y9" : -0.8724783554958,
+			"YM" : -0.0019946300016204,
+			"XM" : -0.00080817732791148,
+			"ZM" : -0.0010872626608381,
+			"YD5" : -0.0065181165657927,
+			"XD5" : 0.0010920115430089,
+			"LGAM" : 0.00022785831399776,
+			"GM5" : 2.8253459095242e-07,
+			"ZS" : 0.00026605680517703,
+			"XS" : 0.0045025081562339,
+			"ZD6" : 0.0019286465656538,
+			"YD6" : 0.0043358098589553,
+			"XD6" : -0.0032175552393033,
+			"S41M" : 2.94743374914e-06,
+			"AU" : 149597870.691,
+			"CLIGHT" : 299792.458,
+			"J4E" : -1.616e-06,
+			"JDEPOC" : 2440400.5,
+			"YD7" : -0.0037624759328466,
+			"ZD7" : -0.001651014703068,
+			"S43M" : -7.88967312839e-07,
+			"GM7" : 1.292024916782e-08,
+			"XD8" : 0.0026427710433669,
+			"THTC" : 0.4088443,
+			"YD8" : -0.0014983144553592,
+			"ZD8" : -0.00067904190301796,
+			"MGMIS" : 1,
+			"YD9" : -0.003143570302152,
+			"TDATEF" : 0,
+			"S44M" : 5.6404155572e-08,
+			"C32M" : 4.8798073627551e-06,
+			"THT" : 0.38239065587686,
+			"ASUN" : 696000,
+			"GDOT" : 0,
+			"ZD9" : -0.0010779488297393,
+			"GM9" : 2.188699765426e-12,
+			"RAD1" : 2439.76,
+			"K2E2" : 0.3,
+			"ZB" : -0.40154022080181,
+			"XB" : 0.1205174172954,
+			"YB" : -0.92583847893945,
+			"S31M" : 4.2593286300303e-06,
+			"Z2" : -0.19527828898023,
+			"XDS" : -3.5174820964519e-07,
+			"YDS" : 5.1776253995848e-06,
+			"ZDS" : 2.2291018543917e-06,
+			"ROTEX" : 0,
+			"C41M" : -7.17780149806e-06,
+			"X4" : -0.11018607428286,
+			"PHI" : 0.0051299597051581,
+			"Z4" : -0.6058891326142,
+			"Y6" : 4.5964778016269,
+			"K2M" : 0.029922116659705,
+			"Z8" : -9.4001567235488,
+			"J2M" : 0.00020431200665465,
+			"Z6" : 1.5586975735303,
+			"Y8" : -23.942181216179,
+			"X6" : 7.8943924419791,
+			"C43M" : -8.54788154819e-08,
+			"OMGCX" : 0,
+			"GMAST2" : 1.2774811891041e-14,
+			"PSIDOT" : 0,
+			"BETA" : 1,
+			"YDB" : 0.0017483093133816,
+			"GAMMA" : 1,
+			"XDB" : 0.016811268303993,
+			"ZDB" : 0.00075820286899054,
+			"GMB" : 8.9970113467125e-10,
+			"S42M" : -2.8843721272e-06,
+			"OMEGAX" : 4.5247044990228e-05,
+			"J4M" : -1.45383007072e-07,
+			"DROTEY" : -0.001193,
+			"ROTEY" : 0,
+			"J2SUN" : 2e-07,
+			"YDM" : -0.00016744546061515,
+			"OMEGAZ" : 0.22994485870137,
+			"YD1" : 0.024894520467649,
+			"C31M" : 3.0803809783429e-05,
+			"OMGCY" : -1.5816707e-06,
+			"PSIC" : -1.714509,
+			"PHIC" : -0.0042595183,
+			"XD9" : 0.00032221044772359,
+			"Z9" : 8.9115630409899,
+			"GMAST3" : 3.3340587729603e-15,
+			"GMAST1" : 6.4668254338426e-14,
+			"TAUM" : 0.16671655584928,
+			"DROTEX" : 0.000244,
+			"TAUE2" : 0.0069417855840523,
+			"J3E" : -2.533e-06,
+			"TAUE0" : 0,
+			"Y7" : -1.1619445055181,
+			"ZD2" : 0.0063311055536011,
+			"K2E0" : 0.34,
+			"LENUM" : 406,
+			"TAUE1" : 0.01290895939156,
+			"C33M" : 1.7701764624348e-06,
+			"J2E" : 0.001082626,
+			"YS" : 0.00076707470093238,
+			"RAD4" : 3397.515,
+			"X8" : -16.055042583768,
+			"C44M" : -1.5490389313e-07,
+			"XD7" : 0.00022118841741777,
+			"Y4" : -1.3275994561326,
+			"XD1" : 0.0033674939139841,
+			"MAD1" : 1.8,
+			"ZD1" : 0.01294630068865,
+			"GM4" : 9.5495351057793e-11,
+			"X2" : 0.61275194134184,
+			"GM1" : 4.9125474514508e-11,
+			"MA0002" : 2.9591220828559e-14,
+			"AE" : 6378.137,
+			"GMS" : 0.00029591220828559,
+			"Y2" : -0.34836536849497,
+			"Y1" : -0.090781967729586,
+			"KVC" : 0,
+			"MA0001" : 1.3907873789423e-13,
+			"CENTER" : 0,
+			"OMGCZ" : 0.229888,
+			"TDATEB" : 1.1997060422594e+16,
+			"K2E1" : 0.3,
+			"RAD2" : 6052.3,
+			"XD2" : 0.010952068361699,
+			"GM8" : 1.5243589007843e-08,
+			"Z5" : -0.22482870022837,
+			"X7" : -18.265398306822,
+			"C22M" : 2.2517824391662e-05,
+			"X1" : 0.36176271460351,
+			"YD2" : 0.015617684365262,
+			"Z1" : -0.085714983181763,
+			"RE" : 6378.137,
+			"MAD3" : 5,
+			"X9" : -30.483319603999,
+			"XDM" : 0.00060108481665913,
+			"MAD2" : 2.4,
+			"ZDM" : -8.5562144973986e-05,
+			"IFAC" : 0.0003,
+			"J3M" : 8.7854695077931e-06,
+			"MA0004" : 3.8468587077127e-14,
+			"PSI" : 1.2941422241103,
+			"S33M" : -2.7097009665669e-07,
+			"OMEGAY" : -2.2309276319874e-06,
+			"EMRAT" : 81.30056,
+			"GM6" : 8.4597151856807e-08,
+			"C42M" : -1.43951838385e-06,
+			"DENUM" : 406,
+			"S32M" : 1.6955162680004e-06,
+			"Y5" : -0.83048058146015,
+			"X5" : -5.3797068988359,
+			"ZD5" : -0.002820783165365
+		},
+		"objs" : [
+			{"numSubIntervals" : 4,"numComponents" : 3,"offset" : 3,"name" : "Mercury","numCoeffs" : 14},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 171,"name" : "Venus","numCoeffs" : 12},
+			{"numSubIntervals" : 2,"numComponents" : 3,"offset" : 207,"name" : "EM_Bary","numCoeffs" : 9},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 261,"name" : "Mars","numCoeffs" : 10},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 291,"name" : "Jupiter","numCoeffs" : 6},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 309,"name" : "Saturn","numCoeffs" : 6},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 327,"name" : "Uranus","numCoeffs" : 6},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 345,"name" : "Neptune","numCoeffs" : 6},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 363,"name" : "Pluto","numCoeffs" : 6},
+			{"numSubIntervals" : 8,"numComponents" : 3,"offset" : 381,"name" : "GeoCMoon","numCoeffs" : 13},
+			{"numSubIntervals" : 1,"numComponents" : 3,"offset" : 693,"name" : "Sun","numCoeffs" : 12},
+			{"numSubIntervals" : 0,"numComponents" : 2,"offset" : 729,"name" : "Nutation","numCoeffs" : 0},
+			{"numSubIntervals" : 0,"numComponents" : 3,"offset" : 729,"name" : "Libration","numCoeffs" : 0}
+		]
+	},
+
+	interp : function(coeff, numCoeffs, intervalLength, time) {
+		var pc = new Float64Array(18);//ffi.new('double[18]')
+		var vc = new Float64Array(18);//ffi.new('double[18]')
+	
+		if (time < 0 || time > 1) throw 'out of bounds';
+		// tc is the normalized chebyshev time (-1 <= tc <= 1)
+		var tc = 2 * time - 1;
+		
+		pc[0] = 1;
+		pc[1] = tc;
+
+		var twot = tc + tc
+		for (var i = 2; i < numCoeffs; ++i) {
+			pc[i] = twot * pc[i-1] - pc[i-2];
+		}
+		
+		var pos = 0;
+		for (var i = numCoeffs-1; i >= 0; --i) {
+			pos += pc[i] * coeff[i];
+		}
+		
+		vc[0] = 0;
+		vc[1] = 1;
+		vc[2] = twot + twot;
+		for (var i=3; i < numCoeffs; ++i) {
+			vc[i] = twot * vc[i-1] + pc[i-1] + pc[i-1] - vc[i-2];
+		}
+		var vel = 0;
+		for (var i = numCoeffs-1; i >= 1; --i) {
+			vel += vc[i] * coeff[i];
+		}
+		vel *= 2 / intervalLength;
+		return [pos, vel];
+	},
+
+	posVel : function(planetIndex, timeOrigin, timeOffset) {
+		timeOffset = +timeOffset;
+		var coeffBuffer = this.getCoeffBuffer(timeOrigin, timeOffset);
+		var coeff, numCoeffs, subintervalLength, subintervalFrac = getCoeffSubinterval(planetIndex, coeffBuffer, timeOrigin, timeOffset);
+		var pos = vec3.create();
+		var vel = vec3.create();
+		var tmp;
+		for (var i = 0; i < 3; ++i) {
+			tmp = interp(coeff, numCoeffs, subintervalLength, subintervalFrac);
+			pos[i] = tmp[0];
+			vel[i] = tmp[1];
+			coeff = coeff + numCoeffs
+		}
+		return [pos, vel];
+	},
+
+	mercury : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mercury, timeOrigin, timeOffset); },
+	venus : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Venus, timeOrigin, timeOffset); },
+	mars : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mars, timeOrigin, timeOffset); },
+	jupiter : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Jupiter, timeOrigin, timeOffset); },
+	saturn : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Saturn, timeOrigin, timeOffset); },
+	uranus : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Uranus, timeOrigin, timeOffset); },
+	neptune : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Neptune, timeOrigin, timeOffset); },
+	pluto : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Pluto, timeOrigin, timeOffset); },
+	sun : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Sun, timeOrigin, timeOffset); },
+
+	earth : function(timeOrigin, timeOffset) {
+		var tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
+		var earthMoonPos = tmp[0];
+		var earthMoonVel = tmp[1] 
+		var tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
+		var geoMoonPos = tmp[0];
+		var geoMoonVel = tmp[1];
+		var scale = 1 / (1 + this.hdr.emrat);
+		var tmp = vec3.create();
+		vec3.scale(tmp, geoMoonPos, scale);
+		var earthPos = vec3.create();
+		vec3.sub(earthPos, earthMoonPos, tmp);
+		vec3.scale(tmp, geoMoonVel, scale);
+		var earthVel = vec3.create();
+		vec3.sub(earthVel, earthMoonVel, tmp);
+		return [earthPos, earthVel];
+	},
+
+	moon : function(timeOrigin, timeOffset) {
+		var tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
+		var earthMoonPos = tmp[0];
+		var earthMoonVel = tmp[1];
+		var tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
+		var geoMoonPos = tmp[0];
+		var geoMoonVel = tmp[1];
+		var scale = 1 / (1 + this.hdr.emrat);
+		var tmp = vec3.create();
+		vec3.scale(tmp, geoMoonPos, scale);
+		var earthPos = vec3.create();
+		vec3.sub(earthPos, earthMoonPos, tmp);
+		var tmp = vec3.create();
+		vec3.scale(tmp, geoMoonVel, scale);
+		var earthVel = vec3.create();
+		vec3.sub(earthVel, earthMoonVel, tmp);
+		var moonPos = vec3.create();
+		vec3.add(moonPos, geoMoonPos, earthPos);
+		var moonVel = vec3.create();
+		vec3.add(moonVel, geoMoonVel, earthVel);
+		return [moonPos, moonVel];
+	},
+
+	objNames : [
+		'Mercury',
+		'Venus',
+		'EM_Bary',
+		'Mars',
+		'Jupiter',
+		'Saturn',
+		'Uranus',
+		'Neptune',
+		'Pluto',
+		'GeoCMoon',
+		'Sun',
+		'Nutation',
+		'Libration'
+	]
+});
+EphemerisData.prototype.objIndexForName = {};
+$.each(EphemerisData.prototype.objNames, function(objIndex,objName) {
+	EphemerisData.prototype.objIndexForName[objName] = objIndex;
+});
+var ephemerisData = new EphemerisData();
+
 var Planet = makeClass({
 
 	init : function(args) {
@@ -141,20 +456,18 @@ Planets = makeClass({
 	init : function() {
 		for (var i = 0; i < this.planetClasses.length; ++i) {
 			this[i] = new (this.planetClasses[i])();
-			this[i].index = i;	// does anyone use this anymore?
+			this[i].index = i;
 		}
 		this.length = this.planetClasses.length;
 	},
 
 	// convert from json query object from http://www.astro-phys.com
-	fromAstroPhys : function(astroPhysPlanets) {
-		var planets = new Planets();	//why isn't this new'ing?
+	fromAstroPhysState : function(astroPhysPlanets) {
+		var planets = new Planets();
 		for (var i = 0; i < planets.length; ++i) {
 			var planet = planets[i];
 			var name = planet.name;
 			var astroPhysPlanet = astroPhysPlanets[name];
-			planet.pos = vec3.create();
-			planet.vel = vec3.create();
 			vec3.scale(planet.pos, astroPhysPlanet[0], 1000);	// in m
 			vec3.scale(planet.vel, astroPhysPlanet[1], 1000);	// in m/s
 		}
@@ -166,16 +479,16 @@ Planets = makeClass({
 //so don't use fromEphemeris
 	// convert an ephemeris dataset
 	// date is julian date
-	//	dir is only used if solarsys.eph hasn't been initialized
+	//	dir is only used if solarsys.ephemerisData hasn't been initialized
 	fromEphemeris : function(date, denum, dir) {
 		throw "not implemented";
-		if (!eph.hasInitialized()) {
-			eph.initialize(denum, dir);
+		if (!ephemerisData.hasInitialized()) {
+			ephemerisData.initialize(denum, dir);
 		}
 		var planets = new Planets();
 		for (var i=0; i < planets.length; ++i) {
 			var planet = planets[i];
-			var tmp = eph[planet.name](date);	// returns pos & vel in terms of km and km/julian day
+			var tmp = ephemerisData[planet.name](date);	// returns pos & vel in terms of km and km/julian day
 			var pos = tmp[0];
 			var vel = tmp[1];
 			planet.pos = vec3.fromValues(pos[0] * 1000, pos[1] * 1000, pos[2] * 1000);
@@ -463,9 +776,12 @@ function getEarthAngle(jd) {
 	return deg;
 }
 
+var fragmentPrecision = 'precision mediump float;\n';
+var vertexPrecision = '';
 var gl;
 var canvas;
 var panel;
+var panelContent;
 var measureMinText;
 var measureMaxText;
 var orbitTargetDistanceText;
@@ -485,183 +801,219 @@ var displayMethods = [
 ];
 var displayMethod = 'Plain';
 var planetInfluences = [];
+var showLinesToOtherPlanets = false;
+var showLatAndLonLines = false;
 var hoverPlanetText;
 var orbitPlanetText;
 
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
 
-function updatePlanetClassSceneObj(planet) {
-	var planetClassPrototype = planet.init.prototype;
-	
-	//update tide attributes
-	var showTide = displayMethod != 'Plain';
-	if (!showTide) {
-		if (planetClassPrototype.tex === undefined) {
-			if (planetClassPrototype.sceneObj.shader !== colorShader) {
-				planetClassPrototype.sceneObj.shader = colorShader;
-				planetClassPrototype.sceneObj.texs = [];
-			}
-		} else {
-			if (planetClassPrototype.sceneObj.shader !== texShader) {
-				planetClassPrototype.sceneObj.shader = texShader;
-				planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex];
-			}
-		}
-	} else {
-		if (planetClassPrototype.sceneObj.shader !== hsvShader) {
-			planetClassPrototype.sceneObj.shader = hsvShader;
-			planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex, hsvTex];
-		}
-		//and update calculated variable if it is out of date ...
-		var x = vec3.create();
-		var accel = vec3.create();
-		if (planetClassPrototype.lastMeasureCalcDate !== julianDate) {
-			planetClassPrototype.lastMeasureCalcDate = julianDate;
-			var measureMin = undefined;
-			var measureMax = undefined;
-			var vertexIndex = 0;
-			for (var tideIndex = 0; tideIndex < planetClassPrototype.sceneObj.attrs.tide.data.length; ++tideIndex) {
-				x[0] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-				x[1] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-				x[2] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-				planetCartesianToSolarSystemBarycentric(x, x, planet);
-			
-				accel[0] = accel[1] = accel[2] = 0;
-				switch (displayMethod) {
-				case 'Tangent Tidal':
-				case 'Normal Tidal':
-				case 'Total Tidal':
-					calcTidalForce(accel, x, planet);
-					break;
-				case 'Tangent Gravitational':
-				case 'Normal Gravitational':
-				case 'Total Gravitational':
-					calcGravitationForce(accel, x);
-					break;	
-				}
-				
-				var norm = vec3.create();
-				vec3.sub(norm, x, planet.pos);
-				vec3.normalize(norm, norm);
-				//var toTheMoon = (planets[planets.indexes.moon].pos - x):normalize()
-				//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
-				//var tangentTowardsMoon = normCrossMoon:cross(norm)
-				//var tidalAccel = accel:dot(tangentTowardsMoon)
-				//var tidalAccel = accel:dot(toTheMoon)	// moonward component
-			
-				var t;
-				switch (displayMethod) {
-				case 'Tangent Tidal':
-				case 'Tangent Gravitational':
-					var dot = vec3.dot(accel, norm);
-					var proj = vec3.create();
-					vec3.scale(proj, norm, dot);
-					t = vec3.distance(accel, proj);	// tangent component
-					break;	
-				case 'Normal Tidal':
-				case 'Normal Gravitational':
-					t = vec3.dot(accel, norm);
-					break;	
-				case 'Total Tidal':
-				case 'Total Gravitational':
-					t = vec3.length(accel);	// magnitude
-					break;	
-				}
-				
-				if (measureMin === undefined || t < measureMin) measureMin = t;
-				if (measureMax === undefined || t > measureMax) measureMax = t;
-				planetClassPrototype.sceneObj.attrs.tide.data[tideIndex] = t;
-			}
-			planetClassPrototype.measureMin = measureMin;
-			planetClassPrototype.measureMax = measureMax;
-			for (var i = 0; i < planetClassPrototype.sceneObj.attrs.tide.data.length; ++i) {
-				planetClassPrototype.sceneObj.attrs.tide.data[i] = 
-					(255/256 - (planetClassPrototype.sceneObj.attrs.tide.data[i] - measureMin) 
-						/ (measureMax - measureMin) * 254/256) * colorBarHSVRange;
-			}
-			planetClassPrototype.sceneObj.attrs.tide.updateData();
-			//if it updated...
-			if (planet.index == orbitPlanetIndex) {
-				refreshMeasureText();
-			}
-		}
-	}
-}
-
-function drawScene() {
-	//gl.clear(gl.DEPTH_BUFFER_BIT);
-
-	mat4.identity(GL.mvMat);
-	
-	var viewAngleInv = quat.create();
-	quat.conjugate(viewAngleInv, GL.view.angle);
-	var invRotMat = mat4.create();
-	mat4.fromQuat(invRotMat, viewAngleInv);
-	mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
-	
-	var viewPosInv = vec3.create();
-	vec3.negate(viewPosInv, GL.view.pos);
-	mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
-
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-		var planet = planets[planetIndex];
+var updatePlanetClassSceneObj;
+(function(){
+	var x = vec3.create();
+	var accel = vec3.create();
+	var norm = vec3.create();
+	var proj = vec3.create();
+	updatePlanetClassSceneObj = function(planet) {
 		var planetClassPrototype = planet.init.prototype;
 
-		//update vis ratio
-		planet.visRatio = planet.radius / vec3.distance(planet.pos, GL.view.pos);
-
-		//update scene object
-		vec3.copy(planetClassPrototype.sceneObj.pos, planet.pos);
-		if (planet.tiltAngle) {
-			quat.multiply(planetClassPrototype.sceneObj.angle, planet.tiltAngle, planet.angle);
-		} else {
-			quat.copy(planetClassPrototype.sceneObj.angle, planet.angle);
-		}
-
-		if (planet.visRatio >= .005) {
-			updatePlanetClassSceneObj(planet);
-			planet.sceneObj.draw();
-		} else {
-			var push = mat4.clone(GL.mvMat);
-			mat4.translate(GL.mvMat, GL.mvMat, planet.pos);
-			
-			pointObj.draw({
-				uniforms : {
-					color : planetClassPrototype.color
+		//update tide attributes
+		var showTide = displayMethod != 'Plain';
+		if (!showTide) {
+			if (planetClassPrototype.tex === undefined) {
+				if (planetClassPrototype.sceneObj.shader !== colorShader) {
+					planetClassPrototype.sceneObj.shader = colorShader;
+					planetClassPrototype.sceneObj.texs = [];
 				}
-			});
-		
-			mat4.copy(GL.mvMat, push);
+			} else {
+				if (planetClassPrototype.sceneObj.shader !== texShader) {
+					planetClassPrototype.sceneObj.shader = texShader;
+					planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex];
+				}
+			}
+		} else {
+			if (planetClassPrototype.sceneObj.shader !== hsvShader) {
+				planetClassPrototype.sceneObj.shader = hsvShader;
+				planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex, hsvTex];
+			}
+			//and update calculated variable if it is out of date ...
+			if (planetClassPrototype.lastMeasureCalcDate !== julianDate) {
+				planetClassPrototype.lastMeasureCalcDate = julianDate;
+				var measureMin = undefined;
+				var measureMax = undefined;
+				var vertexIndex = 0;
+				for (var tideIndex = 0; tideIndex < planetClassPrototype.sceneObj.attrs.tide.data.length; ++tideIndex) {
+					x[0] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					x[1] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					x[2] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					planetCartesianToSolarSystemBarycentric(x, x, planet);
+				
+					accel[0] = accel[1] = accel[2] = 0;
+					switch (displayMethod) {
+					case 'Tangent Tidal':
+					case 'Normal Tidal':
+					case 'Total Tidal':
+						calcTidalForce(accel, x, planet);
+						break;
+					case 'Tangent Gravitational':
+					case 'Normal Gravitational':
+					case 'Total Gravitational':
+						calcGravitationForce(accel, x);
+						break;	
+					}
+					
+					vec3.sub(norm, x, planet.pos);
+					vec3.normalize(norm, norm);
+					//var toTheMoon = (planets[planets.indexes.moon].pos - x):normalize()
+					//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
+					//var tangentTowardsMoon = normCrossMoon:cross(norm)
+					//var tidalAccel = accel:dot(tangentTowardsMoon)
+					//var tidalAccel = accel:dot(toTheMoon)	// moonward component
+				
+					var t;
+					switch (displayMethod) {
+					case 'Tangent Tidal':
+					case 'Tangent Gravitational':
+						var dot = vec3.dot(accel, norm);
+						vec3.scale(proj, norm, dot);
+						t = vec3.distance(accel, proj);	// tangent component
+						break;	
+					case 'Normal Tidal':
+					case 'Normal Gravitational':
+						t = vec3.dot(accel, norm);
+						break;	
+					case 'Total Tidal':
+					case 'Total Gravitational':
+						t = vec3.length(accel);	// magnitude
+						break;	
+					}
+					
+					if (measureMin === undefined || t < measureMin) measureMin = t;
+					if (measureMax === undefined || t > measureMax) measureMax = t;
+					planetClassPrototype.sceneObj.attrs.tide.data[tideIndex] = t;
+				}
+				planetClassPrototype.measureMin = measureMin;
+				planetClassPrototype.measureMax = measureMax;
+				for (var i = 0; i < planetClassPrototype.sceneObj.attrs.tide.data.length; ++i) {
+					planetClassPrototype.sceneObj.attrs.tide.data[i] = 
+						(255/256 - (planetClassPrototype.sceneObj.attrs.tide.data[i] - measureMin) 
+							/ (measureMax - measureMin) * 254/256) * colorBarHSVRange;
+				}
+				planetClassPrototype.sceneObj.attrs.tide.updateData();
+				//if it updated...
+				if (planet.index == orbitPlanetIndex) {
+					refreshMeasureText();
+				}
+			}
 		}
-	}
-}
+	};
+})();
 
+var drawScene;
+(function(){
+	var delta = vec3.create();
+	var viewAngleInv = quat.create();
+	var invRotMat = mat4.create();
+	var viewPosInv = vec3.create();
+	drawScene = function() {
+		mat4.identity(GL.mvMat);
+		
+		quat.conjugate(viewAngleInv, GL.view.angle);
+		mat4.fromQuat(invRotMat, viewAngleInv);
+		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
+		
+		vec3.negate(viewPosInv, GL.view.pos);
+		mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
+
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
+
+			if (showLinesToOtherPlanets) {
+				if (orbitPlanetIndex !== undefined) {
+					var orbitPlanet = planets[orbitPlanetIndex];
+					if (orbitPlanet !== planet) {
+						//while here, update lines
+						vec3.sub(delta, planet.pos, orbitPlanet.pos);
+						var dist = vec3.length(delta);
+						vec3.scale(delta, delta, 1/dist);
+						//vec3.scale(delta, 2 * orbitPlanet.radius / vec3.length(delta));
+						planet.lineObj.attrs.vertex.data[0] = orbitPlanet.pos[0] + delta[0] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[1] = orbitPlanet.pos[1] + delta[1] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[2] = orbitPlanet.pos[2] + delta[2] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[3] = planet.pos[0];
+						planet.lineObj.attrs.vertex.data[4] = planet.pos[1];
+						planet.lineObj.attrs.vertex.data[5] = planet.pos[2];
+						planet.lineObj.attrs.vertex.updateData();
+						planet.lineObj.draw();
+					}
+				}
+			}
+			
+			//update vis ratio
+			planet.visRatio = planet.radius / vec3.distance(planet.pos, GL.view.pos);
+
+			//update scene object
+			vec3.copy(planet.sceneObj.pos, planet.pos);
+			if (planet.tiltAngle) {
+				quat.multiply(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
+			} else {
+				quat.copy(planet.sceneObj.angle, planet.angle);
+			}
+
+			if (planet.visRatio >= .005) {
+				updatePlanetClassSceneObj(planet);
+				planet.sceneObj.draw();
+			} else {
+				var push = mat4.clone(GL.mvMat);
+				mat4.translate(GL.mvMat, GL.mvMat, planet.pos);
+				
+				pointObj.draw({
+					uniforms : {
+						color : planetClassPrototype.color
+					}
+				});
+			
+				mat4.copy(GL.mvMat, push);
+			}
+			if (showLatAndLonLines) {
+				vec3.copy(planet.latLonObj.pos, planet.sceneObj.pos);
+				quat.copy(planet.latLonObj.angle, planet.sceneObj.angle);
+				planet.latLonObj.draw();
+			}
+		}
+	};
+})();
 
 //quad of tris 
 var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
 var latMin = -90;
 var latMax = 90;
-var latStep = 5;
+var latStep = 1;
 var lonMin = -180;
 var lonMax = 180;
-var lonStep = 5;
+var lonStep = 1;
 
 function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
+	panel.css('height', window.innerHeight);
 	GL.resize();
 
-/**/
+	/**/
 	//setup infinite projection matrix
 	//http://www.terathon.com/gdc07_lengyel.pdf
-	var focalLength = 1 / Math.tan(GL.view.fovY/2);
-	var aspectRatio = canvas.height / canvas.width;
+	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
+	var aspectRatio = canvas.width / canvas.height;
+	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
+	var nearWidth = aspectRatio * nearHeight;
+	var epsilon = 1e-1;
 	mat4.identity(GL.projMat);
-	GL.projMat[0] = focalLength;
-	GL.projMat[5] = focalLength / aspectRatio;
-	GL.projMat[10] = -1;
-	GL.projMat[11] = -2 * GL.view.zNear;
+	GL.projMat[0] = GL.view.zNear / nearWidth;
+	GL.projMat[5] = GL.view.zNear / nearHeight;
+	GL.projMat[10] = epsilon-1;
+	GL.projMat[11] = (epsilon - 2) * GL.view.zNear;
 	GL.projMat[14] = -1;
 	GL.projMat[15] = 0;
 /**/
@@ -684,6 +1036,14 @@ $(document).ready(init1);
 
 function init1() {
 	panel = $('#panel');
+	panelContent = $('#content');
+	$('#menu').click(function() {
+		if (panelContent.css('display') == 'none') {
+			panelContent.show();
+		} else {
+			panelContent.hide();
+		}
+	});
 	measureMinText = $('#measureMin');
 	measureMaxText = $('#measureMax');
 	orbitTargetDistanceText = $('#orbitTargetDistance');
@@ -707,11 +1067,20 @@ function init1() {
 		throw e;
 	}
 
+	if (gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT)) {
+		console.log('vertex using high precision float');
+		vertexPrecision = 'precision highp float;\n';
+	}
+	if (gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT)) {
+		console.log('fragment using high precision float');
+		fragmentPrecision = 'precision highp float;\n';
+	}
+
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
 
-	$('<span>', {text:'Display Method:'}).appendTo(panel);
-	$('<br>').appendTo(panel);
+	$('<span>', {text:'Display Method:'}).appendTo(panelContent);
+	$('<br>').appendTo(panelContent);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
 			type : 'radio',
@@ -722,14 +1091,14 @@ function init1() {
 			}
 		})
 			.attr('name', 'display')
-			.appendTo(panel);
+			.appendTo(panelContent);
 		if (thisDisplayMethod == displayMethod) radio.attr('checked', 'checked');
-		$('<span>', {text:thisDisplayMethod}).appendTo(panel);
-		$('<br>').appendTo(panel);
+		$('<span>', {text:thisDisplayMethod}).appendTo(panelContent);
+		$('<br>').appendTo(panelContent);
 	});
-	$('<br>').appendTo(panel);
-	$('<span>', {text:'Influencing Planets:'}).appendTo(panel);
-	$('<br>').appendTo(panel);
+	$('<br>').appendTo(panelContent);
+	$('<span>', {text:'Influencing Planets:'}).appendTo(panelContent);
+	$('<br>').appendTo(panelContent);
 	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
 		planetInfluences[planetIndex] = true;
 		var planetName = planetClass.prototype.name;
@@ -743,50 +1112,138 @@ function init1() {
 			}
 		})
 			.attr('checked', 'checked')
-			.appendTo(panel);
-		$('<span>', {text:planetName}).appendTo(panel);
-		$('<br>').appendTo(panel);
+			.appendTo(panelContent);
+		$('<span>', {text:planetName}).appendTo(panelContent);
+		$('<br>').appendTo(panelContent);
 	});
 	hoverPlanetText = $('#hoverPlanetText');
 	orbitPlanetText = $('#orbitPlanetText');
-	
+
+	(function(){
+		var checkbox = $('#showLinesToOtherPlanets');
+		checkbox.change(function() {
+			showLinesToOtherPlanets = checkbox.is(':checked');
+		});
+	})();
+
+	(function(){
+		var checkbox = $('#showLatAndLonLines ');
+		checkbox.change(function() {
+			showLatAndLonLines = checkbox.is(':checked');
+		});
+	})();
+
 	$(window).resize(resize);
 	resize();
 
-	var planetNames = [];
-	for (var planetIndex = 0; planetIndex < Planets.prototype.planetClasses.length; ++planetIndex) {
-		planetClass = Planets.prototype.planetClasses[planetIndex];
-		planetNames.push(planetClass.prototype.name);
+	if (true) { //getting single sets of states ...
+		//returning a single state
+		var planetNames = [];
+		for (var planetIndex = 0; planetIndex < Planets.prototype.planetClasses.length; ++planetIndex) {
+			planetClass = Planets.prototype.planetClasses[planetIndex];
+			planetNames.push(planetClass.prototype.name);
+		}
+
+		if (true) {
+			var url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
+			//var url = 'astro-phys-state.json';
+			console.log('reading from '+url);
+			$.ajax({
+				url : url,
+				dataType : 'jsonp'
+			}).done(function(d) {
+				planets = Planets.prototype.fromAstroPhysState(d.results);
+				julianDate = d.date;
+				init2();
+			});
+		}
+
+		if (false) { // astro.getStates not working as well as my own manual call ...
+			console.log('planetNames '+JSON.stringify(planetNames));
+			console.log('julianDate '+julianDate);
+			astro.getStates(planetNames, julianDate, function(results, date) {
+				console.log('results '+JSON.stringify(results));
+				console.log('date '+date);
+				planets = Planets.prototype.fromAstroPhysState(results);
+				julianDate = date;
+				init2();
+			});
+		}
 	}
-	var url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
-	//var url = 'astro-phys-state.json';
-	console.log('reading from '+url);
-	$.ajax({
-		url : url,
-		dataType : 'jsonp'
-	}).done(function(d) {
-		//console.log('results');
-		//console.log(JSON.stringify(d.results));
-		planets = Planets.prototype.fromAstroPhys(d.results);
-		
-		julianDate = d.date;
-		init2();
-	});
+
+	if (false) { //getting records ...
+		var url = 'http://www.astro-phys.com/api/de406/records';
+		//var url = 'astro-phys-records.json';
+		console.log('reading from '+url);
+		$.ajax({
+			url : url,
+			dataType : 'jsonp'
+		}).done(function(data) {
+			//copied from astro-api.  i need to change the apicall but keep the function the same
+			var results = data.results;
+			var start = data.start;
+			var end = data.end;
+			for(var body in results) {
+				var nchunks = results[body].length
+				var c_step = (end - start) / nchunks;
+				for(var i = 0; i < nchunks; ++i) {
+					var c_start = start + i * c_step;
+					var c_end = c_start + c_step;
+					var coeffs = results[body][i];
+					results[body][i] = new astro.CoeffSet(coeffs, c_start, c_end);
+				}
+			}
+			
+			var record = new astro.Record(results, start, end);
+			julianDate = data.date;
+			
+			//record.getStates is giving back the whole coefficients ... ?	
+			var positions = record.getPositions(julianDate);
+			planets = new Planets();
+			for (var i = 0; i < planets.length; ++i) {
+				var planet = planets[i];
+				var name = planet.name;
+				vec3.scale(planet.pos, positions[name], 1000);	// in m
+				vec3.set(planet.vel, 0,0,0);	// in m/s
+			}
+			init2();
+		});
+	}
 }
 
 function init2() {
+	
+	var imgs = [];
+	for (var i = 0; i < planets.length; ++i) {
+		imgs.push('textures/'+planets[i].name+'.png');
+	}
+	console.log('loading '+imgs.join(', '));
+	$(imgs).preload(function() {
+		$('#loadingDiv').hide();
+		$('#menu').show();
+		init3();
+	}, function(percent){
+		$('#loading').attr('value', parseInt(100*percent));
+	});
+}
+
+function init3() {
 	hsvTex = new GL.HSVTexture(256);
 
 	colorShader = new GL.ShaderProgram({
+		vertexCode : vertexPrecision,
 		vertexCodeID : 'color-vsh',
+		fragmentCode : fragmentPrecision,
 		fragmentCodeID : 'color-fsh',
 		uniforms : {
-			color : [1,1,1]
+			color : [1,1,1,1]
 		}
 	});
 
 	texShader = new GL.ShaderProgram({
+		vertexCode : vertexPrecision,
 		vertexCodeID : 'tex-vsh',
+		fragmentCode : fragmentPrecision,
 		fragmentCodeID : 'tex-fsh',
 		uniforms : {
 			tex : 0
@@ -794,7 +1251,9 @@ function init2() {
 	});
 
 	hsvShader = new GL.ShaderProgram({
+		vertexCode : vertexPrecision,
 		vertexCodeID : 'heat-vsh',
+		fragmentCode : fragmentPrecision,
 		fragmentCodeID : 'heat-fsh',
 		uniforms : {
 			tex : 0,
@@ -850,11 +1309,13 @@ function init2() {
 		var planetIndex = planetIndex_;
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
-		planetClassPrototype.color = colors[planet.name];
+		var color = colors[planet.name];
+		planetClassPrototype.color = [color[0], color[1], color[2], 1];
 		
 		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
 
-		var elementArray = [];
+		var triIndexArray = [];
+		var latLonIndexArray = [];
 		var vertexArray = [];
 		var texCoordArray = [];
 		var tideArray = [];
@@ -881,18 +1342,28 @@ function init2() {
 					for (var j = 0; j < quad.length; ++j) {
 						var ofs = quad[j];
 						var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-						elementArray.push(index);
+						triIndexArray.push(index);
+					}
+					//if we're using 5 div step then every 6 will be 30 degrees
+					if ((loni * lonStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latdiv+1) * loni);
+						latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
+					}
+					if ((lati * latStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latdiv+1) * loni);
+						latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
 					}
 				}
 			}
 		}
 		
 		var checkDone = function() {
+			var vertexBuffer = new GL.ArrayBuffer({data:vertexArray, keep:true});
 			planetClassPrototype.sceneObj = new GL.SceneObject({
 				mode : gl.TRIANGLES,
-				indexes : new GL.ElementArrayBuffer({data:elementArray}),
+				indexes : new GL.ElementArrayBuffer({data:triIndexArray}),
 				attrs : {
-					vertex : new GL.ArrayBuffer({data:vertexArray, keep:true}),
+					vertex : vertexBuffer,
 					texCoord : new GL.ArrayBuffer({dim:2, data:texCoordArray}),
 					tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
 				},
@@ -904,10 +1375,43 @@ function init2() {
 				parent : null,
 				static : false
 			});
-			
+			planetClassPrototype.latLonObj = new GL.SceneObject({
+				mode : gl.LINES,
+				indexes : new GL.ElementArrayBuffer({data:latLonIndexArray}),
+				shader : colorShader,
+				attrs : {
+					vertex : vertexBuffer
+				},
+				uniforms : {
+					color : [1,1,1,.2]
+				},
+				useDepth : false,
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				pos : vec3.create(),
+				angle : quat.create(),
+				parent : null,
+				static : false
+			});
+			planetClassPrototype.lineObj = new GL.SceneObject({
+				mode : gl.LINES,
+				shader : colorShader,
+				attrs : {
+					vertex : new GL.ArrayBuffer({
+						data : new Float32Array(6),
+						keep : true, 
+						usage : gl.DYNAMIC_DRAW
+					}),
+				},
+				uniforms : {
+					color : planetClassPrototype.color
+				},
+				parent : null,
+				static : true 
+			});
+
 			++planetsDone;
 			if (planetsDone == planets.length) {
-				init3();
+				init4();
 			}
 		};
 
@@ -933,7 +1437,7 @@ function init2() {
 	})(); }
 }
 
-function init3() {
+function init4() {
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
@@ -1063,9 +1567,24 @@ function update() {
 		end
 	
 */	
+	
+	// set the angle for the time
+	//2455389.287573 is aligned with the eclipse of 2455389.315718
+	//so scale the angle by (2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623)
+	{
+		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
+		var angleOffset = .37;
+		var angleScale = 1;//(2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623);
+		var qdst = planets[planets.indexes.earth].angle;
+		quat.identity(qdst);
+		quat.rotateZ(qdst, qdst, ((angleScale * julianDate + angleOffset) % 1) * 2 * Math.PI);
+	}
 
-	GL.ondraw = drawScene;
-	GL.draw();
+
+	GL.setupMatrices();
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	drawScene();
+	GL.clearAlpha();
 
 	requestAnimFrame(update);
 }

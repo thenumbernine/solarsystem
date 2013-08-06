@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<title>Solar System - WebGL</title>
-		<meta name='viewport' content='width=device-width, initial-scale=1'>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 		<meta name='apple-mobile-web-app-capable' content='yes'/>
 		<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'/>
 		
@@ -19,7 +19,9 @@
 		<script type='text/javascript' src='/js/gl-util.js'></script>
 		<script type='text/javascript' src='/js/gl-util-gradient.js'></script>
 		<script type='text/javascript' src='/js/mouse3d.js'></script>
-		
+
+		<script type='text/javascript' src='astro-api.js'></script>
+
 		<script type='text/javascript' src='main.js'></script>
 		
 		<script type='text/javascript'>
@@ -39,18 +41,18 @@ attribute vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 void main() {
-	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
+	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
 }
 		</script>
 		<script id='color-fsh' type='x-shader/x-fragment'>
-precision mediump float;
-uniform vec3 color;
+uniform vec4 color;
 void main() {
-	gl_FragColor = vec4(color, 1.);
+	gl_FragColor = color;
 }
 		</script>
-	
 		<script id='tex-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -59,11 +61,12 @@ uniform mat4 projMat;
 varying vec2 texCoordv;
 void main() {
 	texCoordv = texCoord;
-	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
+	gl_Position = projMat * vtx4;
 }
 		</script>
 		<script id='tex-fsh' type='x-shader/x-fragment'>
-precision mediump float;
 varying vec2 texCoordv;
 uniform sampler2D tex;
 void main() {
@@ -81,11 +84,12 @@ varying vec2 texCoordv;
 void main() {
 	tidev = tide;
 	texCoordv = texCoord;
-	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
+	gl_Position = projMat * vtx4;
 }
 		</script>
 		<script id='heat-fsh' type='x-shader/x-fragment'>
-precision mediump float;
 varying float tidev;
 varying vec2 texCoordv;
 uniform sampler2D tex;
@@ -98,26 +102,29 @@ void main() {
 }
 		</script>
 		<script id='perpixel-heat-vsh' type='x-shader/x-vertex'>
+//will be used by all per-pixel shaders
 attribute vec3 vertex;
 attribute vec2 texCoord;
-attribute float tide;
 uniform mat4 mvMat;
+uniform mat4 objMat;
 uniform mat4 projMat;
 varying vec2 texCoordv;
+varying vec4 worldv;
 void main() {
 	tidev = tide;
 	texCoordv = texCoord;
-	gl_Position = projMat * mvMat * vec4(vertex, 1.);
+	worldv = objMat * vec4(vertex, 1.);
+	gl_Position = projMat * mvMat * worldv;
 }
 		</script>
 		<script id='tangent-tidal-fsh' type='x-shader/x-fragment'>
-precision mediump float;
-varying float tidev;
 varying vec2 texCoordv;
+varying vec4 worldv;
+uniform float heatAlpha;
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
-uniform float heatAlpha;
 void main() {
+	float tidev = something(worldv);	//do calculations with this.  fix it if the precision isn't good enough.
 	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
 	vec4 planetColor = texture2D(tex, texCoordv);
 	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
@@ -155,18 +162,26 @@ a:active {
 	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
-		<div id='panel' style='overflow-x:hidden; z-index:1; width:300px; height:100%; position:absolute; background-color:rgba(0,0,0,.75)'>
-			Orbitting: <span id='orbitPlanetText'></span><br>
-			Mouse Over: <span id='hoverPlanetText'></span><br>
+		<div id='panel' style='overflow-x:hidden; z-index:1; max-width:300px; position:absolute; background-color:rgba(0,0,0,.75)'>
+			<div id='loadingDiv' style='padding:5px'>Loading... <progress id='loading' value='0' max='100'></progress><br></div>
+			<img id='menu' src='menu.png' style='padding:5px; display:none'/><br>
 			<br>
-			Distance: <span id='orbitTargetDistance'></span><br>
-			<br>
-			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
-			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
-			<br>
-			Overlay:
-			<div id='overlay-slider'></div><br>
-			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
+			<div id='content' style='display:none'>
+				Orbitting: <span id='orbitPlanetText'></span><br>
+				Mouse Over: <span id='hoverPlanetText'></span><br>
+				<br>
+				Distance: <span id='orbitTargetDistance'></span><br>
+				<br>
+				<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
+				<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
+				<br>
+				Overlay:
+				<div id='overlay-slider'></div><br>
+				<input id='showLinesToOtherPlanets' type='checkbox' value='1'/>Show Lines to Other Planets<br>
+				<input id='showLatAndLonLines' type='checkbox' value='1'/>Show Latitude and Longitude Lines<br>
+				<br>
+				<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
+			</div>
 		</div>
 		<div id='webglfail' style='display:none'>
 			Sorry, your browser does not support WebGL<br>
