@@ -228,9 +228,8 @@ var EphemerisData = makeClass({
 		timeOffset = +timeOffset;
 		var coeffBuffer = this.getCoeffBuffer(timeOrigin, timeOffset);
 		var coeff, numCoeffs, subintervalLength, subintervalFrac = getCoeffSubinterval(planetIndex, coeffBuffer, timeOrigin, timeOffset);
-		//vec3 is float32, default js is float64
-		var pos = [];//vec3.create();
-		var vel = [];//vec3.create();
+		var pos = [];
+		var vel = [];
 		var tmp;
 		for (var i = 0; i < 3; ++i) {
 			tmp = interp(coeff, numCoeffs, subintervalLength, subintervalFrac);
@@ -260,15 +259,6 @@ var EphemerisData = makeClass({
 		var geoMoonVel = tmp[1];
 		var scale = 1 / (1 + this.hdr.emrat);
 		
-		/*
-		var tmp = vec3.create();
-		vec3.scale(tmp, geoMoonPos, scale);
-		var earthPos = vec3.create();
-		vec3.sub(earthPos, earthMoonPos, tmp);
-		vec3.scale(tmp, geoMoonVel, scale);
-		var earthVel = vec3.create();
-		vec3.sub(earthVel, earthMoonVel, tmp);
-		*/
 		var earthPos = [
 			earthMoonPos[0] - geoMoonPos[0] * scale,
 			earthMoonPos[1] - geoMoonPos[1] * scale,
@@ -292,20 +282,6 @@ var EphemerisData = makeClass({
 		var geoMoonVel = tmp[1];
 		var scale = 1 / (1 + this.hdr.emrat);
 		
-		/*
-		var tmp = vec3.create();
-		vec3.scale(tmp, geoMoonPos, scale);
-		var earthPos = vec3.create();
-		vec3.sub(earthPos, earthMoonPos, tmp);
-		var tmp = vec3.create();
-		vec3.scale(tmp, geoMoonVel, scale);
-		var earthVel = vec3.create();
-		vec3.sub(earthVel, earthMoonVel, tmp);
-		var moonPos = vec3.create();
-		vec3.add(moonPos, geoMoonPos, earthPos);
-		var moonVel = vec3.create();
-		vec3.add(moonVel, geoMoonVel, earthVel);
-		*/
 		var earthPos = [
 			earthMoonPos[0] - geoMoonPos[0] * scale,
 			earthMoonPos[1] - geoMoonPos[1] * scale,
@@ -357,20 +333,16 @@ var Planet = makeClass({
 	init : function(args) {
 		if (args !== undefined) {
 			if (args.pos !== undefined) {
-				//this.pos = vec3.clone(args.pos);
 				this.pos = [args.pos[0], args.pos[1], args.pos[2]];
 			}
 			if (args.vel !== undefined) {
-				//this.vel = vec3.clone(args.vel);
 				this.vel = [args.vel[0], args.vel[1], args.vel[2]];
 			}
 		}
 		if (this.pos === undefined) {
-			//this.pos = vec3.create();
 			this.pos = [0,0,0];
 		}
 		if (this.vel === undefined) {
-			//this.vel = vec3.create();
 			this.vel = [0,0,0];
 		}
 	},
@@ -381,8 +353,6 @@ var Planet = makeClass({
 		assert(getmetatable(a) == getmetatable(b))
 		var p = new a.init();	//init is the ctor is the class
 		
-		//vec3.add(p.pos, a.pos, b.pos);
-		//vec3.add(p.vel, a.vel, b.vel);
 		p.pos[0] = a.pos[0] + b.pos[0];
 		p.pos[1] = a.pos[1] + b.pos[1];
 		p.pos[2] = a.pos[2] + b.pos[2];
@@ -399,8 +369,6 @@ var Planet = makeClass({
 		var b = other;
 		var p = new a.init();
 		
-		//vec3.scale(p.pos, a.pos, b);
-		//vec3.scale(p.vel, a.vel, b);
 		p.pos[0] = a.pos[0] * b;
 		p.pos[1] = a.pos[1] * b;
 		p.pos[2] = a.pos[2] * b;
@@ -528,8 +496,6 @@ Planets = makeClass({
 			var name = planet.name;
 			var astroPhysPlanet = astroPhysPlanets[name];
 			
-			//vec3.scale(planet.pos, astroPhysPlanet[0], 1000);	// in m
-			//vec3.scale(planet.vel, astroPhysPlanet[1], 1000);	// in m/s
 			planet.pos[0] = astroPhysPlanet[0][0] * 1000;
 			planet.pos[1] = astroPhysPlanet[0][1] * 1000;
 			planet.pos[2] = astroPhysPlanet[0][2] * 1000;
@@ -557,8 +523,6 @@ Planets = makeClass({
 			var tmp = ephemerisData[planet.name](date);	// returns pos & vel in terms of km and km/julian day
 			var pos = tmp[0];
 			var vel = tmp[1];
-			//planet.pos = vec3.fromValues(pos[0] * 1000, pos[1] * 1000, pos[2] * 1000);
-	 		//planet.vel = vec3.fromValues(vel[0] * 1000, pos[1] * 1000, pos[2] * 1000);
 			planet.pos[0] = pos[0] * 1000;
 			planet.pos[1] = pos[1] * 1000;
 			planet.pos[2] = pos[2] * 1000;
@@ -601,7 +565,6 @@ Planets = makeClass({
 		var l = 0;
 		for (var i=0; i < this.length; ++i) {
 			var p = this[i];
-			//l += vec3.length(p.pos) + vec3.length(p.vel);
 			l += Math.sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1] + p.pos[2] * p.pos[2]);
 			l += Math.sqrt(p.vel[0] * p.vel[0] + p.vel[1] * p.vel[1] + p.vel[2] * p.vel[2]);
 		}
@@ -640,13 +603,10 @@ var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^20
 //this does not zero accel beforehand!
 var calcTidalForce;
 (function(){
-	//var x = vec3.create();
-	//var srcPlanetToPos = vec3.create();
 	x = [];
 	srcPlanetToPos = [];
 
 	calcTidalForce = function(accel, pos, srcPlanet) {
-		//vec3.sub(srcPlanetToPos, pos, srcPlanet.pos);
 		srcPlanetToPos[0] = pos[0] - srcPlanet.pos[0];
 		srcPlanetToPos[1] = pos[1] - srcPlanet.pos[1];
 		srcPlanetToPos[2] = pos[2] - srcPlanet.pos[2];
@@ -656,11 +616,9 @@ var calcTidalForce;
 			if (!planetInfluences[planetIndex]) continue;
 			if (planet.index === srcPlanet.index) continue;
 			
-			//vec3.sub(x, pos, planet.pos);
 			x[0] = pos[0] - planet.pos[0];
 			x[1] = pos[1] - planet.pos[1];
 			x[2] = pos[2] - planet.pos[2];
-			//var xLength = vec3.length(x);
 			var xLength = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
 			var xToTheSecond = xLength * xLength;
 			var xToTheThird = xLength * xToTheSecond;
@@ -685,28 +643,21 @@ var calcTidalForce;
 })();
 
 //this does not zero accel beforehand!
-var calcGravitationForce;
-(function(){
-	//var x = vec3.create();
-	var x = [];
-	calcGravitationForce = function(accel, pos) {
-		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			var planet = planets[planetIndex];
-			//vec3.sub(x, pos, planet.pos);
-			x[0] = pos[0] - planet.pos[0];
-			x[1] = pos[1] - planet.pos[1];
-			x[2] = pos[2] - planet.pos[2];
-			//var xLength = vec3.length(x);
-			xLength = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-			var xToTheSecond = xLength * xLength;
-			var xToTheThird = xLength * xToTheSecond;
-			for (var i = 0; i < 3; ++i) {
-				accel[i] -= x[i] * (gravitationConstant * planet.mass / xToTheThird);
-			}
-		}
+function calcGravitationForce(accel, pos) {
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		if (!planetInfluences[planetIndex]) continue;
+		var planet = planets[planetIndex];
+		var x = pos[0] - planet.pos[0];
+		var y = pos[1] - planet.pos[1];
+		var z = pos[2] - planet.pos[2];
+		xLength = Math.sqrt(x * x + y * y + z * z);
+		var xToTheSecond = xLength * xLength;
+		var xToTheThird = xLength * xToTheSecond;
+		accel[0] -= x * (gravitationConstant * planet.mass / xToTheThird);
+		accel[1] -= y * (gravitationConstant * planet.mass / xToTheThird);
+		accel[2] -= z * (gravitationConstant * planet.mass / xToTheThird);
 	}
-})();
+}
 
 var quatMul;
 (function(){
@@ -720,50 +671,49 @@ var quatMul;
 		var g = (q[3] + q[1]) * (r[3] - r[2]);
 		var h = (q[3] - q[1]) * (r[3] + r[2]);
 
-		res[0] = a - .5 * ( e + f + g + h);
+		res[0] =  a - .5 * ( e + f + g + h);
 		res[1] = -c + .5 * ( e - f + g - h);
 		res[2] = -d + .5 * ( e - f - g + h);
-		res[3] = b + .5 * (-e - f + g + h);
+		res[3] =  b + .5 * (-e - f + g + h);
 	};
 })();
 
-
-var vec3TransformQuat;
-(function(){
-	var tmpv = [];
-	var tmpq = [];
-	var tmpqconj = [];
-	var tmpvres = [];
-	vec3TransformQuat = function(dest, src, q) {
-		tmpv[0] = src[0];
-		tmpv[1] = src[1];
-		tmpv[2] = src[2];
-		tmpv[3] = 0;
-		tmpqconj[0] = -q[0];
-		tmpqconj[1] = -q[1];
-		tmpqconj[2] = -q[2];
-		tmpqconj[3] = q[3];
-		quatMul(tmpq, q, tmpv);
-		quatMul(tmpvres, tmpq, tmpqconj);
-		dest[0] = tmpvres[0];
-		dest[1] = tmpvres[1];
-		dest[2] = tmpvres[2];
-	}
-})();
+function vec3TransformQuat(dest, src, q) {
+	var vx = src[0];
+	var vy = src[1];
+	var vz = src[2];
+	var x = q[0];
+	var y = q[1];
+	var z = q[2];
+	var w = q[3];
+	var xx = x*2;
+	var yy = y*2;
+	var zz = z*2
+	var wxx = w*xx;
+	var wyy = w*yy;
+	var wzz = w*zz
+	var xxx = x*xx;
+	var xyy = x*yy;
+	var xzz = x*zz
+	var yyy = y*yy;
+	var yzz = y*zz;
+	var zzz = z*zz;
+	
+	dest[0] = (1.0-(yyy+zzz)) * vx + (xyy-wzz) * vy + (xzz+wyy) * vz;
+	dest[1] = (xyy+wzz) * vx + (1.0-(xxx+zzz)) * vy + (yzz-wxx) * vz;
+	dest[2] = (xzz-wyy) * vx + (yzz+wxx) * vy + (1.0-(xxx+yyy)) * vz;
+}
 
 function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
 	// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
-	//vec3.transformQuat(destX, srcX, planet.angle);
 	vec3TransformQuat(destX, srcX, planet.angle);
 	
 	// now rotate by axial tilt (along
 	var tiltAngle = planet.tiltAngle;
 	if (tiltAngle !== undefined) {
-		//vec3.transformQuat(destX, destX, tiltAngle);
 		vec3TransformQuat(destX, destX, tiltAngle);
 	}
 	
-	//vec3.add(destX, destX, planet.pos);
 	destX[0] += planet.pos[0];
 	destX[1] += planet.pos[1];
 	destX[2] += planet.pos[2];
@@ -777,14 +727,11 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 function mouseRay() {
 	var aspectRatio = canvas.width / canvas.height;
 	// ray intersect
-	//var v = vec3.fromValues(2 * mouse.xf - 1, 1 - 2 * mouse.yf, -1);
 	var v = [2 * mouse.xf - 1, 1 - 2 * mouse.yf, -1]; 
 	// I want to inverse transform the matrices ... especially the infinite projection matrix ...
 	v[0] = aspectRatio * v[0] / GL.projMat[0];
 	v[1] = aspectRatio * v[1] / GL.projMat[5];
-	//vec3.transformQuat(v, v, GL.view.angle);
 	vec3TransformQuat(v, v, GL.view.angle);
-	//vec3.normalize(v, v);
 	var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 	v[0] /= l;
 	v[1] /= l;
@@ -797,14 +744,13 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var bestPlanet = undefined; 
 	for (var i = 0; i < planets.length; ++i) {
 		var planet = planets[i];
-		//var delta = vec3.create();
-		//vec3.sub(delta, planet.pos, GL.view.pos);
 		var deltaX = planet.pos[0] - GL.view.pos[0];
 		var deltaY = planet.pos[1] - GL.view.pos[1];
 		var deltaZ = planet.pos[2] - GL.view.pos[2];
-		//vec3.normalize(delta, delta);	
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-		//var dot = vec3.dot(delta, mouseDir);
+		deltaX /= deltaLength;
+		deltaY /= deltaLength;
+		deltaZ /= deltaLength;
 		var dot = deltaX * mouseDir[0] + deltaY * mouseDir[1] + deltaZ * mouseDir[2];
 		if (dot > bestDot) {
 			bestDot = dot;
@@ -815,11 +761,10 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		hoverPlanetText.text(bestPlanet.name);
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
 			orbitPlanetIndex = bestPlanet.index;
-			//orbitDistance = vec3.distance(GL.view.pos, bestPlanet.pos);
-			var distX = GL.view.pos[0] - bestPlanet.pos[0];
-			var distY = GL.view.pos[1] - bestPlanet.pos[1];
-			var distZ = GL.view.pos[2] - bestPlanet.pos[2];
-			orbitDistance = Math.sqrt(distX * distX + distY * distY + distZ * distZ);
+			var deltaX = GL.view.pos[0] - bestPlanet.pos[0];
+			var deltaY = GL.view.pos[1] - bestPlanet.pos[1];
+			var deltaZ = GL.view.pos[2] - bestPlanet.pos[2];
+			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 			orbitTargetDistance = 2 * bestPlanet.radius;
 			refreshOrbitTargetDistanceText();
 			orbitPlanetText.text(bestPlanet.name);
@@ -967,10 +912,6 @@ var colorBarHSVRange = 2/3;	// how much of the rainbow to use
 
 var updatePlanetClassSceneObj;
 (function(){
-	//var x = vec3.create();
-	//var accel = vec3.create();
-	//var norm = vec3.create();
-	//var proj = vec3.create();
 	var x = [];
 	var accel = [];
 	var norm = [];
@@ -1029,11 +970,9 @@ var updatePlanetClassSceneObj;
 						break;
 					}
 					
-					//vec3.sub(norm, x, planet.pos);
 					norm[0] = x[0] - planet.pos[0];
 					norm[1] = x[1] - planet.pos[1];
 					norm[2] = x[2] - planet.pos[2];
-					//vec3.normalize(norm, norm);
 					var normLen = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
 					norm[0] /= normLen;
 					norm[1] /= normLen;
@@ -1050,9 +989,6 @@ var updatePlanetClassSceneObj;
 					case 'Tangent Tidal':
 					case 'Tangent Gravitational':
 					case 'Tangent Total':
-						//var dot = vec3.dot(accel, norm);
-						//vec3.scale(proj, norm, dot);
-						//t = vec3.distance(accel, proj);	// tangent component
 						var dot = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
 						var dx = accel[0] - norm[0] * dot;
 						var dy = accel[1] - norm[1] * dot;
@@ -1062,13 +998,11 @@ var updatePlanetClassSceneObj;
 					case 'Normal Tidal':
 					case 'Normal Gravitational':
 					case 'Normal Total':
-						//t = vec3.dot(accel, norm);
 						t = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
 						break;	
 					case 'Total Tidal':
 					case 'Total Gravitational':
 					case 'Total':
-						//t = vec3.length(accel);	// magnitude
 						t = Math.sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
 						break;	
 					}
@@ -1100,10 +1034,6 @@ var drawScene;
 	var viewAngleInv = quat.create();
 	var invRotMat = mat4.create();
 	var viewPosInv = vec3.create();
-	//var delta = [];
-	//var viewAngleInv = [];
-	//var invRotMat = [];
-	//var viewPosInv = [];
 	
 	drawScene = function() {
 		mat4.identity(GL.mvMat);
@@ -1113,9 +1043,6 @@ var drawScene;
 		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
 		
 		vec3.negate(viewPosInv, GL.view.pos);
-		//viewPosInv[0] = -GL.view.pos[0];
-		//viewPosInv[1] = -GL.view.pos[1];
-		//viewPosInv[2] = -GL.view.pos[2];
 		mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -1128,20 +1055,17 @@ var drawScene;
 					if (orbitPlanet !== planet) {
 						//while here, update lines
 						
-						/*	
 						delta[0] = planet.pos[0] - orbitPlanet.pos[0];
 						delta[1] = planet.pos[1] - orbitPlanet.pos[1];
 						delta[2] = planet.pos[2] - orbitPlanet.pos[2];
-						var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
-						delta[0] /= dist;
-						delta[1] /= dist;
-						delta[2] /= dist;
-						*/
+						//var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
+						//delta[0] /= dist;
+						//delta[1] /= dist;
+						//delta[2] /= dist;
 						
-						vec3.sub(delta, planet.pos, orbitPlanet.pos);
-						var dist = vec3.length(delta);
-						vec3.scale(delta, delta, 1/dist);
-						//vec3.scale(delta, 2 * orbitPlanet.radius / vec3.length(delta));
+						//vec3.sub(delta, planet.pos, orbitPlanet.pos);
+						//var dist = vec3.length(delta);
+						//vec3.scale(delta, delta, 1/dist);
 						
 						/*	
 						planet.lineObj.attrs.vertex.data[0] = orbitPlanet.pos[0] + delta[0] * orbitPlanet.radius;
@@ -1154,9 +1078,9 @@ var drawScene;
 						planet.lineObj.attrs.vertex.data[0] = orbitPlanet.pos[0];
 						planet.lineObj.attrs.vertex.data[1] = orbitPlanet.pos[1];
 						planet.lineObj.attrs.vertex.data[2] = orbitPlanet.pos[2];
-						planet.lineObj.attrs.vertex.data[3] = planet.pos[0];
-						planet.lineObj.attrs.vertex.data[4] = planet.pos[1];
-						planet.lineObj.attrs.vertex.data[5] = planet.pos[2];
+						planet.lineObj.attrs.vertex.data[3] = orbitPlanet.pos[0] + delta[0];
+						planet.lineObj.attrs.vertex.data[4] = orbitPlanet.pos[1] + delta[1];
+						planet.lineObj.attrs.vertex.data[5] = orbitPlanet.pos[2] + delta[2];
 						
 						planet.lineObj.attrs.vertex.updateData();
 						planet.lineObj.draw();
@@ -1171,7 +1095,6 @@ var drawScene;
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//update scene object
-			//vec3.copy(planet.sceneObj.pos, planet.pos);
 			planet.sceneObj.pos[0] = planet.pos[0];
 			planet.sceneObj.pos[1] = planet.pos[1];
 			planet.sceneObj.pos[2] = planet.pos[2];
@@ -1202,8 +1125,6 @@ var drawScene;
 				mat4.copy(GL.mvMat, push);
 			}
 			if (showLatAndLonLines) {
-				//vec3.copy(planet.latLonObj.pos, planet.sceneObj.pos);
-				//quat.copy(planet.latLonObj.angle, planet.sceneObj.angle);
 				planet.latLonObj.pos[0] = planet.sceneObj.pos[0];
 				planet.latLonObj.pos[1] = planet.sceneObj.pos[1];
 				planet.latLonObj.pos[2] = planet.sceneObj.pos[2];
@@ -1438,11 +1359,9 @@ function init1() {
 			for (var i = 0; i < planets.length; ++i) {
 				var planet = planets[i];
 				var name = planet.name;
-				//vec3.scale(planet.pos, positions[name], 1000);	// in m
 				planet.pos[0] = positions[name][0] * 1000;
 				planet.pos[1] = positions[name][1] * 1000;
 				planet.pos[2] = positions[name][2] * 1000;
-				//vec3.set(planet.vel, 0,0,0);	// in m/s
 				planet.vel[0] = 0;
 				planet.vel[1] = 0;
 				planet.vel[2] = 0;
@@ -1526,7 +1445,7 @@ function init3() {
 		attrs : {
 			vertex : new GL.ArrayBuffer({data:[0,0,0]})
 		},
-		pos : [0,0,0],//vec3.create(),
+		pos : [0,0,0],
 		parent : null,
 		static : false
 	});
@@ -1563,7 +1482,7 @@ function init3() {
 
 		var latdiv = Math.floor((latMax-latMin)/latStep);
 		var londiv = Math.floor((lonMax-lonMin)/lonStep);
-		var vtx = [0,0,0];//vec3.create();
+		var vtx = [0,0,0];
 		for (var loni=0; loni <= londiv; ++loni) {
 			var lon = lonMin + loni * lonStep;
 			for (var lati=0; lati <= latdiv; ++lati) {
@@ -1611,8 +1530,8 @@ function init3() {
 				uniforms : {
 					color : planetClassPrototype.color
 				},
-				pos : [0,0,0],//vec3.create(),
-				angle : [0,0,0,1],//quat.create(),
+				pos : [0,0,0],
+				angle : [0,0,0,1],
 				parent : null,
 				static : false
 			});
@@ -1628,8 +1547,8 @@ function init3() {
 				},
 				useDepth : false,
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				pos : [0,0,0],//vec3.create(),
-				angle : [0,0,0,1],//quat.create(),
+				pos : [0,0,0],
+				angle : [0,0,0,1],
 				parent : null,
 				static : false
 			});
