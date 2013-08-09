@@ -597,6 +597,19 @@ var orbitZoomFactor = .0003;	// upon mousewheel
 
 var mouse;
 var mouseDir;
+var cubeObj;
+
+var skyTexFilenames = [
+	'textures/sky-visible-cube-xp.png',
+	'textures/sky-visible-cube-xn.png',
+	'textures/sky-visible-cube-yp.png',
+	'textures/sky-visible-cube-yn.png',
+	'textures/sky-visible-cube-zp.png',
+	'textures/sky-visible-cube-zn.png'
+];
+
+var glMaxCubeMapTextureSize;
+
 
 var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^20
 
@@ -744,9 +757,9 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var bestPlanet = undefined; 
 	for (var i = 0; i < planets.length; ++i) {
 		var planet = planets[i];
-		var deltaX = planet.pos[0] - GL.view.pos[0];
-		var deltaY = planet.pos[1] - GL.view.pos[1];
-		var deltaZ = planet.pos[2] - GL.view.pos[2];
+		var deltaX = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
+		var deltaY = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
+		var deltaZ = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 		deltaX /= deltaLength;
 		deltaY /= deltaLength;
@@ -760,10 +773,16 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	if (bestPlanet !== undefined) {
 		hoverPlanetText.text(bestPlanet.name);
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
+			GL.view.pos[0] += planets[orbitPlanetIndex].pos[0];
+			GL.view.pos[1] += planets[orbitPlanetIndex].pos[1];
+			GL.view.pos[2] += planets[orbitPlanetIndex].pos[2];
 			orbitPlanetIndex = bestPlanet.index;
-			var deltaX = GL.view.pos[0] - bestPlanet.pos[0];
-			var deltaY = GL.view.pos[1] - bestPlanet.pos[1];
-			var deltaZ = GL.view.pos[2] - bestPlanet.pos[2];
+			GL.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
+			GL.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
+			GL.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
+			var deltaX = GL.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
+			var deltaY = GL.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
+			var deltaZ = GL.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
 			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 			orbitTargetDistance = 2 * bestPlanet.radius;
 			refreshOrbitTargetDistanceText();
@@ -1030,7 +1049,7 @@ var updatePlanetClassSceneObj;
 
 var drawScene;
 (function(){
-	var delta = vec3.create();
+	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
 	var invRotMat = mat4.create();
 	var viewPosInv = vec3.create();
@@ -1041,8 +1060,12 @@ var drawScene;
 		quat.conjugate(viewAngleInv, GL.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
 		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
-		
-		vec3.negate(viewPosInv, GL.view.pos);
+	
+		cubeObj.draw();
+
+		viewPosInv[0] = -GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
+		viewPosInv[1] = -GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
+		viewPosInv[2] = -GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
 		mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -1058,40 +1081,33 @@ var drawScene;
 						delta[0] = planet.pos[0] - orbitPlanet.pos[0];
 						delta[1] = planet.pos[1] - orbitPlanet.pos[1];
 						delta[2] = planet.pos[2] - orbitPlanet.pos[2];
-						//var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
-						//delta[0] /= dist;
-						//delta[1] /= dist;
-						//delta[2] /= dist;
+						var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
+						delta[0] /= dist;
+						delta[1] /= dist;
+						delta[2] /= dist;
 						
-						//vec3.sub(delta, planet.pos, orbitPlanet.pos);
-						//var dist = vec3.length(delta);
-						//vec3.scale(delta, delta, 1/dist);
-						
-						/*	
-						planet.lineObj.attrs.vertex.data[0] = orbitPlanet.pos[0] + delta[0] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[1] = orbitPlanet.pos[1] + delta[1] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[2] = orbitPlanet.pos[2] + delta[2] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[4] = orbitPlanet.pos[0] + delta[0] * 100 * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[5] = orbitPlanet.pos[1] + delta[1] * 100 * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[6] = orbitPlanet.pos[2] + delta[2] * 100 * orbitPlanet.radius;
-						*/	
-						planet.lineObj.attrs.vertex.data[0] = orbitPlanet.pos[0];
-						planet.lineObj.attrs.vertex.data[1] = orbitPlanet.pos[1];
-						planet.lineObj.attrs.vertex.data[2] = orbitPlanet.pos[2];
-						planet.lineObj.attrs.vertex.data[3] = orbitPlanet.pos[0] + delta[0];
-						planet.lineObj.attrs.vertex.data[4] = orbitPlanet.pos[1] + delta[1];
-						planet.lineObj.attrs.vertex.data[5] = orbitPlanet.pos[2] + delta[2];
+						planet.lineObj.attrs.vertex.data[0] = delta[0] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[1] = delta[1] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[2] = delta[2] * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[3] = delta[0] * 100 * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[4] = delta[1] * 100 * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[5] = delta[2] * 100 * orbitPlanet.radius;
 						
 						planet.lineObj.attrs.vertex.updateData();
 						planet.lineObj.draw();
 					}
 				}
 			}
+		}
+
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
 			
 			//update vis ratio
-			var dx = planet.pos[0] - GL.view.pos[0];
-			var dy = planet.pos[1] - GL.view.pos[1];
-			var dz = planet.pos[2] - GL.view.pos[2];
+			var dx = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
+			var dy = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
+			var dz = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//update scene object
@@ -1218,6 +1234,8 @@ function init1() {
 		$('#webglfail').show();
 		throw e;
 	}
+	
+	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
 	var vtxhigh = gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT)
 	console.log('vertex high? '+vtxhigh.rangeMin+' '+vtxhigh.rangeMax+' '+vtxhigh.precision);
@@ -1234,7 +1252,7 @@ function init1() {
 
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
-
+	
 	$('<span>', {text:'Display Method:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
@@ -1377,8 +1395,11 @@ function init2() {
 	for (var i = 0; i < planets.length; ++i) {
 		imgs.push('textures/'+planets[i].name+'.png');
 	}
+	for (var i = 0; i < skyTexFilenames.length; ++i) {
+		imgs.push(skyTexFilenames[i]);
+	}
 	console.log('loading '+imgs.join(', '));
-	$(imgs).preload(function() {
+	$(imgs).preload(function(){
 		$('#loadingDiv').hide();
 		$('#menu').show();
 		init3();
@@ -1598,6 +1619,70 @@ function init3() {
 }
 
 function init4() {
+	var skyTex = new GL.TextureCube({
+		flipY : true,
+		generateMipmap : true,
+		magFilter : gl.LINEAR,
+		minFilter : gl.LINEAR_MIPMAP_LINEAR,
+		wrap : {
+			s : gl.CLAMP_TO_EDGE,
+			t : gl.CLAMP_TO_EDGE
+		},
+		urls : skyTexFilenames,
+		onload : function(side,url,image) {
+			if (image.width > glMaxCubeMapTextureSize || image.height > glMaxCubeMapTextureSize) {
+				throw "cube map size "+image.width+"x"+image.height+" cannot exceed "+glMaxCubeMapTextureSize;
+			}
+		},
+		done : function() {
+			init5(this);
+		}
+	});
+}
+
+function init5(skyTex) {
+	var cubeShader = new GL.ShaderProgram({
+		vertexCodeID : 'cube-vsh',
+		fragmentCodeID : 'cube-fsh',
+		uniforms : {
+			skyTex : 0
+		}
+	});
+
+	var cubeVtxArray = new Float32Array(3*8);
+	for (var i = 0; i < 8; i++) {
+		cubeVtxArray[0+3*i] = 10*(2*(i&1)-1);
+		cubeVtxArray[1+3*i] = 10*(2*((i>>1)&1)-1);
+		cubeVtxArray[2+3*i] = 10*(2*((i>>2)&1)-1);
+	}
+
+	var cubeIndexBuf = new GL.ElementArrayBuffer({
+		data : [
+			5,7,3,3,1,5,		// <- each value has the x,y,z in the 0,1,2 bits (off = 0, on = 1)
+			6,4,0,0,2,6,
+			2,3,7,7,6,2,
+			4,5,1,1,0,4,
+			6,7,5,5,4,6,
+			0,1,3,3,2,0
+		]
+	});
+
+	cubeObj = new GL.SceneObject({
+		mode : gl.TRIANGLES,
+		indexes : cubeIndexBuf,
+		shader : cubeShader,
+		attrs : {
+			vertex : new GL.ArrayBuffer({data : cubeVtxArray})
+		},
+		uniforms : {
+			viewAngle : GL.view.angle
+		},
+		texs : [skyTex],
+		useDepth : false,
+		parent : null,
+		static : false
+	});
+
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
@@ -1677,9 +1762,9 @@ function update() {
 	var viewAngleZAxisX = 2 * (GL.view.angle[0] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[1]); 
 	var viewAngleZAxisY = 2 * (GL.view.angle[1] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[0]); 
 	var viewAngleZAxisZ = 1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[1] * GL.view.angle[1]); 
-	GL.view.pos[0] = orbitCenter[0] + viewAngleZAxisX * orbitDistance;
-	GL.view.pos[1] = orbitCenter[1] + viewAngleZAxisY * orbitDistance;
-	GL.view.pos[2] = orbitCenter[2] + viewAngleZAxisZ * orbitDistance;
+	GL.view.pos[0] = viewAngleZAxisX * orbitDistance;
+	GL.view.pos[1] = viewAngleZAxisY * orbitDistance;
+	GL.view.pos[2] = viewAngleZAxisZ * orbitDistance;
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
