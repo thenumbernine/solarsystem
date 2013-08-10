@@ -602,6 +602,8 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 
 var planets = undefined;
 var julianDate = 0;
+var initPlanets = undefined;
+var initJulianDate = 0;
 var targetJulianDate = undefined;
 var dateTime = Date.now();
 var dateStr = new Date('%Y-%m-%d %H:%M:%S', dateTime);
@@ -742,6 +744,8 @@ function vec3TransformQuat(dest, src, q) {
 	dest[2] = (xzz-wyy) * vx + (yzz+wxx) * vy + (1.0-(xxx+yyy)) * vz;
 }
 
+var integrateTimeStep = 1;	//1 day/iteration
+var integrationPaused = true;
 /*
 local integrationMethod = 'rkf45'
 local integrationArgs = {accuracy=1, iterations=100, norm=Planets.length}
@@ -1325,6 +1329,30 @@ function init1() {
 			panelContent.hide();
 		}
 	});
+	$('#reset').click(function() {
+		integrationPaused = true;
+		integrateTimeStep = 1; 
+		planets = initPlanets;
+		julianDate = initJulianDate;
+	});
+	$('#play').click(function() {
+		integrationPaused = false;
+		integrateTimeStep = Math.abs(integrateTimeStep);
+	});
+	$('#reverse').click(function() {
+		integrationPaused = false;
+		integrateTimeStep = -Math.abs(integrateTimeStep);
+	});
+	$('#pause').click(function() {
+		integrationPaused = true;
+	});
+	$('#ffwd').click(function() {
+		integrationTimeStep *= 2;
+	});
+	$('#rewind').click(function() {
+		integrationTimeStep /= 2;
+	});
+	
 	measureMinText = $('#measureMin');
 	measureMaxText = $('#measureMax');
 	orbitTargetDistanceText = $('#orbitTargetDistance');
@@ -1442,6 +1470,10 @@ function init1() {
 			}).done(function(d) {
 				planets = Planets.prototype.fromAstroPhysState(d.results);
 				julianDate = d.date;
+				
+				initPlanets = planets.clone();
+				initJulianDate = julianDate;
+				
 				init2();
 			});
 		}
@@ -1516,6 +1548,7 @@ function init2() {
 	$(imgs).preload(function(){
 		$('#loadingDiv').hide();
 		$('#menu').show();
+		$('#timeControlDiv').show();
 		init3();
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
@@ -2109,29 +2142,27 @@ function update() {
 		planets = Planets.prototype.fromEphemeris(julianDate);
 	} else
 */
-/*
-		if (integrateTimeStep !== undefined) {
-			// if we're integrating ...
-			planets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
-			julianDate += integrateTimeStep;
-		}
-		datetable = julian.toCalendar(julianDate);
-		
-		if (lastJulianDate !== julianDate) {
-			var deltaJulianDate = julianDate - lastJulianDate;
-			var deltaAngle = quat.create();
-			quat.fromAxisAngle(deltaAngle, [0,0,1], deltaJulianDate * 2 * Math.PI);
-			var deltaPos = vec3.create();
-			vec3.sub(deltaPos, GL.view.pos, orbitCenter);
-			//deltaAngle[4] = -deltaAngle[4]
-			vec3.transformQuat(deltaPos, deltaPos, deltaAngle);
-			//deltaAngle[4] = -deltaAngle[4]
-			vec3.add(GL.view.pos, GL.view.pos, orbitCenter);
-			quat.multiply(viewAngle = deltaAngle * viewAngle
-		end
+	if (!integrationPaused) {
+		// if we're integrating ...
+		planets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
+		julianDate += integrateTimeStep;
+	}
 	
-*/	
-	
+	/*
+	if (lastJulianDate !== julianDate) {
+		var deltaJulianDate = julianDate - lastJulianDate;
+		var deltaAngle = quat.create();
+		quat.fromAxisAngle(deltaAngle, [0,0,1], deltaJulianDate * 2 * Math.PI);
+		var deltaPos = vec3.create();
+		vec3.sub(deltaPos, GL.view.pos, orbitCenter);
+		//deltaAngle[4] = -deltaAngle[4]
+		vec3.transformQuat(deltaPos, deltaPos, deltaAngle);
+		//deltaAngle[4] = -deltaAngle[4]
+		vec3.add(GL.view.pos, GL.view.pos, orbitCenter);
+		quat.multiply(viewAngle = deltaAngle * viewAngle
+	}
+	*/
+
 	// set the angle for the time
 	//2455389.287573 is aligned with the eclipse of 2455389.315718
 	//so scale the angle by (2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623)
