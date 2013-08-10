@@ -1063,9 +1063,9 @@ var drawScene;
 	
 		cubeObj.draw();
 
-		viewPosInv[0] = -GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
-		viewPosInv[1] = -GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
-		viewPosInv[2] = -GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
+		viewPosInv[0] = -GL.view.pos[0];
+		viewPosInv[1] = -GL.view.pos[1];
+		viewPosInv[2] = -GL.view.pos[2];
 		mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -1111,9 +1111,9 @@ var drawScene;
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//update scene object
-			planet.sceneObj.pos[0] = planet.pos[0];
-			planet.sceneObj.pos[1] = planet.pos[1];
-			planet.sceneObj.pos[2] = planet.pos[2];
+			planet.sceneObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+			planet.sceneObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+			planet.sceneObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
 			if (planet.tiltAngle) {
 				//quat.multiply(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
 				quatMul(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
@@ -1130,7 +1130,10 @@ var drawScene;
 				planet.sceneObj.draw();
 			} else {
 				var push = mat4.clone(GL.mvMat);
-				mat4.translate(GL.mvMat, GL.mvMat, planet.pos);
+				delta[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				delta[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				delta[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				mat4.translate(GL.mvMat, GL.mvMat, delta);
 				
 				pointObj.draw({
 					uniforms : {
