@@ -347,10 +347,20 @@ var Planet = makeClass({
 		}
 	},
 
+	clone : function() {
+		var p = new this.init();
+		p.pos[0] = this.pos[0];
+		p.pos[1] = this.pos[1];
+		p.pos[2] = this.pos[2];
+		p.vel[0] = this.vel[0];
+		p.vel[1] = this.vel[1];
+		p.vel[2] = this.vel[2];
+		return p;
+	},
+
 	add : function(other) {
 		var a = this;
 		var b = other;
-		assert(getmetatable(a) == getmetatable(b))
 		var p = new a.init();	//init is the ctor is the class
 		
 		p.pos[0] = a.pos[0] + b.pos[0];
@@ -533,6 +543,14 @@ Planets = makeClass({
 		return planets;
 	},
 
+	clone : function() {
+		var newPlanets = new Planets();
+		for (var i = 0; i < this.length; ++i) {
+			newPlanets[i] = this[i].clone();
+		}
+		return newPlanets;
+	},
+
 	add : function(other) {
 		var a = this;
 		var b = other;
@@ -612,13 +630,13 @@ var glMaxCubeMapTextureSize;
 
 
 var speedOfLight = 299792458;	// m/s
-var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
+var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
 
 //1 = c m/s <-> c = s/m
 var secondsPerMeter = speedOfLight;
 
 //1 = G m^3 / (kg s^2) <=> G m^3 / (c m)^2 = kg <=> G/c^2 = kg/m
-var kilogramsPerMeter = gravitationConstant / (speedOfLight * speedOfLight);
+var kilogramsPerMeter = gravitationalConstant / (speedOfLight * speedOfLight);
 
 //this does not zero accel beforehand!
 var calcTidalForce;
@@ -651,9 +669,9 @@ var calcTidalForce;
 			for (i = 0; i < 3; ++i) {
 				for (j = 0; j < 3; ++j) { 
 					if (i == j) {
-						phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[i] / xToTheFifth - 1 / xToTheThird);
+						phi_ij = gravitationalConstant * planet.mass * (3 * x[i] * x[i] / xToTheFifth - 1 / xToTheThird);
 					} else {
-						phi_ij = gravitationConstant * planet.mass * (3 * x[i] * x[j]) / xToTheFifth;
+						phi_ij = gravitationalConstant * planet.mass * (3 * x[i] * x[j]) / xToTheFifth;
 					}
 					accel[i] -= phi_ij * srcPlanetToPos[j];
 				}
@@ -673,9 +691,9 @@ function calcGravitationForce(accel, pos) {
 		xLength = Math.sqrt(x * x + y * y + z * z);
 		var xToTheSecond = xLength * xLength;
 		var xToTheThird = xLength * xToTheSecond;
-		accel[0] -= x * (gravitationConstant * planet.mass / xToTheThird);
-		accel[1] -= y * (gravitationConstant * planet.mass / xToTheThird);
-		accel[2] -= z * (gravitationConstant * planet.mass / xToTheThird);
+		accel[0] -= x * (gravitationalConstant * planet.mass / xToTheThird);
+		accel[1] -= y * (gravitationalConstant * planet.mass / xToTheThird);
+		accel[2] -= z * (gravitationalConstant * planet.mass / xToTheThird);
 	}
 }
 
@@ -722,6 +740,48 @@ function vec3TransformQuat(dest, src, q) {
 	dest[0] = (1.0-(yyy+zzz)) * vx + (xyy-wzz) * vy + (xzz+wyy) * vz;
 	dest[1] = (xyy+wzz) * vx + (1.0-(xxx+zzz)) * vy + (yzz-wxx) * vz;
 	dest[2] = (xzz-wyy) * vx + (yzz+wxx) * vy + (1.0-(xxx+yyy)) * vz;
+}
+
+/*
+local integrationMethod = 'rkf45'
+local integrationArgs = {accuracy=1, iterations=100, norm=Planets.length}
+*/
+var integrationMethod = 'rk4';
+var integrationArgs = undefined; 
+
+function integrateFunction(time, planets) {
+	var secondsPerJulianDay = 86400;
+	// m^3 / (kg * julianday^2) = 6.6738480e-11 m^3 / (kg * s^2) * (second/julianday)^2
+	var G = gravitationalConstant * secondsPerJulianDay * secondsPerJulianDay	// gravitationalConstant is proprotional to s^-2 and our time is in julian days, so convert
+	// f'' = G m1 m2 / r^2 = rdir G m1 m2 / r^3
+	// x1'' = rhat G m2 / r^3
+	var deltaPlanets = new Planets();
+	var accel = [];
+	var delta = [];
+	for (var i = 0; i < planets.length; ++i) {
+		var pi = planets[i];
+		accel[0] = accel[1] = accel[2] = 0;
+		for (var j = 0; j < planets.length; ++j) {
+			var pj = planets[j];
+			if (i !== j) {
+				delta[0] = pj.pos[0] - pi.pos[0];
+				delta[1] = pj.pos[1] - pi.pos[1];
+				delta[2] = pj.pos[2] - pi.pos[2];
+				var deltaLen = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
+				var scalar = G * pj.mass / (deltaLen * deltaLen * deltaLen);
+				accel[0] += delta[0] * scalar;
+				accel[1] += delta[1] * scalar;
+				accel[2] += delta[2] * scalar;
+			}
+		}
+		deltaPlanets[i].pos[0] = pi.vel[0];
+		deltaPlanets[i].pos[1] = pi.vel[1];
+		deltaPlanets[i].pos[2] = pi.vel[2];
+		deltaPlanets[i].vel[0] = accel[0];
+		deltaPlanets[i].vel[1] = accel[1];
+		deltaPlanets[i].vel[2] = accel[2];
+	}
+	return deltaPlanets;
 }
 
 function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
@@ -915,7 +975,7 @@ var colorShader;
 var texShader;
 var hsvShader;
 var displayMethods = [
-	'Plain',
+	'None',
 	'Tangent Tidal',
 	'Normal Tidal',
 	'Total Tidal',
@@ -926,11 +986,14 @@ var displayMethods = [
 	'Normal Total',
 	'Total'
 ];
-var displayMethod = 'Plain';
+var displayMethod = 'None';
 var planetInfluences = [];
+
 var showLinesToOtherPlanets = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
+var showOrbits = true;
+
 var hoverPlanetText;
 var orbitPlanetText;
 
@@ -947,7 +1010,7 @@ var updatePlanetClassSceneObj;
 		var planetClassPrototype = planet.init.prototype;
 
 		//update tide attributes
-		var showTide = displayMethod != 'Plain';
+		var showTide = displayMethod != 'None';
 		if (!showTide) {
 			if (planetClassPrototype.tex === undefined) {
 				if (planetClassPrototype.sceneObj.shader !== colorShader) {
@@ -1068,7 +1131,7 @@ var drawScene;
 		quat.conjugate(viewAngleInv, GL.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
 		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
-	
+
 		cubeObj.draw();
 
 		viewPosInv[0] = -GL.view.pos[0];
@@ -1170,7 +1233,7 @@ var drawScene;
 				planet.gravWellObj.draw();
 			}
 		}
-
+		
 		//draw point planets
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
@@ -1187,10 +1250,18 @@ var drawScene;
 					}
 				});
 			}
-
 		}
 
-
+		if (showOrbits) {
+			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				var planet = planets[planetIndex];
+				var planetClassPrototype = planet.init.prototype;
+				planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
+				planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
+				planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
+				planet.orbitLineObj.draw();
+			}
+		}
 	};
 })();
 
@@ -1295,7 +1366,7 @@ function init1() {
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
 	
-	$('<span>', {text:'Display Method:'}).appendTo(panelContent);
+	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
@@ -1338,10 +1409,12 @@ function init1() {
 	$.each([
 		'showLinesToOtherPlanets',
 		'showLatAndLonLines',
-		'showGravityWell'
+		'showGravityWell',
+		'showOrbits'
 	], function(_, toggle) {
 		(function(){
 			var checkbox = $('#'+toggle);
+			if (window[toggle]) checkbox.attr('checked', 'checked');
 			checkbox.change(function() {
 				window[toggle] = checkbox.is(':checked');
 			});
@@ -1531,55 +1604,53 @@ function init3() {
 		var planetClassPrototype = planet.init.prototype;
 		var color = colors[planet.name];
 		planetClassPrototype.color = [color[0], color[1], color[2], 1];
-
 		planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
-
 		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
+	
+		var checkDone = function() {
+			var triIndexArray = [];
+			var latLonIndexArray = [];
+			var vertexArray = [];
+			var texCoordArray = [];
+			var tideArray = [];
 
-		var triIndexArray = [];
-		var latLonIndexArray = [];
-		var vertexArray = [];
-		var texCoordArray = [];
-		var tideArray = [];
-
-		var latdiv = Math.floor((latMax-latMin)/latStep);
-		var londiv = Math.floor((lonMax-lonMin)/lonStep);
-		var vtx = [0,0,0];
-		for (var loni=0; loni <= londiv; ++loni) {
-			var lon = lonMin + loni * lonStep;
-			for (var lati=0; lati <= latdiv; ++lati) {
-				var lat = latMin + lati * latStep;
-				
-				planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
-				for (var j = 0; j < 3; ++j) {
-					vertexArray.push(vtx[j]);
-				}
-				
-				texCoordArray.push(lon / 360 + .5);
-				texCoordArray.push(-lat / 180 + .5);
-
-				tideArray.push(0);
-
-				if (loni < londiv && lati < latdiv) {
-					for (var j = 0; j < quad.length; ++j) {
-						var ofs = quad[j];
-						var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-						triIndexArray.push(index);
+			var latdiv = Math.floor((latMax-latMin)/latStep);
+			var londiv = Math.floor((lonMax-lonMin)/lonStep);
+			var vtx = [0,0,0];
+			for (var loni=0; loni <= londiv; ++loni) {
+				var lon = lonMin + loni * lonStep;
+				for (var lati=0; lati <= latdiv; ++lati) {
+					var lat = latMin + lati * latStep;
+					
+					planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
+					for (var j = 0; j < 3; ++j) {
+						vertexArray.push(vtx[j]);
 					}
-					//if we're using 5 div step then every 6 will be 30 degrees
-					if ((loni * lonStep) % 30 == 0) {
-						latLonIndexArray.push(lati + (latdiv+1) * loni);
-						latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
-					}
-					if ((lati * latStep) % 30 == 0) {
-						latLonIndexArray.push(lati + (latdiv+1) * loni);
-						latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
+					
+					texCoordArray.push(lon / 360 + .5);
+					texCoordArray.push(-lat / 180 + .5);
+
+					tideArray.push(0);
+
+					if (loni < londiv && lati < latdiv) {
+						for (var j = 0; j < quad.length; ++j) {
+							var ofs = quad[j];
+							var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
+							triIndexArray.push(index);
+						}
+						//if we're using 5 div step then every 6 will be 30 degrees
+						if ((loni * lonStep) % 30 == 0) {
+							latLonIndexArray.push(lati + (latdiv+1) * loni);
+							latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
+						}
+						if ((lati * latStep) % 30 == 0) {
+							latLonIndexArray.push(lati + (latdiv+1) * loni);
+							latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
+						}
 					}
 				}
 			}
-		}
-		
-		var checkDone = function() {
+			
 			var vertexBuffer = new GL.ArrayBuffer({data:vertexArray, keep:true});
 			planetClassPrototype.sceneObj = new GL.SceneObject({
 				mode : gl.TRIANGLES,
@@ -1627,90 +1698,6 @@ function init3() {
 				static : true 
 			});
 			
-			/*
-			gravity well too?
-		
-			calculate spacetime embedding radius
-			  for radial distance r, radius R, Schwarzschild radius Rs 
-			 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
-			 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
-			*/
-			var R = planetClassPrototype.radius;
-			var Rs = planetClassPrototype.schwarzschildRadius;
-			var R_Rs = R / Rs;
-			var Rs_R = Rs / R;
-			var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-			var gravWellVtxs = [0,0,-planetClassPrototype.radius];
-			var gravWellIndexes = [];
-			var rimax = 200;
-			var thimax = 60;
-			var zmin = undefined;
-			var zmax = undefined;
-			console.log('planet '+planetClassPrototype.name+' embedding radius '+R_sqrt_R_Rs+' physical radius '+R+' schwarzschild radius '+Rs);
-			for (var ri = 1; ri < rimax; ++ri) {
-				var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
-				
-				var z;
-				if (r <= R) {
-					var r_R = r / R;
-					z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
-				} else {
-					z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
-						+ Math.sqrt(4 * Rs * (r - Rs))
-						- Math.sqrt(4 * Rs * (R - Rs));
-				}
-				if (zmin === undefined || z < zmin) zmin = z;
-				if (zmax === undefined || z > zmax) zmax = z;
-
-//scale for visual effect
-//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
-z *= 2000;							//too flat for earth, too sharp for sun
-//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
-
-//align bottom of gravity well with bottom of planet
-z -= planetClassPrototype.radius;
-
-				for (var thi = 0; thi < thimax; ++thi) {
-					var th = 2 * Math.PI * thi / thimax;
-			
-					var x = r * Math.cos(th);
-					var y = r * Math.sin(th);
-					gravWellVtxs.push(x);
-					gravWellVtxs.push(y);
-					gravWellVtxs.push(z);
-		
-					if (ri == 1) {
-						gravWellIndexes.push(0);
-						gravWellIndexes.push(1 + thi + thimax * (ri-1));
-					}
-					if (ri < rimax-1) {
-						gravWellIndexes.push(1 + thi + thimax * (ri-1));
-						gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
-					}
-					gravWellIndexes.push(1 + thi + thimax * (ri-1));
-					gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
-				}
-			}
-			console.log('zmin '+zmin);
-			console.log('zmax '+zmax);
-			planetClassPrototype.gravWellObj = new GL.SceneObject({
-				mode : gl.LINES,
-				indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
-				shader : colorShader,
-				attrs : {
-					vertex : new GL.ArrayBuffer({data:gravWellVtxs})
-				},
-				uniforms : {
-					color : [1,1,1,.2]
-				},
-				useDepth : false,
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				static : false,
-				parent : null
-			});
-
 			++planetsDone;
 			if (planetsDone == planets.length) {
 				init4();
@@ -1740,6 +1727,215 @@ z -= planetClassPrototype.radius;
 }
 
 function init4() {
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+
+		/*
+		gravity wells
+	
+		calculate spacetime embedding radius
+		  for radial distance r, radius R, Schwarzschild radius Rs 
+		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
+		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
+		*/
+		var R = planetClassPrototype.radius;
+		var Rs = planetClassPrototype.schwarzschildRadius;
+		var R_Rs = R / Rs;
+		var Rs_R = Rs / R;
+		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+		var gravWellVtxs = [0,0,-planetClassPrototype.radius];
+		var gravWellIndexes = [];
+		var rimax = 200;
+		var thimax = 60;
+		var zmin = undefined;
+		var zmax = undefined;
+		console.log('planet '+planetClassPrototype.name+' embedding radius '+R_sqrt_R_Rs+' physical radius '+R+' schwarzschild radius '+Rs);
+		for (var ri = 1; ri < rimax; ++ri) {
+			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
+			
+			var z;
+			if (r <= R) {
+				var r_R = r / R;
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
+			} else {
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
+					+ Math.sqrt(4 * Rs * (r - Rs))
+					- Math.sqrt(4 * Rs * (R - Rs));
+			}
+			if (zmin === undefined || z < zmin) zmin = z;
+			if (zmax === undefined || z > zmax) zmax = z;
+
+//scale for visual effect
+//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
+z *= 2000;							//too flat for earth, too sharp for sun
+//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
+
+//align bottom of gravity well with bottom of planet
+z -= planetClassPrototype.radius;
+
+			for (var thi = 0; thi < thimax; ++thi) {
+				var th = 2 * Math.PI * thi / thimax;
+		
+				var x = r * Math.cos(th);
+				var y = r * Math.sin(th);
+				
+				//it would be great to include influences of other planets' gravity wells ...
+				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
+				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
+				// from there, take samples based on radial distance within that plane between planets ...
+				// I could remap planes on a per-planet basis depending on which you are orbitting ...
+				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
+				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
+				gravWellVtxs.push(x);
+				gravWellVtxs.push(y);
+				gravWellVtxs.push(z);
+	
+				if (ri == 1) {
+					gravWellIndexes.push(0);
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				}
+				if (ri < rimax-1) {
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+					gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
+				}
+				gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
+			}
+		}
+		console.log('zmin '+zmin);
+		console.log('zmax '+zmax);
+		planetClassPrototype.gravWellObj = new GL.SceneObject({
+			mode : gl.LINES,
+			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
+			shader : colorShader,
+			attrs : {
+				vertex : new GL.ArrayBuffer({data:gravWellVtxs})
+			},
+			uniforms : {
+				color : [1,1,1,.2]
+			},
+			useDepth : false,
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			static : false,
+			parent : null
+		});
+	}
+
+
+	/* this is helper for the orbit generations
+	 * i should be calculating this myself!
+										Sidereal period (yr)		Synodic period (yr)	Synodic period (d)
+		  Solar surface	      			0.069[1] (25.3 days)	  	0.074	  27.3
+		  Mercury	      				0.240846 (87.9691 days)	  	0.317	  115.88
+		  Venus	      					0.615 (225 days)	  		1.599	  583.9
+		  Earth	      					1 (365.25636 solar days)	    —	    —
+		  Moon	      					0.0748  	  				0.0809	  29.5306
+		  Apophis (near-Earth asteroid)	0.886	  					7.769	  2,837.6
+		  Mars	      					1.881	  					2.135	  779.9
+		  4 Vesta	      				3.629	  					1.380	  504.0
+		  1 Ceres	      				4.600	  					1.278	  466.7
+		  10 Hygiea	      				5.557	    				1.219	  445.4
+		  Jupiter	      				11.86	  					1.092	  398.9
+		  Saturn	      				29.46	  					1.035	  378.1
+		  Uranus	      				84.32	  					1.012	  369.7
+		  Neptune	      				164.8	  					1.006	  367.5
+		  134340 Pluto	     	 		248.1	  					1.004	  366.7
+		  136199 Eris	      			557	  						1.002	  365.9
+		  90377 Sedna	      			12050	  					1.00001	  365.1
+	*/
+	var orbitsInEarthYears = {
+		sun : 0.0691,
+		mercury : 0.240846,
+		venus : 0.615,
+		earth : 1,
+		moon : 0.0748,
+		mars : 1.881,
+		jupiter : 11.86,
+		saturn : 29.46,
+		uranus : 84.32,
+		neptune : 164.8,
+		pluto : 248.1,
+	};
+	var solarDaysPerEarthYear = 365.25636;
+	/*
+	so do i run separate integrators per-planet at separate timesteps?
+	or do i vary the timestep to gradually increase (exponential ramp?) to cover the small planets at high res and large planets full orbits too?
+	
+	looks like we can safely take large timesteps on the outer planets, so integrating separately might be best?
+	*/
+
+
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+
+
+	//integration code -- can move it outside the for loop if you dont want separate integrations per body
+
+	var integrationStepInDays = 3;
+	var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
+	var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
+	
+	//integrate orbits for a year? track positions
+	var history = [];
+	var intPlanets = planets.clone();
+	var t = 0;
+	for (var i = 0; i < numIntSteps; ++i) {
+		//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
+		intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
+		t += dt;
+		history.push(intPlanets);	//add future
+	}
+	var intPlanets = planets.clone();
+	history.splice(0, 0, intPlanets);	//add present
+	var t = 0;
+	for (var i = 0; i < numIntSteps; ++i) {
+		intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
+		t -= dt;
+		history.splice(0, 0, intPlanets);	//add past
+	}
+
+	var orbitLineShader = new GL.ShaderProgram({
+		vertexCode : vertexPrecision,
+		vertexCodeID : 'orbit-vsh',
+		fragmentCode : fragmentPrecision,
+		fragmentCodeID : 'orbit-fsh'
+	});
+
+	//end planet integration code
+
+
+		var vertexes = [];
+		//extract lines
+		for (var i = 0; i < history.length; ++i) {
+			vertexes.push(history[i][planetIndex].pos[0]);
+			vertexes.push(history[i][planetIndex].pos[1]);
+			vertexes.push(history[i][planetIndex].pos[2]);
+			//pack transparency info into the vertex
+			var alpha = 1 - Math.abs(2 * i / (history.length-1) - 1);
+			vertexes.push(alpha);
+		}
+
+		planetClassPrototype.orbitLineObj = new GL.SceneObject({
+			mode : gl.LINE_STRIP,
+			shader : orbitLineShader,
+			attrs : {
+				vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
+			},
+			uniforms : {
+				color : planetClassPrototype.color
+			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			parent : null,
+			static : false 
+		});
+	}
+
 	var skyTex = new GL.TextureCube({
 		flipY : true,
 		generateMipmap : true,
@@ -1763,7 +1959,9 @@ function init4() {
 
 function init5(skyTex) {
 	var cubeShader = new GL.ShaderProgram({
+		vertexCode : vertexPrecision,
 		vertexCodeID : 'cube-vsh',
+		fragmentCode : fragmentPrecision,
 		fragmentCodeID : 'cube-fsh',
 		uniforms : {
 			skyTex : 0
@@ -1914,7 +2112,7 @@ function update() {
 /*
 		if (integrateTimeStep !== undefined) {
 			// if we're integrating ...
-			planets = integrate(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
+			planets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
 			julianDate += integrateTimeStep;
 		}
 		datetable = julian.toCalendar(julianDate);

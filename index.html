@@ -19,7 +19,8 @@
 		<script type='text/javascript' src='/js/gl-util.js'></script>
 		<script type='text/javascript' src='/js/gl-util-gradient.js'></script>
 		<script type='text/javascript' src='/js/mouse3d.js'></script>
-
+		<script type='text/javascript' src='/js/integrate.js'></script>
+		
 		<script type='text/javascript' src='astro-api.js'></script>
 
 		<script type='text/javascript' src='main.js'></script>
@@ -37,7 +38,6 @@ _gaq.push(['_trackPageview']);
 
 		<script id='color-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
-attribute vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 void main() {
@@ -53,6 +53,28 @@ void main() {
 	gl_FragColor = color;
 }
 		</script>
+		
+		<script id='orbit-vsh' type='x-shader/x-vertex'>
+attribute vec4 vertex;
+varying float alpha;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	alpha = vertex.w;
+	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
+	gl_Position = projMat * vtx4;
+	gl_PointSize = 4.;
+}
+		</script>
+		<script id='orbit-fsh' type='x-shader/x-fragment'>
+uniform vec4 color;
+varying float alpha;
+void main() {
+	gl_FragColor = vec4(color.xyz, color.w * alpha);
+}
+		</script>
+	
 		<script id='tex-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -207,6 +229,7 @@ a:active {
 				<input id='showLinesToOtherPlanets' type='checkbox' value='1'/>Show Lines to Other Planets<br>
 				<input id='showLatAndLonLines' type='checkbox' value='1'/>Show Latitude and Longitude Lines<br>
 				<input id='showGravityWell' type='checkbox' value='1'/>Show Gravity Wells<br>
+				<input id='showOrbits' type='checkbox' value='1'/>Show Orbits<br>
 				<br>
 				<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
 			</div>
