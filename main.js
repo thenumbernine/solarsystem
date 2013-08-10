@@ -611,7 +611,14 @@ var skyTexFilenames = [
 var glMaxCubeMapTextureSize;
 
 
-var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^20
+var speedOfLight = 299792458;	// m/s
+var gravitationConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
+
+//1 = c m/s <-> c = s/m
+var secondsPerMeter = speedOfLight;
+
+//1 = G m^3 / (kg s^2) <=> G m^3 / (c m)^2 = kg <=> G/c^2 = kg/m
+var kilogramsPerMeter = gravitationConstant / (speedOfLight * speedOfLight);
 
 //this does not zero accel beforehand!
 var calcTidalForce;
@@ -923,6 +930,7 @@ var displayMethod = 'Plain';
 var planetInfluences = [];
 var showLinesToOtherPlanets = false;
 var showLatAndLonLines = false;
+var showGravityWell = false;
 var hoverPlanetText;
 var orbitPlanetText;
 
@@ -1109,7 +1117,7 @@ var drawScene;
 			var dy = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
 			var dz = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
-
+	
 			//update scene object
 			planet.sceneObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 			planet.sceneObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
@@ -1124,36 +1132,65 @@ var drawScene;
 				planet.sceneObj.angle[2] = planet.angle[2];
 				planet.sceneObj.angle[3] = planet.angle[3];
 			}
+		}
+
+		//draw sphere planets
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
 
 			if (planet.visRatio >= .005) {
 				updatePlanetClassSceneObj(planet);
 				planet.sceneObj.draw();
-			} else {
-				var push = mat4.clone(GL.mvMat);
-				delta[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				delta[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				delta[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
-				mat4.translate(GL.mvMat, GL.mvMat, delta);
-				
+			
+				if (showLatAndLonLines) {
+					planet.latLonObj.pos[0] = planet.sceneObj.pos[0];
+					planet.latLonObj.pos[1] = planet.sceneObj.pos[1];
+					planet.latLonObj.pos[2] = planet.sceneObj.pos[2];
+					planet.latLonObj.angle[0] = planet.sceneObj.angle[0];
+					planet.latLonObj.angle[1] = planet.sceneObj.angle[1];
+					planet.latLonObj.angle[2] = planet.sceneObj.angle[2];
+					planet.latLonObj.angle[3] = planet.sceneObj.angle[3];
+					planet.latLonObj.draw();
+				}
+			}
+		}
+
+		if (showGravityWell) {
+			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				var planet = planets[planetIndex];
+				var planetClassPrototype = planet.init.prototype;
+				planet.gravWellObj.pos[0] = planet.sceneObj.pos[0];
+				planet.gravWellObj.pos[1] = planet.sceneObj.pos[1];
+				planet.gravWellObj.pos[2] = planet.sceneObj.pos[2];
+				planet.gravWellObj.angle[0] = planet.sceneObj.angle[0];
+				planet.gravWellObj.angle[1] = planet.sceneObj.angle[1];
+				planet.gravWellObj.angle[2] = planet.sceneObj.angle[2];
+				planet.gravWellObj.angle[3] = planet.sceneObj.angle[3];
+				planet.gravWellObj.draw();
+			}
+		}
+
+		//draw point planets
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
+			
+			if (planet.visRatio < .005) {
+				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				pointObj.attrs.vertex.updateData();
 				pointObj.draw({
 					uniforms : {
 						color : planetClassPrototype.color
 					}
 				});
-			
-				mat4.copy(GL.mvMat, push);
 			}
-			if (showLatAndLonLines) {
-				planet.latLonObj.pos[0] = planet.sceneObj.pos[0];
-				planet.latLonObj.pos[1] = planet.sceneObj.pos[1];
-				planet.latLonObj.pos[2] = planet.sceneObj.pos[2];
-				planet.latLonObj.angle[0] = planet.sceneObj.angle[0];
-				planet.latLonObj.angle[1] = planet.sceneObj.angle[1];
-				planet.latLonObj.angle[2] = planet.sceneObj.angle[2];
-				planet.latLonObj.angle[3] = planet.sceneObj.angle[3];
-				planet.latLonObj.draw();
-			}
+
 		}
+
+
 	};
 })();
 
@@ -1171,6 +1208,8 @@ function resize() {
 	canvas.height = window.innerHeight;
 	panel.css('height', window.innerHeight);
 	GL.resize();
+
+	GL.view.fovY = canvas.height / canvas.width * 90;
 
 	/**/
 	//setup infinite projection matrix
@@ -1296,19 +1335,18 @@ function init1() {
 	hoverPlanetText = $('#hoverPlanetText');
 	orbitPlanetText = $('#orbitPlanetText');
 
-	(function(){
-		var checkbox = $('#showLinesToOtherPlanets');
-		checkbox.change(function() {
-			showLinesToOtherPlanets = checkbox.is(':checked');
-		});
-	})();
-
-	(function(){
-		var checkbox = $('#showLatAndLonLines ');
-		checkbox.change(function() {
-			showLatAndLonLines = checkbox.is(':checked');
-		});
-	})();
+	$.each([
+		'showLinesToOtherPlanets',
+		'showLatAndLonLines',
+		'showGravityWell'
+	], function(_, toggle) {
+		(function(){
+			var checkbox = $('#'+toggle);
+			checkbox.change(function() {
+				window[toggle] = checkbox.is(':checked');
+			});
+		})();
+	});
 
 	$(window).resize(resize);
 	resize();
@@ -1467,11 +1505,9 @@ function init3() {
 		mode : gl.POINTS,
 		shader : colorShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({data:[0,0,0]})
+			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW})
 		},
-		pos : [0,0,0],
-		parent : null,
-		static : false
+		parent : null
 	});
 
 	var colors = {
@@ -1495,7 +1531,9 @@ function init3() {
 		var planetClassPrototype = planet.init.prototype;
 		var color = colors[planet.name];
 		planetClassPrototype.color = [color[0], color[1], color[2], 1];
-		
+
+		planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
+
 		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
 
 		var triIndexArray = [];
@@ -1573,24 +1611,104 @@ function init3() {
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
-				parent : null,
-				static : false
+				static : false,
+				parent : null
 			});
 			planetClassPrototype.lineObj = new GL.SceneObject({
 				mode : gl.LINES,
 				shader : colorShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({
-						data : new Float32Array(6),
-						keep : true, 
-						usage : gl.DYNAMIC_DRAW
-					}),
+					vertex : new GL.ArrayBuffer({count:2, keep:true, usage:gl.DYNAMIC_DRAW})
 				},
 				uniforms : {
 					color : planetClassPrototype.color
 				},
 				parent : null,
 				static : true 
+			});
+			
+			/*
+			gravity well too?
+		
+			calculate spacetime embedding radius
+			  for radial distance r, radius R, Schwarzschild radius Rs 
+			 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
+			 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
+			*/
+			var R = planetClassPrototype.radius;
+			var Rs = planetClassPrototype.schwarzschildRadius;
+			var R_Rs = R / Rs;
+			var Rs_R = Rs / R;
+			var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+			var gravWellVtxs = [0,0,-planetClassPrototype.radius];
+			var gravWellIndexes = [];
+			var rimax = 200;
+			var thimax = 60;
+			var zmin = undefined;
+			var zmax = undefined;
+			console.log('planet '+planetClassPrototype.name+' embedding radius '+R_sqrt_R_Rs+' physical radius '+R+' schwarzschild radius '+Rs);
+			for (var ri = 1; ri < rimax; ++ri) {
+				var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
+				
+				var z;
+				if (r <= R) {
+					var r_R = r / R;
+					z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
+				} else {
+					z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
+						+ Math.sqrt(4 * Rs * (r - Rs))
+						- Math.sqrt(4 * Rs * (R - Rs));
+				}
+				if (zmin === undefined || z < zmin) zmin = z;
+				if (zmax === undefined || z > zmax) zmax = z;
+
+//scale for visual effect
+//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
+z *= 2000;							//too flat for earth, too sharp for sun
+//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
+
+//align bottom of gravity well with bottom of planet
+z -= planetClassPrototype.radius;
+
+				for (var thi = 0; thi < thimax; ++thi) {
+					var th = 2 * Math.PI * thi / thimax;
+			
+					var x = r * Math.cos(th);
+					var y = r * Math.sin(th);
+					gravWellVtxs.push(x);
+					gravWellVtxs.push(y);
+					gravWellVtxs.push(z);
+		
+					if (ri == 1) {
+						gravWellIndexes.push(0);
+						gravWellIndexes.push(1 + thi + thimax * (ri-1));
+					}
+					if (ri < rimax-1) {
+						gravWellIndexes.push(1 + thi + thimax * (ri-1));
+						gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
+					}
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+					gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
+				}
+			}
+			console.log('zmin '+zmin);
+			console.log('zmax '+zmax);
+			planetClassPrototype.gravWellObj = new GL.SceneObject({
+				mode : gl.LINES,
+				indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
+				shader : colorShader,
+				attrs : {
+					vertex : new GL.ArrayBuffer({data:gravWellVtxs})
+				},
+				uniforms : {
+					color : [1,1,1,.2]
+				},
+				useDepth : false,
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				static : false,
+				parent : null
 			});
 
 			++planetsDone;
