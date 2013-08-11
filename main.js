@@ -493,7 +493,6 @@ Planets = makeClass({
 	init : function() {
 		for (var i = 0; i < this.planetClasses.length; ++i) {
 			this[i] = new (this.planetClasses[i])();
-			this[i].index = i;
 		}
 		this.length = this.planetClasses.length;
 	},
@@ -596,6 +595,13 @@ Planets = makeClass({
 mergeInto(Planets.prototype, Array.prototype);
 Planets.prototype.indexes = {};
 for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
+	//I am suspicious that, because 'init' is also considered the class itself, it doesn't inherit by default -- and always gets overridden
+	var oldPrototype = Planets.prototype.planetClasses[i].prototype;
+	Planets.prototype.planetClasses[i] = function() {
+		Planet.apply(this, arguments);
+	};
+	Planets.prototype.planetClasses[i].prototype = oldPrototype;
+	Planets.prototype.planetClasses[i].prototype.index = i;
 	Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
 }
 
@@ -1731,7 +1737,7 @@ function init3() {
 				uniforms : {
 					color : [1,1,1,.2]
 				},
-				useDepth : false,
+				//useDepth : false,
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
@@ -1802,7 +1808,6 @@ function init4() {
 		var thimax = 60;
 		var zmin = undefined;
 		var zmax = undefined;
-		console.log('planet '+planetClassPrototype.name+' embedding radius '+R_sqrt_R_Rs+' physical radius '+R+' schwarzschild radius '+Rs);
 		for (var ri = 1; ri < rimax; ++ri) {
 			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
 			
@@ -1855,8 +1860,6 @@ z -= planetClassPrototype.radius;
 				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
 			}
 		}
-		console.log('zmin '+zmin);
-		console.log('zmax '+zmax);
 		planetClassPrototype.gravWellObj = new GL.SceneObject({
 			mode : gl.LINES,
 			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
@@ -1867,7 +1870,7 @@ z -= planetClassPrototype.radius;
 			uniforms : {
 				color : [1,1,1,.2]
 			},
-			useDepth : false,
+			//useDepth : false,
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			pos : [0,0,0],
 			angle : [0,0,0,1],
@@ -2066,6 +2069,7 @@ function init5(skyTex) {
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
 	orbitPlanetText.text(trackPlanet.name);
+	hoverPlanetText.text(trackPlanet.name);
 
 	var dragging = false;
 	var tmpQ = quat.create();	
