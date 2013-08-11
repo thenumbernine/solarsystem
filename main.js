@@ -744,7 +744,8 @@ function vec3TransformQuat(dest, src, q) {
 	dest[2] = (xzz-wyy) * vx + (yzz+wxx) * vy + (1.0-(xxx+yyy)) * vz;
 }
 
-var integrateTimeStep = 1;	//1 day/iteration
+var defaultIntegrateTimeStep = 1/(24*60);	//1 min/frame
+var integrateTimeStep = defaultIntegrateTimeStep;
 var integrationPaused = true;
 /*
 local integrationMethod = 'rkf45'
@@ -1164,9 +1165,9 @@ var drawScene;
 						planet.lineObj.attrs.vertex.data[0] = delta[0] * orbitPlanet.radius;
 						planet.lineObj.attrs.vertex.data[1] = delta[1] * orbitPlanet.radius;
 						planet.lineObj.attrs.vertex.data[2] = delta[2] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[3] = delta[0] * 100 * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[4] = delta[1] * 100 * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[5] = delta[2] * 100 * orbitPlanet.radius;
+						planet.lineObj.attrs.vertex.data[3] = delta[0] * orbitDistance;
+						planet.lineObj.attrs.vertex.data[4] = delta[1] * orbitDistance;
+						planet.lineObj.attrs.vertex.data[5] = delta[2] * orbitDistance;
 						
 						planet.lineObj.attrs.vertex.updateData();
 						planet.lineObj.draw();
@@ -1282,6 +1283,7 @@ function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	panel.css('height', window.innerHeight);
+	
 	GL.resize();
 
 	GL.view.fovY = canvas.height / canvas.width * 90;
@@ -1329,9 +1331,10 @@ function init1() {
 			panelContent.hide();
 		}
 	});
+	
 	$('#reset').click(function() {
 		integrationPaused = true;
-		integrateTimeStep = 1; 
+		integrateTimeStep = defaultIntegrateTimeStep; 
 		planets = initPlanets;
 		julianDate = initJulianDate;
 	});
@@ -1346,11 +1349,12 @@ function init1() {
 	$('#pause').click(function() {
 		integrationPaused = true;
 	});
+	//fast/slow vs ffwd/rewind?
 	$('#ffwd').click(function() {
-		integrationTimeStep *= 2;
+		integrateTimeStep *= 2;
 	});
 	$('#rewind').click(function() {
-		integrationTimeStep /= 2;
+		integrateTimeStep /= 2;
 	});
 	
 	measureMinText = $('#measureMin');
@@ -1536,8 +1540,9 @@ function init1() {
 }
 
 function init2() {
-	
+
 	var imgs = [];
+/*
 	for (var i = 0; i < planets.length; ++i) {
 		imgs.push('textures/'+planets[i].name+'.png');
 	}
@@ -1546,13 +1551,16 @@ function init2() {
 	}
 	console.log('loading '+imgs.join(', '));
 	$(imgs).preload(function(){
+*/
 		$('#loadingDiv').hide();
 		$('#menu').show();
 		$('#timeControlDiv').show();
 		init3();
+/*
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
 	});
+*/
 }
 
 function init3() {
@@ -1754,7 +1762,6 @@ function init3() {
 			checkDone();
 		};
 		img.src = 'textures/'+planet.name+'.png';
-
 
 	})(); }
 }
