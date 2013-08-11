@@ -1542,7 +1542,7 @@ function init1() {
 function init2() {
 
 	var imgs = [];
-/*
+
 	for (var i = 0; i < planets.length; ++i) {
 		imgs.push('textures/'+planets[i].name+'.png');
 	}
@@ -1551,16 +1551,13 @@ function init2() {
 	}
 	console.log('loading '+imgs.join(', '));
 	$(imgs).preload(function(){
-*/
 		$('#loadingDiv').hide();
 		$('#menu').show();
 		$('#timeControlDiv').show();
 		init3();
-/*
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
 	});
-*/
 }
 
 function init3() {
