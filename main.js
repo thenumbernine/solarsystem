@@ -599,14 +599,12 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 	Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
 }
 
-
 var planets = undefined;
 var julianDate = 0;
 var initPlanets = undefined;
 var initJulianDate = 0;
 var targetJulianDate = undefined;
 var dateTime = Date.now();
-var dateStr = new Date('%Y-%m-%d %H:%M:%S', dateTime);
 
 // track ball motion variables
 var orbitPlanetIndex;
@@ -974,6 +972,7 @@ var panelContent;
 var measureMinText;
 var measureMaxText;
 var orbitTargetDistanceText;
+var currentTimeText;
 
 var hsvTex;
 var colorShader;
@@ -1319,6 +1318,10 @@ function refreshOrbitTargetDistanceText() {
 	orbitTargetDistanceText.text(orbitTargetDistance.toExponential()+' m');
 }
 
+function refreshCurrentTimeText() {
+	currentTimeText.text(astro.julianToCalendar(julianDate));
+}
+
 $(document).ready(init1);
 
 function init1() {
@@ -1337,6 +1340,7 @@ function init1() {
 		integrateTimeStep = defaultIntegrateTimeStep; 
 		planets = initPlanets;
 		julianDate = initJulianDate;
+		refreshCurrentTimeText();
 	});
 	$('#play').click(function() {
 		integrationPaused = false;
@@ -1360,6 +1364,7 @@ function init1() {
 	measureMinText = $('#measureMin');
 	measureMaxText = $('#measureMax');
 	orbitTargetDistanceText = $('#orbitTargetDistance');
+	currentTimeText = $('#currentTimeText');
 	canvas = $('<canvas>', {
 		css : {
 			left : 0,
@@ -1477,6 +1482,7 @@ function init1() {
 				
 				initPlanets = planets.clone();
 				initJulianDate = julianDate;
+				refreshCurrentTimeText();
 				
 				init2();
 			});
@@ -1490,6 +1496,11 @@ function init1() {
 				console.log('date '+date);
 				planets = Planets.prototype.fromAstroPhysState(results);
 				julianDate = date;
+				
+				initPlanets = planets.clone();
+				initJulianDate = julianDate;
+				refreshCurrentTimeText();
+				
 				init2();
 			});
 		}
@@ -1520,6 +1531,9 @@ function init1() {
 			
 			var record = new astro.Record(results, start, end);
 			julianDate = data.date;
+			initPlanets = planets.clone();
+			initJulianDate = julianDate;
+			refreshCurrentTimeText();
 			
 			//record.getStates is giving back the whole coefficients ... ?	
 			var positions = record.getPositions(julianDate);
@@ -1554,6 +1568,7 @@ function init2() {
 		$('#loadingDiv').hide();
 		$('#menu').show();
 		$('#timeControlDiv').show();
+		$('#infoDiv').show();
 		init3();
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
@@ -2150,6 +2165,7 @@ function update() {
 		// if we're integrating ...
 		planets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
 		julianDate += integrateTimeStep;
+		refreshCurrentTimeText();
 	}
 	
 	/*
