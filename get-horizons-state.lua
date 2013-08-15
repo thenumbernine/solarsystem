@@ -1,5 +1,7 @@
 require 'socket'
-json = require 'json'
+if not json then json = pcall(require,'json') end
+if not json then json = pcall(require,'dkjson') end
+if not json then error 'failed to find json module' end
 
 -- try to match the astro-phys date on file
 

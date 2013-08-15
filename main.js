@@ -1323,7 +1323,7 @@ function resize() {
 	var aspectRatio = canvas.width / canvas.height;
 	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
-	var epsilon = 1e-1;
+	var epsilon = 1e-5;
 	mat4.identity(GL.projMat);
 	GL.projMat[0] = GL.view.zNear / nearWidth;
 	GL.projMat[5] = GL.view.zNear / nearHeight;
@@ -2158,21 +2158,6 @@ function update() {
 		orbitDistance = Math.exp(newLogDist);
 	}
 
-
-	//if we are close enough to the planet then rotate with it
-	if (lastJulianDate !== julianDate && 
-		orbitPlanetIndex == planets.indexes.earth &&	//only for earth at the moment ...
-		orbitDistance < planets[orbitPlanetIndex].radius * 10) 
-	{
-		var deltaJulianDate = julianDate - lastJulianDate;
-		var deltaAngle = quat.create();
-		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
-		vec3TransformQuat(GL.view.pos, GL.view.pos, deltaAngle);
-		quatMul(GL.view.angle, deltaAngle, GL.view.angle); 
-	}
-	lastJulianDate = julianDate;
-
-
 /*
 	if (targetJulianDate !== undefined) {
 		var logDate = Math.log(julianDate);
@@ -2197,17 +2182,26 @@ function update() {
 	}
 	
 	// set the angle for the time
-	//2455389.287573 is aligned with the eclipse of 2455389.315718
-	//so scale the angle by (2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623)
 	{
 		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
 		var angleOffset = .37;
-		var angleScale = 1;//(2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623);
 		var qdst = planets[planets.indexes.earth].angle;
 		quat.identity(qdst);
-		quat.rotateZ(qdst, qdst, ((angleScale * julianDate + angleOffset) % 1) * 2 * Math.PI);
+		quat.rotateZ(qdst, qdst, ((julianDate + angleOffset) % 1) * 2 * Math.PI);
 	}
-
+	
+	//if we are close enough to the planet then rotate with it
+	if (lastJulianDate !== julianDate && 
+		orbitPlanetIndex == planets.indexes.earth &&	//only for earth at the moment ...
+		orbitDistance < planets[orbitPlanetIndex].radius * 10) 
+	{
+		var deltaJulianDate = julianDate - lastJulianDate;
+		var deltaAngle = quat.create();
+		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
+		vec3TransformQuat(GL.view.pos, GL.view.pos, deltaAngle);
+		quatMul(GL.view.angle, deltaAngle, GL.view.angle); 
+	}
+	lastJulianDate = julianDate;
 
 	GL.setupMatrices();
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
