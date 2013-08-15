@@ -607,6 +607,7 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 
 var planets = undefined;
 var julianDate = 0;
+var lastJulianDate = 0;
 var initPlanets = undefined;
 var initJulianDate = 0;
 var targetJulianDate = undefined;
@@ -686,7 +687,13 @@ var calcTidalForce;
 	};
 })();
 
-//this does not zero accel beforehand!
+/*
+this does not zero accel beforehand!
+
+geodesic calculation:
+
+x''^u = -G^u_ab x'^a x'^b
+*/
 function calcGravitationForce(accel, pos) {
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		if (!planetInfluences[planetIndex]) continue;
@@ -700,6 +707,24 @@ function calcGravitationForce(accel, pos) {
 		accel[0] -= x * (gravitationalConstant * planet.mass / xToTheThird);
 		accel[1] -= y * (gravitationalConstant * planet.mass / xToTheThird);
 		accel[2] -= z * (gravitationalConstant * planet.mass / xToTheThird);
+	
+/*
+ 		//this code is in natural units
+		//so either convert xyz into natural units
+		//or insert c's into here where they belong ...
+		var r = Math.sqrt(x*x + y*y + z*z);
+		var oneMinus2MOverR = 1 - 2*planet.mass/r;
+		var posDotVel = x * oldVx + y * oldVy + z * oldVz;
+		var velDotVel = oldVx * oldVx + oldVy * oldVy + oldVz * oldVz;
+		var r2 = r * r;
+		var invR2M = 1 / (r * oneMinus2MOverR);
+		var rMinus2MOverR2 = oneMinus2MOverR / r;
+		var MOverR2 = planet.mass / r2;
+		accel[0] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * x * oldVt * oldVt + invR2M * (x * velDotVel - 2 * oldVx * posDotVel));
+		accel[1] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * y * oldVt * oldVt + invR2M * (y * velDotVel - 2 * oldVy * posDotVel));
+		accel[2] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * z * oldVt * oldVt + invR2M * (z * velDotVel - 2 * oldVz * posDotVel));
+		//accel[3] = deltaLambda * 2 * MOverR2 * invR2M * posDotVel * oldVt;
+*/
 	}
 }
 
@@ -969,8 +994,6 @@ function getEarthAngle(jd) {
 	return deg;
 }
 
-var fragmentPrecision = 'precision mediump float;\n';
-var vertexPrecision = '';
 var gl;
 var canvas;
 var panel;
@@ -1393,19 +1416,6 @@ function init1() {
 	
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
-	var vtxhigh = gl.getShaderPrecisionFormat(gl.VERTEX_SHADER, gl.HIGH_FLOAT)
-	console.log('vertex high? '+vtxhigh.rangeMin+' '+vtxhigh.rangeMax+' '+vtxhigh.precision);
-	if (vtxhigh.rangeMin !== 0 && vtxhigh.rangeMax !== 0 && vtxhigh.precision !== 0) {
-		console.log('vertex using high precision float');
-		vertexPrecision = 'precision highp float;\n';
-	}
-	var fraghigh = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT)
-	console.log('fragment high? '+fraghigh.rangeMin+' '+fraghigh.rangeMax+' '+fraghigh.precision);
-	if (fraghigh.rangeMin !== 0 && fraghigh.rangeMax !== 0 && fraghigh.precision !== 0) {
-		console.log('fragment using high precision float');
-		fragmentPrecision = 'precision highp float;\n';
-	}
-
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
 	
@@ -1585,9 +1595,9 @@ function init3() {
 	hsvTex = new GL.HSVTexture(256);
 
 	colorShader = new GL.ShaderProgram({
-		vertexCode : vertexPrecision,
+		vertexPrecision : 'best',
 		vertexCodeID : 'color-vsh',
-		fragmentCode : fragmentPrecision,
+		fragmentPrecision : 'best',
 		fragmentCodeID : 'color-fsh',
 		uniforms : {
 			color : [1,1,1,1]
@@ -1595,9 +1605,9 @@ function init3() {
 	});
 
 	texShader = new GL.ShaderProgram({
-		vertexCode : vertexPrecision,
+		vertexPrecision : 'best',
 		vertexCodeID : 'tex-vsh',
-		fragmentCode : fragmentPrecision,
+		fragmentPrecision : 'best',
 		fragmentCodeID : 'tex-fsh',
 		uniforms : {
 			tex : 0
@@ -1605,9 +1615,9 @@ function init3() {
 	});
 
 	hsvShader = new GL.ShaderProgram({
-		vertexCode : vertexPrecision,
+		vertexPrecision : 'best',
 		vertexCodeID : 'heat-vsh',
-		fragmentCode : fragmentPrecision,
+		fragmentPrecision : 'best',
 		fragmentCodeID : 'heat-fsh',
 		uniforms : {
 			tex : 0,
@@ -1954,9 +1964,9 @@ z -= planetClassPrototype.radius;
 	}
 
 	var orbitLineShader = new GL.ShaderProgram({
-		vertexCode : vertexPrecision,
+		vertexPrecision : 'best',
 		vertexCodeID : 'orbit-vsh',
-		fragmentCode : fragmentPrecision,
+		fragmentPrecision : 'best',
 		fragmentCodeID : 'orbit-fsh'
 	});
 
@@ -2014,9 +2024,9 @@ z -= planetClassPrototype.radius;
 
 function init5(skyTex) {
 	var cubeShader = new GL.ShaderProgram({
-		vertexCode : vertexPrecision,
+		vertexPrecision : 'best',
 		vertexCodeID : 'cube-vsh',
-		fragmentCode : fragmentPrecision,
+		fragmentPrecision : 'best',
 		fragmentCodeID : 'cube-fsh',
 		uniforms : {
 			skyTex : 0
@@ -2148,8 +2158,22 @@ function update() {
 		orbitDistance = Math.exp(newLogDist);
 	}
 
+
+	//if we are close enough to the planet then rotate with it
+	if (lastJulianDate !== julianDate && 
+		orbitPlanetIndex == planets.indexes.earth &&	//only for earth at the moment ...
+		orbitDistance < planets[orbitPlanetIndex].radius * 10) 
+	{
+		var deltaJulianDate = julianDate - lastJulianDate;
+		var deltaAngle = quat.create();
+		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
+		vec3TransformQuat(GL.view.pos, GL.view.pos, deltaAngle);
+		quatMul(GL.view.angle, deltaAngle, GL.view.angle); 
+	}
+	lastJulianDate = julianDate;
+
+
 /*
-	var lastJulianDate = julianDate;
 	if (targetJulianDate !== undefined) {
 		var logDate = Math.log(julianDate);
 		var logTarget = Math.log(targetJulianDate);
@@ -2172,21 +2196,6 @@ function update() {
 		refreshCurrentTimeText();
 	}
 	
-	/*
-	if (lastJulianDate !== julianDate) {
-		var deltaJulianDate = julianDate - lastJulianDate;
-		var deltaAngle = quat.create();
-		quat.fromAxisAngle(deltaAngle, [0,0,1], deltaJulianDate * 2 * Math.PI);
-		var deltaPos = vec3.create();
-		vec3.sub(deltaPos, GL.view.pos, orbitCenter);
-		//deltaAngle[4] = -deltaAngle[4]
-		vec3.transformQuat(deltaPos, deltaPos, deltaAngle);
-		//deltaAngle[4] = -deltaAngle[4]
-		vec3.add(GL.view.pos, GL.view.pos, orbitCenter);
-		quat.multiply(viewAngle = deltaAngle * viewAngle
-	}
-	*/
-
 	// set the angle for the time
 	//2455389.287573 is aligned with the eclipse of 2455389.315718
 	//so scale the angle by (2455389.287573 - 2455034.608623) / (2455389.315718 - 2455034.608623)

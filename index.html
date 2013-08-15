@@ -42,7 +42,6 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
-	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
 	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
 }
@@ -62,7 +61,6 @@ uniform mat4 projMat;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
 	alpha = vertex.w;
-	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
 	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
 }
@@ -84,7 +82,6 @@ varying vec2 texCoordv;
 void main() {
 	texCoordv = texCoord;
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
-	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
 	gl_Position = projMat * vtx4;
 }
 		</script>
@@ -107,7 +104,6 @@ void main() {
 	tidev = tide;
 	texCoordv = texCoord;
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
-	//vtx4.z = -log(-vtx4.z + 1.) - 1.;
 	gl_Position = projMat * vtx4;
 }
 		</script>
