@@ -1,0 +1,1106 @@
+1	Mercury	nil
+	GM 1-sigma (km^3 s^-2)	+-0.91
+	Mean radius (km)	2440(+-1)
+	Rot. Rate (x10^5 s)	0.124001
+	Obliquity to orbit[1]	2.11' +/- 0.1'
+	Mass (10^23 kg )	3.302
+	Sidereal orb. per.	87.969257  d
+	Mean solar day	175.9421 d
+	Equatorial Radius, Re	2440 km
+	Semi-major axis	
+	Core radius (km)	~1600
+	Flattening, f	
+	Potential Love # k2	
+	Mom. of Inertia	0.33
+	Max. angular diam.	11.0"
+	Hill's sphere rad. Rp	94.4
+	Escape vel. km/s	4.435
+	Orbit vel.  km/s	47.8725
+	Geometric albedo	0.106
+	Volume (x10^10 km^3)	6.085
+	Visual mag. V(1,0)	-0.42
+	Equ. gravity  ms^-2	3.701
+	Density (g cm^-3)	5.427
+	Sidereal rot. period	58.6462 d
+	GM (km^3 s^-2)	22032.09
+	Mass ratio (sun/plnt)	6023600
+	Mean Temperature (K)	
+	Planetary Solar Const	9936.9 (Wm^2)
+	Atmos. pressure (bar)	
+	Polar gravity ms^-2	
+2	Venus	nil
+	GM 1-sigma (km^3 s^-2)	+-0.04
+	Geometric albedo	0.65
+	Obliquity to orbit	177.3 deg
+	Sidereal orb. per.	224.70079922 d
+	Max. angular diam.	60.2"
+	Escape vel. km/s	10.361
+	Visual mag. V(1,0)	-4.40
+	Atmos. pressure (bar)	90
+	Grav spectral fact u	1.5
+	Hill's sphere rad. Rp	167.1
+	Fig. offset (Rcf-Rcm)	0.19+-01
+	Mean radius (km)	6051.8(4+-1)
+	Rot. Rate (x10^5 s)	-0.029924
+	Mass (10^23 kg )	48.685
+	Topo. spectral fact t	23
+	Mean solar day	116.7490 d
+	Equatorial Radius, Re	6051.893 km
+	Semi-major axis	
+	Core radius (km)	~3200
+	Flattening, f	
+	Potential Love # k2	~0.25
+	Mom. of Inertia	0.33
+	Offset (lat./long.)	11/102 dg/dg
+	Volume (x10^10 km^3)	92.843
+	Equ. gravity  ms^-2	8.870
+	Density (g cm^-3)	5.204
+	Sidereal rot. period	-243.0185 d
+	GM (km^3 s^-2)	324858.63
+	Mean Temperature (K)	735
+	Polar gravity ms^-2	
+	Planetary Solar Const	2613.9 (Wm^2)
+	Mass ratio (sun/Mars)	408523.61
+	Orbit vel.  km/s	35.0214
+3	Earth Barycenter	nil
+4	Mars Barycenter	nil
+5	Jupiter Barycenter	nil
+6	Saturn Barycenter	nil
+7	Uranus Barycenter	nil
+8	Neptune Barycenter	nil
+9	Pluto Barycenter	nil
+10	Sun	nil
+	Pole (RA,DEC in deg.)	286.13,63.87
+	Moment of inertia	0.059
+	Solar constant (1 AU)	1367.6 W/m^2
+	Mass-energy conv rate	4.3(10^12 gm/s)
+	Surface gravity	274.0 m/s^2
+	Escape velocity	617.7 km/s
+	Radius (photosphere)	6.963(10^5) km
+	Mass (10^30 kg)	1.9891
+	Effective temp (K)	5778
+	Cycle 22 sunspot min.	1991 A.D.
+	Sunspot cycle	11.4 yr
+	Solar Radius (IAU)	6.955(10^5) km
+	Mean density	1.408 g/cm^3
+	Photospheric depth	~400 km
+	GM (10^11 km^3/s^2)	1.32712440018
+	Surf. temp (photosphr)	4400 K (top)
+	Adopted sidereal per	25.38 d
+	Solar lumin.(erg/s)	3.846(10^33)
+	Chromospheric depth	~2500 km
+	Angular diam at 1 AU	1919.3"
+	Obliquity to ecliptic	7 deg 15'
+199	Mercury	nil
+	GM 1-sigma (km^3 s^-2)	+-0.91
+	Mean radius (km)	2440(+-1)
+	Rot. Rate (x10^5 s)	0.124001
+	Obliquity to orbit[1]	2.11' +/- 0.1'
+	Mass (10^23 kg )	3.302
+	Sidereal orb. per.	87.969257  d
+	Mean solar day	175.9421 d
+	Equatorial Radius, Re	2440 km
+	Semi-major axis	
+	Core radius (km)	~1600
+	Flattening, f	
+	Potential Love # k2	
+	Mom. of Inertia	0.33
+	Max. angular diam.	11.0"
+	Hill's sphere rad. Rp	94.4
+	Escape vel. km/s	4.435
+	Orbit vel.  km/s	47.8725
+	Geometric albedo	0.106
+	Volume (x10^10 km^3)	6.085
+	Visual mag. V(1,0)	-0.42
+	Equ. gravity  ms^-2	3.701
+	Density (g cm^-3)	5.427
+	Sidereal rot. period	58.6462 d
+	GM (km^3 s^-2)	22032.09
+	Mass ratio (sun/plnt)	6023600
+	Mean Temperature (K)	
+	Planetary Solar Const	9936.9 (Wm^2)
+	Atmos. pressure (bar)	
+	Polar gravity ms^-2	
+299	Venus	nil
+	GM 1-sigma (km^3 s^-2)	+-0.04
+	Geometric albedo	0.65
+	Obliquity to orbit	177.3 deg
+	Sidereal orb. per.	224.70079922 d
+	Max. angular diam.	60.2"
+	Escape vel. km/s	10.361
+	Visual mag. V(1,0)	-4.40
+	Atmos. pressure (bar)	90
+	Grav spectral fact u	1.5
+	Hill's sphere rad. Rp	167.1
+	Fig. offset (Rcf-Rcm)	0.19+-01
+	Mean radius (km)	6051.8(4+-1)
+	Rot. Rate (x10^5 s)	-0.029924
+	Mass (10^23 kg )	48.685
+	Topo. spectral fact t	23
+	Mean solar day	116.7490 d
+	Equatorial Radius, Re	6051.893 km
+	Semi-major axis	
+	Core radius (km)	~3200
+	Flattening, f	
+	Potential Love # k2	~0.25
+	Mom. of Inertia	0.33
+	Offset (lat./long.)	11/102 dg/dg
+	Volume (x10^10 km^3)	92.843
+	Equ. gravity  ms^-2	8.870
+	Density (g cm^-3)	5.204
+	Sidereal rot. period	-243.0185 d
+	GM (km^3 s^-2)	324858.63
+	Mean Temperature (K)	735
+	Polar gravity ms^-2	
+	Planetary Solar Const	2613.9 (Wm^2)
+	Mass ratio (sun/Mars)	408523.61
+	Orbit vel.  km/s	35.0214
+301	Moon 	Earth
+	Density, gm cm^-3	3.3437
+	Geometric albedo	0.12
+	Obliquity to orbit	6.67 deg
+	Heat flow, Apollo 15	3.1+-.6 mW/m^2
+	Farside crust. thick.	~80 - 90 km
+	gamma (B-A/C), x10^-4	2.278(8+-2)
+	Mass, 10^20 kg	734.9
+	Induced magnetic mom.	4.23x10^22Gcm^3
+	Surface gravity	1.62 m s^-2
+	Mean angular diameter	31'05.2"
+	Mean crustal density	2.97+-.07g/cm^3
+	Nearside crust. thick.	58+-8 km
+	GM, km^3/s^2	4902.798+-.005
+	Magnetometer moment	435+-15
+	Earth/Moon mass ratio	81.300587
+	beta (C-A/B), x10^-4	6.31(72+-15)
+	Inclination	5.145 deg
+	Apsidal period	3231.50 d
+	Mom. of inertia C/MR^2	0.3935+-.0011
+	Nodal period	6798.38 d
+	Mean motion, rad/s	2.6616995x10^-6
+	Heat flow, Apollo 17	2.2+-.5 mW/m^2
+	Semi-major axis, a	384400 km
+	Orbit period	27.321582 d
+	Eccentricity	0.05490
+	Radius, km	1737.53+-0.03
+	V(1,0)	+0.21
+	k2	0.0302+-.0012
+391	L1 (Sun & Earth-Moon Barycenter)	nil
+392	L2 (Sun & Earth-Moon Barycenter)	nil
+394	L4 (Sun & Earth-Moon Barycenter)	nil
+395	L5 (Sun & Earth-Moon Barycenter)	nil
+399	Earth	nil
+	Geometric albedo	0.367
+	mantle	4.043 x 10^24 kg
+	Moment of inertia	0.3308
+	sea	3.62 x 10^8 km
+	gp, m s^-2 (polar)	9.8321863685
+	inner core	9.675 x 10^22 kg
+	GM, km^3 s^-2	398600.440
+	Sidereal period, hr	23.93419
+	Magnetic moment	0.61 gauss Rp^3
+	Atm. pressure	1.0 bar
+	outer core	1.835 x 10^24 kg
+	oceans	1.4   x 10^21 kg
+	Inner core rad	1215 km
+	Mean solar day, days	1.002738
+	Volume, 10^10 km^3	108.321
+	J2  (GEM T2, 1990)	0.0010826265
+	land	1.48 x 10^8 km
+	Love no., k2	0.299
+	Density, gm cm^-3	5.515
+	/d Escape velocity	11.186 km s^-1
+	Solar constant, W/m^2	1367.6
+	Flattening	1/298.257
+	Mean radius, km	6371.01+-0.02
+	Sidereal period	365.25636  days
+	Hill's sphere radius	234.9
+	ge, m s^-2 (equatorial)	9.7803267715
+	Mean daily motion, n	0.9856474 deg
+	Orbit velocity, km s^-1	29.7859
+	Atmos	5.1   x 10^18 kg
+	Mass, 10^24 kg	5.9736
+	go, m s^-2	9.82022
+	crust	2.6   x 10^22 kg
+	Fluid core rad	3480 km
+	Polar axis, km	6356.752
+	Mean Temperature, K	270
+	Vis. mag. V(1,0)	-3.86
+	Obliquity to orbit, deg	23.45
+401	Phobos 	Mars
+	Rotational period	Synchronous
+	Geometric Albedo	0.06
+	.3 Density (g cm^-3)	1.90 +- 0.08
+	Eccentricity, e	0.0151
+	Radius (km)	13.1 x11.1 x9
+	Mass (10^20 kg )	1.08 (10^-4)
+	Orbital period	0.319 d
+	Semi-major axis, a (km)	9.3772(10^3)
+402	Deimos 	Mars
+	Rotational period	Synchronous
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	23.4632(10^3)
+	Eccentricity, e	0.00033
+	Radius (km)	7.8 x 6.0 x 5
+	Mass (10^20 kg )	1.80 (10^-5)
+	.1 Density (g cm^-3)	1.76 +- 0.30
+	Orbital period	1.263 d
+499	Mars	nil
+	GM 1-sigma (km^3 s^-2)	+- 0.1
+	Geometric albedo	0.150
+	Obliquity to orbit	25.19 deg
+	Max. angular diam.	17.9"
+	Escape vel. km/s	5.027
+	Visual mag. V(1,0)	-1.52
+	Atmos. pressure (bar)	0.0056
+	Grav spectral fact u	14 (x10^5)
+	Hill's sphere rad. Rp	319.8
+	Fig. offset (Rcf-Rcm)	2.50+-0.07 km
+	Mean radius (km)	3389.9(2+-4)
+	Rot. Rate (x10^5 s)	7.088218
+	Mass (10^23 kg )	6.4185
+	Topo. spectral fact t	96 (x10^5)
+	Mean solar day	1.0274907 d
+	Equatorial Radius, Re	3394.0 km
+	Semi-major axis	3397+-4
+	Core radius (km)	~1700
+	Flattening, f	1/154.409
+	Potential Love # k2	0.153 +-.017
+	Mom. of Inertia	0.366
+	Offset (lat./long.)	62d / 88d
+	Volume (x10^10 km^3)	16.318
+	Mag. mom (gauss Rp^3)	< 1x10^-4
+	Equ. gravity  ms^-2	3.71
+	Density (g cm^-3)	3.933(5+-4)
+	Sidereal rot. period	24.622962 hr
+	GM (km^3 s^-2)	42828.3
+	Mean Temperature (K)	210
+	Polar gravity ms^-2	3.758
+	Mass ratio (Sun/Mars)	3098708+-9
+	Mean sidereal orb per	686.98 d
+	Orbit vel.  km/s	24.1309
+501	Io  	Jupiter
+	Density (g cm^-3)	3.530 +-.006
+	Geometric Albedo	0.6
+	Semi-major axis, a (km)	421.769 (10^3
+	Rotational period	Synchronous
+	Radius (km)	1821.3 +- 0.2
+	Mass (10^20 kg )	893.3 +- 1.5
+	Eccentricity, e	0.0041
+	)  Orbital period	1.769138 d
+502	Europa 	Jupiter
+	Density (g cm^-3)	2.99 +- 0.05
+	Geometric Albedo	0.6
+	Semi-major axis, a (km)	671.079 (10^3
+	Rotational period	Synchronous
+	Radius (km)	1565   +- 8
+	Mass (10^20 kg )	479.7 +- 1.5
+	Eccentricity, e	0.0101
+	)  Orbital period	3.551810 d
+503	Ganymede 	Jupiter
+	Density (g cm^-3)	1.94 +- 0.02
+	Geometric Albedo	0.4
+	Semi-major axis, a (km)	1070.0428 (10
+	Rotational period	Synchronous
+	Radius (km)	2634   +- 10
+	Mass (10^20 kg )	1482   +- 1
+	Eccentricity, e	0.0006
+	^3) Orbital period	7.154553 d
+504	Callisto 	Jupiter
+	Density (g cm^-3)	1.851 +- .004
+	Geometric Albedo	0.20
+	Semi-major axis, a (km)	1883  (10^3)
+	Rotational period	Synchronous
+	Radius (km)	2403   +- 5
+	Mass (10^20 kg )	1076   +- 1
+	Eccentricity, e	0.007
+	Orbital period	16.689018 d
+505	Amalthea 	Jupiter
+	Density (g cm^-3)	
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	181.3 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	131 x 73 x 67
+	Mass (10^20 kg )	
+	Eccentricity, e	0.003
+	Orbital period	0.498179 d
+506	Himalia  	Jupiter
+	Geometric Albedo	0.03
+	Semi-major axis, a (km)	11480 (10^3)
+	Radius (km)	85 +- 10
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	27.5 (inv pl
+	Density (g cm^-3)	
+	Rotational period	0.4 d
+	n)  Local invar ref. pln	Sun
+	Orbital period	250.5662 d
+	Eccentricity, e	0.163
+507	Elara   	Jupiter
+	Geometric Albedo	0.03
+	Semi-major axis, a (km)	11737 (10^3)
+	Radius (km)	40 +- 10
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	28
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	0.5 d
+	Orbital period	259.6528 d
+	Eccentricity, e	0.207
+508	Pasiphae 	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	23500 (10^3)
+	Radius (km)	18
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	148
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	735 d (retro)
+	Eccentricity, e	0.378
+509	Sinope 	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	23700 (10^3)
+	Radius (km)	14
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	153
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	758 d (retro)
+	Eccentricity, e	0.275
+510	Lysithea 	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	11720 (10^3)
+	Radius (km)	12
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	29
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	259.22 d
+	Eccentricity, e	0.107
+511	Carme  	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	22600 (10^3)
+	Radius (km)	15
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	163
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	692 d (retro)
+	Eccentricity, e	0.207
+512	Ananke 	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	21200 (10^3)
+	Radius (km)	10
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	147
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	631 d (retro)
+	Eccentricity, e	0.169
+513	Leda  	Jupiter
+	Geometric Albedo	
+	Semi-major axis, a (km)	11094 (10^3)
+	Radius (km)	5
+	Mass (10^20 kg )	
+	Inclination, i  (deg)	27
+	Density (g cm^-3)	
+	Local invar ref. pln	Sun
+	Rotational period	
+	Orbital period	238.72 d
+	Eccentricity, e	0.148
+514	Thebe 	Jupiter
+	Density (g cm^-3)	
+	Geometric Albedo	0.05-0.10
+	Semi-major axis, a (km)	221.90 (10^3)
+	Rotational period	
+	Radius (km)	50 +- 10
+	Mass (10^20 kg )	
+	Eccentricity, e	0.015
+	Orbital period	0.6745 d
+515	Adrastea 	Jupiter
+	Density (g cm^-3)	
+	Geometric Albedo	0.05-0.10
+	Semi-major axis, a (km)	128.98 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	10 +- 10
+	Mass (10^20 kg )	
+	Eccentricity, e	~ 0
+	Orbital period	0.29826 d
+516	Metis  	Jupiter
+	Density (g cm^-3)	
+	Geometric Albedo	0.05-0.10
+	Semi-major axis, a (km)	127.96 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	20 +- 10
+	Mass (10^20 kg )	
+	Eccentricity, e	< 0.004
+	Orbital period	0.294780 d
+517	Callirrhoe 	Jupiter
+518	Themisto 	Jupiter
+519	Megaclite 	Jupiter
+520	Taygete  	Jupiter
+521	Chaldene 	Jupiter
+522	Harpalyke 	Jupiter
+523	Kalyke 	Jupiter
+524	Iocaste  	Jupiter
+525	Erinome 	Jupiter
+526	Isonoe 	Jupiter
+527	Praxidike 	Jupiter
+528	Autonoe 	Jupiter
+	Density (g cm^-3)	
+	Geometric Albedo	
+	Semi-major axis, a (km)	
+	Rotational period	
+	Radius (km)	
+	Mass (10^20 kg )	
+	Eccentricity, e	
+	Orbital period	
+529	Thyone 	Jupiter
+530	Hermippe 	Jupiter
+531	Aitne  	Jupiter
+532	Eurydome 	Jupiter
+533	Euanthe 	Jupiter
+534	Euporie 	Jupiter
+535	Orthosie 	Jupiter
+536	Sponde 	Jupiter
+537	Kale 	Jupiter
+538	Pasithee 	Jupiter
+539	Hegemone 	Jupiter
+540	Mneme 	Jupiter
+541	Aoede 	Jupiter
+542	Thelxinoe 	Jupiter
+543	Arche 	Jupiter
+544	Kallichore 	Jupiter
+545	Helike 	Jupiter
+546	Carpo 	Jupiter
+547	Eukelade 	Jupiter
+548	Cyllene 	Jupiter
+549	Kore 	Jupiter
+550	Herse (2003J17) 	Jupiter
+55060	2003J2 	Jupiter
+55061	2003J3 	Jupiter
+55062	2003J4 	Jupiter
+55063	2003J5 	Jupiter
+55064	2003J9 	Jupiter
+55065	2003J10 	Jupiter
+55066	2003J12 	Jupiter
+55067	2003J15 	Jupiter
+55068	2003J16 	Jupiter
+55069	2003J18 	Jupiter
+55070	2003J19 	Jupiter
+55071	2003J23 	Jupiter
+55072	2010J1 	Jupiter
+55073	2010J2 	Jupiter
+55074	2011J1 	Jupiter
+55075	2011J2 	Jupiter
+55076	2000J11 	Jupiter
+599	Jupiter	nil
+	Rot. rate(10^-4 rad/s)	1.75865
+	Obliquity to orbit	3.12 deg
+	Density (g/cm^3)	1.326
+	I/MRo^2 (upper bound)	0.267
+	Mag.dip.mom(gauss-Rp^3)	4.2
+	Equat. radius (1 bar)	71492+-4 km
+	GM (km^3/s^2)	126,686,511
+	Mom. of inert. I/MRo^2	0.254
+	Flattening	0.06487
+	Y factor (He/H ratio)	0.18+-0.04
+	Rotation period	9h 55m 29.685s
+	Pol. grav, gp (m/s^2)	28.34
+	Heat flow/mass (x10^7)	15 erg/gm*s
+	Rocky core mass (Mc/M)	0.0261
+	Mass (10^24 kg)	1898.13+-.19
+	Atmos. temp. (1 bar)	165+-5 K
+	Aroche(ice)/Rp	2.76
+	Vis. mag. (opposition)	-2.70
+	Volumetric mean radius	69911+-6 km
+	GM 1-sigma (km^3/s^2)	+-100
+	Sidereal orbit period	4332.820 d
+	Visual magnitude V(1,0)	-9.40
+	Geometric albedo	0.52
+	Polar radius (km)	66854+-10
+	Equ. grav, ge (m/s^2)	24.79
+	Hill's sphere rad. Rp	740
+	Mean daily motion	0.0831294 deg/d
+	Mean orbit velocity	13.0697 km/s
+	Planetary Solar Const	50.5 W/m^2
+	Escape velocity (km/s)	59.5
+	Dipole tilt/offset	9.6deg/0.1Rp
+601	Mimas 	Saturn
+	Mean Radius (km)	198.8   +- 1.
+	Mass (10^22 g)	3.75
+	5   Density (g/cm^3)	1.152 +- 0.027
+	GM (km^3/s^2)	2.503
+	Rotational period	Synchronous
+	Eccentricity, e	0.0196
+	Orbital period	0.9424218 d
+	Geometric Albedo	0.6
+	V(1,0)	+3.3
+	Semi-major axis, a (km)	185.54(10^3)
+602	Enceladus 	Saturn
+	Geometric Albedo	1.04
+	Mass (10^22 g)	10.805
+	011 V(1,0)	+2.2
+	Rotational period	Synchronous
+	Eccentricity, e	0.0047
+	6   Density (g/cm^3)	1.606 +- 0.012
+	Orbital period	1.370218 d
+	Mean Radius (km)	252.3   +- 0.
+	GM (km^3/s^2)	7.206 +- 0.
+	Semi-major axis, a (km)	238.04(10^3)
+603	Tethys  	Saturn
+	Mean Radius (km)	536.3  +- 1.5
+	Mass (10^22 g)	61.76 +- 0.11
+	GM (km^3/s^2)	41.21 +- 0.00
+	Rotational period	Synchronous
+	Eccentricity, e	0.0001
+	7   V(1,0)	+0.7
+	Orbital period	1.888 d
+	Geometric Albedo	0.80
+	Semi-major axis, a (km)	294.670(10^3)
+	Density (g/cm^3)	0.956+- 0.008
+604	Dione  	Saturn
+	Mean Radius (km)	562.5   +- 5
+	Mass (10^22 g)	109.572
+	GM (km^3/s^2)	73.113 +- 0.
+	Rotational period	Synchronous
+	02 V(1,0)	+0.8
+	Eccentricity, e	0.0022
+	Orbital period	2.736915 d
+	Geometric Albedo	0.6
+	Density (g/cm^3)	1.469 +- 0.012
+	Semi-major axis, a (km)	377.42(10^3)
+605	Rhea  	Saturn
+	Mean Radius (km)	764.5  +- 2
+	Mass (10^22 g)	230.9
+	GM (km^3/s^2)	153.94 +- 0.1
+	Rotational period	Synchronous
+	6  V(1,0)	+0.1
+	Eccentricity, e	0.001
+	Orbital period	4.518 d
+	Geometric Albedo	0.6
+	Density (g/cm^3)	1.233 +- 0.010
+	Semi-major axis, a (km)	527.07(10^3)
+606	Titan 	Saturn
+	Geometric Albedo	0.2
+	Mass (10^22 g)	13455.3
+	.06  V(1,0)	-1.2
+	GM (km^3/s^2)	8978.13  +-  0
+	Rotational period	
+	Eccentricity, e	0.0288
+	Orbital period	15.945421 d
+	Semi-major axis, a (km)	1221.87 (10^3)
+	Mean Radius (km)	2575.5   +-  2
+	.0  Density (g/cm^3)	1.880 +- 0.004
+607	Hyperion 	Saturn
+	Mean Radius (km)	133    +- 8
+	Mass (10^22 g)	1.08 +- 0.5
+	GM (km^3/s^2)	0.37   +- 0.0
+	2 V(1,0)	+4.8
+	Rotational period	Chaotic
+	Eccentricity, e	0.0274
+	Orbital period	21.276609 d
+	2 Geometric Albedo	0.25
+	Semi-major axis, a (km)	1500.88(10^3)
+	Density (g/cm^3)	0.569 +- 0.108
+608	Iapetus 	Saturn
+	Geometric Albedo	0.6
+	Mass (10^22 g)	180.59
+	Radius (km)	734.5    +- 4.
+	03   V(1,0)	+1.5 (.7-2.5)
+	GM (km^3/s^2)	120.51   +- 0.
+	0    Density (g/cm^3)	1.088 +- 0.018
+	Orbital period	79.33 d
+	Rotational period	Synchronous
+	Eccentricity, e	0.0283
+	Semi-major axis, a (km)	3560.84 (10^3)
+609	Phoebe 	Saturn
+	Geometric Albedo	0.081 +- 0.002
+	1    Density (g/cm^3)	1.633 +- 0.049
+	Radius (km)	106.6    +- 1.
+	GM (km^3/s^2)	0.5533 +- 0.
+	0006 V(1,0)	+1.5 (.7-2.5)
+	Rotational period	Synchronous
+	Orbital period	550.31 d
+	Eccentricity, e	0.1635
+	Mass (10^22 g)	0.8289
+	Semi-major axis, a (km)	12947.78(10^3)
+610	Janus  	Saturn
+	Density (g cm^-3)	0.65 +- 0.08
+	)  Orbital period	0.694590 d
+	12 Geometric Albedo	0.5
+	Rotational period	Synchronous
+	Radius (km)	97 x 95 x 77
+	Mass (10^20 kg )	0.0198 +-0.00
+	Eccentricity, e	0.007
+	Semi-major axis, a (km)	151.472 (10^3
+611	Epimetheus 	Saturn
+	Density (g cm^-3)	0.63 +- 0.11
+	)  Orbital period	0.694590 d
+	Semi-major axis, a (km)	151.422 (10^3
+	Rotational period	Synchronous
+	Radius (km)	69 x 55 x 55
+	Mass (10^20 kg )	0.0055 +-0.00
+	Eccentricity, e	0.009
+	03 Geometric Albedo	0.5
+612	Helene  	Saturn
+	Mass (10^22 g  )	0.002547
+	Semi-major axis, a (km)	377.420(10^3)
+	Radius (km),mean	16 +- 4
+	GM (km^3/s^2)	0.0017
+	Density (g cm^-3)	1.5
+	Rotational period	
+	Orbital period	2.736915 d
+	Eccentricity, e	0.0071
+	V(1,0)	+8.8
+	Geometric Albedo	0.6
+613	Telesto  	Saturn
+	Geometric Albedo	1.0
+	Mass (10^22 g)	0.0007194
+	Radius (km)	15 x 12.5 x 7
+	GM (km^3/s^2)	0.00048
+	Rotational period	
+	Eccentricity, e	0.0002
+	Orbital period	1.887802 d
+	.5 Density (g cm^-3)	1.0
+	V(1,0)	+9.1
+	Semi-major axis, a (km)	294.710(10^3)
+614	Calypso  	Saturn
+	Geometric Albedo	0.7
+	Mass (10^22 g)	0.0003597
+	Radius (km)	15 x 8 x 8
+	GM (km^3/s^2)	0.00024
+	Density (g cm^-3)	1.0
+	Rotational period	
+	Orbital period	1.887802 d
+	Eccentricity, e	0.0005
+	V(1,0)	+9.4
+	Semi-major axis, a (km)	294.710(10^3)
+615	Atlas  	Saturn
+	Density (g cm^-3)	
+	Geometric Albedo	0.5
+	Semi-major axis, a (km)	137.64 (10^3)
+	Rotational period	
+	Radius (km)	18.5x17.2x13.5
+	Mass (10^20 kg )	
+	Eccentricity, e	~0
+	Orbital period	0.6019 d
+616	Prometheus	Saturn
+	Rotational period	
+	Geometric Albedo	0.5
+	Semi-major axis, a (km)	139.35 (10^3)
+	Eccentricity, e	0.0024
+	Radius (km)	74 x 50 x 34(+-
+	Mass (10^20 kg )	0.0014
+	3) Density (g cm^-3)	0.27 +- 0.16
+	Orbital period	0.612986 d
+617	Pandora 	Saturn
+	Rotational period	
+	Geometric Albedo	0.5
+	Semi-major axis, a (km)	141.70 (10^3)
+	2) Density (g cm^-3)	0.42 +- 0.28
+	Radius (km)	55 x 44 x 31(+-
+	Mass (10^20 kg )	0.0013
+	Eccentricity, e	0.0042
+	Orbital period	0.628804 d
+618	Pan 	Saturn
+	Density (g cm^-3)	
+	Geometric Albedo	0.5
+	Semi-major axis, a (km)	133.584(10^3)
+	Rotational period	
+	Radius (km)	10
+	Mass (10^20 kg )	
+	Eccentricity, e	
+	Orbital period	0.5750 d
+619	Ymir   	Saturn
+620	Paaliaq 	Saturn
+621	Tarvos  	Saturn
+622	Ijiraq 	Saturn
+623	Suttungr 	Saturn
+624	Kiviuq 	Saturn
+625	Mundilfari 	Saturn
+626	Albiorix 	Saturn
+627	Skathi 	Saturn
+628	Erriapus 	Saturn
+629	Siarnaq 	Saturn
+630	Thrymr 	Saturn
+631	Narvi 	Saturn
+632	Methone 	Saturn
+633	Pallene 	Saturn
+634	Polydeuces 	Saturn
+635	Daphnis 	Saturn
+636	Aegir 	Saturn
+637	Bebhionn 	Saturn
+638	Bergelmir 	Saturn
+639	Bestla  	Saturn
+640	Farbauti 	Saturn
+641	Fenrir  	Saturn
+642	Fornjot 	Saturn
+643	Hati 	Saturn
+644	Hyrrokkin 	Saturn
+645	Kari 	Saturn
+646	Loge 	Saturn
+647	Skoll 	Saturn
+648	Surtur 	Saturn
+649	Anthe 	Saturn
+650	Jarnsaxa 	Saturn
+651	Greip 	Saturn
+652	Tarqeq 	Saturn
+653	Aegaeon 	Saturn
+65035	2004S7 	Saturn
+65040	2004S12 	Saturn
+65041	2004S13 	Saturn
+65045	2004S17 	Saturn
+65048	2006S01 	Saturn
+65050	2006S3 	Saturn
+65055	2007S2  	Saturn
+65056	2007S3  	Saturn
+699	Saturn	nil
+	Rot. rate(10^-4 rad/s)	1.63785
+	Obliquity to orbit	26.73 deg
+	Density (g/cm^3)	0.687+-.001
+	I/MRo^2 (upper bound)	0.231
+	Mag.dip.mom(gauss-Rp^3)	0.21
+	Equat. radius (1 bar)	60268+-4 km
+	GM (km^3/s^2)	37931207.8
+	Mom. of inert. I/MRo^2	0.210
+	Flattening	0.09796
+	Y factor (He/H ratio)	
+	Rotation period	10h 39m 22.4s
+	Pol. grav, gp (m/s^2)	12.14+-0.01
+	Heat flow/mass (x10^7)	15 erg/gm*s
+	Rocky core mass (Mc/M)	0.1027
+	Mass (10^26 kg)	5.68319
+	Atmos. temp. (1 bar)	134+-4 K
+	Aroche(ice)/Rp	2.71
+	Vis. mag. (opposition)	+0.67
+	Volumetric mean radius	58232+-6 km
+	GM 1-sigma (km^3/s^2)	+- 98
+	Sidereal orbit period	10755.698 d
+	Visual magnitude V(1,0)	-8.88
+	Geometric albedo	0.47
+	Polar radius (km)	54364+-10
+	Equ. grav, ge (m/s^2)	10.44
+	Hill's sphere rad. Rp	1100
+	Mean daily motion	0.0334979 deg/d
+	Mean orbit velocity	9.6624 km/s
+	Planetary Solar Const	15.04 W/m^2
+	Escape velocity (km/s)	35.5
+	Dipole tilt/offset	0.0deg/0.0Rp
+701	Ariel  	Uranus
+	Rotational period	Synchronous
+	Geometric Albedo	0.34
+	.7 Density (g cm^-3)	1.67 +- 0.15
+	Eccentricity, e	0.0034
+	Radius (km)	581.1x577.9x577
+	Mass (10^20 kg )	13.53 +- 1.20
+	Orbital period	2.520 d
+	Semi-major axis, a (km)	191.2 (10^3)
+702	Umbriel 	Uranus
+	Density (g cm^-3)	1.40 +- 0.16
+	Geometric Albedo	0.18
+	Semi-major axis, a (km)	266.0 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	584.7  +- 2.8
+	Mass (10^20 kg )	11.72 +- 1.35
+	Eccentricity, e	0.0050
+	Orbital period	4.144 d
+703	Titania 	Uranus
+	Density (g cm^-3)	1.71 +- 0.05
+	Geometric Albedo	0.27
+	Semi-major axis, a (km)	435.8 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	788.9  +- 1.8
+	Mass (10^20 kg )	35.27 +- 0.90
+	Eccentricity, e	0.0022
+	Orbital period	8.706 d
+704	Oberon  	Uranus
+	Density (g cm^-3)	1.63 +- 0.05
+	Geometric Albedo	0.24
+	Semi-major axis, a (km)	582.6 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	761.4  +- 2.6
+	Mass (10^20 kg )	30.14 +- 0.75
+	Eccentricity, e	0.0008
+	Orbital period	13.463 d
+705	Miranda 	Uranus
+	Density (g cm^-3)	1.20 +- 0.14
+	Geometric Albedo	0.27
+	Semi-major axis, a (km)	129.8 (10^3)
+	Rotational period	Synchronous
+	Radius (km)	240x234.2x232.9
+	Mass (10^20 kg )	0.659 +- 0.075
+	Eccentricity, e	0.0027
+	Orbital period	1.413 d
+706	Cordelia 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	49.752 (10^3
+	Rotational period	
+	Radius (km)	13 +- 2
+	Mass (10^20 kg )	
+	Eccentricity, e	0.0
+	)  Orbital period	0.335033 d
+707	Ophelia  	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	53.764 (10^3
+	Rotational period	
+	Radius (km)	16 +- 2
+	Mass (10^20 kg )	
+	Eccentricity, e	0.01
+	)  Orbital period	0.376409 d
+708	Bianca  	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	59.165 (10^3
+	Rotational period	
+	Radius (km)	22 +- 3
+	Mass (10^20 kg )	
+	Eccentricity, e	0.001
+	)  Orbital period	0.434577 d
+709	Cressida 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	61.777 (10^3
+	Rotational period	
+	Radius (km)	33 +- 4
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.463570 d
+710	Desdemona 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	62.659 (10^3
+	Rotational period	
+	Radius (km)	29 +- 3
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.473651 d
+711	Juliet 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	64.358 (10^3
+	Rotational period	
+	Radius (km)	42 +- 5
+	Mass (10^20 kg )	
+	Eccentricity, e	0.001
+	)  Orbital period	0.493066 d
+712	Portia 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	66.097 (10^3
+	Rotational period	
+	Radius (km)	55 +- 6
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.513196 d
+713	Rosalind 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	69.927 (10^3
+	Rotational period	
+	Radius (km)	29 +- 4
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.558459 d
+714	Belinda 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	75.255 (10^3
+	Rotational period	
+	Radius (km)	34 +- 4
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.623525 d
+715	Puck 	Uranus
+	Density (g cm^-3)	
+	Geometric Albedo	0.07
+	Semi-major axis, a (km)	86.004 (10^3
+	Rotational period	
+	Radius (km)	77 +- 3
+	Mass (10^20 kg )	
+	Eccentricity, e	0.000
+	)  Orbital period	0.761832 d
+716	Caliban 	Uranus
+717	Sycorax 	Uranus
+718	Prospero (1999U3)  	Uranus
+719	Setebos (1999U1)  	Uranus
+720	Stephano (1999U2)  	Uranus
+721	Trinculo  	Uranus
+722	Francisco  	Uranus
+723	Margaret  	Uranus
+724	Ferdinand  	Uranus
+725	Perdita  	Uranus
+726	Mab 	Uranus
+727	Cupid 	Uranus
+799	Uranus	nil
+	Rot. rate(10^-4 rad/s)	1.012
+	Obliquity to orbit	97.86 deg
+	Hill's sphere rad., Rp	2700
+	GM 1-sigma( km^3/s^2)	+-23
+	Atmos. temp. (1 bar)	76+-2 K
+	Equat. radius (1 bar)	25559+-4 km
+	GM (km^3/s^2)	5,793,966
+	Mag.dip.mom(gauss-Rp^3)	0.23
+	Flattening	0.02293
+	Mom. of inert. I/MRo^2	0.225
+	Y factor (He/H ratio)	0.262+-.048
+	Pol. grav, gp (m/s^2)	9.19+-0.02
+	Rotation period	17.24+-0.01 hr
+	Rocky core mass (Mc/M)	0.0012
+	Mass (10^24 kg)	86.8103
+	Volumetric mean radius	25362+-12 km
+	Aroche(ice)/Rp	2.20
+	Vis. mag. (opposition)	+5.52
+	I/MRo^2 (upper bound)	0.232
+	Heat flow/mass (x10^7)	
+	Sidereal orbit period	30687.153 d
+	Visual magnitude V(1,0)	-7.19
+	Geometric albedo	0.51
+	Polar radius (km)	24973+-20
+	Equ. grav, ge (m/s^2)	8.87
+	Density (g/cm^3)	1.318
+	Mean daily motion	0.01176904 dg/d
+	Mean orbit velocity	6.8352 km/s
+	Planetary Solar Const	3.71 W/m^2
+	Escape velocity (km/s)	21.3
+	Dipole tilt/offset	58.6dg/0.3Rp
+801	Triton 	Neptune
+	Density (g cm^-3)	2.054 +-0.032
+	Geometric Albedo	0.7
+	Semi-major axis, a (km)	354.76(10^3)
+	Rotational period	Synchronous
+	Radius (km)	1352.6 +- 2.4
+	Mass (10^20 kg )	214.7 +- 0.7
+	Eccentricity, e	
+	Orbital period	5.876854 d (R)
+802	Neried 	Neptune
+803	Naiad 	Neptune
+	Density (g cm^-3)	
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	48.227(10^3)
+	Rotational period	
+	Radius (km)	29
+	Mass (10^20 kg )	
+	Eccentricity, e	0.0
+	Orbital period	0.294396 d
+804	Thalassa 	Neptune
+	Density (g cm^-3)	
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	50.075(10^3)
+	Rotational period	
+	Radius (km)	40
+	Mass (10^20 kg )	
+	Eccentricity, e	0.0
+	Orbital period	0.311485 d
+805	Despina 	Neptune
+	Density (g cm^-3)	
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	52.526(10^3)
+	Rotational period	
+	Radius (km)	74 +- 10
+	Mass (10^20 kg )	
+	Eccentricity, e	0.0
+	Orbital period	0.334655 d
+806	Galatea 	Neptune
+	Density (g cm^-3)	
+	Geometric Albedo	0.06
+	Semi-major axis, a (km)	61.953(10^3)
+	Rotational period	
+	Radius (km)	79 +- 12
+	Mass (10^20 kg )	
+	Eccentricity, e	0.0
+	Orbital period	0.428745 d
+807	Larissa  	Neptune
+	Rotational period	
+	Geometric Albedo	0.06
+	7) Density (g cm^-3)	
+	Eccentricity, e	0.0
+	Radius (km)	104 x 89 (+-
+	Mass (10^20 kg )	
+	Orbital period	0.554654 d
+	Semi-major axis, a (km)	73.548(10^3)
+808	Proteus  	Neptune
+	Rotational period	
+	01 Density (g cm^-3)	
+	Semi-major axis, a (km)	117.647(10^3)
+	Eccentricity, e	0.0
+	Radius (km)	218 x 208 x 2
+	Mass (10^20 kg )	
+	Orbital period	1.122315 d
+	Geometric Albedo	0.06
+809	Halimede 	Neptune
+810	Psamathe	Neptune
+811	Sao  	Neptune
+812	Laomedeia 	Neptune
+813	Neso    	Neptune
+814	S 2004 N1 	Neptune
+899	Neptune	nil
+	Rot. rate(10^-4 rad/s)	1.083
+	Obliquity to orbit	29.56 deg
+	Hill's sphere rad., Rp	4700
+	I/MRo^2 (upper bound)	0.239
+	Mag.dip.mom(gauss-Rp^3)	0.133
+	Equat. radius (1 bar)	24766+-15 km
+	GM (km^3/s^2)	6,835,107
+	Mom. of inert. I/MRo^2	
+	Flattening	0.0171
+	Y factor (He/H ratio)	0.235+-.040
+	Rotation period	16.11+-0.01 hr
+	Pol. grav, gp (m/s^2)	11.41+-0.03
+	Heat flow/mass (x10^7)	2 erg/gm*s
+	Rocky core mass (Mc/M)	
+	Mass (10^24 kg)	102.41
+	Atmos. temp. (1 bar)	72+-2 K
+	Aroche(ice)/Rp	2.98
+	Vis. mag. (opposition)	+7.84
+	Volumetric mean radius	24624+-21 km
+	GM 1-sigma (km^3/s^2)	+-15
+	Sidereal orbit period	60190.029 d
+	Visual magnitude V(1,0)	-6.87
+	Geometric albedo	0.41
+	Polar radius (km)	24342+-30
+	Equ. grav, ge (m/s^2)	11.15
+	Density (g/cm^3)	1.638
+	Mean daily motion	0.006020076dg/d
+	Mean orbit velocity	5.4778 km/s
+	Planetary Solar Const	1.47 W/m^2
+	Escape velocity (km/s)	23.5
+	Dipole tilt/offset	47deg/0.55Rp
+901	Charon 	Pluto
+902	Nix 	Pluto
+903	Hydra 	Pluto
+904	Kerberos 	Pluto
+905	Styx 	Pluto
+999	134340 Pluto	nil
+got unknown datas
+ FK5/J2000.0 helio. ecliptic osc. elements (AU, DAYS, DEG):
+           http://ssd.jpl.nasa.gov/sat_props.html  (physical properties)
+ Irregular retrograde moon discovered in 2003 (IAUC 8088) by S. S. Sheppard 
+ Dynamical point:
+ Jovian irregular satellite.
+ Recently discovered irregular Saturnian satellite ( < 1 km radius). IAUC 9023.
+ Irregular Neptunian satellite.
+ For MEAN orbital elements, see  http://ssd.jpl.nasa.gov/sat_elem.html
+ Solution fit to all data (incl. Cassini) available through January 2013.
+ Retrograde irregular moon of Saturn. Discovered by B. Gladman et al. 
+ Recently discovered Jovian satellite.
+ Recently discovered irregular Jovian satellite.
+ Newly discovered Neptunian satellite.
+ Fit to all available observations.
+            http://ssd.jpl.nasa.gov/sat_props.html  (physical properties)
+ Recently discovered Jovian irregular satellite.
+ Irregular Neptunian satellite trajectory.
+ Discovery announcement: IAUC 7460
+ Solution fit to all data (incl. Cassini)  available through January 2013.
+ Irregular Uranian satellite.
+ Recently recovered irregular Jovian satellite, now with 11 year data-arc.
+ Newly discovered irregular Saturnian satellite.
+ Irregular Jovian satellite reported by S.S. Sheppard (Univ.  of Hawaii). 
+ Solution based on all data (incl. Cassini) reported through January 2013. 
+ Newly discovered satellite of Pluto. Fit to all available observations.
+ Recently discovered Saturnian irregular.

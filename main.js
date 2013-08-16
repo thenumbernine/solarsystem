@@ -468,7 +468,11 @@ Planets = makeClass({
 		- name
 		- mass (kg)
 		- inverseFlattening (?)
-		- radius (m)	sun: photosphere radius; jupiter, saturn, uranus, neptune: volumetric mean radius; moon, pluto: only radius; all else: mean radius
+		- radius (m)
+			sun: photosphere radius
+			jupiter, saturn, uranus, neptune: volumetric mean radius
+			moon, pluto: radius
+			all else: mean radius
 		we have a few options for the radius
 		- equatorial radius (m)
 		- radius (m)			<- for the sun: the photosphere radius
