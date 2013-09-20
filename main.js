@@ -1795,101 +1795,6 @@ function init3() {
 }
 
 function init4() {
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-		var planet = planets[planetIndex];
-		var planetClassPrototype = planet.init.prototype;
-
-		/*
-		gravity wells
-	
-		calculate spacetime embedding radius
-		  for radial distance r, radius R, Schwarzschild radius Rs 
-		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
-		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
-		*/
-		var R = planetClassPrototype.radius;
-		var Rs = planetClassPrototype.schwarzschildRadius;
-		var R_Rs = R / Rs;
-		var Rs_R = Rs / R;
-		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-		var gravWellVtxs = [0,0,-planetClassPrototype.radius];
-		var gravWellIndexes = [];
-		var rimax = 200;
-		var thimax = 60;
-		var zmin = undefined;
-		var zmax = undefined;
-		for (var ri = 1; ri < rimax; ++ri) {
-			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
-			
-			var z;
-			if (r <= R) {
-				var r_R = r / R;
-				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
-			} else {
-				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
-					+ Math.sqrt(4 * Rs * (r - Rs))
-					- Math.sqrt(4 * Rs * (R - Rs));
-			}
-			if (zmin === undefined || z < zmin) zmin = z;
-			if (zmax === undefined || z > zmax) zmax = z;
-
-//scale for visual effect
-//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
-z *= 2000;							//too flat for earth, too sharp for sun
-//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
-
-//align bottom of gravity well with bottom of planet
-z -= planetClassPrototype.radius;
-
-			for (var thi = 0; thi < thimax; ++thi) {
-				var th = 2 * Math.PI * thi / thimax;
-		
-				var x = r * Math.cos(th);
-				var y = r * Math.sin(th);
-				
-				//it would be great to include influences of other planets' gravity wells ...
-				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
-				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
-				// from there, take samples based on radial distance within that plane between planets ...
-				// I could remap planes on a per-planet basis depending on which you are orbitting ...
-				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
-				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
-				gravWellVtxs.push(x);
-				gravWellVtxs.push(y);
-				gravWellVtxs.push(z);
-	
-				if (ri == 1) {
-					gravWellIndexes.push(0);
-					gravWellIndexes.push(1 + thi + thimax * (ri-1));
-				}
-				if (ri < rimax-1) {
-					gravWellIndexes.push(1 + thi + thimax * (ri-1));
-					gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
-				}
-				gravWellIndexes.push(1 + thi + thimax * (ri-1));
-				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
-			}
-		}
-		planetClassPrototype.gravWellObj = new GL.SceneObject({
-			mode : gl.LINES,
-			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
-			shader : colorShader,
-			attrs : {
-				vertex : new GL.ArrayBuffer({data:gravWellVtxs})
-			},
-			uniforms : {
-				color : [1,1,1,.2]
-			},
-			//useDepth : false,
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-			pos : [0,0,0],
-			angle : [0,0,0,1],
-			static : false,
-			parent : null
-		});
-	}
-
-
 	/* this is helper for the orbit generations
 	 * i should be calculating this myself!
 										Sidereal period (yr)		Synodic period (yr)	Synodic period (d)
@@ -1938,51 +1843,88 @@ z -= planetClassPrototype.radius;
 		var planetClassPrototype = planet.init.prototype;
 
 
-	//integration code -- can move it outside the for loop if you dont want separate integrations per body
+		//integration code -- can move it outside the for loop if you dont want separate integrations per body
 
-	var integrationStepInDays = 3;
-	var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
-	var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
-	
-	//integrate orbits for a year? track positions
-	var history = [];
-	var intPlanets = planets.clone();
-	var t = 0;
-	for (var i = 0; i < numIntSteps; ++i) {
-		//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
-		intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
-		t += dt;
-		history.push(intPlanets);	//add future
-	}
-	var intPlanets = planets.clone();
-	history.splice(0, 0, intPlanets);	//add present
-	var t = 0;
-	for (var i = 0; i < numIntSteps; ++i) {
-		intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
-		t -= dt;
-		history.splice(0, 0, intPlanets);	//add past
-	}
+		var integrationStepInDays = 3;
+		var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
+		var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
+		
+		//integrate orbits for a year? track positions
+		var history = [];
+		var intPlanets = planets.clone();
+		var t = 0;
+		for (var i = 0; i < numIntSteps; ++i) {
+			//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
+			intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
+			t += dt;
+			history.push(intPlanets);	//add future
+		}
+		var intPlanets = planets.clone();
+		history.splice(0, 0, intPlanets);	//add present
+		var t = 0;
+		for (var i = 0; i < numIntSteps; ++i) {
+			intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
+			t -= dt;
+			history.splice(0, 0, intPlanets);	//add past
+		}
 
-	var orbitLineShader = new GL.ShaderProgram({
-		vertexPrecision : 'best',
-		vertexCodeID : 'orbit-vsh',
-		fragmentPrecision : 'best',
-		fragmentCodeID : 'orbit-fsh'
-	});
+		var orbitLineShader = new GL.ShaderProgram({
+			vertexPrecision : 'best',
+			vertexCodeID : 'orbit-vsh',
+			fragmentPrecision : 'best',
+			fragmentCodeID : 'orbit-fsh'
+		});
 
-	//end planet integration code
+		//end planet integration code
 
+		var avgPos = vec3.create();
 
 		var vertexes = [];
 		//extract lines
 		for (var i = 0; i < history.length; ++i) {
-			vertexes.push(history[i][planetIndex].pos[0]);
-			vertexes.push(history[i][planetIndex].pos[1]);
-			vertexes.push(history[i][planetIndex].pos[2]);
+			var planetPos = history[i][planetIndex].pos;
+		
+			//add to buffer
+			vertexes.push(planetPos[0]);
+			vertexes.push(planetPos[1]);
+			vertexes.push(planetPos[2]);
+		
+			//keep track of all vertexes
+			//(so we can calculate arm from center to position, cross with tangent, and get the axis...
+			// I figure that's more numerically accurate than crossing the tangent with its derivative,
+			// since the vertex-to-center vector should approximate the (ever so small) tangent derivative)
+			vec3.add(avgPos, avgPos, planetPos);
+
 			//pack transparency info into the vertex
 			var alpha = 1 - Math.abs(2 * i / (history.length-1) - 1);
 			vertexes.push(alpha);
 		}
+		vec3.scale(avgPos, avgPos, 1/history.length);
+
+		//now calculate the approximate axis of orbit
+		var avgAxis = vec3.create();
+		for (var i = 0; i < history.length-1; ++i) {
+			var planetPos = history[i][planetIndex].pos;
+			var planetNextPos = history[i+1][planetIndex].pos;
+			
+			var posToCenterDir = vec3.create();
+			vec3.sub(posToCenterDir, avgPos, planetPos);
+			vec3.normalize(posToCenterDir, posToCenterDir);
+			
+			var tangent = vec3.create();
+			vec3.sub(tangent, planetNextPos, planetPos);
+			vec3.normalize(tangent, tangent);
+
+			var axis = vec3.create();
+			vec3.cross(axis, tangent, posToCenterDir);
+			vec3.normalize(axis, axis);
+
+			vec3.add(avgAxis, avgAxis, axis);
+		}
+		vec3.normalize(avgAxis, avgAxis);
+
+		//...and store it
+		planetClassPrototype.orbitAxis = avgAxis;
 
 		planetClassPrototype.orbitLineObj = new GL.SceneObject({
 			mode : gl.LINE_STRIP,
@@ -2000,6 +1942,152 @@ z -= planetClassPrototype.radius;
 			static : false 
 		});
 	}
+
+
+	//provided z, calculate x and y such that x,y,z form a basis
+	var calcBasis = function(x,y,z) {
+		var cx = vec3.create();
+		var cy = vec3.create();
+		var cz = vec3.create();
+		vec3.cross(cx, z, [1,0,0]);
+		vec3.cross(cy, z, [0,1,0]);
+		vec3.cross(cz, z, [0,0,1]);
+		var lx = vec3.length(cx);
+		var ly = vec3.length(cy);
+		var lz = vec3.length(cz);
+		if (lx < ly) {
+			if (lx < lz) {	//x is smallest
+				vec3.copy(x, cy);
+				vec3.copy(y, cz);
+			} else {		//z is smallest
+				vec3.copy(x, cx);
+				vec3.copy(y, cy);
+			}
+		} else {
+			if (ly < lz) {	//y is smallest
+				vec3.copy(x, cz);
+				vec3.copy(y, cx);
+			} else {		//z is smallest
+				vec3.copy(x, cx);
+				vec3.copy(y, cy);
+			}
+		}
+		vec3.normalize(x,x);
+		vec3.normalize(y,y);
+	};
+
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+		
+		var basisX = vec3.create();
+		var basisY = vec3.create();
+		var basisZ = planetClassPrototype.orbitAxis;
+		calcBasis(basisX, basisY, basisZ);
+
+		/*
+		gravity wells
+	
+		calculate spacetime embedding radius
+		  for radial distance r, radius R, Schwarzschild radius Rs 
+		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
+		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
+		*/
+		var R = planetClassPrototype.radius;
+		var Rs = planetClassPrototype.schwarzschildRadius;
+		var R_Rs = R / Rs;
+		var Rs_R = Rs / R;
+		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+		
+		var gravWellVtxs = [0,0,-planetClassPrototype.radius];
+		var gravWellIndexes = [];
+		
+		var rimax = 200;
+		var thimax = 60;
+		
+		var zmin = undefined;
+		var zmax = undefined;
+		for (var ri = 1; ri < rimax; ++ri) {
+			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
+			
+			var z;
+			if (r <= R) {
+				var r_R = r / R;
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
+			} else {
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
+					+ Math.sqrt(4 * Rs * (r - Rs))
+					- Math.sqrt(4 * Rs * (R - Rs));
+			}
+			if (zmin === undefined || z < zmin) zmin = z;
+			if (zmax === undefined || z > zmax) zmax = z;
+			
+//scale for visual effect
+//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
+z *= 2000;							//too flat for earth, too sharp for sun
+//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
+
+//align bottom of gravity well with bottom of planet
+z -= planetClassPrototype.radius;
+
+		
+			for (var thi = 0; thi < thimax; ++thi) {
+				var th = 2 * Math.PI * thi / thimax;
+		
+				var x = r * Math.cos(th);
+				var y = r * Math.sin(th);
+				
+				//it would be great to include influences of other planets' gravity wells ...
+				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
+				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
+				// from there, take samples based on radial distance within that plane between planets ...
+				// I could remap planes on a per-planet basis depending on which you are orbitting ...
+				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
+				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
+				//TODO also: recalculate the gravity well mesh when the planets change, to watch it in realtime	
+				var transformedX = x * basisX[0] + y * basisY[0] + z * basisZ[0];
+				var transformedY = x * basisX[1] + y * basisY[1] + z * basisZ[1];
+				var transformedZ = x * basisX[2] + y * basisY[2] + z * basisZ[2];
+
+				gravWellVtxs.push(transformedX);
+				gravWellVtxs.push(transformedY);
+				gravWellVtxs.push(transformedZ);
+	
+				if (ri == 1) {
+					gravWellIndexes.push(0);
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				}
+				if (ri < rimax-1) {
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+					gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
+				}
+				gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
+			}
+		}
+		planetClassPrototype.gravWellObj = new GL.SceneObject({
+			mode : gl.LINES,
+			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
+			shader : colorShader,
+			attrs : {
+				vertex : new GL.ArrayBuffer({data:gravWellVtxs})
+			},
+			uniforms : {
+				color : [1,1,1,.2]
+			},
+			//useDepth : false,
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			static : false,
+			parent : null
+		});
+	}
+
+
+
+
+
 
 	var skyTex = new GL.TextureCube({
 		flipY : true,
