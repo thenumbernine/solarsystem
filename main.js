@@ -1,37 +1,65 @@
 
 //provided z, calculate x and y such that x,y,z form a basis
 var calcBasis = function(x,y,z) {
-	var cx = vec3.create();
-	var cy = vec3.create();
-	var cz = vec3.create();
-	vec3.cross(cx, z, [1,0,0]);
-	vec3.cross(cy, z, [0,1,0]);
-	vec3.cross(cz, z, [0,0,1]);
-	var lx = vec3.length(cx);
-	var ly = vec3.length(cy);
-	var lz = vec3.length(cz);
+	var cxx = 0;
+	var cxy = z[2];
+	var cxz = -z[1];
+	var cyx = -z[2];
+	var cyy = 0;
+	var cyz = z[0];
+	var czx = z[1];
+	var czy = -z[0];
+	var czz = 0;
+	var lx = Math.sqrt(cxy * cxy + cxz * cxz);
+	var ly = Math.sqrt(cyx * cyx + cyz * cyz);
+	var lz = Math.sqrt(czx * czx + czy * czy);
 	if (lx < ly) {
 		if (lx < lz) {	//x is smallest
-			vec3.copy(x, cy);
-			vec3.copy(y, cz);
+			x[0] = cyx;
+			x[1] = cyy;
+			x[2] = cyz;
+			y[0] = czx;
+			y[1] = czy;
+			y[2] = czz;
 		} else {		//z is smallest
-			vec3.copy(x, cx);
-			vec3.copy(y, cy);
+			x[0] = cxx;
+			x[1] = cxy;
+			x[2] = cxz;
+			y[0] = cyx;
+			y[1] = cyy;
+			y[2] = cyz;
 		}
 	} else {
 		if (ly < lz) {	//y is smallest
-			vec3.copy(x, cz);
-			vec3.copy(y, cx);
+			x[0] = czx;
+			x[1] = czy;
+			x[2] = czz;
+			y[0] = cxx;
+			y[1] = cxy;
+			y[2] = cxz;
 		} else {		//z is smallest
-			vec3.copy(x, cx);
-			vec3.copy(y, cy);
+			x[0] = cxx;
+			x[1] = cxy;
+			x[2] = cxz;
+			y[0] = cyx;
+			y[1] = cyy;
+			y[2] = cyz;
 		}
 	}
-	vec3.normalize(x,x);
-	vec3.normalize(y,y);
+	var xLen = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+	x[0] /= xLen; x[1] /= xLen; x[2] /= xLen;
+	var yLen = Math.sqrt(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
+	y[0] /= yLen; y[1] /= yLen; y[2] /= yLen;
 };
 
-
+//out = a^T * v
+vec3.transformMat3Tr = function(out, v, a) {
+	var x = a[0] * v[0] + a[1] * v[1] + a[2] * v[2];
+	var y = a[3] * v[0] + a[4] * v[1] + a[5] * v[2];
+	out[2] = a[6] * v[0] + a[7] * v[1] + a[8] * v[2];
+	out[0] = x;
+	out[1] = y;
+}
 
 // with a little help from
 // http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
@@ -1291,12 +1319,66 @@ var drawScene;
 		}
 
 		if (showGravityWell) {
+			//do transformation math in double
+			//TODO just give gl-matrix a type param in its init
+			var glMvMat = [];
+			var viewAngleInvd = [];
+			quat.conjugate(viewAngleInvd, GL.view.angle);
+			quat.normalize(viewAngleInvd, viewAngleInvd);	//normalize in double precision
+			mat4.fromQuat(glMvMat, viewAngleInvd);
+			var viewPosInvd = [];
+			vec3.negate(viewPosInvd, GL.view.pos);
+			mat4.translate(glMvMat, glMvMat, viewPosInvd);
+			
+			var orbitBasis = [];
+			var orbitBasisInv = [];
+			var mvMat = [];
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				mat4.identity(orbitBasis);
+				mat4.identity(orbitBasisInv);
+				for (var i = 0; i < 16; ++i) {
+					mvMat[i] = glMvMat[i];
+				}
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				planet.gravWellObj.pos[0] = planet.sceneObj.pos[0];
-				planet.gravWellObj.pos[1] = planet.sceneObj.pos[1];
-				planet.gravWellObj.pos[2] = planet.sceneObj.pos[2];
+				for (var i = 0; i < 3; ++i) {
+					orbitBasis[i] = planetClassPrototype.orbitBasis[0][i];
+					orbitBasis[4+i] = planetClassPrototype.orbitBasis[1][i];
+					orbitBasis[8+i] = planetClassPrototype.orbitBasis[2][i];
+				}
+				//gravWellObjBasis = orbitBasis * zScale * zOffsetByRadius * orbitBasis^-1 * planetPosBasis
+				
+				//translate to planet center
+				mat4.translate(mvMat, mvMat, planet.sceneObj.pos);
+				
+				//align gravity well with orbit plane
+				mat4.multiply(mvMat, mvMat, orbitBasis);
+				
+				//align base gravity well with base of planet
+				mat4.translate(mvMat, mvMat, [0,0,-planet.radius]);
+				
+				//scale for visual effect
+				//too flat for earth, too sharp for sun			
+				//var zScale = 2000;
+				//causes larger wells to be much smaller and sharper ...
+				//var zScale = 2000000 * Math.log(1 + z);
+				//normalized visually per-planet.  scale is not 1-1 across planets			
+				var R = planets[orbitPlanetIndex].radius;
+				var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
+				var R_Rs = R / Rs;
+				var Rs_R = Rs / R;
+				var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+				var zScale = planets[orbitPlanetIndex].radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));
+				mat4.scale(mvMat, mvMat, [1,1,zScale]);
+
+				//apply orbit basis inverse
+				mat4.transpose(orbitBasisInv, orbitBasis);
+				mat4.multiply(mvMat, mvMat, orbitBasisInv);
+			
+				for (var i = 0; i < 16; ++i) {
+					planet.gravWellObj.uniforms.mvMat[i] = mvMat[i];
+				}
+
 				planet.gravWellObj.draw();
 			}
 		}
@@ -1708,7 +1790,7 @@ function init3() {
 		var color = colors[planet.name];
 		planetClassPrototype.color = [color[0], color[1], color[2], 1];
 		planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
-		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
+		planetClassPrototype.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
 	
 		var checkDone = function() {
 			var triIndexArray = [];
@@ -1911,7 +1993,9 @@ function init4() {
 
 		//end planet integration code
 
-		var avgPos = vec3.create();
+		var avgPosX = 0;
+		var avgPosY = 0;
+		var avgPosZ = 0;
 
 		var vertexes = [];
 		//extract lines
@@ -1927,35 +2011,48 @@ function init4() {
 			//(so we can calculate arm from center to position, cross with tangent, and get the axis...
 			// I figure that's more numerically accurate than crossing the tangent with its derivative,
 			// since the vertex-to-center vector should approximate the (ever so small) tangent derivative)
-			vec3.add(avgPos, avgPos, planetPos);
+			avgPosX += planetPos[0];
+			avgPosY += planetPos[1];
+			avgPosZ += planetPos[2];
 
 			//pack transparency info into the vertex
 			var alpha = 1 - Math.abs(2 * i / (history.length-1) - 1);
 			vertexes.push(alpha);
 		}
-		vec3.scale(avgPos, avgPos, 1/history.length);
+		avgPosX /= history.length;
+		avgPosY /= history.length;
+		avgPosZ /= history.length;
 
 		//now calculate the approximate axis of orbit
-		var avgAxis = vec3.create();
+		var avgAxis = [0,0,0];
 		for (var i = 0; i < history.length-1; ++i) {
 			var planetPos = history[i][planetIndex].pos;
 			var planetNextPos = history[i+1][planetIndex].pos;
 			
-			var posToCenterDir = vec3.create();
-			vec3.sub(posToCenterDir, avgPos, planetPos);
-			vec3.normalize(posToCenterDir, posToCenterDir);
-			
-			var tangent = vec3.create();
-			vec3.sub(tangent, planetNextPos, planetPos);
-			vec3.normalize(tangent, tangent);
+			var posToCenterDirX = avgPosX - planetPos[0];
+			var posToCenterDirY = avgPosY - planetPos[1];
+			var posToCenterDirZ = avgPosZ - planetPos[2];
+		
+			var tangentX = planetNextPos[0] - planetPos[0];
+			var tangentY = planetNextPos[1] - planetPos[1];
+			var tangentZ = planetNextPos[2] - planetPos[2];
 
-			var axis = vec3.create();
-			vec3.cross(axis, tangent, posToCenterDir);
-			vec3.normalize(axis, axis);
+			var axisX = tangentY * posToCenterDirZ - tangentZ * posToCenterDirY;
+			var axisY = tangentZ * posToCenterDirX - tangentX * posToCenterDirZ;
+			var axisZ = tangentX * posToCenterDirY - tangentY * posToCenterDirX;
+			var axisLen = Math.sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ);
+			axisX /= axisLen;
+			axisY /= axisLen;
+			axisZ /= axisLen;
 
-			vec3.add(avgAxis, avgAxis, axis);
+			avgAxis[0] += axisX;
+			avgAxis[1] += axisY;
+			avgAxis[2] += axisZ;
 		}
-		vec3.normalize(avgAxis, avgAxis);
+		var avgAxisLen = Math.sqrt(avgAxis[0] * avgAxis[0] + avgAxis[1] * avgAxis[1] + avgAxis[2] * avgAxis[2]);
+		avgAxis[0] /= avgAxisLen;
+		avgAxis[1] /= avgAxisLen;
+		avgAxis[2] /= avgAxisLen;
 
 		//...and store it
 		planetClassPrototype.orbitAxis = avgAxis;
@@ -1981,17 +2078,12 @@ function init4() {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
 		
-		var basisX = vec3.create();
-		var basisY = vec3.create();
+		var basisX = [0,0,0];
+		var basisY = [0,0,0];
 		var basisZ = planetClassPrototype.orbitAxis;
 		calcBasis(basisX, basisY, basisZ);
-		var m = mat3.create();
-		for (var i = 0; i < 3; ++i) {
-			m[0+i] = basisX[i];
-			m[3+i] = basisY[i];
-			m[6+i] = basisZ[i];
-		}
-		var v = vec3.create();
+		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
+		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
 
 		/*
 		gravity wells
@@ -2006,10 +2098,10 @@ function init4() {
 		var R_Rs = R / Rs;
 		var Rs_R = Rs / R;
 		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-	
-		vec3.set(v, 0, 0, -planetClassPrototype.radius);
-		vec3.transformMat3(v, v, m);
-		var gravWellVtxs = [v[0], v[1], v[2]];
+
+		//populate first vertex
+		var gravWellVtxs = [0,0,0];
+		
 		var gravWellIndexes = [];
 		
 		var rimax = 200;
@@ -2032,15 +2124,6 @@ function init4() {
 			if (zmin === undefined || z < zmin) zmin = z;
 			if (zmax === undefined || z > zmax) zmax = z;
 			
-//scale for visual effect
-//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
-z *= 2000;							//too flat for earth, too sharp for sun
-//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
-
-//align bottom of gravity well with bottom of planet
-z -= planetClassPrototype.radius;
-
-		
 			for (var thi = 0; thi < thimax; ++thi) {
 				var th = 2 * Math.PI * thi / thimax;
 		
@@ -2055,12 +2138,10 @@ z -= planetClassPrototype.radius;
 				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
 				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
 				//TODO also: recalculate the gravity well mesh when the planets change, to watch it in realtime	
-				vec3.set(v, x, y, z); 
-				vec3.transformMat3(v, v, m);
 
-				gravWellVtxs.push(v[0]);
-				gravWellVtxs.push(v[1]);
-				gravWellVtxs.push(v[2]);
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][0] + y * planetClassPrototype.orbitBasis[1][0] + z * planetClassPrototype.orbitBasis[2][0]);
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][1] + y * planetClassPrototype.orbitBasis[1][1] + z * planetClassPrototype.orbitBasis[2][1]);
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][2] + y * planetClassPrototype.orbitBasis[1][2] + z * planetClassPrototype.orbitBasis[2][2]);
 	
 				if (ri == 1) {
 					gravWellIndexes.push(0);
@@ -2086,16 +2167,16 @@ z -= planetClassPrototype.radius;
 			},
 			//useDepth : false,
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-			pos : [0,0,0],
-			angle : [0,0,0,1],
-			static : false,
 			parent : null
 		});
+		//scenegraph is a mess
+		//static objects have mvMat pointed to GL.mvMat
+		//but dynamic objects only give control over position and angle
+		//!static implies creating the object's matrices, but !static also implies overwriting them every draw call...
+		planetClassPrototype.localMat = mat4.create();
+		planetClassPrototype.gravWellObj.mvMat = mat4.create();
+		planetClassPrototype.gravWellObj.uniforms.mvMat = planetClassPrototype.gravWellObj.mvMat;
 	}
-
-
-
-
 
 
 	var skyTex = new GL.TextureCube({
