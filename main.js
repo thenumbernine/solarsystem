@@ -1,3 +1,38 @@
+
+//provided z, calculate x and y such that x,y,z form a basis
+var calcBasis = function(x,y,z) {
+	var cx = vec3.create();
+	var cy = vec3.create();
+	var cz = vec3.create();
+	vec3.cross(cx, z, [1,0,0]);
+	vec3.cross(cy, z, [0,1,0]);
+	vec3.cross(cz, z, [0,0,1]);
+	var lx = vec3.length(cx);
+	var ly = vec3.length(cy);
+	var lz = vec3.length(cz);
+	if (lx < ly) {
+		if (lx < lz) {	//x is smallest
+			vec3.copy(x, cy);
+			vec3.copy(y, cz);
+		} else {		//z is smallest
+			vec3.copy(x, cx);
+			vec3.copy(y, cy);
+		}
+	} else {
+		if (ly < lz) {	//y is smallest
+			vec3.copy(x, cz);
+			vec3.copy(y, cx);
+		} else {		//z is smallest
+			vec3.copy(x, cx);
+			vec3.copy(y, cy);
+		}
+	}
+	vec3.normalize(x,x);
+	vec3.normalize(y,y);
+};
+
+
+
 // with a little help from
 // http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
 // ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/jpl_eph.cc
@@ -639,7 +674,6 @@ var skyTexFilenames = [
 
 var glMaxCubeMapTextureSize;
 
-
 var speedOfLight = 299792458;	// m/s
 var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
 
@@ -1263,10 +1297,6 @@ var drawScene;
 				planet.gravWellObj.pos[0] = planet.sceneObj.pos[0];
 				planet.gravWellObj.pos[1] = planet.sceneObj.pos[1];
 				planet.gravWellObj.pos[2] = planet.sceneObj.pos[2];
-				planet.gravWellObj.angle[0] = planet.sceneObj.angle[0];
-				planet.gravWellObj.angle[1] = planet.sceneObj.angle[1];
-				planet.gravWellObj.angle[2] = planet.sceneObj.angle[2];
-				planet.gravWellObj.angle[3] = planet.sceneObj.angle[3];
 				planet.gravWellObj.draw();
 			}
 		}
@@ -1946,40 +1976,7 @@ function init4() {
 			static : false 
 		});
 	}
-
-
-	//provided z, calculate x and y such that x,y,z form a basis
-	var calcBasis = function(x,y,z) {
-		var cx = vec3.create();
-		var cy = vec3.create();
-		var cz = vec3.create();
-		vec3.cross(cx, z, [1,0,0]);
-		vec3.cross(cy, z, [0,1,0]);
-		vec3.cross(cz, z, [0,0,1]);
-		var lx = vec3.length(cx);
-		var ly = vec3.length(cy);
-		var lz = vec3.length(cz);
-		if (lx < ly) {
-			if (lx < lz) {	//x is smallest
-				vec3.copy(x, cy);
-				vec3.copy(y, cz);
-			} else {		//z is smallest
-				vec3.copy(x, cx);
-				vec3.copy(y, cy);
-			}
-		} else {
-			if (ly < lz) {	//y is smallest
-				vec3.copy(x, cz);
-				vec3.copy(y, cx);
-			} else {		//z is smallest
-				vec3.copy(x, cx);
-				vec3.copy(y, cy);
-			}
-		}
-		vec3.normalize(x,x);
-		vec3.normalize(y,y);
-	};
-
+	
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
@@ -1988,6 +1985,13 @@ function init4() {
 		var basisY = vec3.create();
 		var basisZ = planetClassPrototype.orbitAxis;
 		calcBasis(basisX, basisY, basisZ);
+		var m = mat3.create();
+		for (var i = 0; i < 3; ++i) {
+			m[0+i] = basisX[i];
+			m[3+i] = basisY[i];
+			m[6+i] = basisZ[i];
+		}
+		var v = vec3.create();
 
 		/*
 		gravity wells
@@ -2002,8 +2006,10 @@ function init4() {
 		var R_Rs = R / Rs;
 		var Rs_R = Rs / R;
 		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-		
-		var gravWellVtxs = [0,0,-planetClassPrototype.radius];
+	
+		vec3.set(v, 0, 0, -planetClassPrototype.radius);
+		vec3.transformMat3(v, v, m);
+		var gravWellVtxs = [v[0], v[1], v[2]];
 		var gravWellIndexes = [];
 		
 		var rimax = 200;
@@ -2049,13 +2055,12 @@ z -= planetClassPrototype.radius;
 				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
 				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
 				//TODO also: recalculate the gravity well mesh when the planets change, to watch it in realtime	
-				var transformedX = x * basisX[0] + y * basisY[0] + z * basisZ[0];
-				var transformedY = x * basisX[1] + y * basisY[1] + z * basisZ[1];
-				var transformedZ = x * basisX[2] + y * basisY[2] + z * basisZ[2];
+				vec3.set(v, x, y, z); 
+				vec3.transformMat3(v, v, m);
 
-				gravWellVtxs.push(transformedX);
-				gravWellVtxs.push(transformedY);
-				gravWellVtxs.push(transformedZ);
+				gravWellVtxs.push(v[0]);
+				gravWellVtxs.push(v[1]);
+				gravWellVtxs.push(v[2]);
 	
 				if (ri == 1) {
 					gravWellIndexes.push(0);
