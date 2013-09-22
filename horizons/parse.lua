@@ -4,6 +4,7 @@ but not smart enough to save the data in individual files per-object
 oh well, here I will attempt to split the data out of the one big file
 --]]
 require 'ext'
+local json = require 'dkjson'
 
 local data = io.readfile('horizons.txt'):trim()
 data = data:gsub('\r\n', '\n'):gsub('\r', '\n')
@@ -112,10 +113,18 @@ xpcall(function()
 					unknownDatas[nextline] = true
 				end
 			end
+			table.insert(db, {
+				id=id,
+				name=name,
+				parent=parent,
+				vars=vars,
+			})
+			--[[
 			print(id, name, parent)
 			for k,v in pairs(vars) do
 				print('',k,v)
 			end
+			--]]
 		else
 			getline()
 		end
@@ -125,8 +134,11 @@ end, function(err)
 	io.stderr:write(err..'\n'..debug.traceback()..'\n')
 end)
 
+--[[
 print('got unknown datas')
 for line,_ in pairs(unknownDatas) do
 	print(line)
 end
+--]]
 
+print(json.encode(db))
