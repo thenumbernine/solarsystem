@@ -1091,7 +1091,11 @@ var planetInfluences = [];
 var showLinesToOtherPlanets = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
+var showDistantPoints = true;
 var showOrbits = true;
+var gravityWellScaleNormalized = true;
+var gravityWellScaleFixed = false;
+var gravityWellScaleFixedValue = 2000;
 
 var hoverPlanetText;
 var orbitPlanetText;
@@ -1218,6 +1222,8 @@ var updatePlanetClassSceneObj;
 })();
 
 var drawScene;
+var zScale = 1;
+var targetZScale = 1;
 (function(){
 	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
@@ -1251,6 +1257,7 @@ var drawScene;
 						delta[0] = planet.pos[0] - orbitPlanet.pos[0];
 						delta[1] = planet.pos[1] - orbitPlanet.pos[1];
 						delta[2] = planet.pos[2] - orbitPlanet.pos[2];
+						
 						var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
 						delta[0] /= dist;
 						delta[1] /= dist;
@@ -1301,7 +1308,7 @@ var drawScene;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 
-			if (planet.visRatio >= .005) {
+			if (planet.visRatio >= .005 || !showDistantPoints) {
 				updatePlanetClassSceneObj(planet);
 				planet.sceneObj.draw();
 			
@@ -1359,16 +1366,17 @@ var drawScene;
 				
 				//scale for visual effect
 				//too flat for earth, too sharp for sun			
-				//var zScale = 2000;
-				//causes larger wells to be much smaller and sharper ...
-				//var zScale = 2000000 * Math.log(1 + z);
-				//normalized visually per-planet.  scale is not 1-1 across planets			
-				var R = planets[orbitPlanetIndex].radius;
-				var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
-				var R_Rs = R / Rs;
-				var Rs_R = Rs / R;
-				var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-				var zScale = planets[orbitPlanetIndex].radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));
+				if (gravityWellScaleFixed) {
+					targetZScale = gravityWellScaleFixedValue;
+				} else if (gravityWellScaleNormalized) {
+					//causes larger wells to be much smaller and sharper ...
+					//var targetZScale = 2000000 * Math.log(1 + z);
+					//normalized visually per-planet.  scale is not 1-1 across planets			
+					var R = planets[orbitPlanetIndex].radius;
+					var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
+					targetZScale = 1 / (Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1));
+				}
+				zScale += .01 * (targetZScale - zScale); 
 				mat4.scale(mvMat, mvMat, [1,1,zScale]);
 
 				//apply orbit basis inverse
@@ -1388,7 +1396,7 @@ var drawScene;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			
-			if (planet.visRatio < .005) {
+			if (planet.visRatio < .005 && showDistantPoints) {
 				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
 				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
@@ -1459,8 +1467,25 @@ function invalidateForces() {
 	}
 }
 
+var unitsPerM = [
+	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
+	{name:'lyr', 	value:9460730472580800},
+	{name:'AU', 	value:149597870700},
+	{name:'km',		value:1000},
+	{name:'m',		value:1}
+];
 function refreshOrbitTargetDistanceText() {
-	orbitTargetDistanceText.text(orbitTargetDistance.toExponential()+' m');
+	var units = 'm';
+	var dist = orbitTargetDistance; 
+	for (var i = 0; i < unitsPerM.length; ++i) {
+		var ratio = orbitTargetDistance / unitsPerM[i].value;
+		if (ratio > .1 || i == unitsPerM[i].length-1) {
+			units = unitsPerM[i].name;
+			dist = ratio;
+			break;
+		}
+	}
+	orbitTargetDistanceText.text(dist.toExponential()+' '+units);
 }
 
 function refreshCurrentTimeText() {
@@ -1540,6 +1565,7 @@ function init1() {
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
 			type : 'radio',
+			name : 'displayMethods',
 			value : displayMethodIndex,
 			click : function() {
 				displayMethod = thisDisplayMethod;
@@ -1579,13 +1605,31 @@ function init1() {
 		'showLinesToOtherPlanets',
 		'showLatAndLonLines',
 		'showGravityWell',
-		'showOrbits'
+		'showOrbits',
+		'showDistantPoints',
+		'gravityWellScaleNormalized',
+		'gravityWellScaleFixed'
 	], function(_, toggle) {
 		(function(){
 			var checkbox = $('#'+toggle);
 			if (window[toggle]) checkbox.attr('checked', 'checked');
 			checkbox.change(function() {
 				window[toggle] = checkbox.is(':checked');
+				//TODO generalize for radios?
+				if (toggle == 'gravityWellScaleNormalized' && gravityWellScaleNormalized) gravityWellScaleFixed = false;
+				if (toggle == 'gravityWellScaleFixed' && gravityWellScaleFixed) gravityWellScaleNormalized = false;
+			});
+		})();
+	});
+
+	$.each([
+		'gravityWellScaleFixedValue'
+	], function(_, toggle) {
+		(function(){
+			var textfield = $('#'+toggle);
+			textfield.val(window[toggle]);
+			textfield.change(function() {
+				window[toggle] = textfield.val();
 			});
 		})();
 	});
@@ -1984,7 +2028,7 @@ function init4() {
 			history.splice(0, 0, intPlanets);	//add past
 		}
 
-		var orbitLineShader = new GL.ShaderProgram({
+		var orbitShader = new GL.ShaderProgram({
 			vertexPrecision : 'best',
 			vertexCodeID : 'orbit-vsh',
 			fragmentPrecision : 'best',
@@ -2059,7 +2103,7 @@ function init4() {
 
 		planetClassPrototype.orbitLineObj = new GL.SceneObject({
 			mode : gl.LINE_STRIP,
-			shader : orbitLineShader,
+			shader : orbitShader,
 			attrs : {
 				vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
 			},
@@ -2100,7 +2144,7 @@ function init4() {
 		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
 
 		//populate first vertex
-		var gravWellVtxs = [0,0,0];
+		var gravWellVtxs = [0,0,0,1];
 		
 		var gravWellIndexes = [];
 		
@@ -2142,7 +2186,9 @@ function init4() {
 				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][0] + y * planetClassPrototype.orbitBasis[1][0] + z * planetClassPrototype.orbitBasis[2][0]);
 				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][1] + y * planetClassPrototype.orbitBasis[1][1] + z * planetClassPrototype.orbitBasis[2][1]);
 				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][2] + y * planetClassPrototype.orbitBasis[1][2] + z * planetClassPrototype.orbitBasis[2][2]);
-	
+				var tau = ri/(rimax-1);
+				gravWellVtxs.push(1 - tau * tau * tau * tau * tau * tau * tau * tau);
+
 				if (ri == 1) {
 					gravWellIndexes.push(0);
 					gravWellIndexes.push(1 + thi + thimax * (ri-1));
@@ -2158,9 +2204,9 @@ function init4() {
 		planetClassPrototype.gravWellObj = new GL.SceneObject({
 			mode : gl.LINES,
 			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
-			shader : colorShader,
+			shader : orbitShader,
 			attrs : {
-				vertex : new GL.ArrayBuffer({data:gravWellVtxs})
+				vertex : new GL.ArrayBuffer({dim:4, data:gravWellVtxs})
 			},
 			uniforms : {
 				color : [1,1,1,.2]

@@ -36,6 +36,7 @@ function mustbe(pattern)
 end
 
 local unknownDatas = {}
+local db = {}	-- our database
 
 xpcall(function()
 	getline()
