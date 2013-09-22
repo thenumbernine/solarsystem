@@ -13,7 +13,10 @@
 		<script src='ui/jquery.ui.mouse.js'></script>
 		<script src='ui/jquery.ui.slider.js'></script>
 		
-		<script type='text/javascript' src='/js/gl-matrix-min.js'></script>
+		<script type='text/javascript' src='/js/gl-matrix.2.2.0.min.js'></script>
+		<script type='text/javascript'>
+glMatrix.setMatrixArrayType(Array);
+		</script>
 		<script type='text/javascript' src='/js/webgl-debug.js'></script>
 		<script type='text/javascript' src='/js/util.js'></script>
 		<script type='text/javascript' src='/js/gl-util.js'></script>
@@ -22,6 +25,8 @@
 		<script type='text/javascript' src='/js/integrate.js'></script>
 		
 		<script type='text/javascript' src='astro-api.js'></script>
+		<script type='text/javascript' src='horizons/full-horizons-results.json'></script>
+		<script type='text/javascript' src='horizons/full-horizons-extra-data.json'></script>
 
 		<script type='text/javascript' src='main.js'></script>
 		
@@ -238,10 +243,16 @@ a:active {
 				<br>
 				Overlay:
 				<div id='overlay-slider'></div><br>
-				<input id='showLinesToOtherPlanets' type='checkbox' value='1'/>Show Lines to Other Planets<br>
-				<input id='showLatAndLonLines' type='checkbox' value='1'/>Show Latitude and Longitude Lines<br>
-				<input id='showGravityWell' type='checkbox' value='1'/>Show Gravity Wells<br>
-				<input id='showOrbits' type='checkbox' value='1'/>Show Orbits<br>
+				<input id='showLinesToOtherPlanets' type='checkbox'/>Show Lines to Other Planets<br>
+				<input id='showLatAndLonLines' type='checkbox'/>Show Latitude and Longitude Lines<br>
+				<input id='showGravityWell' type='checkbox'/>Show Gravity Wells<br>
+				<div style='padding-left:10px'>
+					<input id='gravityWellScaleNormalized' type='radio' name='gravityWellScale' checked='checked'/>Normalized Scale<br>
+					<input id='gravityWellScaleFixed' type='radio' name='gravityWellScale'/>Fixed Scale
+					<input id='gravityWellScaleFixedValue' value='2000'/>
+				</div>
+				<input id='showDistantPoints' type='checkbox'/>Show Points in Distance<br>
+				<input id='showOrbits' type='checkbox'/>Show Orbits<br>
 				<br>
 				<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
 			</div>

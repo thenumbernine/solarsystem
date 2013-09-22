@@ -5,6 +5,7 @@ oh well, here I will attempt to split the data out of the one big file
 --]]
 
 require 'ext'
+local json = require 'dkjson'
 
 local data = io.readfile('horizons.txt'):trim()
 data = data:gsub('\r\n', '\n'):gsub('\r', '\n')
@@ -37,6 +38,7 @@ function mustbe(pattern)
 end
 
 local unknownDatas = {}
+local db = {}	-- our database
 
 planetInfos = table()
 xpcall(function()
@@ -289,4 +291,6 @@ for _,planetInfo in ipairs(planetInfos) do
 		end
 	end
 end
+
+print(json.encode(db))
 

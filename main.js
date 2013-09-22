@@ -1,3 +1,66 @@
+
+//provided z, calculate x and y such that x,y,z form a basis
+var calcBasis = function(x,y,z) {
+	var cxx = 0;
+	var cxy = z[2];
+	var cxz = -z[1];
+	var cyx = -z[2];
+	var cyy = 0;
+	var cyz = z[0];
+	var czx = z[1];
+	var czy = -z[0];
+	var czz = 0;
+	var lx = Math.sqrt(cxy * cxy + cxz * cxz);
+	var ly = Math.sqrt(cyx * cyx + cyz * cyz);
+	var lz = Math.sqrt(czx * czx + czy * czy);
+	if (lx < ly) {
+		if (lx < lz) {	//x is smallest
+			x[0] = cyx;
+			x[1] = cyy;
+			x[2] = cyz;
+			y[0] = czx;
+			y[1] = czy;
+			y[2] = czz;
+		} else {		//z is smallest
+			x[0] = cxx;
+			x[1] = cxy;
+			x[2] = cxz;
+			y[0] = cyx;
+			y[1] = cyy;
+			y[2] = cyz;
+		}
+	} else {
+		if (ly < lz) {	//y is smallest
+			x[0] = czx;
+			x[1] = czy;
+			x[2] = czz;
+			y[0] = cxx;
+			y[1] = cxy;
+			y[2] = cxz;
+		} else {		//z is smallest
+			x[0] = cxx;
+			x[1] = cxy;
+			x[2] = cxz;
+			y[0] = cyx;
+			y[1] = cyy;
+			y[2] = cyz;
+		}
+	}
+	var xLen = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+	x[0] /= xLen; x[1] /= xLen; x[2] /= xLen;
+	var yLen = Math.sqrt(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
+	y[0] /= yLen; y[1] /= yLen; y[2] /= yLen;
+};
+
+//out = a^T * v
+vec3.transformMat3Tr = function(out, v, a) {
+	var x = a[0] * v[0] + a[1] * v[1] + a[2] * v[2];
+	var y = a[3] * v[0] + a[4] * v[1] + a[5] * v[2];
+	out[2] = a[6] * v[0] + a[7] * v[1] + a[8] * v[2];
+	out[0] = x;
+	out[1] = y;
+}
+
 // with a little help from
 // http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
 // ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/jpl_eph.cc
@@ -403,7 +466,7 @@ var Planet = makeClass({
 			? this.equatorialRadius
 			: this.radius;
 		if (equatorialRadius === undefined) {
-			throw "don't know how to calculate this planet's surface "+this;
+			"don't know how to calculate this planet's surface "+this.name;
 		}
 		var inverseFlattening = this.inverseFlattening
 		if (inverseFlattening !== undefined) { 
@@ -481,17 +544,17 @@ Planets = makeClass({
 		- vel (m/julian day)
 	*/
 	planetClasses : [
-		makeClass({super:Planet, name:'sun', mass:1.9891e+30, radius:6.960e+8}),
-		makeClass({super:Planet, name:'mercury', mass:3.302e+23, radius:2440e+3, equatorialRadius:2440e+3}),
-		makeClass({super:Planet, name:'venus', mass:4.8685e+24, radius:6051.8e+3, equatorialRadius:6051.893e+3}),
-		makeClass({super:Planet, name:'earth', mass:5.9736e+24, radius:6371.01e+3, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
-		makeClass({super:Planet, name:'moon', mass:7.349e+22, radius:1737.53e+3}),
-		makeClass({super:Planet, name:'mars', mass:6.4185e+23, radius:3389.9e+3, equatorialRadius:3397e+3, inverseFlattening:154.409}),
-		makeClass({super:Planet, name:'jupiter', mass:1.89813e+27, radius:69911e+3, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
-		makeClass({super:Planet, name:'saturn', mass:5.68319e+26, radius:58232e+3, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
-		makeClass({super:Planet, name:'uranus', mass:8.68103e+25, radius:25362e+3, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
-		makeClass({super:Planet, name:'neptune', mass:1.0241e+26, radius:24624e+3, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
-		makeClass({super:Planet, name:'pluto', mass:1.314e+22, radius:1151e+3}),
+		makeClass({super:Planet, id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8}),
+		makeClass({super:Planet, id:199, name:'Mercury', mass:3.302e+23, radius:2440e+3, equatorialRadius:2440e+3}),
+		makeClass({super:Planet, id:299, name:'Venus', mass:4.8685e+24, radius:6051.8e+3, equatorialRadius:6051.893e+3}),
+		makeClass({super:Planet, id:399, name:'Earth', mass:5.9736e+24, radius:6371.01e+3, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
+		makeClass({super:Planet, id:301, name:'Moon', mass:7.349e+22, radius:1737.53e+3}),
+		makeClass({super:Planet, id:499, name:'Mars', mass:6.4185e+23, radius:3389.9e+3, equatorialRadius:3397e+3, inverseFlattening:154.409}),
+		makeClass({super:Planet, id:599, name:'Jupiter', mass:1.89813e+27, radius:69911e+3, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
+		makeClass({super:Planet, id:699, name:'Saturn', mass:5.68319e+26, radius:58232e+3, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
+		makeClass({super:Planet, id:799, name:'Uranus', mass:8.68103e+25, radius:25362e+3, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
+		makeClass({super:Planet, id:899, name:'Neptune', mass:1.0241e+26, radius:24624e+3, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
+		makeClass({super:Planet, id:999, name:'Pluto', mass:1.314e+22, radius:1151e+3}),
 	],
 
 	init : function() {
@@ -506,8 +569,7 @@ Planets = makeClass({
 		var planets = new Planets();
 		for (var i = 0; i < planets.length; ++i) {
 			var planet = planets[i];
-			var name = planet.name;
-			var astroPhysPlanet = astroPhysPlanets[name];
+			var astroPhysPlanet = astroPhysPlanets[planet.name.toLowerCase()];
 			
 			planet.pos[0] = astroPhysPlanet[0][0] * 1000;
 			planet.pos[1] = astroPhysPlanet[0][1] * 1000;
@@ -519,9 +581,57 @@ Planets = makeClass({
 		return planets;
 	},
 
-//ephemeris data is a few hundred megs
-//so i'm not putting it on my serverspace
-//so don't use fromEphemeris
+	//static function for adding extra planets
+	addExtraHorizonData : function() {
+		//start out with the current planets
+		var currentIDs = {};
+		for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
+			currentIDs[Planets.prototype.planetClasses[i].prototype.id] = true;
+		}
+
+		//I need to fix up my export script ...
+		if (horizonsData.length != horizonsExtraData.length) throw 'something went wrong';
+		for (var i = 0; i < horizonsData.length; ++i) {
+			var data = horizonsData[i];
+			var extra = horizonsExtraData[i];
+			assert(data.id == extra.id, "got some bad data");
+			if (data.name.match(/^L[1-5]/)) {
+				//391-395 are Lagrangian points - skip
+			} else if (data.name.match(/Barycenter$/)) {
+				//1-9 are Barycenter points - skip
+			} else {
+				if (currentIDs[data.id]) {
+					//if the id already exists then skip it
+				} else {
+					//... finally, add the planet
+					/*
+					Things we are going to want:
+					mass
+					radius
+					equatorialRadius (all but sun, pluto, moon)
+					inverseFlattening (all but sun, mercury, venus, moon, pluto)
+					*/				
+					Planets.prototype.planetClasses.push(
+						makeClass({
+							super:Planet,
+							id:data.id,
+							name:data.name,
+							mass:extra.mass,
+							radius:extra.radius,
+							equatorialRadius:extra.equatorialRadius,
+							inverseFlattening:extra.inverseFlattening
+						})
+					);
+					currentIDs[data.id] = true;
+				}
+			}
+		}
+	},
+
+	//ephemeris data is a few hundred megs
+	//so i'm not putting it on my serverspace
+	//so don't use fromEphemeris
+	
 	// convert an ephemeris dataset
 	// date is julian date
 	//	dir is only used if solarsys.ephemerisData hasn't been initialized
@@ -533,7 +643,7 @@ Planets = makeClass({
 		var planets = new Planets();
 		for (var i=0; i < planets.length; ++i) {
 			var planet = planets[i];
-			var tmp = ephemerisData[planet.name](date);	// returns pos & vel in terms of km and km/julian day
+			var tmp = ephemerisData[planet.name.toLowerCase()](date);	// returns pos & vel in terms of km and km/julian day
 			var pos = tmp[0];
 			var vel = tmp[1];
 			planet.pos[0] = pos[0] * 1000;
@@ -597,7 +707,11 @@ Planets = makeClass({
 	}
 });
 mergeInto(Planets.prototype, Array.prototype);
+
+Planets.prototype.addExtraHorizonData();	//add the 180 other satellites out there...
+
 Planets.prototype.indexes = {};
+Planets.prototype.planetClassForHorizonID = {};
 for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 	//I am suspicious that, because 'init' is also considered the class itself, it doesn't inherit by default -- and always gets overridden
 	var oldPrototype = Planets.prototype.planetClasses[i].prototype;
@@ -606,7 +720,9 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 	};
 	Planets.prototype.planetClasses[i].prototype = oldPrototype;
 	Planets.prototype.planetClasses[i].prototype.index = i;
-	Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
+	var planetClass = Planets.prototype.planetClasses[i];
+	Planets.prototype.indexes[planetClass.prototype.name] = i;
+	Planets.prototype.planetClassForHorizonID[planetClass.prototype.id] = planetClass;
 }
 
 var planets = undefined;
@@ -638,7 +754,6 @@ var skyTexFilenames = [
 ];
 
 var glMaxCubeMapTextureSize;
-
 
 var speedOfLight = 299792458;	// m/s
 var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
@@ -889,7 +1004,11 @@ function chooseNewPlanet(mouseDir,doChoose) {
 			var deltaY = GL.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
 			var deltaZ = GL.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
 			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-			orbitTargetDistance = 2 * bestPlanet.radius;
+			if (bestPlanet.radius === undefined) {
+				orbitTargetDistance = 1e+6; 
+			} else {
+				orbitTargetDistance = 2 * bestPlanet.radius;
+			}
 			refreshOrbitTargetDistanceText();
 			orbitPlanetText.text(bestPlanet.name);
 			refreshMeasureText();
@@ -1029,7 +1148,11 @@ var planetInfluences = [];
 var showLinesToOtherPlanets = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
+var showDistantPoints = true;
 var showOrbits = true;
+var gravityWellScaleNormalized = true;
+var gravityWellScaleFixed = false;
+var gravityWellScaleFixedValue = 2000;
 
 var hoverPlanetText;
 var orbitPlanetText;
@@ -1105,7 +1228,7 @@ var updatePlanetClassSceneObj;
 					norm[1] /= normLen;
 					norm[2] /= normLen;
 					
-					//var toTheMoon = (planets[planets.indexes.moon].pos - x):normalize()
+					//var toTheMoon = (planets[planets.indexes.Moon].pos - x):normalize()
 					//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
 					//var tangentTowardsMoon = normCrossMoon:cross(norm)
 					//var tidalAccel = accel:dot(tangentTowardsMoon)
@@ -1156,6 +1279,8 @@ var updatePlanetClassSceneObj;
 })();
 
 var drawScene;
+var zScale = 1;
+var targetZScale = 1;
 (function(){
 	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
@@ -1189,6 +1314,7 @@ var drawScene;
 						delta[0] = planet.pos[0] - orbitPlanet.pos[0];
 						delta[1] = planet.pos[1] - orbitPlanet.pos[1];
 						delta[2] = planet.pos[2] - orbitPlanet.pos[2];
+						
 						var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
 						delta[0] /= dist;
 						delta[1] /= dist;
@@ -1217,20 +1343,24 @@ var drawScene;
 			var dy = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
 			var dz = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
-	
-			//update scene object
-			planet.sceneObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-			planet.sceneObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-			planet.sceneObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
-			if (planet.tiltAngle) {
-				//quat.multiply(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
-				quatMul(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
-			} else {
-				//quat.copy(planet.sceneObj.angle, planet.angle);
-				planet.sceneObj.angle[0] = planet.angle[0];
-				planet.sceneObj.angle[1] = planet.angle[1];
-				planet.sceneObj.angle[2] = planet.angle[2];
-				planet.sceneObj.angle[3] = planet.angle[3];
+
+			//some planets have no radii ... so no object
+			if (planet.sceneObj !== undefined) {
+			
+				//update scene object
+				planet.sceneObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				planet.sceneObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				planet.sceneObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				if (planet.tiltAngle) {
+					//quat.multiply(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
+					quatMul(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
+				} else {
+					//quat.copy(planet.sceneObj.angle, planet.angle);
+					planet.sceneObj.angle[0] = planet.angle[0];
+					planet.sceneObj.angle[1] = planet.angle[1];
+					planet.sceneObj.angle[2] = planet.angle[2];
+					planet.sceneObj.angle[3] = planet.angle[3];
+				}
 			}
 		}
 
@@ -1239,7 +1369,7 @@ var drawScene;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 
-			if (planet.visRatio >= .005) {
+			if (planet.sceneObj && (planet.visRatio >= .005 || !showDistantPoints)) {
 				updatePlanetClassSceneObj(planet);
 				planet.sceneObj.draw();
 			
@@ -1257,16 +1387,67 @@ var drawScene;
 		}
 
 		if (showGravityWell) {
+			//do transformation math in double
+			//TODO just give gl-matrix a type param in its init
+			var glMvMat = [];
+			var viewAngleInvd = [];
+			quat.conjugate(viewAngleInvd, GL.view.angle);
+			quat.normalize(viewAngleInvd, viewAngleInvd);	//normalize in double precision
+			mat4.fromQuat(glMvMat, viewAngleInvd);
+			var viewPosInvd = [];
+			vec3.negate(viewPosInvd, GL.view.pos);
+			mat4.translate(glMvMat, glMvMat, viewPosInvd);
+			
+			var orbitBasis = [];
+			var orbitBasisInv = [];
+			var mvMat = [];
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				mat4.identity(orbitBasis);
+				mat4.identity(orbitBasisInv);
+				for (var i = 0; i < 16; ++i) {
+					mvMat[i] = glMvMat[i];
+				}
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				planet.gravWellObj.pos[0] = planet.sceneObj.pos[0];
-				planet.gravWellObj.pos[1] = planet.sceneObj.pos[1];
-				planet.gravWellObj.pos[2] = planet.sceneObj.pos[2];
-				planet.gravWellObj.angle[0] = planet.sceneObj.angle[0];
-				planet.gravWellObj.angle[1] = planet.sceneObj.angle[1];
-				planet.gravWellObj.angle[2] = planet.sceneObj.angle[2];
-				planet.gravWellObj.angle[3] = planet.sceneObj.angle[3];
+				for (var i = 0; i < 3; ++i) {
+					orbitBasis[i] = planetClassPrototype.orbitBasis[0][i];
+					orbitBasis[4+i] = planetClassPrototype.orbitBasis[1][i];
+					orbitBasis[8+i] = planetClassPrototype.orbitBasis[2][i];
+				}
+				//gravWellObjBasis = orbitBasis * zScale * zOffsetByRadius * orbitBasis^-1 * planetPosBasis
+				
+				//translate to planet center
+				mat4.translate(mvMat, mvMat, planet.sceneObj.pos);
+				
+				//align gravity well with orbit plane
+				mat4.multiply(mvMat, mvMat, orbitBasis);
+				
+				//align base gravity well with base of planet
+				mat4.translate(mvMat, mvMat, [0,0,-planet.radius]);
+				
+				//scale for visual effect
+				//too flat for earth, too sharp for sun			
+				if (gravityWellScaleFixed) {
+					targetZScale = gravityWellScaleFixedValue;
+				} else if (gravityWellScaleNormalized) {
+					//causes larger wells to be much smaller and sharper ...
+					//var targetZScale = 2000000 * Math.log(1 + z);
+					//normalized visually per-planet.  scale is not 1-1 across planets			
+					var R = planets[orbitPlanetIndex].radius;
+					var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
+					targetZScale = 1 / (Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1));
+				}
+				zScale += .01 * (targetZScale - zScale); 
+				mat4.scale(mvMat, mvMat, [1,1,zScale]);
+
+				//apply orbit basis inverse
+				mat4.transpose(orbitBasisInv, orbitBasis);
+				mat4.multiply(mvMat, mvMat, orbitBasisInv);
+			
+				for (var i = 0; i < 16; ++i) {
+					planet.gravWellObj.uniforms.mvMat[i] = mvMat[i];
+				}
+
 				planet.gravWellObj.draw();
 			}
 		}
@@ -1276,7 +1457,7 @@ var drawScene;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			
-			if (planet.visRatio < .005) {
+			if (!planet.sceneObj || (planet.visRatio < .005 && showDistantPoints)) {
 				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
 				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
@@ -1293,10 +1474,12 @@ var drawScene;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
-				planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
-				planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
-				planet.orbitLineObj.draw();
+				if (planet.orbitLineObj) {
+					planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
+					planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
+					planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
+					planet.orbitLineObj.draw();
+				}
 			}
 		}
 	};
@@ -1347,17 +1530,37 @@ function invalidateForces() {
 	}
 }
 
+var unitsPerM = [
+	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
+	{name:'lyr', 	value:9460730472580800},
+	{name:'AU', 	value:149597870700},
+	{name:'km',		value:1000},
+	{name:'m',		value:1}
+];
 function refreshOrbitTargetDistanceText() {
-	orbitTargetDistanceText.text(orbitTargetDistance.toExponential()+' m');
+	var units = 'm';
+	var dist = orbitTargetDistance; 
+	for (var i = 0; i < unitsPerM.length; ++i) {
+		var ratio = orbitTargetDistance / unitsPerM[i].value;
+		if (ratio > .1 || i == unitsPerM[i].length-1) {
+			units = unitsPerM[i].name;
+			dist = ratio;
+			break;
+		}
+	}
+	orbitTargetDistanceText.text(dist.toExponential()+' '+units);
 }
 
 function refreshCurrentTimeText() {
 	currentTimeText.text(astro.julianToCalendar(julianDate));
 }
 
+var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
+
 $(document).ready(init1);
 
 function init1() {
+console.log('init1');
 	panel = $('#panel');
 	panelContent = $('#content');
 	$('#menu').click(function() {
@@ -1428,6 +1631,7 @@ function init1() {
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
 			type : 'radio',
+			name : 'displayMethods',
 			value : displayMethodIndex,
 			click : function() {
 				displayMethod = thisDisplayMethod;
@@ -1467,13 +1671,31 @@ function init1() {
 		'showLinesToOtherPlanets',
 		'showLatAndLonLines',
 		'showGravityWell',
-		'showOrbits'
+		'showOrbits',
+		'showDistantPoints',
+		'gravityWellScaleNormalized',
+		'gravityWellScaleFixed'
 	], function(_, toggle) {
 		(function(){
 			var checkbox = $('#'+toggle);
 			if (window[toggle]) checkbox.attr('checked', 'checked');
 			checkbox.change(function() {
 				window[toggle] = checkbox.is(':checked');
+				//TODO generalize for radios?
+				if (toggle == 'gravityWellScaleNormalized' && gravityWellScaleNormalized) gravityWellScaleFixed = false;
+				if (toggle == 'gravityWellScaleFixed' && gravityWellScaleFixed) gravityWellScaleNormalized = false;
+			});
+		})();
+	});
+
+	$.each([
+		'gravityWellScaleFixedValue'
+	], function(_, toggle) {
+		(function(){
+			var textfield = $('#'+toggle);
+			textfield.val(window[toggle]);
+			textfield.change(function() {
+				window[toggle] = textfield.val();
 			});
 		})();
 	});
@@ -1481,15 +1703,44 @@ function init1() {
 	$(window).resize(resize);
 	resize();
 
-	if (true) { //getting single sets of states ...
+	if (true) {
+		//extra horizon data
+		//has to be telnetted out of jpl and that takes about 5 mins for everything
+		//some dude must have typed in every one of the 200 info cards by hand
+		// because there's nothing consistent about formatting or variable names
+		//so I'm thinking cron job to update and then integrate to extrapolate for later time.
+		
+		planets = new Planets();
+		for (var i = 0; i < horizonsData.length; ++i) {
+			var data = horizonsData[i];
+			var planetClass = Planets.prototype.planetClassForHorizonID[data.id];
+			if (planetClass) {	//excluding the BCC and Ln points
+				var planet = planets[planetClass.prototype.index];
+				for (var j = 0; j < 3; ++j) {
+					planet.pos[j] = data.pos[j] * 1000;
+					planet.vel[j] = data.vel[j] * 1000;
+				}
+			}	
+		}
+		
+		initPlanets = planets.clone();
+		julianDate = 2456519.421527778;
+		initJulianDate = julianDate;
+		refreshCurrentTimeText();
+		
+		init2();
+	}
+
+	if (false) { //getting single sets of states ...
 		//returning a single state
 		var planetNames = [];
-		for (var planetIndex = 0; planetIndex < Planets.prototype.planetClasses.length; ++planetIndex) {
-			planetClass = Planets.prototype.planetClasses[planetIndex];
-			planetNames.push(planetClass.prototype.name);
-		}
+		$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
+			var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
+			planetNames.push(planetClassPrototype.name.toLowerCase());
+		});
 
-		if (true) {
+		//works, but not for the extra horizon data
+		if (false) {
 			var url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
 			//var url = 'astro-phys-state.json';
 			console.log('reading from '+url);
@@ -1560,10 +1811,9 @@ function init1() {
 			planets = new Planets();
 			for (var i = 0; i < planets.length; ++i) {
 				var planet = planets[i];
-				var name = planet.name;
-				planet.pos[0] = positions[name][0] * 1000;
-				planet.pos[1] = positions[name][1] * 1000;
-				planet.pos[2] = positions[name][2] * 1000;
+				planet.pos[0] = positions[planet.name.toLowerCase()][0] * 1000;
+				planet.pos[1] = positions[planet.name.toLowerCase()][1] * 1000;
+				planet.pos[2] = positions[planet.name.toLowerCase()][2] * 1000;
 				planet.vel[0] = 0;
 				planet.vel[1] = 0;
 				planet.vel[2] = 0;
@@ -1574,12 +1824,14 @@ function init1() {
 }
 
 function init2() {
+console.log('init2');
 
 	var imgs = [];
 
-	for (var i = 0; i < planets.length; ++i) {
-		imgs.push('textures/'+planets[i].name+'.png');
-	}
+	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
+		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
+		imgs.push('textures/'+planetClassPrototype.name.toLowerCase()+'.png');
+	});
 	for (var i = 0; i < skyTexFilenames.length; ++i) {
 		imgs.push(skyTexFilenames[i]);
 	}
@@ -1587,7 +1839,10 @@ function init2() {
 	$(imgs).preload(function(){
 		$('#loadingDiv').hide();
 		$('#menu').show();
-		$('#timeControlDiv').show();
+//not until mass is plugged in to everything
+//...which makes me wonder, what of things that have no mass or radii? how do
+//we consider them for integration?
+//		$('#timeControlDiv').show();
 		$('#infoDiv').show();
 		init3();
 	}, function(percent){
@@ -1596,6 +1851,7 @@ function init2() {
 }
 
 function init3() {
+console.log('init3');
 	hsvTex = new GL.HSVTexture(256);
 
 	colorShader = new GL.ShaderProgram({
@@ -1646,7 +1902,6 @@ function init3() {
 	gl.uniform1f(hsvShader.uniforms.heatAlpha.loc, heatAlpha);
 	gl.useProgram(null);
 
-
 	pointObj = new GL.SceneObject({
 		mode : gl.POINTS,
 		shader : colorShader,
@@ -1657,17 +1912,17 @@ function init3() {
 	});
 
 	var colors = {
-		sun:[1,1,0],
-		mercury:[.7,0,.2],
-		venus:[0,1,0],
-		earth:[0,0,1],
-		moon:[.6,.6,.6],
-		mars:[1,0,0],
-		jupiter:[1,.5,0],
-		saturn:[1,0,.5],
-		uranus:[0,1,1],
-		neptune:[1,0,1],
-		pluto:[0,.5,1]
+		Sun:[1,1,0],
+		Mercury:[.7,0,.2],
+		Venus:[0,1,0],
+		Earth:[0,0,1],
+		Moon:[.6,.6,.6],
+		Mars:[1,0,0],
+		Jupiter:[1,.5,0],
+		Saturn:[1,0,.5],
+		Uranus:[0,1,1],
+		Neptune:[1,0,1],
+		Pluto:[0,.5,1]
 	};
 	var planetsDone = 0;
 
@@ -1676,88 +1931,100 @@ function init3() {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
 		var color = colors[planet.name];
-		planetClassPrototype.color = [color[0], color[1], color[2], 1];
+		if (!color) {
+			console.log("failed to find color for "+planet.name);
+			planetClassPrototype.color = [Math.random(), Math.random(), Math.random(), 1];
+			vec3.normalize(planetClassPrototype.color, planetClassPrototype.color);
+		} else {
+			planetClassPrototype.color = [color[0], color[1], color[2], 1];
+		}
 		planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
-		planetClassPrototype.angle = quat.create();			// rotation ... only used for earth at the moment
+		planetClassPrototype.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
 	
 		var checkDone = function() {
-			var triIndexArray = [];
-			var latLonIndexArray = [];
-			var vertexArray = [];
-			var texCoordArray = [];
-			var tideArray = [];
+			console.log('checkDone ',planet.id);
+			
+			if (planet.radius === undefined) {
+				//only/always use a point/basis/etc?
+			} else {
+				var triIndexArray = [];
+				var latLonIndexArray = [];
+				var vertexArray = [];
+				var texCoordArray = [];
+				var tideArray = [];
 
-			var latdiv = Math.floor((latMax-latMin)/latStep);
-			var londiv = Math.floor((lonMax-lonMin)/lonStep);
-			var vtx = [0,0,0];
-			for (var loni=0; loni <= londiv; ++loni) {
-				var lon = lonMin + loni * lonStep;
-				for (var lati=0; lati <= latdiv; ++lati) {
-					var lat = latMin + lati * latStep;
-					
-					planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
-					for (var j = 0; j < 3; ++j) {
-						vertexArray.push(vtx[j]);
-					}
-					
-					texCoordArray.push(lon / 360 + .5);
-					texCoordArray.push(-lat / 180 + .5);
-
-					tideArray.push(0);
-
-					if (loni < londiv && lati < latdiv) {
-						for (var j = 0; j < quad.length; ++j) {
-							var ofs = quad[j];
-							var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-							triIndexArray.push(index);
+				var latdiv = Math.floor((latMax-latMin)/latStep);
+				var londiv = Math.floor((lonMax-lonMin)/lonStep);
+				var vtx = [0,0,0];
+				for (var loni=0; loni <= londiv; ++loni) {
+					var lon = lonMin + loni * lonStep;
+					for (var lati=0; lati <= latdiv; ++lati) {
+						var lat = latMin + lati * latStep;
+						
+						planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
+						for (var j = 0; j < 3; ++j) {
+							vertexArray.push(vtx[j]);
 						}
-						//if we're using 5 div step then every 6 will be 30 degrees
-						if ((loni * lonStep) % 30 == 0) {
-							latLonIndexArray.push(lati + (latdiv+1) * loni);
-							latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
-						}
-						if ((lati * latStep) % 30 == 0) {
-							latLonIndexArray.push(lati + (latdiv+1) * loni);
-							latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
+						
+						texCoordArray.push(lon / 360 + .5);
+						texCoordArray.push(-lat / 180 + .5);
+
+						tideArray.push(0);
+
+						if (loni < londiv && lati < latdiv) {
+							for (var j = 0; j < quad.length; ++j) {
+								var ofs = quad[j];
+								var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
+								triIndexArray.push(index);
+							}
+							//if we're using 5 div step then every 6 will be 30 degrees
+							if ((loni * lonStep) % 30 == 0) {
+								latLonIndexArray.push(lati + (latdiv+1) * loni);
+								latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
+							}
+							if ((lati * latStep) % 30 == 0) {
+								latLonIndexArray.push(lati + (latdiv+1) * loni);
+								latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
+							}
 						}
 					}
 				}
+				
+				var vertexBuffer = new GL.ArrayBuffer({data:vertexArray, keep:true});
+				planetClassPrototype.sceneObj = new GL.SceneObject({
+					mode : gl.TRIANGLES,
+					indexes : new GL.ElementArrayBuffer({data:triIndexArray}),
+					attrs : {
+						vertex : vertexBuffer,
+						texCoord : new GL.ArrayBuffer({dim:2, data:texCoordArray}),
+						tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
+					},
+					uniforms : {
+						color : planetClassPrototype.color
+					},
+					pos : [0,0,0],
+					angle : [0,0,0,1],
+					parent : null,
+					static : false
+				});
+				planetClassPrototype.latLonObj = new GL.SceneObject({
+					mode : gl.LINES,
+					indexes : new GL.ElementArrayBuffer({data:latLonIndexArray}),
+					shader : colorShader,
+					attrs : {
+						vertex : vertexBuffer
+					},
+					uniforms : {
+						color : [1,1,1,.2]
+					},
+					//useDepth : false,
+					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+					pos : [0,0,0],
+					angle : [0,0,0,1],
+					static : false,
+					parent : null
+				});
 			}
-			
-			var vertexBuffer = new GL.ArrayBuffer({data:vertexArray, keep:true});
-			planetClassPrototype.sceneObj = new GL.SceneObject({
-				mode : gl.TRIANGLES,
-				indexes : new GL.ElementArrayBuffer({data:triIndexArray}),
-				attrs : {
-					vertex : vertexBuffer,
-					texCoord : new GL.ArrayBuffer({dim:2, data:texCoordArray}),
-					tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
-				},
-				uniforms : {
-					color : planetClassPrototype.color
-				},
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				parent : null,
-				static : false
-			});
-			planetClassPrototype.latLonObj = new GL.SceneObject({
-				mode : gl.LINES,
-				indexes : new GL.ElementArrayBuffer({data:latLonIndexArray}),
-				shader : colorShader,
-				attrs : {
-					vertex : vertexBuffer
-				},
-				uniforms : {
-					color : [1,1,1,.2]
-				},
-				//useDepth : false,
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				static : false,
-				parent : null
-			});
 			planetClassPrototype.lineObj = new GL.SceneObject({
 				mode : gl.LINES,
 				shader : colorShader,
@@ -1778,122 +2045,32 @@ function init3() {
 		};
 
 		// load texture
-		var img = new Image();
-		img.onload = function() {
-			planetClassPrototype.tex = new GL.Texture2D({
-				//flipY : true,
-				data : img,
-				minFilter : gl.LINEAR_MIPMAP_LINEAR,
-				magFilter : gl.LINEAR,
-				generateMipmap : true
-			});
+		//if planet.id in primaryPlanetHorizonIDs then
+		if (planet.id == 10 || planet.id % 100 == 99) {
+			var img = new Image();
+			img.onload = function() {
+				planetClassPrototype.tex = new GL.Texture2D({
+					//flipY : true,
+					data : img,
+					minFilter : gl.LINEAR_MIPMAP_LINEAR,
+					magFilter : gl.LINEAR,
+					generateMipmap : true
+				});
+				checkDone();
+			};
+			img.onerror = function() {
+				console.log('failed to find texture for planet '+planet.name);
+				checkDone();
+			};
+			img.src = 'textures/'+planet.name.toLowerCase()+'.png';
+		} else {
 			checkDone();
-		};
-		img.onerror = function() {
-			console.log('failed to find texture for planet '+planet.name);
-			checkDone();
-		};
-		img.src = 'textures/'+planet.name+'.png';
-
+		}
 	})(); }
 }
 
 function init4() {
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-		var planet = planets[planetIndex];
-		var planetClassPrototype = planet.init.prototype;
-
-		/*
-		gravity wells
-	
-		calculate spacetime embedding radius
-		  for radial distance r, radius R, Schwarzschild radius Rs 
-		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
-		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
-		*/
-		var R = planetClassPrototype.radius;
-		var Rs = planetClassPrototype.schwarzschildRadius;
-		var R_Rs = R / Rs;
-		var Rs_R = Rs / R;
-		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
-		var gravWellVtxs = [0,0,-planetClassPrototype.radius];
-		var gravWellIndexes = [];
-		var rimax = 200;
-		var thimax = 60;
-		var zmin = undefined;
-		var zmax = undefined;
-		for (var ri = 1; ri < rimax; ++ri) {
-			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
-			
-			var z;
-			if (r <= R) {
-				var r_R = r / R;
-				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
-			} else {
-				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
-					+ Math.sqrt(4 * Rs * (r - Rs))
-					- Math.sqrt(4 * Rs * (R - Rs));
-			}
-			if (zmin === undefined || z < zmin) zmin = z;
-			if (zmax === undefined || z > zmax) zmax = z;
-
-//scale for visual effect
-//z *= planetClassPrototype.radius / (R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs/R)));	//normalized visually per-planet.  scale is not 1-1 across planets
-z *= 2000;							//too flat for earth, too sharp for sun
-//z = 2000000 * Math.log(1 + z);	//causes larger wells to be much smaller and sharper ...
-
-//align bottom of gravity well with bottom of planet
-z -= planetClassPrototype.radius;
-
-			for (var thi = 0; thi < thimax; ++thi) {
-				var th = 2 * Math.PI * thi / thimax;
-		
-				var x = r * Math.cos(th);
-				var y = r * Math.sin(th);
-				
-				//it would be great to include influences of other planets' gravity wells ...
-				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
-				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
-				// from there, take samples based on radial distance within that plane between planets ...
-				// I could remap planes on a per-planet basis depending on which you are orbitting ...
-				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
-				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
-				gravWellVtxs.push(x);
-				gravWellVtxs.push(y);
-				gravWellVtxs.push(z);
-	
-				if (ri == 1) {
-					gravWellIndexes.push(0);
-					gravWellIndexes.push(1 + thi + thimax * (ri-1));
-				}
-				if (ri < rimax-1) {
-					gravWellIndexes.push(1 + thi + thimax * (ri-1));
-					gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
-				}
-				gravWellIndexes.push(1 + thi + thimax * (ri-1));
-				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
-			}
-		}
-		planetClassPrototype.gravWellObj = new GL.SceneObject({
-			mode : gl.LINES,
-			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
-			shader : colorShader,
-			attrs : {
-				vertex : new GL.ArrayBuffer({data:gravWellVtxs})
-			},
-			uniforms : {
-				color : [1,1,1,.2]
-			},
-			//useDepth : false,
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-			pos : [0,0,0],
-			angle : [0,0,0,1],
-			static : false,
-			parent : null
-		});
-	}
-
-
+console.log('init4');
 	/* this is helper for the orbit generations
 	 * i should be calculating this myself!
 										Sidereal period (yr)		Synodic period (yr)	Synodic period (d)
@@ -1916,17 +2093,17 @@ z -= planetClassPrototype.radius;
 		  90377 Sedna	      			12050	  					1.00001	  365.1
 	*/
 	var orbitsInEarthYears = {
-		sun : 0.0691,
-		mercury : 0.240846,
-		venus : 0.615,
-		earth : 1,
-		moon : 0.0748,
-		mars : 1.881,
-		jupiter : 11.86,
-		saturn : 29.46,
-		uranus : 84.32,
-		neptune : 164.8,
-		pluto : 248.1,
+		Sun : 0.0691,
+		Mercury : 0.240846,
+		Venus : 0.615,
+		Earth : 1,
+		Moon : 0.0748,
+		Mars : 1.881,
+		Jupiter : 11.86,
+		Saturn : 29.46,
+		Uranus : 84.32,
+		Neptune : 164.8,
+		Pluto : 248.1,
 	};
 	var solarDaysPerEarthYear = 365.25636;
 	/*
@@ -1936,61 +2113,116 @@ z -= planetClassPrototype.radius;
 	looks like we can safely take large timesteps on the outer planets, so integrating separately might be best?
 	*/
 
-
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-		var planet = planets[planetIndex];
-		var planetClassPrototype = planet.init.prototype;
-
-
-	//integration code -- can move it outside the for loop if you dont want separate integrations per body
-
-	var integrationStepInDays = 3;
-	var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
-	var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
-	
-	//integrate orbits for a year? track positions
-	var history = [];
-	var intPlanets = planets.clone();
-	var t = 0;
-	for (var i = 0; i < numIntSteps; ++i) {
-		//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
-		intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
-		t += dt;
-		history.push(intPlanets);	//add future
-	}
-	var intPlanets = planets.clone();
-	history.splice(0, 0, intPlanets);	//add present
-	var t = 0;
-	for (var i = 0; i < numIntSteps; ++i) {
-		intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
-		t -= dt;
-		history.splice(0, 0, intPlanets);	//add past
-	}
-
-	var orbitLineShader = new GL.ShaderProgram({
+	var orbitShader = new GL.ShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'orbit-vsh',
 		fragmentPrecision : 'best',
 		fragmentCodeID : 'orbit-fsh'
 	});
 
-	//end planet integration code
 
+/* disable orbit paths for now.
+ * they look cool, so maybe enable them later as orbit parameters?
+	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
+		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
+		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
+		var planet = planets[planetClassPrototype.index];
+
+
+		//integration code -- can move it outside the for loop if you dont want separate integrations per body
+
+		var integrationStepInDays = 3;
+		var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
+		var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
+		
+		//integrate orbits for a year? track positions
+		var history = [];
+		var intPlanets = planets.clone();
+		var t = 0;
+		for (var i = 0; i < numIntSteps; ++i) {
+			//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
+			intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
+			t += dt;
+			history.push(intPlanets);	//add future
+		}
+		var intPlanets = planets.clone();
+		history.splice(0, 0, intPlanets);	//add present
+		var t = 0;
+		for (var i = 0; i < numIntSteps; ++i) {
+			intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
+			t -= dt;
+			history.splice(0, 0, intPlanets);	//add past
+		}
+
+		//end planet integration code
+
+		var avgPosX = 0;
+		var avgPosY = 0;
+		var avgPosZ = 0;
 
 		var vertexes = [];
 		//extract lines
 		for (var i = 0; i < history.length; ++i) {
-			vertexes.push(history[i][planetIndex].pos[0]);
-			vertexes.push(history[i][planetIndex].pos[1]);
-			vertexes.push(history[i][planetIndex].pos[2]);
+			var planetPos = history[i][planetIndex].pos;
+		
+			//add to buffer
+			vertexes.push(planetPos[0]);
+			vertexes.push(planetPos[1]);
+			vertexes.push(planetPos[2]);
+		
+			//keep track of all vertexes
+			//(so we can calculate arm from center to position, cross with tangent, and get the axis...
+			// I figure that's more numerically accurate than crossing the tangent with its derivative,
+			// since the vertex-to-center vector should approximate the (ever so small) tangent derivative)
+			avgPosX += planetPos[0];
+			avgPosY += planetPos[1];
+			avgPosZ += planetPos[2];
+
 			//pack transparency info into the vertex
 			var alpha = 1 - Math.abs(2 * i / (history.length-1) - 1);
 			vertexes.push(alpha);
 		}
+		avgPosX /= history.length;
+		avgPosY /= history.length;
+		avgPosZ /= history.length;
+
+		//now calculate the approximate axis of orbit
+		var avgAxis = [0,0,0];
+		for (var i = 0; i < history.length-1; ++i) {
+			var planetPos = history[i][planetIndex].pos;
+			var planetNextPos = history[i+1][planetIndex].pos;
+			
+			var posToCenterDirX = avgPosX - planetPos[0];
+			var posToCenterDirY = avgPosY - planetPos[1];
+			var posToCenterDirZ = avgPosZ - planetPos[2];
+		
+			var tangentX = planetNextPos[0] - planetPos[0];
+			var tangentY = planetNextPos[1] - planetPos[1];
+			var tangentZ = planetNextPos[2] - planetPos[2];
+
+			var axisX = tangentY * posToCenterDirZ - tangentZ * posToCenterDirY;
+			var axisY = tangentZ * posToCenterDirX - tangentX * posToCenterDirZ;
+			var axisZ = tangentX * posToCenterDirY - tangentY * posToCenterDirX;
+			var axisLen = Math.sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ);
+			axisX /= axisLen;
+			axisY /= axisLen;
+			axisZ /= axisLen;
+
+			avgAxis[0] += axisX;
+			avgAxis[1] += axisY;
+			avgAxis[2] += axisZ;
+		}
+		var avgAxisLen = Math.sqrt(avgAxis[0] * avgAxis[0] + avgAxis[1] * avgAxis[1] + avgAxis[2] * avgAxis[2]);
+		avgAxis[0] /= avgAxisLen;
+		avgAxis[1] /= avgAxisLen;
+		avgAxis[2] /= avgAxisLen;
+
+		//...and store it
+		planetClassPrototype.orbitAxis = avgAxis;
 
 		planetClassPrototype.orbitLineObj = new GL.SceneObject({
 			mode : gl.LINE_STRIP,
-			shader : orbitLineShader,
+			shader : orbitShader,
 			attrs : {
 				vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
 			},
@@ -2004,6 +2236,125 @@ z -= planetClassPrototype.radius;
 			static : false 
 		});
 	}
+*/
+
+/* unfortunately, disabling the orbit paths means no basis to construct the
+ * gravity well ... so for now just give it an identity basis */
+
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+		planetClassPrototype.orbitAxis = [0,0,1];	
+	}
+
+	//looks like low grav wells run into fp accuracy issues
+	//how about extracting the depth and storing normalized values?
+	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+		var planet = planets[planetIndex];
+		var planetClassPrototype = planet.init.prototype;
+		
+		var basisX = [0,0,0];
+		var basisY = [0,0,0];
+		var basisZ = planetClassPrototype.orbitAxis;
+		calcBasis(basisX, basisY, basisZ);
+		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
+		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
+
+		/*
+		gravity wells
+	
+		calculate spacetime embedding radius
+		  for radial distance r, radius R, Schwarzschild radius Rs 
+		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
+		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
+		*/
+		var R = planetClassPrototype.radius;
+		var Rs = planetClassPrototype.schwarzschildRadius;
+		var R_Rs = R / Rs;
+		var Rs_R = Rs / R;
+		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+
+		//populate first vertex
+		var gravWellVtxs = [0,0,0,1];
+		
+		var gravWellIndexes = [];
+		
+		var rimax = 200;
+		var thimax = 60;
+		
+		var zmin = undefined;
+		var zmax = undefined;
+		for (var ri = 1; ri < rimax; ++ri) {
+			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
+			
+			var z;
+			if (r <= R) {
+				var r_R = r / R;
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
+			} else {
+				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
+					+ Math.sqrt(4 * Rs * (r - Rs))
+					- Math.sqrt(4 * Rs * (R - Rs));
+			}
+			if (zmin === undefined || z < zmin) zmin = z;
+			if (zmax === undefined || z > zmax) zmax = z;
+			
+			for (var thi = 0; thi < thimax; ++thi) {
+				var th = 2 * Math.PI * thi / thimax;
+		
+				var x = r * Math.cos(th);
+				var y = r * Math.sin(th);
+				
+				//it would be great to include influences of other planets' gravity wells ...
+				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
+				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
+				// from there, take samples based on radial distance within that plane between planets ...
+				// I could remap planes on a per-planet basis depending on which you are orbitting ...
+				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
+				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
+				//TODO also: recalculate the gravity well mesh when the planets change, to watch it in realtime	
+
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][0] + y * planetClassPrototype.orbitBasis[1][0] + z * planetClassPrototype.orbitBasis[2][0]);
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][1] + y * planetClassPrototype.orbitBasis[1][1] + z * planetClassPrototype.orbitBasis[2][1]);
+				gravWellVtxs.push(x * planetClassPrototype.orbitBasis[0][2] + y * planetClassPrototype.orbitBasis[1][2] + z * planetClassPrototype.orbitBasis[2][2]);
+				var tau = ri/(rimax-1);
+				gravWellVtxs.push(1 - tau * tau * tau * tau * tau * tau * tau * tau);
+
+				if (ri == 1) {
+					gravWellIndexes.push(0);
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				}
+				if (ri < rimax-1) {
+					gravWellIndexes.push(1 + thi + thimax * (ri-1));
+					gravWellIndexes.push(1 + thi + thimax * ri);	//plus one radial
+				}
+				gravWellIndexes.push(1 + thi + thimax * (ri-1));
+				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
+			}
+		}
+		planetClassPrototype.gravWellObj = new GL.SceneObject({
+			mode : gl.LINES,
+			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
+			shader : orbitShader,
+			attrs : {
+				vertex : new GL.ArrayBuffer({dim:4, data:gravWellVtxs})
+			},
+			uniforms : {
+				color : [1,1,1,.2]
+			},
+			//useDepth : false,
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			parent : null
+		});
+		//scenegraph is a mess
+		//static objects have mvMat pointed to GL.mvMat
+		//but dynamic objects only give control over position and angle
+		//!static implies creating the object's matrices, but !static also implies overwriting them every draw call...
+		planetClassPrototype.localMat = mat4.create();
+		planetClassPrototype.gravWellObj.mvMat = mat4.create();
+		planetClassPrototype.gravWellObj.uniforms.mvMat = planetClassPrototype.gravWellObj.mvMat;
+	}
+
 
 	var skyTex = new GL.TextureCube({
 		flipY : true,
@@ -2027,6 +2378,7 @@ z -= planetClassPrototype.radius;
 }
 
 function init5(skyTex) {
+console.log('init5');
 	var cubeShader = new GL.ShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'cube-vsh',
@@ -2077,7 +2429,7 @@ function init5(skyTex) {
 	gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
-	var trackPlanet = planets[planets.indexes.earth];
+	var trackPlanet = planets[planets.indexes.Earth];
 	orbitPlanetIndex = trackPlanet.index;
 	orbitTargetDistance = 2. * trackPlanet.radius;
 	refreshOrbitTargetDistanceText();
@@ -2189,14 +2541,14 @@ function update() {
 	{
 		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
 		var angleOffset = .37;
-		var qdst = planets[planets.indexes.earth].angle;
+		var qdst = planets[planets.indexes.Earth].angle;
 		quat.identity(qdst);
 		quat.rotateZ(qdst, qdst, ((julianDate + angleOffset) % 1) * 2 * Math.PI);
 	}
 	
 	//if we are close enough to the planet then rotate with it
 	if (lastJulianDate !== julianDate && 
-		orbitPlanetIndex == planets.indexes.earth &&	//only for earth at the moment ...
+		orbitPlanetIndex == planets.indexes.Earth &&	//only for earth at the moment ...
 		orbitDistance < planets[orbitPlanetIndex].radius * 10) 
 	{
 		var deltaJulianDate = julianDate - lastJulianDate;
