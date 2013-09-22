@@ -590,7 +590,7 @@ Planets = makeClass({
 		}
 
 		//I need to fix up my export script ...
-		if (horizonsData.length != horizonsExtraData.length) throw 'something went wrong';
+		if (horizonsData.length != horizonsExtraData.length) throw 'static to dynamic data lengths differ: dynamic has '+horizonsData.length+' while static has '+horizonsExtraData.length;
 		for (var i = 0; i < horizonsData.length; ++i) {
 			var data = horizonsData[i];
 			var extra = horizonsExtraData[i];
