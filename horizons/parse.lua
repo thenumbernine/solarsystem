@@ -38,7 +38,7 @@ end
 
 local unknownDatas = {}
 local db = {}	-- our database
-
+local allkeys = table()
 xpcall(function()
 	getline()
 	while nextline do 
@@ -119,12 +119,11 @@ xpcall(function()
 				parent=parent,
 				vars=vars,
 			})
-			--[[
 			print(id, name, parent)
 			for k,v in pairs(vars) do
+				allkeys[k] = true
 				print('',k,v)
 			end
-			--]]
 		else
 			getline()
 		end
@@ -134,11 +133,16 @@ end, function(err)
 	io.stderr:write(err..'\n'..debug.traceback()..'\n')
 end)
 
---[[
 print('got unknown datas')
 for line,_ in pairs(unknownDatas) do
 	print(line)
 end
---]]
 
-print(json.encode(db))
+print('keys')
+for _,k in ipairs(allkeys:keys():sort()) do
+	print(k)
+end
+
+-- or 'static data' ... unlike the full-horizons-results.json which holds dynamic data
+io.writefile('full-horizons-extra-data.json', 'horizonsExtraData = '..json.encode(db)..';')
+
