@@ -1372,7 +1372,7 @@ var gravityWellTargetZScale = 1;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 
-			if (planet.sceneObj && (planet.visRatio >= .005 || !showDistantPoints)) {
+			if (planet.sceneObj && (planet.visRatio >= .005)) {
 				updatePlanetClassSceneObj(planet);
 				planet.sceneObj.draw();
 			

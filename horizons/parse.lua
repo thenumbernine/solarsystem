@@ -325,7 +325,25 @@ planetInfoForName.Venus.mass = 4.86732e+24
 planetInfoForName.Earth.radius = 6.37101e6
 planetInfoForName.Earth.mass = 5.97291e+24
 planetInfoForName.Moon.radius = 1.73753e+6
-planetInfoForName.Moon.mass = 73476730924573500000000
+planetInfoForName.Moon.mass = 7.34767309245735e+22
+planetInfoForName.Mars.radius = 3.3895e+6
+planetInfoForName.Mars.mass = 6.41693e+23
+--planetInfoForName.Phobos.radius =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- or 'static data' ... unlike the full-horizons-results.json which holds dynamic data
 io.writefile('full-horizons-extra-data.json', 'horizonsExtraData = '..json.encode(planetInfos, {indent=true})..';')
