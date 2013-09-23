@@ -776,9 +776,10 @@ var calcTidalForce;
 		srcPlanetToPos[2] = pos[2] - srcPlanet.pos[2];
 		
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-			var planet = planets[planetIndex];
 			if (!planetInfluences[planetIndex]) continue;
+			var planet = planets[planetIndex];
 			if (planet.index === srcPlanet.index) continue;
+			if (planet.mass === undefined) continue;
 			
 			x[0] = pos[0] - planet.pos[0];
 			x[1] = pos[1] - planet.pos[1];
@@ -817,6 +818,7 @@ function calcGravitationForce(accel, pos) {
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		if (!planetInfluences[planetIndex]) continue;
 		var planet = planets[planetIndex];
+		if (planet.mass === undefined) continue;
 		var x = pos[0] - planet.pos[0];
 		var y = pos[1] - planet.pos[1];
 		var z = pos[2] - planet.pos[2];
