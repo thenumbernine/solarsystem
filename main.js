@@ -1284,6 +1284,7 @@ var updatePlanetClassSceneObj;
 var drawScene;
 var gravityWellZScale = 1;
 var gravityWellTargetZScale = 1;
+var planetPointVisRatio = .001;
 (function(){
 	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
@@ -1372,7 +1373,7 @@ var gravityWellTargetZScale = 1;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 
-			if (planet.sceneObj && (planet.visRatio >= .005)) {
+			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				updatePlanetClassSceneObj(planet);
 				planet.sceneObj.draw();
 			
@@ -1472,7 +1473,7 @@ var gravityWellTargetZScale = 1;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			
-			if (!planet.sceneObj || (planet.visRatio < .005 && showDistantPoints)) {
+			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
 				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
 				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
@@ -2053,8 +2054,7 @@ function init3() {
 		};
 
 		// load texture
-		//if planet.id in primaryPlanetHorizonIDs then
-		if (planet.id == 10 || planet.id % 100 == 99) {
+		if (primaryPlanetHorizonIDs.indexOf(planet.id) !== -1) {
 			var img = new Image();
 			img.onload = function() {
 				planetClassPrototype.tex = new GL.Texture2D({
