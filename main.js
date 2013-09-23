@@ -916,7 +916,7 @@ function integrateFunction(time, planets) {
 		accel[0] = accel[1] = accel[2] = 0;
 		for (var j = 0; j < planets.length; ++j) {
 			var pj = planets[j];
-			if (i !== j) {
+			if (i !== j && pj.mass !== undefined) {	//looks like we're not integrating against objects with no mass ...
 				delta[0] = pj.pos[0] - pi.pos[0];
 				delta[1] = pj.pos[1] - pi.pos[1];
 				delta[2] = pj.pos[2] - pi.pos[2];
@@ -1153,7 +1153,8 @@ var showOrbits = true;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
-
+var gravityWellRadialMinLog100 = -1;
+var gravityWellRadialMaxLog100 = 2;
 var hoverPlanetText;
 var orbitPlanetText;
 
@@ -1279,8 +1280,8 @@ var updatePlanetClassSceneObj;
 })();
 
 var drawScene;
-var zScale = 1;
-var targetZScale = 1;
+var gravityWellZScale = 1;
+var gravityWellTargetZScale = 1;
 (function(){
 	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
@@ -1402,22 +1403,33 @@ var targetZScale = 1;
 			var orbitBasisInv = [];
 			var mvMat = [];
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				var planet = planets[planetIndex];
+				var planetClassPrototype = planet.init.prototype;
+				if (planet.radius === undefined) continue;	
+				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
+				if (planet.visRatio * Math.pow(100, gravityWellRadialMaxLog100) < .001) continue;
+				
 				mat4.identity(orbitBasis);
 				mat4.identity(orbitBasisInv);
 				for (var i = 0; i < 16; ++i) {
 					mvMat[i] = glMvMat[i];
 				}
-				var planet = planets[planetIndex];
-				var planetClassPrototype = planet.init.prototype;
 				for (var i = 0; i < 3; ++i) {
 					orbitBasis[i] = planetClassPrototype.orbitBasis[0][i];
 					orbitBasis[4+i] = planetClassPrototype.orbitBasis[1][i];
 					orbitBasis[8+i] = planetClassPrototype.orbitBasis[2][i];
 				}
-				//gravWellObjBasis = orbitBasis * zScale * zOffsetByRadius * orbitBasis^-1 * planetPosBasis
+				//gravWellObjBasis = orbitBasis * gravityWellZScale * zOffsetByRadius * orbitBasis^-1 * planetPosBasis
+			
+				//calc this for non-sceneObj planets.  maybe I should store it as a member variable?
+				var relPos = [
+					planet.pos[0] - planets[orbitPlanetIndex].pos[0],
+					planet.pos[1] - planets[orbitPlanetIndex].pos[1],
+					planet.pos[2] - planets[orbitPlanetIndex].pos[2]
+				];
 				
 				//translate to planet center
-				mat4.translate(mvMat, mvMat, planet.sceneObj.pos);
+				mat4.translate(mvMat, mvMat, relPos);
 				
 				//align gravity well with orbit plane
 				mat4.multiply(mvMat, mvMat, orbitBasis);
@@ -1428,17 +1440,18 @@ var targetZScale = 1;
 				//scale for visual effect
 				//too flat for earth, too sharp for sun			
 				if (gravityWellScaleFixed) {
-					targetZScale = gravityWellScaleFixedValue;
+					gravityWellTargetZScale = gravityWellScaleFixedValue;
 				} else if (gravityWellScaleNormalized) {
 					//causes larger wells to be much smaller and sharper ...
-					//var targetZScale = 2000000 * Math.log(1 + z);
+					//var gravityWellTargetZScale = 2000000 * Math.log(1 + z);
 					//normalized visually per-planet.  scale is not 1-1 across planets			
 					var R = planets[orbitPlanetIndex].radius;
 					var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
-					targetZScale = 1 / (Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1));
+					gravityWellTargetZScale = 1 / (Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1));
 				}
-				zScale += .01 * (targetZScale - zScale); 
-				mat4.scale(mvMat, mvMat, [1,1,zScale]);
+				gravityWellZScale += .01 * (gravityWellTargetZScale - gravityWellZScale); 
+				if (gravityWellZScale !== gravityWellZScale) gravityWellZScale = 1;
+				mat4.scale(mvMat, mvMat, [1,1,gravityWellZScale]);
 
 				//apply orbit basis inverse
 				mat4.transpose(orbitBasisInv, orbitBasis);
@@ -1560,7 +1573,6 @@ var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 
 $(document).ready(init1);
 
 function init1() {
-console.log('init1');
 	panel = $('#panel');
 	panelContent = $('#content');
 	$('#menu').click(function() {
@@ -1824,7 +1836,6 @@ console.log('init1');
 }
 
 function init2() {
-console.log('init2');
 
 	var imgs = [];
 
@@ -1839,10 +1850,7 @@ console.log('init2');
 	$(imgs).preload(function(){
 		$('#loadingDiv').hide();
 		$('#menu').show();
-//not until mass is plugged in to everything
-//...which makes me wonder, what of things that have no mass or radii? how do
-//we consider them for integration?
-//		$('#timeControlDiv').show();
+		$('#timeControlDiv').show();
 		$('#infoDiv').show();
 		init3();
 	}, function(percent){
@@ -1851,7 +1859,6 @@ console.log('init2');
 }
 
 function init3() {
-console.log('init3');
 	hsvTex = new GL.HSVTexture(256);
 
 	colorShader = new GL.ShaderProgram({
@@ -1942,7 +1949,6 @@ console.log('init3');
 		planetClassPrototype.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
 	
 		var checkDone = function() {
-			console.log('checkDone ',planet.id);
 			
 			if (planet.radius === undefined) {
 				//only/always use a point/basis/etc?
@@ -2070,7 +2076,6 @@ console.log('init3');
 }
 
 function init4() {
-console.log('init4');
 	/* this is helper for the orbit generations
 	 * i should be calculating this myself!
 										Sidereal period (yr)		Synodic period (yr)	Synodic period (d)
@@ -2279,14 +2284,15 @@ console.log('init4');
 		
 		var gravWellIndexes = [];
 		
-		var rimax = 200;
+		var rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
 		var thimax = 60;
 		
 		var zmin = undefined;
 		var zmax = undefined;
 		for (var ri = 1; ri < rimax; ++ri) {
-			var r = R * Math.exp((ri / rimax * 3 - 1) * Math.log(100));
-			
+			var r = R * Math.pow(100, ri / rimax * (gravityWellRadialMaxLog100 - gravityWellRadialMinLog100) + gravityWellRadialMinLog100);
+			//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
+
 			var z;
 			if (r <= R) {
 				var r_R = r / R;
@@ -2378,7 +2384,6 @@ console.log('init4');
 }
 
 function init5(skyTex) {
-console.log('init5');
 	var cubeShader = new GL.ShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'cube-vsh',

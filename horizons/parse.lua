@@ -305,9 +305,27 @@ for _,planetInfo in ipairs(planetInfos) do
 	--]]
 end
 
+--remove that straggler that doesn't show up in the dynamic data
 if planetInfos[#planetInfos].id == 1000041 then
 	planetInfos:remove(#planetInfos)
 end
+
+local planetInfoForName = {}
+for _,planetInfo in ipairs(planetInfos) do
+	planetInfoForName[planetInfo.name] = planetInfo
+end
+-- append some facts I found on another site
+-- http://solarsystem.nasa.gov/planets/profile.cfm?Object=Sun
+planetInfoForName.Sun.radius= 695508000
+planetInfoForName.Sun.mass= 1.9891e+30
+planetInfoForName.Mercury.radius = 2.4397e+6
+planetInfoForName.Mercury.mass = 3.30104e+23
+planetInfoForName.Venus.radius = 6.0581e+6
+planetInfoForName.Venus.mass = 4.86732e+24
+planetInfoForName.Earth.radius = 6.37101e6
+planetInfoForName.Earth.mass = 5.97291e+24
+planetInfoForName.Moon.radius = 1.73753e+6
+planetInfoForName.Moon.mass = 73476730924573500000000
 
 -- or 'static data' ... unlike the full-horizons-results.json which holds dynamic data
 io.writefile('full-horizons-extra-data.json', 'horizonsExtraData = '..json.encode(planetInfos, {indent=true})..';')
