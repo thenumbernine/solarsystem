@@ -2318,8 +2318,10 @@ function init4() {
 		var checkPosToPosZ = checkPosZ - posZ;
 		var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
 		var checkPosError = checkPosToPosDist / distanceToParent;
-		console.log(planet.name+' error of reconstructed position '+ checkPosError);
-		if (checkPosError !== checkPosError) {	//NaN? debug!
+		if (checkPosError === checkPosError) {
+			console.log(planet.name+' error of reconstructed position '+ checkPosError);
+		} else {	//NaN? debug!
+		/*	
 			planetClassPrototype.relVelSq = velSq;
 			planetClassPrototype.gravitationalParameter = gravitationalParameter;
 			planetClassPrototype.specificOrbitalEnergy = specificOrbitalEnergy;
@@ -2341,6 +2343,8 @@ function init4() {
 					console.log(planetClassPrototype.name, k, v);
 				}
 			}
+		*/
+			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
 		}
 
 		//not NaN, we successfully reconstructed the position

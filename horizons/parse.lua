@@ -61,7 +61,7 @@ xpcall(function()
 			local parent
 			local a, b = name:match('^(.*)%s*/%s*%((.*)%)$')
 			if a and b then
-				name = a
+				name = a:trim()
 				parent = b
 			end
 
@@ -329,11 +329,12 @@ planetInfoForName.Moon.mass = 7.34767309245735e+22
 planetInfoForName.Mars.radius = 3.3895e+6
 planetInfoForName.Mars.mass = 6.41693e+23
 --planetInfoForName.Phobos.radius =
-
-
-
-
-
+planetInfoForName.Amalthea.mass = 2068162437674130000 
+planetInfoForName.Himalia.mass = 6744007948937370000 
+planetInfoForName.Elara.mass = 869227691196372000 
+planetInfoForName.Pasiphae.mass = 299733686619439000
+planetInfoForName.Sinope.mass = 74933421654859700
+planetInfoForName.Lysithea.mass = 62944074190082100
 
 
 
