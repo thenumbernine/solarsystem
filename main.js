@@ -995,7 +995,7 @@ function mouseRay() {
 function chooseNewPlanet(mouseDir,doChoose) {
 	var bestDot = 0;
 	var bestPlanet = undefined; 
-	for (var i = 0; i < planets.length; ++i) {
+	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
 		var deltaX = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
 		var deltaY = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
@@ -2094,48 +2094,6 @@ function init3() {
 }
 
 function init4() {
-	/* this is helper for the orbit generations
-	 * i should be calculating this myself!
-										Sidereal period (yr)		Synodic period (yr)	Synodic period (d)
-		  Solar surface	      			0.069[1] (25.3 days)	  	0.074	  27.3
-		  Mercury	      				0.240846 (87.9691 days)	  	0.317	  115.88
-		  Venus	      					0.615 (225 days)	  		1.599	  583.9
-		  Earth	      					1 (365.25636 solar days)	    —	    —
-		  Moon	      					0.0748  	  				0.0809	  29.5306
-		  Apophis (near-Earth asteroid)	0.886	  					7.769	  2,837.6
-		  Mars	      					1.881	  					2.135	  779.9
-		  4 Vesta	      				3.629	  					1.380	  504.0
-		  1 Ceres	      				4.600	  					1.278	  466.7
-		  10 Hygiea	      				5.557	    				1.219	  445.4
-		  Jupiter	      				11.86	  					1.092	  398.9
-		  Saturn	      				29.46	  					1.035	  378.1
-		  Uranus	      				84.32	  					1.012	  369.7
-		  Neptune	      				164.8	  					1.006	  367.5
-		  134340 Pluto	     	 		248.1	  					1.004	  366.7
-		  136199 Eris	      			557	  						1.002	  365.9
-		  90377 Sedna	      			12050	  					1.00001	  365.1
-	*/
-	var orbitsInEarthYears = {
-		Sun : 0.0691,
-		Mercury : 0.240846,
-		Venus : 0.615,
-		Earth : 1,
-		Moon : 0.0748,
-		Mars : 1.881,
-		Jupiter : 11.86,
-		Saturn : 29.46,
-		Uranus : 84.32,
-		Neptune : 164.8,
-		Pluto : 248.1,
-	};
-	var solarDaysPerEarthYear = 365.25636;
-	/*
-	so do i run separate integrators per-planet at separate timesteps?
-	or do i vary the timestep to gradually increase (exponential ramp?) to cover the small planets at high res and large planets full orbits too?
-	
-	looks like we can safely take large timesteps on the outer planets, so integrating separately might be best?
-	*/
-
 	var orbitShader = new GL.ShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'orbit-vsh',
@@ -2143,6 +2101,8 @@ function init4() {
 		fragmentCodeID : 'orbit-fsh'
 	});
 
+	//TODO update these when we integrate!
+	var calcOrbitPathStartTime = Date.now();
 	for (var planetIndex_ = 0; planetIndex_ < planets.length; ++planetIndex_) {
 		var planetIndex = planetIndex_;
 		var planet = planets[planetIndex];
@@ -2235,22 +2195,7 @@ function init4() {
 		var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
-
-		planetClassPrototype.relVelSq = velSq;
-		planetClassPrototype.gravitationalParameter = gravitationalParameter;
-		planetClassPrototype.specificOrbitalEnergy = specificOrbitalEnergy;
-		planetClassPrototype.distanceToParent = distanceToParent;
-		planetClassPrototype.semiMajorAxis = semiMajorAxis;
-		planetClassPrototype.semiLatusRectum = semiLatusRectum;
-		planetClassPrototype.eccentricity = eccentricity;
-		planetClassPrototype.cosEccentricAnomaly = cosEccentricAnomaly;
-		planetClassPrototype.sinEccentricAnomaly = sinEccentricAnomaly;
-		planetClassPrototype.eccentricAnomaly = eccentricAnomaly;
-		planetClassPrototype.inclination = inclination;
-		planetClassPrototype.argumentOfPericenter = argumentOfPericenter;
-		planetClassPrototype.longitudeOfAscendingNode = longitudeOfAscendingNode;
-		planetClassPrototype.timeOfPeriapsisCrossing = timeOfPeriapsisCrossing;
-		
+	
 		/*
 		to convert back:
 		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
@@ -2267,6 +2212,21 @@ function init4() {
 		var checkPosError = checkPosToPosDist / distanceToParent;
 		console.log(planet.name+' error of reconstructed position '+ checkPosError);
 		if (checkPosError !== checkPosError) {	//NaN? debug!
+			planetClassPrototype.relVelSq = velSq;
+			planetClassPrototype.gravitationalParameter = gravitationalParameter;
+			planetClassPrototype.specificOrbitalEnergy = specificOrbitalEnergy;
+			planetClassPrototype.distanceToParent = distanceToParent;
+			planetClassPrototype.semiMajorAxis = semiMajorAxis;
+			planetClassPrototype.semiLatusRectum = semiLatusRectum;
+			planetClassPrototype.eccentricity = eccentricity;
+			planetClassPrototype.cosEccentricAnomaly = cosEccentricAnomaly;
+			planetClassPrototype.sinEccentricAnomaly = sinEccentricAnomaly;
+			planetClassPrototype.eccentricAnomaly = eccentricAnomaly;
+			planetClassPrototype.inclination = inclination;
+			planetClassPrototype.argumentOfPericenter = argumentOfPericenter;
+			planetClassPrototype.longitudeOfAscendingNode = longitudeOfAscendingNode;
+			planetClassPrototype.timeOfPeriapsisCrossing = timeOfPeriapsisCrossing;
+			
 			for (k in planetClassPrototype) {
 				var v = planetClassPrototype[k];
 				if (k != 'name' && typeof(v) != 'function') {
@@ -2279,7 +2239,7 @@ function init4() {
 		if (checkPosError === checkPosError) {
 			//iterate around the eccentric anomaly to reconstruct the path
 			var vertexes = [];
-			var res = 50;
+			var res = 250;
 			for (var i = 0; i < res; ++i) {
 				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
 				var pathEccentricAnomaly = eccentricAnomaly + theta;
@@ -2289,6 +2249,11 @@ function init4() {
 				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly + parentPlanet.pos[0];
 				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly + parentPlanet.pos[1];
 				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly + parentPlanet.pos[2];
+
+				//offset by our calculated error (which is pretty small)
+				vtxPosX -= checkPosToPosX;
+				vtxPosY -= checkPosToPosY;
+				vtxPosZ -= checkPosToPosZ;
 		
 				//add to buffer
 				vertexes.push(vtxPosX);
@@ -2317,9 +2282,11 @@ function init4() {
 			});
 		}
 	}
-
+	var calcOrbitPathEndTime = Date.now();
+	
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
+	var calcGravWellStartTime = Date.now();
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
@@ -2419,7 +2386,15 @@ function init4() {
 		planetClassPrototype.gravWellObj.mvMat = mat4.create();
 		planetClassPrototype.gravWellObj.uniforms.mvMat = planetClassPrototype.gravWellObj.mvMat;
 	}
+	var calcGravWellEndTime = Date.now();
 
+	//on my machine this was 769ms
+	console.log('calc orbit path time ',calcOrbitPathEndTime-calcOrbitPathStartTime,'ms');
+	
+	//on my machine this was 386ms
+	console.log('calc grav well time ',calcGravWellEndTime-calcGravWellStartTime,'ms');
+
+	//looks like doing these in realtime will mean toning the detail down a bit ...
 
 	var skyTex = new GL.TextureCube({
 		flipY : true,
