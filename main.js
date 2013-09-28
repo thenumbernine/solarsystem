@@ -499,6 +499,7 @@ var Planet = makeClass({
 		}
 		var inverseFlattening = this.inverseFlattening;
 		if (inverseFlattening !== undefined) {
+			//mind you this is the planet shape eccentricity, not to be confused with the orbit path eccentricity
 			var eccentricitySquared = (2 * inverseFlattening - 1) / (inverseFlattening * inverseFlattening);
 			var sinPhiSquared = sinPhi * sinPhi;
 			var N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
@@ -545,16 +546,16 @@ Planets = makeClass({
 	*/
 	planetClasses : [
 		makeClass({super:Planet, id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8}),
-		makeClass({super:Planet, id:199, name:'Mercury', mass:3.302e+23, radius:2440e+3, equatorialRadius:2440e+3}),
-		makeClass({super:Planet, id:299, name:'Venus', mass:4.8685e+24, radius:6051.8e+3, equatorialRadius:6051.893e+3}),
-		makeClass({super:Planet, id:399, name:'Earth', mass:5.9736e+24, radius:6371.01e+3, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
-		makeClass({super:Planet, id:301, name:'Moon', mass:7.349e+22, radius:1737.53e+3}),
-		makeClass({super:Planet, id:499, name:'Mars', mass:6.4185e+23, radius:3389.9e+3, equatorialRadius:3397e+3, inverseFlattening:154.409}),
-		makeClass({super:Planet, id:599, name:'Jupiter', mass:1.89813e+27, radius:69911e+3, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
-		makeClass({super:Planet, id:699, name:'Saturn', mass:5.68319e+26, radius:58232e+3, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
-		makeClass({super:Planet, id:799, name:'Uranus', mass:8.68103e+25, radius:25362e+3, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
-		makeClass({super:Planet, id:899, name:'Neptune', mass:1.0241e+26, radius:24624e+3, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
-		makeClass({super:Planet, id:999, name:'Pluto', mass:1.314e+22, radius:1151e+3}),
+		makeClass({super:Planet, id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2440e+3, equatorialRadius:2440e+3}),
+		makeClass({super:Planet, id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6051.8e+3, equatorialRadius:6051.893e+3}),
+		makeClass({super:Planet, id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6371.01e+3, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
+		makeClass({super:Planet, id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1737.53e+3}),
+		makeClass({super:Planet, id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3389.9e+3, equatorialRadius:3397e+3, inverseFlattening:154.409}),
+		makeClass({super:Planet, id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:69911e+3, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
+		makeClass({super:Planet, id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:58232e+3, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
+		makeClass({super:Planet, id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:25362e+3, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
+		makeClass({super:Planet, id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:24624e+3, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
+		makeClass({super:Planet, id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1151e+3}),
 	],
 
 	init : function() {
@@ -619,7 +620,8 @@ Planets = makeClass({
 							mass:extra.mass,
 							radius:extra.radius,
 							equatorialRadius:extra.equatorialRadius,
-							inverseFlattening:extra.inverseFlattening
+							inverseFlattening:extra.inverseFlattening,
+							parent:extra.parent
 						})
 					);
 					currentIDs[data.id] = true;
@@ -721,8 +723,16 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 	Planets.prototype.planetClasses[i].prototype = oldPrototype;
 	Planets.prototype.planetClasses[i].prototype.index = i;
 	var planetClass = Planets.prototype.planetClasses[i];
+		
 	Planets.prototype.indexes[planetClass.prototype.name] = i;
 	Planets.prototype.planetClassForHorizonID[planetClass.prototype.id] = planetClass;
+}
+//convert parent from name to class (or undefined if no such name exists)
+for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
+	var planetClass = Planets.prototype.planetClasses[i];
+	if (planetClass.prototype.parent !== undefined) {
+		planetClass.prototype.parent = Planets.prototype.indexes[planetClass.prototype.parent];
+	}
 }
 
 var planets = undefined;
@@ -833,6 +843,14 @@ function calcGravitationForce(accel, pos) {
  		//this code is in natural units
 		//so either convert xyz into natural units
 		//or insert c's into here where they belong ...
+		//also don't forget that G is in m^3 / (kg s^2) whereas our velocity is in m/day	
+		
+		x''^u = -conn^u_ab x'^a x'^b
+
+		t'' = -rs / (r(r-rs)) t' r'
+		r'' = -[c^2 rs (r - rs) / (2r^3) t'^2 - rs/(2r(r-rs)) r'^2 - (r-rs) (theta'^2 + sin^2theta phi'^2)]
+	...and so on ...
+		
 		var r = Math.sqrt(x*x + y*y + z*z);
 		var oneMinus2MOverR = 1 - 2*planet.mass/r;
 		var posDotVel = x * oldVx + y * oldVy + z * oldVz;
@@ -1447,14 +1465,12 @@ var planetPointVisRatio = .001;
 				} else if (gravityWellScaleNormalized) {
 					//causes larger wells to be much smaller and sharper ...
 					//var gravityWellTargetZScale = 2000000 * Math.log(1 + z);
-					//normalized visually per-planet.  scale is not 1-1 across planets			
-					var R = planets[orbitPlanetIndex].radius;
-					var Rs = planets[orbitPlanetIndex].schwarzschildRadius;
-					gravityWellTargetZScale = 1 / (Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1));
+					//normalized visually per-planet.  scale is not 1-1 across planets
+					gravityWellTargetZScale = 1 / planets[orbitPlanetIndex].gravityWellScalar;
 				}
 				gravityWellZScale += .01 * (gravityWellTargetZScale - gravityWellZScale); 
 				if (gravityWellZScale !== gravityWellZScale) gravityWellZScale = 1;
-				mat4.scale(mvMat, mvMat, [1,1,gravityWellZScale]);
+				mat4.scale(mvMat, mvMat, [1,1,gravityWellZScale * planet.gravityWellScalar]);
 
 				//apply orbit basis inverse
 				mat4.transpose(orbitBasisInv, orbitBasis);
@@ -1942,7 +1958,7 @@ function init3() {
 		var planetClassPrototype = planet.init.prototype;
 		var color = colors[planet.name];
 		if (!color) {
-			console.log("failed to find color for "+planet.name);
+			//console.log("failed to find color for "+planet.name);
 			planetClassPrototype.color = [Math.random(), Math.random(), Math.random(), 1];
 			vec3.normalize(planetClassPrototype.color, planetClassPrototype.color);
 		} else {
@@ -2127,131 +2143,179 @@ function init4() {
 		fragmentCodeID : 'orbit-fsh'
 	});
 
-
-/* disable orbit paths for now.
- * they look cool, so maybe enable them later as orbit parameters?
-	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
-		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
-		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
-		var planet = planets[planetClassPrototype.index];
-
-
-		//integration code -- can move it outside the for loop if you dont want separate integrations per body
-
-		var integrationStepInDays = 3;
-		var numIntSteps = .5 * solarDaysPerEarthYear / integrationStepInDays ;
-		var dt = orbitsInEarthYears[planet.name] * integrationStepInDays ;
-		
-		//integrate orbits for a year? track positions
-		var history = [];
-		var intPlanets = planets.clone();
-		var t = 0;
-		for (var i = 0; i < numIntSteps; ++i) {
-			//parabolic, initial value of 0, initial slope of 1, reaches 240*365 at 360
-			intPlanets = integrate.run(t + julianDate, intPlanets, dt, integrateFunction, integrationMethod, integrationArgs);
-			t += dt;
-			history.push(intPlanets);	//add future
-		}
-		var intPlanets = planets.clone();
-		history.splice(0, 0, intPlanets);	//add present
-		var t = 0;
-		for (var i = 0; i < numIntSteps; ++i) {
-			intPlanets = integrate.run(t + julianDate, intPlanets, -dt, integrateFunction, integrationMethod, integrationArgs);
-			t -= dt;
-			history.splice(0, 0, intPlanets);	//add past
-		}
-
-		//end planet integration code
-
-		var avgPosX = 0;
-		var avgPosY = 0;
-		var avgPosZ = 0;
-
-		var vertexes = [];
-		//extract lines
-		for (var i = 0; i < history.length; ++i) {
-			var planetPos = history[i][planetIndex].pos;
-		
-			//add to buffer
-			vertexes.push(planetPos[0]);
-			vertexes.push(planetPos[1]);
-			vertexes.push(planetPos[2]);
-		
-			//keep track of all vertexes
-			//(so we can calculate arm from center to position, cross with tangent, and get the axis...
-			// I figure that's more numerically accurate than crossing the tangent with its derivative,
-			// since the vertex-to-center vector should approximate the (ever so small) tangent derivative)
-			avgPosX += planetPos[0];
-			avgPosY += planetPos[1];
-			avgPosZ += planetPos[2];
-
-			//pack transparency info into the vertex
-			var alpha = 1 - Math.abs(2 * i / (history.length-1) - 1);
-			vertexes.push(alpha);
-		}
-		avgPosX /= history.length;
-		avgPosY /= history.length;
-		avgPosZ /= history.length;
-
-		//now calculate the approximate axis of orbit
-		var avgAxis = [0,0,0];
-		for (var i = 0; i < history.length-1; ++i) {
-			var planetPos = history[i][planetIndex].pos;
-			var planetNextPos = history[i+1][planetIndex].pos;
-			
-			var posToCenterDirX = avgPosX - planetPos[0];
-			var posToCenterDirY = avgPosY - planetPos[1];
-			var posToCenterDirZ = avgPosZ - planetPos[2];
-		
-			var tangentX = planetNextPos[0] - planetPos[0];
-			var tangentY = planetNextPos[1] - planetPos[1];
-			var tangentZ = planetNextPos[2] - planetPos[2];
-
-			var axisX = tangentY * posToCenterDirZ - tangentZ * posToCenterDirY;
-			var axisY = tangentZ * posToCenterDirX - tangentX * posToCenterDirZ;
-			var axisZ = tangentX * posToCenterDirY - tangentY * posToCenterDirX;
-			var axisLen = Math.sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ);
-			axisX /= axisLen;
-			axisY /= axisLen;
-			axisZ /= axisLen;
-
-			avgAxis[0] += axisX;
-			avgAxis[1] += axisY;
-			avgAxis[2] += axisZ;
-		}
-		var avgAxisLen = Math.sqrt(avgAxis[0] * avgAxis[0] + avgAxis[1] * avgAxis[1] + avgAxis[2] * avgAxis[2]);
-		avgAxis[0] /= avgAxisLen;
-		avgAxis[1] /= avgAxisLen;
-		avgAxis[2] /= avgAxisLen;
-
-		//...and store it
-		planetClassPrototype.orbitAxis = avgAxis;
-
-		planetClassPrototype.orbitLineObj = new GL.SceneObject({
-			mode : gl.LINE_STRIP,
-			shader : orbitShader,
-			attrs : {
-				vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
-			},
-			uniforms : {
-				color : planetClassPrototype.color
-			},
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-			pos : [0,0,0],
-			angle : [0,0,0,1],
-			parent : null,
-			static : false 
-		});
-	}
-*/
-
-/* unfortunately, disabling the orbit paths means no basis to construct the
- * gravity well ... so for now just give it an identity basis */
-
-	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+	for (var planetIndex_ = 0; planetIndex_ < planets.length; ++planetIndex_) {
+		var planetIndex = planetIndex_;
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
-		planetClassPrototype.orbitAxis = [0,0,1];	
+
+		// based on planet position and velocity, find plane of orbit
+		if (planet.parent === undefined) {
+			console.log(planet.name+' has no orbit parent');
+			planetClassPrototype.orbitAxis = [0,0,1];
+			planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+			continue;
+		}
+
+		var parentPlanet = planets[planet.parent];
+		if (parentPlanet === undefined) {
+			console.log(planet.name+' has an invalid orbit planet');
+			planetClassPrototype.orbitAxis = [0,0,1];
+			planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+			continue;
+		}
+
+		//consider position relative to orbitting parent
+		// should I be doing the same thing with the velocity?  probably...
+		var posX = planet.pos[0] - parentPlanet.pos[0];
+		var posY = planet.pos[1] - parentPlanet.pos[1];
+		var posZ = planet.pos[2] - parentPlanet.pos[2];
+
+		//convert from m/day to m/s to coincide with the units of our gravitational constant
+		var velX = (planet.vel[0] - parentPlanet.vel[0]) / (60 * 60 * 24);
+		var velY = (planet.vel[1] - parentPlanet.vel[1]) / (60 * 60 * 24);
+		var velZ = (planet.vel[2] - parentPlanet.vel[2]) / (60 * 60 * 24);
+
+		var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
+
+		var angularMomentumX = posY * velZ - posZ * velY; //m^2/s
+		var angularMomentumY = posZ * velX - posX * velZ; 
+		var angularMomentumZ = posX * velY - posY * velX; 
+		var angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
+		var angularMomentumMag = Math.sqrt(angularMomentumMagSq);
+		if (angularMomentumMag < 1e-9) {
+			planetClassPrototype.orbitAxis = [0,0,1];
+		} else {
+			var axisX = angularMomentumX / angularMomentumMag;
+			var axisY = angularMomentumY / angularMomentumMag;
+			var axisZ = angularMomentumZ / angularMomentumMag;
+			planetClassPrototype.orbitAxis = [axisX, axisY, axisZ];
+		}
+
+		var basisX = [0,0,0];
+		var basisY = [0,0,0];
+		var basisZ = planetClassPrototype.orbitAxis;
+		calcBasis(basisX, basisY, basisZ);
+		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
+		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
+
+		//now decompose the relative position in the coordinates of the orbit basis
+		//i've eliminated all but one of the rotation degrees of freedom ...
+
+		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
+		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
+		var gravitationalParameter = gravitationalConstant * (planet.mass + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
+		var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
+		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
+		var eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
+		
+		var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
+		var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
+		var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+		
+		var sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
+		var cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
+		var inclination = Math.atan2(sinInclination, cosInclination);
+
+		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
+		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
+		var argumentOfPericenter = Math.atan(sinPericenter, cosPericenter);
+
+		var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
+		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
+		var longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);
+
+		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
+		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter);
+		var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed);
+
+		var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
+				 semiMajorAxis * sinPericenter * sinInclination];
+		var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+
+		planetClassPrototype.relVelSq = velSq;
+		planetClassPrototype.gravitationalParameter = gravitationalParameter;
+		planetClassPrototype.specificOrbitalEnergy = specificOrbitalEnergy;
+		planetClassPrototype.distanceToParent = distanceToParent;
+		planetClassPrototype.semiMajorAxis = semiMajorAxis;
+		planetClassPrototype.semiLatusRectum = semiLatusRectum;
+		planetClassPrototype.eccentricity = eccentricity;
+		planetClassPrototype.cosEccentricAnomaly = cosEccentricAnomaly;
+		planetClassPrototype.sinEccentricAnomaly = sinEccentricAnomaly;
+		planetClassPrototype.eccentricAnomaly = eccentricAnomaly;
+		planetClassPrototype.inclination = inclination;
+		planetClassPrototype.argumentOfPericenter = argumentOfPericenter;
+		planetClassPrototype.longitudeOfAscendingNode = longitudeOfAscendingNode;
+		planetClassPrototype.timeOfPeriapsisCrossing = timeOfPeriapsisCrossing;
+		
+		/*
+		to convert back:
+		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
+		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly) 
+		*/
+		var checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
+		var checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
+		var checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
+
+		var checkPosToPosX = checkPosX - posX;
+		var checkPosToPosY = checkPosY - posY;
+		var checkPosToPosZ = checkPosZ - posZ;
+		var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
+		var checkPosError = checkPosToPosDist / distanceToParent;
+		console.log(planet.name+' error of reconstructed position '+ checkPosError);
+		if (checkPosError !== checkPosError) {	//NaN? debug!
+			for (k in planetClassPrototype) {
+				var v = planetClassPrototype[k];
+				if (k != 'name' && typeof(v) != 'function') {
+					console.log(planetClassPrototype.name, k, v);
+				}
+			}
+		}
+
+		//not NaN, we successfully reconstructed the position
+		if (checkPosError === checkPosError) {
+			//iterate around the eccentric anomaly to reconstruct the path
+			var vertexes = [];
+			var res = 50;
+			for (var i = 0; i < res; ++i) {
+				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+				var pathEccentricAnomaly = eccentricAnomaly + theta;
+				var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+				var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+				
+				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly + parentPlanet.pos[0];
+				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly + parentPlanet.pos[1];
+				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly + parentPlanet.pos[2];
+		
+				//add to buffer
+				vertexes.push(vtxPosX);
+				vertexes.push(vtxPosY);
+				vertexes.push(vtxPosZ);
+			
+				//pack transparency info into the vertex
+				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+				vertexes.push(alpha);
+			}
+		
+			planetClassPrototype.orbitLineObj = new GL.SceneObject({
+				mode : gl.LINE_STRIP,
+				shader : orbitShader,
+				attrs : {
+					vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
+				},
+				uniforms : {
+					color : planetClassPrototype.color
+				},
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				parent : null,
+				static : false 
+			});
+		}
 	}
 
 	//looks like low grav wells run into fp accuracy issues
@@ -2260,13 +2324,6 @@ function init4() {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
 		
-		var basisX = [0,0,0];
-		var basisY = [0,0,0];
-		var basisZ = planetClassPrototype.orbitAxis;
-		calcBasis(basisX, basisY, basisZ);
-		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
-		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
-
 		/*
 		gravity wells
 	
@@ -2281,6 +2338,9 @@ function init4() {
 		var Rs_R = Rs / R;
 		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
 
+		//extract the normalized scalar to post-multiply after transformation (so small fields will not lose accuracy)
+		planetClassPrototype.gravityWellScalar = Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1);
+
 		//populate first vertex
 		var gravWellVtxs = [0,0,0,1];
 		
@@ -2289,8 +2349,6 @@ function init4() {
 		var rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
 		var thimax = 60;
 		
-		var zmin = undefined;
-		var zmax = undefined;
 		for (var ri = 1; ri < rimax; ++ri) {
 			var r = R * Math.pow(100, ri / rimax * (gravityWellRadialMaxLog100 - gravityWellRadialMinLog100) + gravityWellRadialMinLog100);
 			//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
@@ -2304,8 +2362,7 @@ function init4() {
 					+ Math.sqrt(4 * Rs * (r - Rs))
 					- Math.sqrt(4 * Rs * (R - Rs));
 			}
-			if (zmin === undefined || z < zmin) zmin = z;
-			if (zmax === undefined || z > zmax) zmax = z;
+			z /= planetClassPrototype.gravityWellScalar;
 			
 			for (var thi = 0; thi < thimax; ++thi) {
 				var th = 2 * Math.PI * thi / thimax;
