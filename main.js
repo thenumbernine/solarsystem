@@ -978,18 +978,27 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 }
 
 function mouseRay() {
+	var viewX = GL.view.pos[0];
+	var viewY = GL.view.pos[1];
+	var viewZ = GL.view.pos[2];
+	var viewFwdX = -2 * (GL.view.angle[0] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[1]); 
+	var viewFwdY = -2 * (GL.view.angle[1] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[0]); 
+	var viewFwdZ = -(1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[1] * GL.view.angle[1])); 
+	var viewRightX = 1 - 2 * (GL.view.angle[1] * GL.view.angle[1] + GL.view.angle[2] * GL.view.angle[2]); 
+	var viewRightY = 2 * (GL.view.angle[0] * GL.view.angle[1] + GL.view.angle[2] * GL.view.angle[3]); 
+	var viewRightZ = 2 * (GL.view.angle[0] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[1]); 
+	var viewUpX = 2 * (GL.view.angle[0] * GL.view.angle[1] - GL.view.angle[3] * GL.view.angle[2]);
+	var viewUpY = 1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[2] * GL.view.angle[2]);
+	var viewUpZ = 2 * (GL.view.angle[1] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[0]);
 	var aspectRatio = canvas.width / canvas.height;
-	// ray intersect
-	var v = [2 * mouse.xf - 1, 1 - 2 * mouse.yf, -1]; 
-	// I want to inverse transform the matrices ... especially the infinite projection matrix ...
-	v[0] = aspectRatio * v[0] / GL.projMat[0];
-	v[1] = aspectRatio * v[1] / GL.projMat[5];
-	vec3TransformQuat(v, v, GL.view.angle);
-	var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-	v[0] /= l;
-	v[1] /= l;
-	v[2] /= l;
-	return v;
+	var mxf = mouse.xf * 2 - 1;
+	var myf = 1 - mouse.yf * 2;
+	var tanFovY = Math.tan(GL.view.fovY * Math.PI / 360);
+	var mouseDirX = viewFwdX / tanFovY + (viewRightX * aspectRatio * mxf + viewUpX * myf);
+	var mouseDirY = viewFwdY / tanFovY + (viewRightY * aspectRatio * mxf + viewUpY * myf);
+	var mouseDirZ = viewFwdZ / tanFovY + (viewRightZ * aspectRatio * mxf + viewUpZ * myf);
+	var mouseDirLength = Math.sqrt(mouseDirX * mouseDirX + mouseDirY * mouseDirY + mouseDirZ * mouseDirZ);
+	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
 
 function chooseNewPlanet(mouseDir,doChoose) {
@@ -1319,7 +1328,9 @@ var planetPointVisRatio = .001;
 		mat4.fromQuat(invRotMat, viewAngleInv);
 		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
 
+		gl.disable(gl.DEPTH_TEST);
 		cubeObj.draw();
+		gl.enable(gl.DEPTH_TEST);
 
 		viewPosInv[0] = -GL.view.pos[0];
 		viewPosInv[1] = -GL.view.pos[1];
@@ -1552,14 +1563,15 @@ function resize() {
 
 	GL.view.fovY = canvas.height / canvas.width * 90;
 
-	/**/
-	//setup infinite projection matrix
-	//http://www.terathon.com/gdc07_lengyel.pdf
-	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
 	var aspectRatio = canvas.width / canvas.height;
 	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
-	var epsilon = 1e-1;
+
+	/** /
+	//setup infinite projection matrix
+	//http://www.terathon.com/gdc07_lengyel.pdf
+	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
+	var epsilon = 0;
 	mat4.identity(GL.projMat);
 	GL.projMat[0] = GL.view.zNear / nearWidth;
 	GL.projMat[5] = GL.view.zNear / nearHeight;
@@ -1567,7 +1579,21 @@ function resize() {
 	GL.projMat[11] = (epsilon - 2) * GL.view.zNear;
 	GL.projMat[14] = -1;
 	GL.projMat[15] = 0;
-/**/
+	/**/
+
+	/* or we could just linearly ramp the depth over the range we want, since the rest is going to full anyways * /
+	//(-z - zNear) / (zFar - zNear) * 2 - 1
+	//z * (-2 / (zFar - zNear)) + ( - 2 * zNear / (zFar - zNear) - 1)
+	var resZNear = 1e+4;
+	var resZFar = 1e+8;
+	mat4.identity(GL.projMat);
+	GL.projMat[0] = GL.view.zNear / nearWidth;
+	GL.projMat[5] = GL.view.zNear / nearHeight;
+	GL.projMat[10] = -2 * (resZFar - resZNear);
+	GL.projMat[11] = -(1 + 2 * resZNear / (resZFar - resZNear));
+	GL.projMat[14] = -1;
+	GL.projMat[15] = 0;
+	/**/
 }
 
 function invalidateForces() {
@@ -1605,6 +1631,18 @@ function refreshCurrentTimeText() {
 }
 
 var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
+
+var ModifiedDepthShaderProgram = makeClass({
+	super : GL.ShaderProgram,
+	init : function(args) {
+		args.vertexCode = $('#depthfunction').text();
+		if (args.uniforms === undefined) args.uniforms = {};
+		args.uniforms.zNear = GL.view.zNear;
+		args.uniforms.zFar = GL.view.zFar;
+		args.uniforms.depthConstant = depthConstant;
+		ModifiedDepthShaderProgram.super.call(this, args);
+	}
+});
 
 $(document).ready(init1);
 
@@ -1671,8 +1709,8 @@ function init1() {
 	
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
-	GL.view.zNear = 1;
-	GL.view.zFar = 1e+7;//Infinity;
+	GL.view.zNear = 1e+3;
+	GL.view.zFar = 1e+25;
 
 	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
@@ -1898,7 +1936,7 @@ function init2() {
 function init3() {
 	hsvTex = new GL.HSVTexture(256);
 
-	colorShader = new GL.ShaderProgram({
+	colorShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'color-vsh',
 		fragmentPrecision : 'best',
@@ -1908,7 +1946,7 @@ function init3() {
 		}
 	});
 
-	texShader = new GL.ShaderProgram({
+	texShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'tex-vsh',
 		fragmentPrecision : 'best',
@@ -1918,7 +1956,7 @@ function init3() {
 		}
 	});
 
-	hsvShader = new GL.ShaderProgram({
+	hsvShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'heat-vsh',
 		fragmentPrecision : 'best',
@@ -1951,11 +1989,6 @@ function init3() {
 		shader : colorShader,
 		attrs : {
 			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW})
-		},
-		uniforms : {
-			zNear : GL.view.zNear,
-			zFar : GL.view.zFar,
-			depthConstant : depthConstant
 		},
 		parent : null
 	});
@@ -2048,10 +2081,7 @@ function init3() {
 						tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
 					},
 					uniforms : {
-						color : planetClassPrototype.color,
-						zNear : GL.view.zNear,
-						zFar : GL.view.zFar,
-						depthConstant : depthConstant
+						color : planetClassPrototype.color
 					},
 					pos : [0,0,0],
 					angle : [0,0,0,1],
@@ -2066,12 +2096,8 @@ function init3() {
 						vertex : vertexBuffer
 					},
 					uniforms : {
-						color : [1,1,1,.2],
-						zNear : GL.view.zNear,
-						zFar : GL.view.zFar,
-						depthConstant : depthConstant
+						color : [1,1,1,.2]
 					},
-					//useDepth : false,
 					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 					pos : [0,0,0],
 					angle : [0,0,0,1],
@@ -2086,10 +2112,7 @@ function init3() {
 					vertex : new GL.ArrayBuffer({count:2, keep:true, usage:gl.DYNAMIC_DRAW})
 				},
 				uniforms : {
-					color : planetClassPrototype.color,
-					zNear : GL.view.zNear,
-					zFar : GL.view.zFar,
-					depthConstant : depthConstant
+					color : planetClassPrototype.color
 				},
 				parent : null,
 				static : true 
@@ -2126,7 +2149,7 @@ function init3() {
 
 	//while we're here, load the rings
 	{
-		var ringShader = new GL.ShaderProgram({
+		var ringShader = new ModifiedDepthShaderProgram({
 			vertexPrecision : 'best',
 			vertexCodeID : 'ring-vsh',
 			fragmentPrecision : 'best',
@@ -2163,10 +2186,7 @@ function init3() {
 				uniforms : {
 					tex : 0,
 					minRadius : 7.4e+7,	//meters
-					maxRadius : 1.4025e+8,
-					zNear : GL.view.zNear,
-					zFar : GL.view.zFar,
-					depthConstant : depthConstant
+					maxRadius : 1.4025e+8
 				},
 				texs : [planetClassPrototype.ringTex],
 				pos : [0,0,0],
@@ -2180,7 +2200,7 @@ function init3() {
 }
 
 function init4() {
-	var orbitShader = new GL.ShaderProgram({
+	var orbitShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'orbit-vsh',
 		fragmentPrecision : 'best',
@@ -2360,10 +2380,7 @@ function init4() {
 					vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
 				},
 				uniforms : {
-					color : planetClassPrototype.color,
-					zNear : GL.view.zNear,
-					zFar : GL.view.zFar,
-					depthConstant : depthConstant
+					color : planetClassPrototype.color
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				pos : [0,0,0],
@@ -2463,12 +2480,8 @@ function init4() {
 				vertex : new GL.ArrayBuffer({dim:4, data:gravWellVtxs})
 			},
 			uniforms : {
-				color : [1,1,1,.2],
-				zNear : GL.view.zNear,
-				zFar : GL.view.zFar,
-				depthConstant : depthConstant
+				color : [1,1,1,.2]
 			},
-			//useDepth : false,
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null
 		});
@@ -2512,7 +2525,7 @@ function init4() {
 }
 
 function init5(skyTex) {
-	var cubeShader = new GL.ShaderProgram({
+	var cubeShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCodeID : 'cube-vsh',
 		fragmentPrecision : 'best',
@@ -2548,13 +2561,9 @@ function init5(skyTex) {
 			vertex : new GL.ArrayBuffer({data : cubeVtxArray})
 		},
 		uniforms : {
-			viewAngle : GL.view.angle,
-			zNear : GL.view.zNear,
-			zFar : GL.view.zFar,
-			depthConstant : depthConstant
+			viewAngle : GL.view.angle
 		},
 		texs : [skyTex],
-		useDepth : false,
 		parent : null,
 		static : false
 	});
@@ -2562,7 +2571,7 @@ function init5(skyTex) {
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
-	//gl.depthFunc(gl.LEQUAL);
+	gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
 	var trackPlanet = planets[planets.indexes.Earth];
