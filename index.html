@@ -41,14 +41,19 @@ _gaq.push(['_trackPageview']);
 })();
 		</script>
 
+<!-- maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html -->
+
 		<script id='color-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='color-fsh' type='x-shader/x-fragment'>
@@ -63,11 +68,14 @@ attribute vec4 vertex;
 varying float alpha;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
 	alpha = vertex.w;
 	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='orbit-fsh' type='x-shader/x-fragment'>
@@ -86,6 +94,7 @@ uniform mat4 projMat;
 uniform float minRadius;
 uniform float maxRadius;
 varying vec2 texCoordv;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	texCoordv = vertex;
 	//vertex is the uv of the texcoord wrapped around the annulus 
@@ -96,6 +105,8 @@ void main() {
 	float sinTheta = sin(theta);
 	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
 	gl_Position = projMat * vtx4;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='ring-fsh' type='x-shader/x-fragment'>
@@ -110,13 +121,16 @@ void main() {
 		<script id='tex-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
+varying vec2 texCoordv;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-varying vec2 texCoordv;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	texCoordv = texCoord;
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 	gl_Position = projMat * vtx4;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='tex-fsh' type='x-shader/x-fragment'>
@@ -135,11 +149,14 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 varying float tidev;
 varying vec2 texCoordv;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	tidev = tide;
 	texCoordv = texCoord;
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 	gl_Position = projMat * vtx4;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='heat-fsh' type='x-shader/x-fragment'>
@@ -163,11 +180,14 @@ uniform mat4 objMat;
 uniform mat4 projMat;
 varying vec2 texCoordv;
 varying vec4 worldv;
+uniform float zNear, zFar, depthConstant;
 void main() {
 	tidev = tide;
 	texCoordv = texCoord;
 	worldv = objMat * vec4(vertex, 1.);
 	gl_Position = projMat * mvMat * worldv;
+	//gl_Position.z = (log(gl_Position.w + 1.) * depthConstant - 1.) * gl_Position.w;
+	//gl_Position.z = (2.0 * log(gl_Position.w / zNear) / log(zFar / zNear) - 1.) * gl_Position.w; 
 }
 		</script>
 		<script id='tangent-tidal-fsh' type='x-shader/x-fragment'>

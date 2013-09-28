@@ -1181,6 +1181,9 @@ var orbitPlanetText;
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
 
+var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
+
+
 var updatePlanetClassSceneObj;
 (function(){
 	var x = [];
@@ -1387,11 +1390,9 @@ var planetPointVisRatio = .001;
 				//only allow ring obj if there's a radii and a sphere 
 				//... this way i can just copy over the pos and angle	
 				if (planet.ringObj !== undefined) {
-					gl.disable(gl.CULL_FACE);
 					planet.ringObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 					planet.ringObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
 					planet.ringObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
-					gl.enable(gl.CULL_FACE);
 				}
 			}
 		}
@@ -1417,7 +1418,9 @@ var planetPointVisRatio = .001;
 				}
 			
 				if (planet.ringObj !== undefined) {
+					gl.disable(gl.CULL_FACE);
 					planet.ringObj.draw();
+					gl.enable(gl.CULL_FACE);
 				}
 			}
 		}
@@ -1556,7 +1559,7 @@ function resize() {
 	var aspectRatio = canvas.width / canvas.height;
 	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
-	var epsilon = 1e-5;
+	var epsilon = 1e-1;
 	mat4.identity(GL.projMat);
 	GL.projMat[0] = GL.view.zNear / nearWidth;
 	GL.projMat[5] = GL.view.zNear / nearHeight;
@@ -1670,7 +1673,7 @@ function init1() {
 
 	GL.view.zNear = 1;
 	GL.view.zFar = 1e+7;//Infinity;
-	
+
 	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
@@ -1949,6 +1952,11 @@ function init3() {
 		attrs : {
 			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW})
 		},
+		uniforms : {
+			zNear : GL.view.zNear,
+			zFar : GL.view.zFar,
+			depthConstant : depthConstant
+		},
 		parent : null
 	});
 
@@ -2040,7 +2048,10 @@ function init3() {
 						tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
 					},
 					uniforms : {
-						color : planetClassPrototype.color
+						color : planetClassPrototype.color,
+						zNear : GL.view.zNear,
+						zFar : GL.view.zFar,
+						depthConstant : depthConstant
 					},
 					pos : [0,0,0],
 					angle : [0,0,0,1],
@@ -2055,7 +2066,10 @@ function init3() {
 						vertex : vertexBuffer
 					},
 					uniforms : {
-						color : [1,1,1,.2]
+						color : [1,1,1,.2],
+						zNear : GL.view.zNear,
+						zFar : GL.view.zFar,
+						depthConstant : depthConstant
 					},
 					//useDepth : false,
 					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
@@ -2072,7 +2086,10 @@ function init3() {
 					vertex : new GL.ArrayBuffer({count:2, keep:true, usage:gl.DYNAMIC_DRAW})
 				},
 				uniforms : {
-					color : planetClassPrototype.color
+					color : planetClassPrototype.color,
+					zNear : GL.view.zNear,
+					zFar : GL.view.zFar,
+					depthConstant : depthConstant
 				},
 				parent : null,
 				static : true 
@@ -2147,6 +2164,9 @@ function init3() {
 					tex : 0,
 					minRadius : 7.4e+7,	//meters
 					maxRadius : 1.4025e+8,
+					zNear : GL.view.zNear,
+					zFar : GL.view.zFar,
+					depthConstant : depthConstant
 				},
 				texs : [planetClassPrototype.ringTex],
 				pos : [0,0,0],
@@ -2340,7 +2360,10 @@ function init4() {
 					vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
 				},
 				uniforms : {
-					color : planetClassPrototype.color
+					color : planetClassPrototype.color,
+					zNear : GL.view.zNear,
+					zFar : GL.view.zFar,
+					depthConstant : depthConstant
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				pos : [0,0,0],
@@ -2440,7 +2463,10 @@ function init4() {
 				vertex : new GL.ArrayBuffer({dim:4, data:gravWellVtxs})
 			},
 			uniforms : {
-				color : [1,1,1,.2]
+				color : [1,1,1,.2],
+				zNear : GL.view.zNear,
+				zFar : GL.view.zFar,
+				depthConstant : depthConstant
 			},
 			//useDepth : false,
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
@@ -2522,7 +2548,10 @@ function init5(skyTex) {
 			vertex : new GL.ArrayBuffer({data : cubeVtxArray})
 		},
 		uniforms : {
-			viewAngle : GL.view.angle
+			viewAngle : GL.view.angle,
+			zNear : GL.view.zNear,
+			zFar : GL.view.zFar,
+			depthConstant : depthConstant
 		},
 		texs : [skyTex],
 		useDepth : false,
@@ -2533,7 +2562,7 @@ function init5(skyTex) {
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
-	gl.depthFunc(gl.LEQUAL);
+	//gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
 	var trackPlanet = planets[planets.indexes.Earth];
