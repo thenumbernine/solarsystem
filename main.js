@@ -546,16 +546,16 @@ Planets = makeClass({
 	*/
 	planetClasses : [
 		makeClass({super:Planet, id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8}),
-		makeClass({super:Planet, id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2440e+3, equatorialRadius:2440e+3}),
-		makeClass({super:Planet, id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6051.8e+3, equatorialRadius:6051.893e+3}),
-		makeClass({super:Planet, id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6371.01e+3, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
-		makeClass({super:Planet, id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1737.53e+3}),
-		makeClass({super:Planet, id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3389.9e+3, equatorialRadius:3397e+3, inverseFlattening:154.409}),
-		makeClass({super:Planet, id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:69911e+3, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
-		makeClass({super:Planet, id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:58232e+3, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
-		makeClass({super:Planet, id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:25362e+3, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
-		makeClass({super:Planet, id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:24624e+3, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
-		makeClass({super:Planet, id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1151e+3}),
+		makeClass({super:Planet, id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3}),
+		makeClass({super:Planet, id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3}),
+		makeClass({super:Planet, id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}),
+		makeClass({super:Planet, id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6}),
+		makeClass({super:Planet, id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409}),
+		makeClass({super:Planet, id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}),
+		makeClass({super:Planet, id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}),
+		makeClass({super:Planet, id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}),
+		makeClass({super:Planet, id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}),
+		makeClass({super:Planet, id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1.151e+6}),
 	],
 
 	init : function() {
@@ -1383,6 +1383,16 @@ var planetPointVisRatio = .001;
 					planet.sceneObj.angle[2] = planet.angle[2];
 					planet.sceneObj.angle[3] = planet.angle[3];
 				}
+				
+				//only allow ring obj if there's a radii and a sphere 
+				//... this way i can just copy over the pos and angle	
+				if (planet.ringObj !== undefined) {
+					gl.disable(gl.CULL_FACE);
+					planet.ringObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+					planet.ringObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+					planet.ringObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+					gl.enable(gl.CULL_FACE);
+				}
 			}
 		}
 
@@ -1404,6 +1414,10 @@ var planetPointVisRatio = .001;
 					planet.latLonObj.angle[2] = planet.sceneObj.angle[2];
 					planet.latLonObj.angle[3] = planet.sceneObj.angle[3];
 					planet.latLonObj.draw();
+				}
+			
+				if (planet.ringObj !== undefined) {
+					planet.ringObj.draw();
 				}
 			}
 		}
@@ -1712,7 +1726,7 @@ function init1() {
 			if (window[toggle]) checkbox.attr('checked', 'checked');
 			checkbox.change(function() {
 				window[toggle] = checkbox.is(':checked');
-				//TODO generalize for radios?
+				//TODO generalize for radius?
 				if (toggle == 'gravityWellScaleNormalized' && gravityWellScaleNormalized) gravityWellScaleFixed = false;
 				if (toggle == 'gravityWellScaleFixed' && gravityWellScaleFixed) gravityWellScaleNormalized = false;
 			});
@@ -1862,6 +1876,7 @@ function init2() {
 		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
 		imgs.push('textures/'+planetClassPrototype.name.toLowerCase()+'.png');
 	});
+	imgs.push('textures/saturn-rings.png');
 	for (var i = 0; i < skyTexFilenames.length; ++i) {
 		imgs.push(skyTexFilenames[i]);
 	}
@@ -2091,6 +2106,57 @@ function init3() {
 			checkDone();
 		}
 	})(); }
+
+	//while we're here, load the rings
+	{
+		var ringShader = new GL.ShaderProgram({
+			vertexPrecision : 'best',
+			vertexCodeID : 'ring-vsh',
+			fragmentPrecision : 'best',
+			fragmentCodeID : 'ring-fsh'
+		});
+		
+		var img = new Image();
+		img.onload = function() {
+			var planetClassPrototype = planets[planets.indexes.Saturn].init.prototype;
+			planetClassPrototype.ringTex = new GL.Texture2D({
+				data : img,
+				minFilter : gl.LINEAR_MIPMAP_LINEAR,
+				magFilter : gl.LINEAR,
+				generateMipmap : true
+			});
+
+			var vertexes = [];
+			var res = 200;
+			for (var i = 0; i < res; ++i) {
+				var f = i / (res - 1);
+				vertexes.push(1);
+				vertexes.push(f);
+				vertexes.push(0);
+				vertexes.push(f);
+			}
+		
+			//and a ring object
+			planetClassPrototype.ringObj = new GL.SceneObject({
+				mode : gl.TRIANGLE_STRIP,
+				shader : ringShader,
+				attrs : {
+					vertex : new GL.ArrayBuffer({dim:2, data:vertexes})
+				},
+				uniforms : {
+					tex : 0,
+					minRadius : 7.4e+7,	//meters
+					maxRadius : 1.4025e+8,
+				},
+				texs : [planetClassPrototype.ringTex],
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				parent : null,
+				static : false
+			});
+		};
+		img.src = 'textures/saturn-rings.png';
+	}
 }
 
 function init4() {
@@ -2160,6 +2226,8 @@ function init4() {
 
 		//now decompose the relative position in the coordinates of the orbit basis
 		//i've eliminated all but one of the rotation degrees of freedom ...
+
+		//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
 
 		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
 		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m

@@ -77,7 +77,36 @@ void main() {
 	gl_FragColor = vec4(color.xyz, color.w * alpha);
 }
 		</script>
-	
+
+		<script id='ring-vsh' type='x-shader/x-vertex'>
+#define M_PI 3.1415926535897931 
+attribute vec2 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float minRadius;
+uniform float maxRadius;
+varying vec2 texCoordv;
+void main() {
+	texCoordv = vertex;
+	//vertex is the uv of the texcoord wrapped around the annulus 
+	//u coord is radial, v coord is angular 
+	float rad = mix(minRadius, maxRadius, vertex.x);
+	float theta = 2. * M_PI * vertex.y;
+	float cosTheta = cos(theta);
+	float sinTheta = sin(theta);
+	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+	gl_Position = projMat * vtx4;
+}
+		</script>
+		<script id='ring-fsh' type='x-shader/x-fragment'>
+varying vec2 texCoordv;
+uniform sampler2D tex;
+void main() {
+	gl_FragColor = texture2D(tex, texCoordv);
+}
+		</script>
+
+
 		<script id='tex-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -97,6 +126,7 @@ void main() {
 	gl_FragColor = texture2D(tex, texCoordv);
 }
 		</script>
+		
 		<script id='heat-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
