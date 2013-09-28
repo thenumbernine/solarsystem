@@ -993,10 +993,10 @@ function mouseRay() {
 	var aspectRatio = canvas.width / canvas.height;
 	var mxf = mouse.xf * 2 - 1;
 	var myf = 1 - mouse.yf * 2;
-	var tanFovY = Math.tan(GL.view.fovY * Math.PI / 360);
-	var mouseDirX = viewFwdX / tanFovY + (viewRightX * aspectRatio * mxf + viewUpX * myf);
-	var mouseDirY = viewFwdY / tanFovY + (viewRightY * aspectRatio * mxf + viewUpY * myf);
-	var mouseDirZ = viewFwdZ / tanFovY + (viewRightZ * aspectRatio * mxf + viewUpZ * myf);
+	var tanFovY = 2 * Math.tan(GL.view.fovY * Math.PI / 360);
+	var mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
+	var mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
+	var mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
 	var mouseDirLength = Math.sqrt(mouseDirX * mouseDirX + mouseDirY * mouseDirY + mouseDirZ * mouseDirZ);
 	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
@@ -2537,9 +2537,9 @@ function init5(skyTex) {
 
 	var cubeVtxArray = new Float32Array(3*8);
 	for (var i = 0; i < 8; i++) {
-		cubeVtxArray[0+3*i] = 10*(2*(i&1)-1);
-		cubeVtxArray[1+3*i] = 10*(2*((i>>1)&1)-1);
-		cubeVtxArray[2+3*i] = 10*(2*((i>>2)&1)-1);
+		cubeVtxArray[0+3*i] = GL.view.zNear*10*(2*(i&1)-1);
+		cubeVtxArray[1+3*i] = GL.view.zNear*10*(2*((i>>1)&1)-1);
+		cubeVtxArray[2+3*i] = GL.view.zNear*10*(2*((i>>2)&1)-1);
 	}
 
 	var cubeIndexBuf = new GL.ElementArrayBuffer({
