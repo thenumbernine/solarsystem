@@ -27,18 +27,19 @@ local function upperCase(name)
 	return name:sub(1,1):upper()..name:sub(2):lower()
 end
 
-local parentAbbrevs = {
-	Jupiter = 'Jup',
-	Saturn = 'Sat',
+local parentPrefixes = {
+	Sun = '',
+	Jupiter = 'Jup_',
+	Saturn = 'Sat_',
 }
 
 local function getInfo(planet)
-	local abbrev = parentAbbrevs[planet.parent]
-	if not abbrev then 
-		print("Couldn't find abbrev for parent "..tostring(planet.parent))
+	local prefix = parentPrefixes[planet.parent]
+	if not prefix then 
+		print("Couldn't find prefix for parent "..tostring(planet.parent))
 		return
 	end
-	local urlname = upperCase(abbrev)..'_'..upperCase(planet.name)
+	local urlname = upperCase(prefix)..upperCase(planet.name)
 	local url = [[http://solarsystem.nasa.gov/planets/profile.cfm?Object=]]..urlname
 	local page = assert(http.request(url))
 	local tree = htmlparser.new(page):parse()

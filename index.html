@@ -56,10 +56,11 @@ float depthfunction(vec4 v) {
 attribute vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform float pointSize;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 	gl_Position = projMat * vtx4;
-	gl_PointSize = 4.;
+	gl_PointSize = pointSize;
 	gl_Position.z = depthfunction(gl_Position);
 }
 		</script>
@@ -120,25 +121,71 @@ void main() {
 }
 		</script>
 
+		<script id='planet-color-vsh' type='x-shader/x-vertex'>
+attribute vec3 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform vec3 sunPos;
+uniform float pointSize;
+varying vec3 lightDir;
+varying vec3 normal;
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2.*cross(cross(v, q.xyz) + q.w*v, q.xyz);
+}
+void main() {
+	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	normal = quatRotate(angle, normalize(vertex));
+	lightDir = normalize(sunPos - vtx3);
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	gl_Position = projMat * vtx4;
+	gl_PointSize = pointSize;
+	gl_Position.z = depthfunction(gl_Position);
+}
+		</script>
+		<script id='planet-color-fsh' type='x-shader/x-fragment'>
+uniform vec4 color;
+varying vec3 lightDir;
+varying vec3 normal;
+uniform float ambient;
+void main() {
+	gl_FragColor = color * mix(ambient, 1., max(0., dot(lightDir, normal)));
+}
+		</script>
 
-		<script id='tex-vsh' type='x-shader/x-vertex'>
+		<script id='planet-tex-vsh' type='x-shader/x-vertex'>
 attribute vec3 vertex;
 attribute vec2 texCoord;
 varying vec2 texCoordv;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform vec3 sunPos;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+varying vec3 lightDir;
+varying vec3 normal;
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2.*cross(cross(v, q.xyz) + q.w*v, q.xyz);
+}
 void main() {
 	texCoordv = texCoord;
-	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	normal = quatRotate(angle, normalize(vertex));
+	lightDir = normalize(sunPos - vtx3);
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
 		</script>
-		<script id='tex-fsh' type='x-shader/x-fragment'>
+		<script id='planet-tex-fsh' type='x-shader/x-fragment'>
 varying vec2 texCoordv;
+varying vec3 lightDir;
+varying vec3 normal;
 uniform sampler2D tex;
+uniform float ambient;
 void main() {
-	gl_FragColor = texture2D(tex, texCoordv);
+	gl_FragColor = texture2D(tex, texCoordv) * mix(ambient, 1., max(0., dot(lightDir, normal)));
 }
 		</script>
 		

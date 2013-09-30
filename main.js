@@ -744,6 +744,7 @@ var targetJulianDate = undefined;
 var dateTime = Date.now();
 
 // track ball motion variables
+var mouseOverPlanetIndex;
 var orbitPlanetIndex;
 var orbitGeodeticLocation;
 var orbitDistance;
@@ -993,7 +994,7 @@ function mouseRay() {
 	var aspectRatio = canvas.width / canvas.height;
 	var mxf = mouse.xf * 2 - 1;
 	var myf = 1 - mouse.yf * 2;
-	var tanFovY = 2 * Math.tan(GL.view.fovY * Math.PI / 360);
+	var tanFovY = Math.tan(GL.view.fovY * Math.PI / 360);
 	var mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
 	var mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
 	var mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
@@ -1003,7 +1004,8 @@ function mouseRay() {
 
 function chooseNewPlanet(mouseDir,doChoose) {
 	var bestDot = 0;
-	var bestPlanet = undefined; 
+	var bestPlanet = undefined;
+	var bestPlanetIndex = undefined;
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
 		var deltaX = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
@@ -1017,10 +1019,13 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		if (dot > bestDot) {
 			bestDot = dot;
 			bestPlanet = planet;
+			bestPlanetIndex  = i;
 		}
 	}
+	mouseOverPlanetIndex = undefined;
 	if (bestPlanet !== undefined) {
 		hoverPlanetText.text(bestPlanet.name);
+		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
 			GL.view.pos[0] += planets[orbitPlanetIndex].pos[0];
 			GL.view.pos[1] += planets[orbitPlanetIndex].pos[1];
@@ -1034,7 +1039,16 @@ function chooseNewPlanet(mouseDir,doChoose) {
 			var deltaZ = GL.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
 			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 			if (bestPlanet.radius === undefined) {
-				orbitTargetDistance = 1e+6; 
+				if (bestPlanet.parent !== undefined) {
+					var parentPlanet = planets[bestPlanet.parent];
+					if (parentPlanet !== undefined) {
+						orbitTargetDistance = vec3.distance(bestPlanet.pos, parentPlanet.pos);
+					} else {
+						orbitTargetDistance = 1e+6; 
+					}
+				} else {
+					orbitTargetDistance = 1e+6; 
+				}
 			} else {
 				orbitTargetDistance = 2 * bestPlanet.radius;
 			}
@@ -1157,7 +1171,8 @@ var currentTimeText;
 
 var hsvTex;
 var colorShader;
-var texShader;
+var planetColorShader;
+var planetTexShader;
 var hsvShader;
 var displayMethods = [
 	'None',
@@ -1206,13 +1221,13 @@ var updatePlanetClassSceneObj;
 		var showTide = displayMethod != 'None';
 		if (!showTide) {
 			if (planetClassPrototype.tex === undefined) {
-				if (planetClassPrototype.sceneObj.shader !== colorShader) {
-					planetClassPrototype.sceneObj.shader = colorShader;
+				if (planetClassPrototype.sceneObj.shader !== planetColorShader) {
+					planetClassPrototype.sceneObj.shader = planetColorShader;
 					planetClassPrototype.sceneObj.texs = [];
 				}
 			} else {
-				if (planetClassPrototype.sceneObj.shader !== texShader) {
-					planetClassPrototype.sceneObj.shader = texShader;
+				if (planetClassPrototype.sceneObj.shader !== planetTexShader) {
+					planetClassPrototype.sceneObj.shader = planetTexShader;
 					planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex];
 				}
 			}
@@ -1384,18 +1399,18 @@ var planetPointVisRatio = .001;
 			if (planet.sceneObj !== undefined) {
 			
 				//update scene object
-				planet.sceneObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				planet.sceneObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				planet.sceneObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				planet.sceneObj.uniforms.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				planet.sceneObj.uniforms.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				planet.sceneObj.uniforms.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
 				if (planet.tiltAngle) {
-					//quat.multiply(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
-					quatMul(planet.sceneObj.angle, planet.tiltAngle, planet.angle);
+					//quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
+					quatMul(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
 				} else {
-					//quat.copy(planet.sceneObj.angle, planet.angle);
-					planet.sceneObj.angle[0] = planet.angle[0];
-					planet.sceneObj.angle[1] = planet.angle[1];
-					planet.sceneObj.angle[2] = planet.angle[2];
-					planet.sceneObj.angle[3] = planet.angle[3];
+					//quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
+					planet.sceneObj.uniforms.angle[0] = planet.angle[0];
+					planet.sceneObj.uniforms.angle[1] = planet.angle[1];
+					planet.sceneObj.uniforms.angle[2] = planet.angle[2];
+					planet.sceneObj.uniforms.angle[3] = planet.angle[3];
 				}
 				
 				//only allow ring obj if there's a radii and a sphere 
@@ -1404,6 +1419,10 @@ var planetPointVisRatio = .001;
 					planet.ringObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
 					planet.ringObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
 					planet.ringObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+					planet.ringObj.angle[0] = planet.sceneObj.uniforms.angle[0];
+					planet.ringObj.angle[1] = planet.sceneObj.uniforms.angle[1];
+					planet.ringObj.angle[2] = planet.sceneObj.uniforms.angle[2];
+					planet.ringObj.angle[3] = planet.sceneObj.uniforms.angle[3];
 				}
 			}
 		}
@@ -1415,16 +1434,22 @@ var planetPointVisRatio = .001;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				updatePlanetClassSceneObj(planet);
+			
+				var Sun = planets[planets.indexes.Sun];
+				planet.sceneObj.uniforms.sunPos[0] = Sun.pos[0] - planet.pos[0];
+				planet.sceneObj.uniforms.sunPos[1] = Sun.pos[1] - planet.pos[1];
+				planet.sceneObj.uniforms.sunPos[2] = Sun.pos[2] - planet.pos[2];
+				
 				planet.sceneObj.draw();
 			
 				if (showLatAndLonLines) {
-					planet.latLonObj.pos[0] = planet.sceneObj.pos[0];
-					planet.latLonObj.pos[1] = planet.sceneObj.pos[1];
-					planet.latLonObj.pos[2] = planet.sceneObj.pos[2];
-					planet.latLonObj.angle[0] = planet.sceneObj.angle[0];
-					planet.latLonObj.angle[1] = planet.sceneObj.angle[1];
-					planet.latLonObj.angle[2] = planet.sceneObj.angle[2];
-					planet.latLonObj.angle[3] = planet.sceneObj.angle[3];
+					planet.latLonObj.pos[0] = planet.sceneObj.uniforms.pos[0];
+					planet.latLonObj.pos[1] = planet.sceneObj.uniforms.pos[1];
+					planet.latLonObj.pos[2] = planet.sceneObj.uniforms.pos[2];
+					planet.latLonObj.angle[0] = planet.sceneObj.uniforms.angle[0];
+					planet.latLonObj.angle[1] = planet.sceneObj.uniforms.angle[1];
+					planet.latLonObj.angle[2] = planet.sceneObj.uniforms.angle[2];
+					planet.latLonObj.angle[3] = planet.sceneObj.uniforms.angle[3];
 					planet.latLonObj.draw();
 				}
 			
@@ -1435,7 +1460,58 @@ var planetPointVisRatio = .001;
 				}
 			}
 		}
+		
+		//draw point planets
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
+			
+			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
+				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				pointObj.attrs.vertex.updateData();
+				pointObj.draw({
+					uniforms : {
+						color : planetClassPrototype.color,
+						pointSize : 4
+					}
+				});
+			}
+		}
 
+		if (mouseOverPlanetIndex !== undefined) {
+			var planet = planets[mouseOverPlanetIndex];
+			if (planet !== undefined) {
+				gl.disable(gl.DEPTH_TEST);
+				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
+				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
+				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				pointObj.attrs.vertex.updateData();
+				pointObj.draw({
+					uniforms : {
+						color : [0,1,0,1],
+						pointSize : 8
+					},
+					blend : [gl.SRC_ALPHA, gl.ONE]
+				});
+				gl.enable(gl.DEPTH_TEST);
+			}
+		}
+
+		if (showOrbits) {
+			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+				var planet = planets[planetIndex];
+				var planetClassPrototype = planet.init.prototype;
+				if (planet.orbitLineObj) {
+					planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
+					planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
+					planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
+					planet.orbitLineObj.draw();
+				}
+			}
+		}
+		
 		if (showGravityWell) {
 			//do transformation math in double
 			//TODO just give gl-matrix a type param in its init
@@ -1511,37 +1587,6 @@ var planetPointVisRatio = .001;
 				planet.gravWellObj.draw();
 			}
 		}
-		
-		//draw point planets
-		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-			var planet = planets[planetIndex];
-			var planetClassPrototype = planet.init.prototype;
-			
-			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
-				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
-				pointObj.attrs.vertex.updateData();
-				pointObj.draw({
-					uniforms : {
-						color : planetClassPrototype.color
-					}
-				});
-			}
-		}
-
-		if (showOrbits) {
-			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-				var planet = planets[planetIndex];
-				var planetClassPrototype = planet.init.prototype;
-				if (planet.orbitLineObj) {
-					planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
-					planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
-					planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
-					planet.orbitLineObj.draw();
-				}
-			}
-		}
 	};
 })();
 
@@ -1561,12 +1606,14 @@ function resize() {
 	
 	GL.resize();
 
-	GL.view.fovY = canvas.height / canvas.width * 90;
+	//GL.view.fovY = canvas.height / canvas.width * 90;
 
+	/*
 	var aspectRatio = canvas.width / canvas.height;
 	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
-
+	*/
+	
 	/** /
 	//setup infinite projection matrix
 	//http://www.terathon.com/gdc07_lengyel.pdf
@@ -1640,6 +1687,8 @@ var ModifiedDepthShaderProgram = makeClass({
 		args.uniforms.zNear = GL.view.zNear;
 		args.uniforms.zFar = GL.view.zFar;
 		args.uniforms.depthConstant = depthConstant;
+		args.vertexPrecision = 'best';
+		args.fragmentPrecision = 'best';
 		ModifiedDepthShaderProgram.super.call(this, args);
 	}
 });
@@ -1935,31 +1984,35 @@ function init2() {
 
 function init3() {
 	hsvTex = new GL.HSVTexture(256);
-
+	
 	colorShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCodeID : 'color-vsh',
-		fragmentPrecision : 'best',
 		fragmentCodeID : 'color-fsh',
 		uniforms : {
-			color : [1,1,1,1]
+			color : [1,1,1,1],
+			pointSize : 4
+		}
+	});
+	
+	planetColorShader = new ModifiedDepthShaderProgram({
+		vertexCodeID : 'planet-color-vsh',
+		fragmentCodeID : 'planet-color-fsh',
+		uniforms : {
+			color : [1,1,1,1],
+			pointSize : 4
 		}
 	});
 
-	texShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
-		vertexCodeID : 'tex-vsh',
-		fragmentPrecision : 'best',
-		fragmentCodeID : 'tex-fsh',
+	planetTexShader = new ModifiedDepthShaderProgram({
+		vertexCodeID : 'planet-tex-vsh',
+		fragmentCodeID : 'planet-tex-fsh',
 		uniforms : {
 			tex : 0
 		}
 	});
 
 	hsvShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCodeID : 'heat-vsh',
-		fragmentPrecision : 'best',
 		fragmentCodeID : 'heat-fsh',
 		uniforms : {
 			tex : 0,
@@ -1988,7 +2041,8 @@ function init3() {
 		mode : gl.POINTS,
 		shader : colorShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW})
+			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW}),
+			pointSize : 4
 		},
 		parent : null
 	});
@@ -2081,12 +2135,14 @@ function init3() {
 						tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
 					},
 					uniforms : {
-						color : planetClassPrototype.color
+						color : planetClassPrototype.color,
+						pos : [0,0,0],
+						angle : [0,0,0,1],
+						sunPos : [0,0,0],
+						ambient : planetClassPrototype.name == 'Sun' ? 1 : .3
 					},
-					pos : [0,0,0],
-					angle : [0,0,0,1],
 					parent : null,
-					static : false
+					static : true 
 				});
 				planetClassPrototype.latLonObj = new GL.SceneObject({
 					mode : gl.LINES,
@@ -2147,12 +2203,13 @@ function init3() {
 		}
 	})(); }
 
+	//identity, quat.rotateZ(longitudeOfAscendingNode), rotateX(inclination)
+	Planets.prototype.planetClasses[Planets.prototype.indexes.Saturn].prototype.angle = [0.022130164430632083, 0.2413787655681219, 0.9661266533387534, 0.08857672980835953];
+
 	//while we're here, load the rings
 	{
 		var ringShader = new ModifiedDepthShaderProgram({
-			vertexPrecision : 'best',
 			vertexCodeID : 'ring-vsh',
-			fragmentPrecision : 'best',
 			fragmentCodeID : 'ring-fsh'
 		});
 		
@@ -2201,9 +2258,7 @@ function init3() {
 
 function init4() {
 	var orbitShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCodeID : 'orbit-vsh',
-		fragmentPrecision : 'best',
 		fragmentCodeID : 'orbit-fsh'
 	});
 
@@ -2260,6 +2315,7 @@ function init4() {
 		var basisX = [0,0,0];
 		var basisY = [0,0,0];
 		var basisZ = planetClassPrototype.orbitAxis;
+		//TODO use the inclination and longitudeOfAscendingNode
 		calcBasis(basisX, basisY, basisZ);
 		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
 		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
@@ -2321,22 +2377,8 @@ function init4() {
 		if (checkPosError === checkPosError) {
 			console.log(planet.name+' error of reconstructed position '+ checkPosError);
 		} else {	//NaN? debug!
-		/*	
-			planetClassPrototype.relVelSq = velSq;
-			planetClassPrototype.gravitationalParameter = gravitationalParameter;
-			planetClassPrototype.specificOrbitalEnergy = specificOrbitalEnergy;
-			planetClassPrototype.distanceToParent = distanceToParent;
-			planetClassPrototype.semiMajorAxis = semiMajorAxis;
-			planetClassPrototype.semiLatusRectum = semiLatusRectum;
-			planetClassPrototype.eccentricity = eccentricity;
-			planetClassPrototype.cosEccentricAnomaly = cosEccentricAnomaly;
-			planetClassPrototype.sinEccentricAnomaly = sinEccentricAnomaly;
-			planetClassPrototype.eccentricAnomaly = eccentricAnomaly;
-			planetClassPrototype.inclination = inclination;
-			planetClassPrototype.argumentOfPericenter = argumentOfPericenter;
-			planetClassPrototype.longitudeOfAscendingNode = longitudeOfAscendingNode;
-			planetClassPrototype.timeOfPeriapsisCrossing = timeOfPeriapsisCrossing;
 			
+		/*		
 			for (k in planetClassPrototype) {
 				var v = planetClassPrototype[k];
 				if (k != 'name' && typeof(v) != 'function') {
@@ -2346,6 +2388,23 @@ function init4() {
 		*/
 			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
 		}
+
+		planetClassPrototype.keplerianOrbitalElements = {
+			relVelSq : velSq,
+			gravitationalParameter : gravitationalParameter,
+			specificOrbitalEnergy : specificOrbitalEnergy,
+			distanceToParent : distanceToParent,
+			semiMajorAxis : semiMajorAxis,
+			semiLatusRectum : semiLatusRectum,
+			eccentricity : eccentricity,
+			cosEccentricAnomaly : cosEccentricAnomaly,
+			sinEccentricAnomaly : sinEccentricAnomaly,
+			eccentricAnomaly : eccentricAnomaly,
+			inclination : inclination,
+			argumentOfPericenter : argumentOfPericenter,
+			longitudeOfAscendingNode : longitudeOfAscendingNode,
+			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing
+		};	
 
 		//not NaN, we successfully reconstructed the position
 		if (checkPosError === checkPosError) {
@@ -2530,9 +2589,7 @@ function init4() {
 
 function init5(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCodeID : 'cube-vsh',
-		fragmentPrecision : 'best',
 		fragmentCodeID : 'cube-fsh',
 		uniforms : {
 			skyTex : 0
