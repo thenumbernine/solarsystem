@@ -150,7 +150,7 @@ varying vec3 lightDir;
 varying vec3 normal;
 uniform float ambient;
 void main() {
-	gl_FragColor = color * mix(ambient, 1., max(0., dot(lightDir, normal)));
+	gl_FragColor = color * max(ambient, dot(lightDir, normal));
 }
 		</script>
 
@@ -185,7 +185,7 @@ varying vec3 normal;
 uniform sampler2D tex;
 uniform float ambient;
 void main() {
-	gl_FragColor = texture2D(tex, texCoordv) * mix(ambient, 1., max(0., dot(lightDir, normal)));
+	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, dot(lightDir, normal));
 }
 		</script>
 		

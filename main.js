@@ -1006,11 +1006,12 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var bestDot = 0;
 	var bestPlanet = undefined;
 	var bestPlanetIndex = undefined;
+	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
-		var deltaX = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
-		var deltaY = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
-		var deltaZ = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
+		var deltaX = planet.pos[0] - GL.view.pos[0] - currentOrbitPlanet.pos[0];
+		var deltaY = planet.pos[1] - GL.view.pos[1] - currentOrbitPlanet.pos[1];
+		var deltaZ = planet.pos[2] - GL.view.pos[2] - currentOrbitPlanet.pos[2];
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 		deltaX /= deltaLength;
 		deltaY /= deltaLength;
@@ -1337,6 +1338,8 @@ var planetPointVisRatio = .001;
 	var viewPosInv = vec3.create();
 	
 	drawScene = function() {
+		var orbitPlanet = planets[orbitPlanetIndex];
+		
 		mat4.identity(GL.mvMat);
 		
 		quat.conjugate(viewAngleInv, GL.view.angle);
@@ -1357,30 +1360,27 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 
 			if (showLinesToOtherPlanets) {
-				if (orbitPlanetIndex !== undefined) {
-					var orbitPlanet = planets[orbitPlanetIndex];
-					if (orbitPlanet !== planet) {
-						//while here, update lines
-						
-						delta[0] = planet.pos[0] - orbitPlanet.pos[0];
-						delta[1] = planet.pos[1] - orbitPlanet.pos[1];
-						delta[2] = planet.pos[2] - orbitPlanet.pos[2];
-						
-						var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
-						delta[0] /= dist;
-						delta[1] /= dist;
-						delta[2] /= dist;
-						
-						planet.lineObj.attrs.vertex.data[0] = delta[0] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[1] = delta[1] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[2] = delta[2] * orbitPlanet.radius;
-						planet.lineObj.attrs.vertex.data[3] = delta[0] * orbitDistance;
-						planet.lineObj.attrs.vertex.data[4] = delta[1] * orbitDistance;
-						planet.lineObj.attrs.vertex.data[5] = delta[2] * orbitDistance;
-						
-						planet.lineObj.attrs.vertex.updateData();
-						planet.lineObj.draw();
-					}
+				if (orbitPlanet !== planet) {
+					//while here, update lines
+					
+					delta[0] = planet.pos[0] - orbitPlanet.pos[0];
+					delta[1] = planet.pos[1] - orbitPlanet.pos[1];
+					delta[2] = planet.pos[2] - orbitPlanet.pos[2];
+					
+					var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
+					delta[0] /= dist;
+					delta[1] /= dist;
+					delta[2] /= dist;
+					
+					planet.lineObj.attrs.vertex.data[0] = delta[0] * orbitPlanet.radius;
+					planet.lineObj.attrs.vertex.data[1] = delta[1] * orbitPlanet.radius;
+					planet.lineObj.attrs.vertex.data[2] = delta[2] * orbitPlanet.radius;
+					planet.lineObj.attrs.vertex.data[3] = delta[0] * orbitDistance;
+					planet.lineObj.attrs.vertex.data[4] = delta[1] * orbitDistance;
+					planet.lineObj.attrs.vertex.data[5] = delta[2] * orbitDistance;
+					
+					planet.lineObj.attrs.vertex.updateData();
+					planet.lineObj.draw();
 				}
 			}
 		}
@@ -1390,18 +1390,18 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			
 			//update vis ratio
-			var dx = planet.pos[0] - GL.view.pos[0] - planets[orbitPlanetIndex].pos[0];
-			var dy = planet.pos[1] - GL.view.pos[1] - planets[orbitPlanetIndex].pos[1];
-			var dz = planet.pos[2] - GL.view.pos[2] - planets[orbitPlanetIndex].pos[2];
+			var dx = planet.pos[0] - GL.view.pos[0] - orbitPlanet.pos[0];
+			var dy = planet.pos[1] - GL.view.pos[1] - orbitPlanet.pos[1];
+			var dz = planet.pos[2] - GL.view.pos[2] - orbitPlanet.pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//some planets have no radii ... so no object
 			if (planet.sceneObj !== undefined) {
 			
 				//update scene object
-				planet.sceneObj.uniforms.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				planet.sceneObj.uniforms.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				planet.sceneObj.uniforms.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				planet.sceneObj.uniforms.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
+				planet.sceneObj.uniforms.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
+				planet.sceneObj.uniforms.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
 				if (planet.tiltAngle) {
 					//quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
 					quatMul(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
@@ -1416,9 +1416,9 @@ var planetPointVisRatio = .001;
 				//only allow ring obj if there's a radii and a sphere 
 				//... this way i can just copy over the pos and angle	
 				if (planet.ringObj !== undefined) {
-					planet.ringObj.pos[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-					planet.ringObj.pos[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-					planet.ringObj.pos[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+					planet.ringObj.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
+					planet.ringObj.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
+					planet.ringObj.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
 					planet.ringObj.angle[0] = planet.sceneObj.uniforms.angle[0];
 					planet.ringObj.angle[1] = planet.sceneObj.uniforms.angle[1];
 					planet.ringObj.angle[2] = planet.sceneObj.uniforms.angle[2];
@@ -1467,9 +1467,9 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
-				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				pointObj.attrs.vertex.data[0] = planet.pos[0] - orbitPlanet.pos[0];
+				pointObj.attrs.vertex.data[1] = planet.pos[1] - orbitPlanet.pos[1];
+				pointObj.attrs.vertex.data[2] = planet.pos[2] - orbitPlanet.pos[2];
 				pointObj.attrs.vertex.updateData();
 				pointObj.draw({
 					uniforms : {
@@ -1484,9 +1484,9 @@ var planetPointVisRatio = .001;
 			var planet = planets[mouseOverPlanetIndex];
 			if (planet !== undefined) {
 				gl.disable(gl.DEPTH_TEST);
-				pointObj.attrs.vertex.data[0] = planet.pos[0] - planets[orbitPlanetIndex].pos[0];
-				pointObj.attrs.vertex.data[1] = planet.pos[1] - planets[orbitPlanetIndex].pos[1];
-				pointObj.attrs.vertex.data[2] = planet.pos[2] - planets[orbitPlanetIndex].pos[2];
+				pointObj.attrs.vertex.data[0] = planet.pos[0] - orbitPlanet.pos[0];
+				pointObj.attrs.vertex.data[1] = planet.pos[1] - orbitPlanet.pos[1];
+				pointObj.attrs.vertex.data[2] = planet.pos[2] - orbitPlanet.pos[2];
 				pointObj.attrs.vertex.updateData();
 				pointObj.draw({
 					uniforms : {
@@ -1503,11 +1503,11 @@ var planetPointVisRatio = .001;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				if (planet.orbitLineObj) {
-					planet.orbitLineObj.pos[0] = -planets[orbitPlanetIndex].pos[0];
-					planet.orbitLineObj.pos[1] = -planets[orbitPlanetIndex].pos[1];
-					planet.orbitLineObj.pos[2] = -planets[orbitPlanetIndex].pos[2];
-					planet.orbitLineObj.draw();
+				if (planet.orbitPathObj) {
+					planet.orbitPathObj.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
+					planet.orbitPathObj.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
+					planet.orbitPathObj.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
+					planet.orbitPathObj.draw();
 				}
 			}
 		}
@@ -1548,9 +1548,9 @@ var planetPointVisRatio = .001;
 			
 				//calc this for non-sceneObj planets.  maybe I should store it as a member variable?
 				var relPos = [
-					planet.pos[0] - planets[orbitPlanetIndex].pos[0],
-					planet.pos[1] - planets[orbitPlanetIndex].pos[1],
-					planet.pos[2] - planets[orbitPlanetIndex].pos[2]
+					planet.pos[0] - orbitPlanet.pos[0],
+					planet.pos[1] - orbitPlanet.pos[1],
+					planet.pos[2] - orbitPlanet.pos[2]
 				];
 				
 				//translate to planet center
@@ -1570,7 +1570,7 @@ var planetPointVisRatio = .001;
 					//causes larger wells to be much smaller and sharper ...
 					//var gravityWellTargetZScale = 2000000 * Math.log(1 + z);
 					//normalized visually per-planet.  scale is not 1-1 across planets
-					gravityWellTargetZScale = 1 / planets[orbitPlanetIndex].gravityWellScalar;
+					gravityWellTargetZScale = 1 / orbitPlanet.gravityWellScalar;
 				}
 				gravityWellZScale += .01 * (gravityWellTargetZScale - gravityWellZScale); 
 				if (gravityWellZScale !== gravityWellZScale) gravityWellZScale = 1;
@@ -2203,9 +2203,6 @@ function init3() {
 		}
 	})(); }
 
-	//identity, quat.rotateZ(longitudeOfAscendingNode), rotateX(inclination)
-	Planets.prototype.planetClasses[Planets.prototype.indexes.Saturn].prototype.angle = [0.022130164430632083, 0.2413787655681219, 0.9661266533387534, 0.08857672980835953];
-
 	//while we're here, load the rings
 	{
 		var ringShader = new ModifiedDepthShaderProgram({
@@ -2417,14 +2414,14 @@ function init4() {
 				var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 				var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
 				
-				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly + parentPlanet.pos[0];
-				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly + parentPlanet.pos[1];
-				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly + parentPlanet.pos[2];
+				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
+				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
+				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
 
-				//offset by our calculated error (which is pretty small)
-				vtxPosX -= checkPosToPosX;
-				vtxPosY -= checkPosToPosY;
-				vtxPosZ -= checkPosToPosZ;
+				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
+				vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
+				vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
+				vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
 		
 				//add to buffer
 				vertexes.push(vtxPosX);
@@ -2436,7 +2433,7 @@ function init4() {
 				vertexes.push(alpha);
 			}
 		
-			planetClassPrototype.orbitLineObj = new GL.SceneObject({
+			planetClassPrototype.orbitPathObj = new GL.SceneObject({
 				mode : gl.LINE_STRIP,
 				shader : orbitShader,
 				attrs : {
@@ -2454,7 +2451,21 @@ function init4() {
 		}
 	}
 	var calcOrbitPathEndTime = Date.now();
-	
+
+	var saturnPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Saturn].prototype;
+	var atlasPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Atlas].prototype;
+	quat.identity(saturnPlanetClassPrototype.angle);
+	quat.rotateZ(saturnPlanetClassPrototype.angle, saturnPlanetClassPrototype.angle, atlasPlanetClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
+	quat.rotateX(saturnPlanetClassPrototype.angle, saturnPlanetClassPrototype.angle, atlasPlanetClassPrototype.keplerianOrbitalElements.inclination);
+
+	var neptunePlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Neptune].prototype;
+	var naiadPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Naiad].prototype;
+	quat.identity(neptunePlanetClassPrototype.angle);
+	quat.rotateZ(neptunePlanetClassPrototype.angle, neptunePlanetClassPrototype.angle, naiadPlanetClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
+	quat.rotateX(neptunePlanetClassPrototype.angle, neptunePlanetClassPrototype.angle, naiadPlanetClassPrototype.keplerianOrbitalElements.inclination);
+
+
+
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
 	var calcGravWellStartTime = Date.now();
@@ -2693,18 +2704,20 @@ function update() {
 		}
 	}
 
+	var orbitPlanet = planets[orbitPlanetIndex];
+	
 	// track ball orbit
 
 	var orbitCenter;
 	if (orbitGeodeticLocation !== undefined) {
 		planetGeodeticToSolarSystemBarycentric(
 			orbitCenter,
-			planets[orbitPlanetIndex], 
+			orbitPlanet, 
 			orbitGeodeticLocation.lat, 
 			orbitGeodeticLocation.lon, 
 			orbitGeodeticLocation.height);
 	} else {
-		orbitCenter = planets[orbitPlanetIndex].pos;
+		orbitCenter = orbitPlanet.pos;
 	}
 	var viewAngleZAxisX = 2 * (GL.view.angle[0] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[1]); 
 	var viewAngleZAxisY = 2 * (GL.view.angle[1] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[0]); 
@@ -2755,7 +2768,7 @@ function update() {
 	//if we are close enough to the planet then rotate with it
 	if (lastJulianDate !== julianDate && 
 		orbitPlanetIndex == planets.indexes.Earth &&	//only for earth at the moment ...
-		orbitDistance < planets[orbitPlanetIndex].radius * 10) 
+		orbitDistance < orbitPlanet.radius * 10) 
 	{
 		var deltaJulianDate = julianDate - lastJulianDate;
 		var deltaAngle = quat.create();

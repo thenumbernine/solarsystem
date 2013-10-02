@@ -1,16 +1,14 @@
 horizonsExtraData = [{
     "mass":3.302e+23,
-    "equatorialRadius":2440000,
-    "id":1,
     "name":"Mercury",
-    "radius":2440000,
+    "id":1,
     "vars":{
       "Core radius (km)":"~1600",
       "Max. angular diam.":"11.0\"",
       "Polar gravity ms^-2":"",
-      "Atmos. pressure (bar)":"",
+      "Obliquity to orbit[1]":"2.11' +/- 0.1'",
       "Planetary Solar Const":"9936.9 (Wm^2)",
-      "Mean Temperature (K)":"",
+      "Volume (x10^10 km^3)":"6.085",
       "Mean radius (km)":"2440(+-1)",
       "Equatorial Radius, Re":"2440 km",
       "Equ. gravity  ms^-2":"3.701",
@@ -19,45 +17,45 @@ horizonsExtraData = [{
       "Geometric albedo":"0.106",
       "Mass ratio (sun/plnt)":"6023600",
       "Mass (10^23 kg )":"3.302",
-      "Sidereal rot. period":"58.6462 d",
+      "Rot. Rate (x10^5 s)":"0.124001",
       "1":"[1] Margot et al., Science 316, 2007",
       "GM (km^3 s^-2)":"22032.09",
       "Mean solar day":"175.9421 d",
       "Potential Love # k2":"",
       "Sidereal orb. per.":"87.969257  d",
       "Semi-major axis":"",
-      "Density (g cm^-3)":"5.427",
-      "Visual mag. V(1,0)":"-0.42",
+      "Orbit vel.  km/s":"47.8725",
+      "Escape vel. km/s":"4.435",
       "Mom. of Inertia":"0.33",
       "2":"",
       "Flattening, f":"",
-      "Escape vel. km/s":"4.435",
-      "Orbit vel.  km/s":"47.8725",
-      "Rot. Rate (x10^5 s)":"0.124001",
-      "Volume (x10^10 km^3)":"6.085",
-      "Obliquity to orbit[1]":"2.11' +/- 0.1'"
-    }
+      "Mean Temperature (K)":"",
+      "Sidereal rot. period":"58.6462 d",
+      "Density (g cm^-3)":"5.427",
+      "Visual mag. V(1,0)":"-0.42",
+      "Atmos. pressure (bar)":""
+    },
+    "radius":2440000,
+    "equatorialRadius":2440000
   },{
     "mass":4.8685e+24,
-    "equatorialRadius":6051893,
-    "id":2,
     "name":"Venus",
-    "radius":6051800,
+    "id":2,
     "vars":{
       "Mean Temperature (K)":"735",
       "Polar gravity ms^-2":"",
       "Fig. offset (Rcf-Rcm)":"0.19+-01",
       "Planetary Solar Const":"2613.9 (Wm^2)",
       "GM 1-sigma (km^3 s^-2)":"+-0.04",
-      "Hill's sphere rad. Rp":"167.1",
+      "Escape vel. km/s":"10.361",
       "Mass (10^23 kg )":"48.685",
       "Rot. Rate (x10^5 s)":"-0.029924",
       "Offset (lat./long.)":"11/102 dg/dg",
       "Semi-major axis":"",
       "Sidereal rot. period":"-243.0185 d",
       "Volume (x10^10 km^3)":"92.843",
-      "Core radius (km)":"~3200",
-      "Max. angular diam.":"60.2\"",
+      "Atmos. pressure (bar)":"90",
+      "Grav spectral fact u":"1.5",
       "Mean radius (km)":"6051.8(4+-1)",
       "Equatorial Radius, Re":"6051.893 km",
       "Equ. gravity  ms^-2":"8.870",
@@ -66,18 +64,20 @@ horizonsExtraData = [{
       "GM (km^3 s^-2)":"324858.63",
       "Mean solar day":"116.7490 d",
       "Sidereal orb. per.":"224.70079922 d",
-      "Orbit vel.  km/s":"35.0214",
-      "Atmos. pressure (bar)":"90",
-      "Grav spectral fact u":"1.5",
+      "Mom. of Inertia":"0.33",
+      "Core radius (km)":"~3200",
+      "Max. angular diam.":"60.2\"",
       "Topo. spectral fact t":"23",
-      "Mass ratio (sun/Mars)":"408523.61",
+      "Visual mag. V(1,0)":"-4.40",
       "Flattening, f":"",
-      "Escape vel. km/s":"10.361",
+      "Hill's sphere rad. Rp":"167.1",
       "Potential Love # k2":"~0.25",
       "Obliquity to orbit":"177.3 deg",
-      "Visual mag. V(1,0)":"-4.40",
-      "Mom. of Inertia":"0.33"
-    }
+      "Mass ratio (sun/Mars)":"408523.61",
+      "Orbit vel.  km/s":"35.0214"
+    },
+    "radius":6051800,
+    "equatorialRadius":6051893
   },{
     "id":3,
     "vars":[],
@@ -107,50 +107,48 @@ horizonsExtraData = [{
     "vars":[],
     "name":"Pluto Barycenter"
   },{
-    "mass":1.9891e+30,
-    "name":"Sun",
-    "id":10,
     "vars":{
       "Adopted sidereal per":"25.38 d",
       "Surf. temp (photosphr)":"4400 K (top)",
       "Solar Radius (IAU)":"6.955(10^5) km",
       "Sunspot cycle":"11.4 yr",
-      "Mass-energy conv rate":"4.3(10^12 gm/s)",
+      "GM (10^11 km^3/s^2)":"1.32712440018",
       "Angular diam at 1 AU":"1919.3\"",
-      "Obliquity to ecliptic":"7 deg 15'",
-      "Chromospheric depth":"~2500 km",
+      "Pole (RA,DEC in deg.)":"286.13,63.87",
       "Solar lumin.(erg/s)":"3.846(10^33)",
+      "Radius (photosphere)":"6.963(10^5) km",
       "Escape velocity":"617.7 km/s",
       "Photospheric depth":"~400 km",
       "Cycle 22 sunspot min.":"1991 A.D.",
       "2":["                          speed: 19.4 km/s = 0.0112 AU/day"],
       "Mass (10^30 kg)":"1.9891",
       "4":["                          speed: 369 +-11 km/s"],
-      "GM (10^11 km^3/s^2)":"1.32712440018",
+      "Moment of inertia":"0.059",
       "Surface gravity":"274.0 m/s^2",
-      "Mean density":"1.408 g/cm^3",
+      "3":["  Motn. rel to 2.73K BB = apex : l=264.7+-0.8; b=48.2+-0.5"],
       "Solar constant (1 AU)":"1367.6 W/m^2",
       "1":["  Motn. rel to nrby strs= apex : RA=271 deg; DEC=+30 deg"],
-      "3":["  Motn. rel to 2.73K BB = apex : l=264.7+-0.8; b=48.2+-0.5"],
-      "Moment of inertia":"0.059",
-      "Radius (photosphere)":"6.963(10^5) km",
-      "Effective temp (K)":"5778",
-      "Pole (RA,DEC in deg.)":"286.13,63.87"
+      "Obliquity to ecliptic":"7 deg 15'",
+      "Mean density":"1.408 g/cm^3",
+      "Chromospheric depth":"~2500 km",
+      "Mass-energy conv rate":"4.3(10^12 gm/s)",
+      "Effective temp (K)":"5778"
     },
-    "radius":696300000
+    "name":"Sun",
+    "id":10,
+    "radius":696300000,
+    "mass":1.9891e+30
   },{
     "mass":3.302e+23,
-    "equatorialRadius":2440000,
-    "id":199,
     "name":"Mercury",
-    "radius":2440000,
+    "id":199,
     "vars":{
       "Core radius (km)":"~1600",
       "Max. angular diam.":"11.0\"",
       "Polar gravity ms^-2":"",
-      "Atmos. pressure (bar)":"",
+      "Obliquity to orbit[1]":"2.11' +/- 0.1'",
       "Planetary Solar Const":"9936.9 (Wm^2)",
-      "Mean Temperature (K)":"",
+      "Volume (x10^10 km^3)":"6.085",
       "Mean radius (km)":"2440(+-1)",
       "Equatorial Radius, Re":"2440 km",
       "Equ. gravity  ms^-2":"3.701",
@@ -159,45 +157,45 @@ horizonsExtraData = [{
       "Geometric albedo":"0.106",
       "Mass ratio (sun/plnt)":"6023600",
       "Mass (10^23 kg )":"3.302",
-      "Sidereal rot. period":"58.6462 d",
+      "Rot. Rate (x10^5 s)":"0.124001",
       "1":"[1] Margot et al., Science 316, 2007",
       "GM (km^3 s^-2)":"22032.09",
       "Mean solar day":"175.9421 d",
       "Potential Love # k2":"",
       "Sidereal orb. per.":"87.969257  d",
       "Semi-major axis":"",
-      "Density (g cm^-3)":"5.427",
-      "Visual mag. V(1,0)":"-0.42",
+      "Orbit vel.  km/s":"47.8725",
+      "Escape vel. km/s":"4.435",
       "Mom. of Inertia":"0.33",
       "2":"",
       "Flattening, f":"",
-      "Escape vel. km/s":"4.435",
-      "Orbit vel.  km/s":"47.8725",
-      "Rot. Rate (x10^5 s)":"0.124001",
-      "Volume (x10^10 km^3)":"6.085",
-      "Obliquity to orbit[1]":"2.11' +/- 0.1'"
-    }
+      "Mean Temperature (K)":"",
+      "Sidereal rot. period":"58.6462 d",
+      "Density (g cm^-3)":"5.427",
+      "Visual mag. V(1,0)":"-0.42",
+      "Atmos. pressure (bar)":""
+    },
+    "radius":2440000,
+    "equatorialRadius":2440000
   },{
     "mass":4.8685e+24,
-    "equatorialRadius":6051893,
-    "id":299,
     "name":"Venus",
-    "radius":6051800,
+    "id":299,
     "vars":{
       "Mean Temperature (K)":"735",
       "Polar gravity ms^-2":"",
       "Fig. offset (Rcf-Rcm)":"0.19+-01",
       "Planetary Solar Const":"2613.9 (Wm^2)",
       "GM 1-sigma (km^3 s^-2)":"+-0.04",
-      "Hill's sphere rad. Rp":"167.1",
+      "Escape vel. km/s":"10.361",
       "Mass (10^23 kg )":"48.685",
       "Rot. Rate (x10^5 s)":"-0.029924",
       "Offset (lat./long.)":"11/102 dg/dg",
       "Semi-major axis":"",
       "Sidereal rot. period":"-243.0185 d",
       "Volume (x10^10 km^3)":"92.843",
-      "Core radius (km)":"~3200",
-      "Max. angular diam.":"60.2\"",
+      "Atmos. pressure (bar)":"90",
+      "Grav spectral fact u":"1.5",
       "Mean radius (km)":"6051.8(4+-1)",
       "Equatorial Radius, Re":"6051.893 km",
       "Equ. gravity  ms^-2":"8.870",
@@ -206,25 +204,27 @@ horizonsExtraData = [{
       "GM (km^3 s^-2)":"324858.63",
       "Mean solar day":"116.7490 d",
       "Sidereal orb. per.":"224.70079922 d",
-      "Orbit vel.  km/s":"35.0214",
-      "Atmos. pressure (bar)":"90",
-      "Grav spectral fact u":"1.5",
+      "Mom. of Inertia":"0.33",
+      "Core radius (km)":"~3200",
+      "Max. angular diam.":"60.2\"",
       "Topo. spectral fact t":"23",
-      "Mass ratio (sun/Mars)":"408523.61",
+      "Visual mag. V(1,0)":"-4.40",
       "Flattening, f":"",
-      "Escape vel. km/s":"10.361",
+      "Hill's sphere rad. Rp":"167.1",
       "Potential Love # k2":"~0.25",
       "Obliquity to orbit":"177.3 deg",
-      "Visual mag. V(1,0)":"-4.40",
-      "Mom. of Inertia":"0.33"
-    }
+      "Mass ratio (sun/Mars)":"408523.61",
+      "Orbit vel.  km/s":"35.0214"
+    },
+    "radius":6051800,
+    "equatorialRadius":6051893
   },{
     "radius":1737530,
     "name":"Moon",
-    "id":301,
     "parent":"Earth",
+    "mass":7.349e+22,
     "vars":{
-      "Magnetometer moment":"435+-15",
+      "Radius, km":"1737.53+-0.03",
       "Mean crustal density":"2.97+-.07g/cm^3",
       "Farside crust. thick.":"~80 - 90 km",
       "GM, km^3/s^2":"4902.798+-.005",
@@ -233,25 +233,25 @@ horizonsExtraData = [{
       "Induced magnetic mom.":"4.23x10^22Gcm^3",
       "Geometric albedo":"0.12",
       "Density, gm cm^-3":"3.3437",
-      "k2":"0.0302+-.0012",
-      "V(1,0)":"+0.21",
-      "Radius, km":"1737.53+-0.03",
-      "Eccentricity":"0.05490",
+      "gamma (B-A/C), x10^-4":"2.278(8+-2)",
+      "beta (C-A/B), x10^-4":"6.31(72+-15)",
+      "Obliquity to orbit":"6.67 deg",
+      "Mom. of inertia C/MR^2":"0.3935+-.0011",
       "Nodal period":"6798.38 d",
       "Inclination":"5.145 deg",
       "Mass, 10^20 kg":"734.9",
       "Mean motion, rad/s":"2.6616995x10^-6",
-      "Surface gravity":"1.62 m s^-2",
+      "Eccentricity":"0.05490",
       "Semi-major axis, a":"384400 km",
       "Heat flow, Apollo 17":"2.2+-.5 mW/m^2",
       "Earth/Moon mass ratio":"81.300587",
       "Apsidal period":"3231.50 d",
-      "Mom. of inertia C/MR^2":"0.3935+-.0011",
-      "Obliquity to orbit":"6.67 deg",
-      "beta (C-A/B), x10^-4":"6.31(72+-15)",
-      "gamma (B-A/C), x10^-4":"2.278(8+-2)"
+      "Surface gravity":"1.62 m s^-2",
+      "V(1,0)":"+0.21",
+      "Magnetometer moment":"435+-15",
+      "k2":"0.0302+-.0012"
     },
-    "mass":7.349e+22
+    "id":301
   },{
     "id":391,
     "vars":[],
@@ -271,12 +271,12 @@ horizonsExtraData = [{
   },{
     "mass":5.9736e+24,
     "name":"Earth",
-    "id":399,
     "inverseFlattening":298.257,
+    "radius":6371010,
     "vars":{
       "Atm. pressure":"1.0 bar",
       "Mass, 10^24 kg":"5.9736",
-      "land":"1.48 x 10^8 km",
+      "Orbit velocity, km s^-1":"29.7859",
       "Mean Temperature, K":"270",
       "outer core":"1.835 x 10^24 kg",
       "sea":"3.62 x 10^8 km",
@@ -290,37 +290,37 @@ horizonsExtraData = [{
       "oceans":"1.4   x 10^21 kg",
       "Sidereal period, hr":"23.93419",
       "Mean daily motion, n":"0.9856474 deg/d",
-      "Orbit velocity, km s^-1":"29.7859",
       "Equ. radius, km":"6378.136",
-      "Polar axis, km":"6356.752",
+      "Volume, 10^10 km^3":"108.321",
+      "Hill's sphere radius":"234.9",
       "Fluid core rad":"3480 km",
       "Geometric albedo":"0.367",
       "Density, gm cm^-3":"5.515",
-      "go, m s^-2":"9.82022",
+      "Mean solar day, days":"1.002738",
       "GM, km^3 s^-2":"398600.440",
       "Escape velocity":"11.186 km s^-1",
       "Vis. mag. V(1,0)":"-3.86",
-      "Hill's sphere radius":"234.9",
+      "Love no., k2":"0.299",
       "mantle":"4.043 x 10^24 kg",
       "Magnetic moment":"0.61 gauss Rp^3",
-      "Love no., k2":"0.299",
+      "Polar axis, km":"6356.752",
       "J2  (GEM T2, 1990)":"0.0010826265",
       "inner core":"9.675 x 10^22 kg",
       "Sidereal period":"365.25636  days",
       "Mean rot. rate, rad s^-1":"7.292115*10^-5",
       "crust":"2.6   x 10^22 kg",
       "Flattening":"1/298.257",
-      "Mean solar day, days":"1.002738",
+      "go, m s^-2":"9.82022",
       "gp, m s^-2 (polar)":"9.8321863685",
-      "Volume, 10^10 km^3":"108.321",
+      "land":"1.48 x 10^8 km",
       "Solar constant, W/m^2":"1367.6"
     },
-    "radius":6371010
+    "id":399
   },{
     "mass":1.08e+16,
     "name":"Phobos",
-    "id":401,
     "parent":"Mars",
+    "radius":11166.666666667,
     "vars":{
       "1":"                                 (+- 0.1)   ",
       "2":"",
@@ -333,12 +333,12 @@ horizonsExtraData = [{
       "V(1,0)":"+11.8",
       "Rotational period":"Synchronous"
     },
-    "radius":11166.666666667
+    "id":401
   },{
     "mass":1.8e+15,
     "name":"Deimos",
-    "id":402,
     "parent":"Mars",
+    "radius":6300,
     "vars":{
       "1":"                               (+- 0.15)    ",
       "2":"",
@@ -351,14 +351,14 @@ horizonsExtraData = [{
       "V(1,0)":"+12.89",
       "Rotational period":"Synchronous"
     },
-    "radius":6300
+    "id":402
   },{
     "vars":{
       "Mean Temperature (K)":"210",
       "Polar gravity ms^-2":"3.758",
       "Fig. offset (Rcf-Rcm)":"2.50+-0.07 km",
       "GM 1-sigma (km^3 s^-2)":"+- 0.1",
-      "Hill's sphere rad. Rp":"319.8",
+      "Escape vel. km/s":"5.027",
       "Mass (10^23 kg )":"6.4185",
       "Rot. Rate (x10^5 s)":"7.088218",
       "Offset (lat./long.)":"62d / 88d",
@@ -366,39 +366,39 @@ horizonsExtraData = [{
       "Mean sidereal orb per":"686.98 d",
       "Sidereal rot. period":"24.622962 hr",
       "Volume (x10^10 km^3)":"16.318",
-      "Core radius (km)":"~1700",
-      "Grav spectral fact u":"14 (x10^5)",
+      "Atmos. pressure (bar)":"0.0056",
+      "Max. angular diam.":"17.9\"",
       "Mean radius (km)":"3389.9(2+-4)",
       "Equatorial Radius, Re":"3394.0 km",
-      "Equ. gravity  ms^-2":"3.71",
+      "Mass ratio (Sun/Mars)":"3098708+-9",
       "Mag. mom (gauss Rp^3)":"< 1x10^-4",
       "Density (g cm^-3)":"3.933(5+-4)",
       "Geometric albedo":"0.150",
       "GM (km^3 s^-2)":"42828.3",
       "Mean solar day":"1.0274907 d",
-      "Orbit vel.  km/s":"24.1309",
-      "Atmos. pressure (bar)":"0.0056",
-      "Max. angular diam.":"17.9\"",
+      "Mom. of Inertia":"0.366",
+      "Core radius (km)":"~1700",
+      "Grav spectral fact u":"14 (x10^5)",
       "Topo. spectral fact t":"96 (x10^5)",
-      "Mass ratio (Sun/Mars)":"3098708+-9",
+      "Hill's sphere rad. Rp":"319.8",
       "Flattening, f":"1/154.409",
-      "Escape vel. km/s":"5.027",
       "Potential Love # k2":"0.153 +-.017",
+      "Equ. gravity  ms^-2":"3.71",
       "Obliquity to orbit":"25.19 deg",
       "Visual mag. V(1,0)":"-1.52",
-      "Mom. of Inertia":"0.366"
+      "Orbit vel.  km/s":"24.1309"
     },
-    "equatorialRadius":3394000,
     "name":"Mars",
+    "inverseFlattening":154.409,
     "id":499,
-    "radius":3389900,
     "mass":6.4185e+23,
-    "inverseFlattening":154.409
+    "radius":3389900,
+    "equatorialRadius":3394000
   },{
     "mass":8.933e+22,
     "name":"Io",
-    "id":501,
     "parent":"Jupiter",
+    "radius":1821300,
     "vars":{
       "Eccentricity, e":"0.0041",
       "1":"",
@@ -409,12 +409,12 @@ horizonsExtraData = [{
       "Inclination, i  (deg)":"0.036",
       "Geometric Albedo":"0.6"
     },
-    "radius":1821300
+    "id":501
   },{
     "mass":4.797e+22,
     "name":"Europa",
-    "id":502,
     "parent":"Jupiter",
+    "radius":1565000,
     "vars":{
       "Eccentricity, e":"0.0101",
       "1":"",
@@ -425,12 +425,12 @@ horizonsExtraData = [{
       "Inclination, i  (deg)":"0.464",
       "Geometric Albedo":"0.6"
     },
-    "radius":1565000
+    "id":502
   },{
     "mass":1.482e+23,
     "name":"Ganymede",
-    "id":503,
     "parent":"Jupiter",
+    "radius":2634000,
     "vars":{
       "Eccentricity, e":"0.0006",
       "1":"",
@@ -441,12 +441,12 @@ horizonsExtraData = [{
       "Inclination, i  (deg)":"0.186",
       "Geometric Albedo":"0.4"
     },
-    "radius":2634000
+    "id":503
   },{
     "mass":1.076e+23,
     "name":"Callisto",
-    "id":504,
     "parent":"Jupiter",
+    "radius":2403000,
     "vars":{
       "Eccentricity, e":"0.007",
       "1":"",
@@ -457,13 +457,11 @@ horizonsExtraData = [{
       "Inclination, i  (deg)":"0.281",
       "Geometric Albedo":"0.20"
     },
-    "radius":2403000
+    "id":504
   },{
-    "radius":83450,
+    "mass":2.0681624376741e+18,
     "name":"Amalthea",
     "parent":"Jupiter",
-    "mass":2.0681624376741e+18,
-    "id":505,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -475,13 +473,13 @@ horizonsExtraData = [{
       "Radius (km)":"131 x 73 x 67",
       "V(1,0)":"+7.4",
       "Rotational period":"Synchronous"
-    }
+    },
+    "id":505,
+    "radius":83450
   },{
-    "radius":85000,
+    "mass":6.7440079489374e+18,
     "name":"Himalia",
     "parent":"Jupiter",
-    "mass":6.7440079489374e+18,
-    "id":506,
     "vars":{
       "1":"                                             ",
       "Inclination, i  (deg)":"27.5 (inv pln)",
@@ -491,15 +489,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+8.14",
-      "Rotational period":"0.4 d",
-      "Radius (km)":"85 +- 10"
-    }
+      "Radius (km)":"85 +- 10",
+      "Rotational period":"0.4 d"
+    },
+    "id":506,
+    "radius":85000
   },{
-    "radius":43000,
+    "mass":8.6922769119637e+17,
     "name":"Elara",
     "parent":"Jupiter",
-    "mass":8.6922769119637e+17,
-    "id":507,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"28",
@@ -509,15 +507,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+10.07",
-      "Rotational period":"0.5 d",
-      "Radius (km)":"40 +- 10"
-    }
+      "Radius (km)":"40 +- 10",
+      "Rotational period":"0.5 d"
+    },
+    "id":507,
+    "radius":43000
   },{
-    "radius":30000,
+    "mass":2.9973368661944e+17,
     "name":"Pasiphae",
     "parent":"Jupiter",
-    "mass":2.9973368661944e+17,
-    "id":508,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"148",
@@ -527,15 +525,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+10.33",
-      "Rotational period":"",
-      "Radius (km)":"18"
-    }
+      "Radius (km)":"18",
+      "Rotational period":""
+    },
+    "id":508,
+    "radius":30000
   },{
-    "radius":19000,
+    "mass":7.493342165486e+16,
     "name":"Sinope",
     "parent":"Jupiter",
-    "mass":7.493342165486e+16,
-    "id":509,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"153",
@@ -545,15 +543,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+11.6",
-      "Rotational period":"",
-      "Radius (km)":"14"
-    }
+      "Radius (km)":"14",
+      "Rotational period":""
+    },
+    "id":509,
+    "radius":19000
   },{
-    "radius":18000,
+    "mass":6.2944074190082e+16,
     "name":"Lysithea",
     "parent":"Jupiter",
-    "mass":6.2944074190082e+16,
-    "id":510,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"29",
@@ -563,15 +561,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+11.7",
-      "Rotational period":"",
-      "Radius (km)":"12"
-    }
+      "Radius (km)":"12",
+      "Rotational period":""
+    },
+    "id":510,
+    "radius":18000
   },{
-    "radius":23000,
+    "mass":1.3188282211255e+17,
     "name":"Carme",
     "parent":"Jupiter",
-    "mass":1.3188282211255e+17,
-    "id":511,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"163",
@@ -581,15 +579,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+11.3",
-      "Rotational period":"",
-      "Radius (km)":"15"
-    }
+      "Radius (km)":"15",
+      "Rotational period":""
+    },
+    "id":511,
+    "radius":23000
   },{
-    "radius":14000,
+    "mass":2.9973368661944e+16,
     "name":"Ananke",
     "parent":"Jupiter",
-    "mass":2.9973368661944e+16,
-    "id":512,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"147",
@@ -599,15 +597,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+12.2",
-      "Rotational period":"",
-      "Radius (km)":"10"
-    }
+      "Radius (km)":"10",
+      "Rotational period":""
+    },
+    "id":512,
+    "radius":14000
   },{
-    "radius":10000,
+    "mass":1.094027956161e+16,
     "name":"Leda",
     "parent":"Jupiter",
-    "mass":1.094027956161e+16,
-    "id":513,
     "vars":{
       "1":"                                            ",
       "Inclination, i  (deg)":"27",
@@ -617,15 +615,15 @@ horizonsExtraData = [{
       "Density (g cm^-3)":"",
       "Local invar ref. pln":"Sun",
       "V(1,0)":"+13.5",
-      "Rotational period":"",
-      "Radius (km)":"5"
-    }
+      "Radius (km)":"5",
+      "Rotational period":""
+    },
+    "id":513,
+    "radius":10000
   },{
-    "radius":49300,
+    "mass":1.4986684330972e+18,
     "name":"Thebe",
     "parent":"Jupiter",
-    "mass":1.4986684330972e+18,
-    "id":514,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -637,13 +635,13 @@ horizonsExtraData = [{
       "Radius (km)":"50 +- 10",
       "V(1,0)":"+9.0",
       "Rotational period":""
-    }
+    },
+    "id":514,
+    "radius":49300
   },{
-    "radius":8200,
+    "mass":7.493342165486e+15,
     "name":"Adrastea",
     "parent":"Jupiter",
-    "mass":7.493342165486e+15,
-    "id":515,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -655,13 +653,13 @@ horizonsExtraData = [{
       "Radius (km)":"10 +- 10",
       "V(1,0)":"+12.4",
       "Rotational period":"Synchronous"
-    }
+    },
+    "id":515,
+    "radius":8200
   },{
-    "radius":21500,
+    "mass":1.1989347464778e+17,
     "name":"Metis",
     "parent":"Jupiter",
-    "mass":1.1989347464778e+17,
-    "id":516,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -673,85 +671,92 @@ horizonsExtraData = [{
       "Radius (km)":"20 +- 10",
       "V(1,0)":"+10.8",
       "Rotational period":"Synchronous"
-    }
+    },
+    "id":516,
+    "radius":21500
   },{
-    "vars":[],
+    "mass":8.6922769119637e+14,
     "name":"Callirrhoe",
     "id":517,
-    "mass":8.6922769119637e+14,
+    "parent":"Jupiter",
     "radius":4300,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":6.8938747922471e+14,
     "name":"Themisto",
     "id":518,
-    "mass":6.8938747922471e+14,
+    "parent":"Jupiter",
     "radius":4000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.0981358063361e+14,
     "name":"Megaclite",
     "id":519,
-    "mass":2.0981358063361e+14,
+    "parent":"Jupiter",
     "radius":2700,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1.6485352764069e+14,
     "name":"Taygete",
     "id":520,
-    "mass":1.6485352764069e+14,
+    "parent":"Jupiter",
     "radius":2500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":74933421654860,
     "name":"Chaldene",
     "id":521,
-    "mass":74933421654860,
+    "parent":"Jupiter",
     "radius":1900,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1.1989347464778e+14,
     "name":"Harpalyke",
     "id":522,
-    "mass":1.1989347464778e+14,
+    "parent":"Jupiter",
     "radius":2200,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1.9482689630264e+14,
     "name":"Kalyke",
     "id":523,
-    "mass":1.9482689630264e+14,
+    "parent":"Jupiter",
     "radius":2600,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1.9482689630264e+14,
     "name":"Iocaste",
     "id":524,
-    "mass":1.9482689630264e+14,
+    "parent":"Jupiter",
     "radius":2600,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Erinome",
     "id":525,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1600,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":74933421654860,
     "name":"Isonoe",
     "id":526,
-    "mass":74933421654860,
+    "parent":"Jupiter",
     "radius":1900,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":4.3461384559819e+14,
     "name":"Praxidike",
     "id":527,
-    "mass":4.3461384559819e+14,
+    "parent":"Jupiter",
     "radius":3400,
-    "parent":"Jupiter"
+    "vars":[]
   },{
+    "mass":89920105985832,
+    "name":"Autonoe",
+    "id":528,
+    "parent":"Jupiter",
+    "radius":2000,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -763,157 +768,154 @@ horizonsExtraData = [{
       "Radius (km)":"",
       "V(1,0)":"",
       "Rotational period":""
-    },
-    "name":"Autonoe",
-    "id":528,
-    "mass":89920105985832,
-    "radius":2000,
-    "parent":"Jupiter"
+    }
   },{
-    "vars":[],
+    "mass":89920105985832,
     "name":"Thyone",
     "id":529,
-    "mass":89920105985832,
+    "parent":"Jupiter",
     "radius":2000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":89920105985832,
     "name":"Hermippe",
     "id":530,
-    "mass":89920105985832,
-    "radius":2000,
-    "parent":"Jupiter"
-  },{
     "parent":"Jupiter",
+    "radius":2000,
+    "vars":[]
+  },{
     "vars":[],
     "name":"Aitne",
-    "id":531
+    "id":531,
+    "mass":44960052992916,
+    "radius":1500,
+    "parent":"Jupiter"
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Eurydome",
     "id":532,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Euanthe",
     "id":533,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Euporie",
     "id":534,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Orthosie",
     "id":535,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Sponde",
     "id":536,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Kale",
     "id":537,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Pasithee",
     "id":538,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Hegemone",
     "id":539,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Mneme",
     "id":540,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":89920105985832,
     "name":"Aoede",
     "id":541,
-    "mass":89920105985832,
+    "parent":"Jupiter",
     "radius":2000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Thelxinoe",
     "id":542,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Arche",
     "id":543,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Kallichore",
     "id":544,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":89920105985832,
     "name":"Helike",
     "id":545,
-    "mass":89920105985832,
+    "parent":"Jupiter",
     "radius":2000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":44960052992916,
     "name":"Carpo",
     "id":546,
-    "mass":44960052992916,
+    "parent":"Jupiter",
     "radius":1500,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":89920105985832,
     "name":"Eukelade",
     "id":547,
-    "mass":89920105985832,
+    "parent":"Jupiter",
     "radius":2000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Cyllene",
     "id":548,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":14986684330972,
     "name":"Kore",
     "id":549,
-    "mass":14986684330972,
+    "parent":"Jupiter",
     "radius":1000,
-    "parent":"Jupiter"
+    "vars":[]
   },{
     "parent":"Jupiter",
     "vars":[],
@@ -1005,15 +1007,13 @@ horizonsExtraData = [{
     "name":"2000J11",
     "id":55076
   },{
-    "mass":1.89813e+27,
+    "radius":69911000,
     "name":"Jupiter",
     "inverseFlattening":15.41544627717,
-    "radius":69911000,
-    "id":599,
     "vars":{
       "Mean daily motion":"0.0831294 deg/d",
       "GM (km^3/s^2)":"126,686,511",
-      "Mom. of inert. I/MRo^2":"0.254",
+      "Planetary Solar Const":"50.5 W/m^2",
       "ks":"3*J2/m            =  0.494",
       "Equat. radius (1 bar)":"71492+-4 km",
       "I/MRo^2 (upper bound)":"0.267",
@@ -1024,7 +1024,7 @@ horizonsExtraData = [{
       "Aroche(ice)/Rp":"2.76",
       "Escape velocity (km/s)":"59.5",
       "Vis. mag. (opposition)":"-2.70",
-      "Visual magnitude V(1,0)":"-9.40",
+      "Density (g/cm^3)":"1.326",
       "Heat flow/mass (x10^7)":"15 erg/gm*s",
       "Volumetric mean radius":"69911+-6 km",
       "Mass (10^24 kg)":"1898.13+-.19",
@@ -1032,152 +1032,154 @@ horizonsExtraData = [{
       "Polar radius (km)":"66854+-10",
       "Mag.dip.mom(gauss-Rp^3)":"4.2",
       "Sidereal orbit period":"4332.820 d",
-      "Hill's sphere rad. Rp":"740",
-      "Hydrostatic flat., fh":"0.06509",
-      "Planetary Solar Const":"50.5 W/m^2",
-      "Density (g/cm^3)":"1.326",
       "Mean orbit velocity":"13.0697 km/s",
-      "GM 1-sigma (km^3/s^2)":"+-100",
-      "Rocky core mass (Mc/M)":"0.0261",
+      "Hydrostatic flat., fh":"0.06509",
+      "Y factor (He/H ratio)":"0.18+-0.04",
+      "Obliquity to orbit":"3.12 deg",
+      "Visual magnitude V(1,0)":"-9.40",
+      "Rotation period":"9h 55m 29.685s",
+      "Mom. of inert. I/MRo^2":"0.254",
       "Pol. grav, gp (m/s^2)":"28.34",
       "Dipole tilt/offset":"9.6deg/0.1Rp",
       "Flattening":"0.06487",
-      "Rotation period":"9h 55m 29.685s",
-      "Obliquity to orbit":"3.12 deg",
-      "Y factor (He/H ratio)":"0.18+-0.04",
+      "Hill's sphere rad. Rp":"740",
+      "GM 1-sigma (km^3/s^2)":"+-100",
+      "Rocky core mass (Mc/M)":"0.0261",
       "Equ. grav, ge (m/s^2)":"24.79"
-    }
+    },
+    "id":599,
+    "mass":1.89813e+27
   },{
     "mass":3.75e+19,
     "name":"Mimas",
-    "id":601,
     "parent":"Saturn",
+    "radius":198800,
     "vars":{
-      "1":"",
-      "Mass (10^22 g)":"3.75",
+      "Density (g/cm^3)":"1.152 +- 0.027",
+      "GM (km^3/s^2)":"2.503",
       "Inclination, i  (deg)":"1.572",
       "Geometric Albedo":"0.6",
       "Eccentricity, e":"0.0196          R",
-      "GM (km^3/s^2)":"2.503",
-      "Density (g/cm^3)":"1.152 +- 0.027",
+      "Mean Radius (km)":"198.8   +- 1.5",
+      "Mass (10^22 g)":"3.75",
       "V(1,0)":"+3.3",
-      "otational period":"Synchronous",
-      "Mean Radius (km)":"198.8   +- 1.5"
+      "1":"",
+      "otational period":"Synchronous"
     },
-    "radius":198800
+    "id":601
   },{
     "mass":1.0805e+20,
     "name":"Enceladus",
-    "id":602,
     "parent":"Saturn",
+    "radius":252300,
     "vars":{
-      "1":"",
-      "Mass (10^22 g)":"10.805",
+      "Density (g/cm^3)":"1.606 +- 0.012",
+      "GM (km^3/s^2)":"7.206 +- 0.011",
       "Inclination, i  (deg)":"0.009",
       "Geometric Albedo":"1.04",
       "Eccentricity, e":"0.0047          R",
-      "GM (km^3/s^2)":"7.206 +- 0.011",
-      "Density (g/cm^3)":"1.606 +- 0.012",
+      "Mean Radius (km)":"252.3   +- 0.6",
+      "Mass (10^22 g)":"10.805",
       "V(1,0)":"+2.2",
-      "otational period":"Synchronous",
-      "Mean Radius (km)":"252.3   +- 0.6"
+      "1":"",
+      "otational period":"Synchronous"
     },
-    "radius":252300
+    "id":602
   },{
     "mass":6.176e+20,
     "name":"Tethys",
-    "id":603,
     "parent":"Saturn",
+    "radius":536300,
     "vars":{
-      "1":"",
+      "Density (g/cm^3)":"0.956+- 0.008",
       "GM (km^3/s^2)":"41.21 +- 0.007",
       "Inclination, i  (deg)":"1.091",
       "Geometric Albedo":"0.80",
       "Eccentricity, e":"0.0001",
       "Rotational period":"Synchronous",
-      "Density (g/cm^3)":"0.956+- 0.008",
+      "1":"",
       "V(1,0)":"+0.7",
       "Mass (10^22 g)":"61.76 +- 0.11",
       "Mean Radius (km)":"536.3  +- 1.5"
     },
-    "radius":536300
+    "id":603
   },{
     "mass":1.09572e+21,
     "name":"Dione",
-    "id":604,
     "parent":"Saturn",
+    "radius":562500,
     "vars":{
-      "1":"",
+      "Density (g/cm^3)":"1.469 +- 0.012",
       "GM (km^3/s^2)":"73.113 +- 0.02 V",
       "Inclination, i  (deg)":"0.028",
       "Geometric Albedo":"0.6",
       "Eccentricity, e":"0.0022          R",
       "(1,0)":"+0.8",
-      "Density (g/cm^3)":"1.469 +- 0.012",
+      "Mean Radius (km)":"562.5   +- 5",
       "Mass (10^22 g)":"109.572",
-      "otational period":"Synchronous",
-      "Mean Radius (km)":"562.5   +- 5"
+      "1":"",
+      "otational period":"Synchronous"
     },
-    "radius":562500
+    "id":604
   },{
     "mass":2.309e+21,
     "name":"Rhea",
-    "id":605,
     "parent":"Saturn",
+    "radius":764500,
     "vars":{
-      "1":"",
+      "Density (g/cm^3)":"1.233 +- 0.010",
       "GM (km^3/s^2)":"153.94 +- 0.16",
       "Inclination, i  (deg)":"0.331",
       "Geometric Albedo":"0.6",
       "Eccentricity, e":"0.001",
       "Rotational period":"Synchronous",
-      "Density (g/cm^3)":"1.233 +- 0.010",
+      "1":"",
       "V(1,0)":"+0.1",
       "Mass (10^22 g)":"230.9",
       "Mean Radius (km)":"764.5  +- 2"
     },
-    "radius":764500
+    "id":605
   },{
     "radius":2575500,
     "name":"Titan",
-    "id":606,
     "parent":"Saturn",
+    "mass":1.34553e+23,
     "vars":{
       "Density (g/cm^3)":"1.880 +- 0.004",
-      "GM (km^3/s^2)":"8978.13  +-  0.06",
+      "Mass (10^22 g)":"13455.3",
       "Inclination, i  (deg)":"0.28",
       "Geometric Albedo":"0.2",
       "Eccentricity, e":"0.0288          Ro",
       "tational period":"",
-      "Mass (10^22 g)":"13455.3",
+      "GM (km^3/s^2)":"8978.13  +-  0.06",
       "V(1,0)":"-1.2",
       "1":"",
       "Mean Radius (km)":"2575.5   +-  2.0"
     },
-    "mass":1.34553e+23
+    "id":606
   },{
     "mass":1.08e+19,
     "name":"Hyperion",
-    "id":607,
     "parent":"Saturn",
+    "radius":133000,
     "vars":{
-      "1":"",
+      "Density (g/cm^3)":"0.569 +- 0.108",
       "GM (km^3/s^2)":"0.37   +- 0.02",
       "Inclination, i  (deg)":"0.630",
       "Geometric Albedo":"0.25",
       "Eccentricity, e":"0.0274",
       "Rotational period":"Chaotic",
-      "Density (g/cm^3)":"0.569 +- 0.108",
+      "1":"",
       "V(1,0)":"+4.8",
       "Mass (10^22 g)":"1.08 +- 0.52",
       "Mean Radius (km)":"133    +- 8"
     },
-    "radius":133000
+    "id":607
   },{
     "radius":734500,
     "name":"Iapetus",
-    "id":608,
     "parent":"Saturn",
+    "mass":1.8059e+21,
     "vars":{
       "1":"",
       "GM (km^3/s^2)":"120.51   +- 0.03",
@@ -1187,15 +1189,15 @@ horizonsExtraData = [{
       "Rotational period":"Synchronous",
       "Radius (km)":"734.5    +- 4.0",
       "V(1,0)":"+1.5 (.7-2.5)",
-      "Density (g/cm^3)":"1.088 +- 0.018",
-      "Mass (10^22 g)":"180.59"
+      "Mass (10^22 g)":"180.59",
+      "Density (g/cm^3)":"1.088 +- 0.018"
     },
-    "mass":1.8059e+21
+    "id":608
   },{
     "radius":106600,
     "name":"Phoebe",
-    "id":609,
     "parent":"Saturn",
+    "mass":8.289e+18,
     "vars":{
       "1":"",
       "GM (km^3/s^2)":"0.5533 +- 0.0006",
@@ -1205,23 +1207,23 @@ horizonsExtraData = [{
       "Rotational period":"Synchronous",
       "Radius (km)":"106.6    +- 1.1",
       "V(1,0)":"+1.5 (.7-2.5)",
-      "Density (g/cm^3)":"1.633 +- 0.049",
-      "Mass (10^22 g)":"0.8289"
+      "Mass (10^22 g)":"0.8289",
+      "Density (g/cm^3)":"1.633 +- 0.049"
     },
-    "mass":8.289e+18
+    "id":609
   },{
     "mass":1.98e+18,
     "name":"Janus",
-    "id":610,
     "parent":"Saturn",
+    "radius":89666.666666667,
     "vars":{
       "1":"                                            ",
-      "Inclination, i  (deg)":"0.14",
+      "Geometric Albedo":"0.5",
       "3":" NOTE: The IAU rotational spin-pole model (d",
       "2":"",
       "5":"       valid only near the time of the 1981 ",
       "4":"efining latitude and logitude) is ",
-      "7":"       Cassini-based coordinate grid model i",
+      "Inclination, i  (deg)":"0.14",
       "6":"Voyager 1 & 2 flybys; an updated",
       "Eccentricity, e":"0.007",
       "8":"s not yet published by the IAU.",
@@ -1230,22 +1232,22 @@ horizonsExtraData = [{
       "Radius (km)":"97 x 95 x 77",
       "V(1,0)":"+4.9",
       "Rotational period":"Synchronous",
-      "Geometric Albedo":"0.5"
+      "7":"       Cassini-based coordinate grid model i"
     },
-    "radius":89666.666666667
+    "id":610
   },{
     "mass":5.5e+17,
     "name":"Epimetheus",
-    "id":611,
     "parent":"Saturn",
+    "radius":59666.666666667,
     "vars":{
       "1":"                                            ",
-      "Inclination, i  (deg)":"0.34",
+      "Geometric Albedo":"0.5",
       "3":" NOTE: The IAU rotational spin-pole model (d",
       "2":"",
       "5":"       valid only near the time of the 1981 ",
       "4":"efining latitude and logitude) is ",
-      "7":"       Cassini-based coordinate grid model i",
+      "Inclination, i  (deg)":"0.34",
       "6":"Voyager 1 & 2 flybys; an updated",
       "Eccentricity, e":"0.009",
       "8":"s not yet published by the IAU.",
@@ -1254,10 +1256,15 @@ horizonsExtraData = [{
       "Radius (km)":"69 x 55 x 55",
       "V(1,0)":"+6.1",
       "Rotational period":"Synchronous",
-      "Geometric Albedo":"0.5"
+      "7":"       Cassini-based coordinate grid model i"
     },
-    "radius":59666.666666667
+    "id":611
   },{
+    "mass":1.1389880091539e+16,
+    "name":"Helene",
+    "id":612,
+    "parent":"Saturn",
+    "radius":17600,
     "vars":{
       "1":"",
       "Radius (km),mean":"16 +- 4",
@@ -1268,73 +1275,66 @@ horizonsExtraData = [{
       "7":"s not yet published by the IAU.",
       "Geometric Albedo":"0.6",
       "Eccentricity, e":"0.0071",
-      "6":"       Cassini-based coordinate grid model i",
-      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "Mass (10^22 g  )":"0.002547",
+      "Inclination, i  (deg)":"0.213",
       "Density (g cm^-3)":"1.5",
       "Rotational period":"",
       "V(1,0)":"+8.8",
-      "Inclination, i  (deg)":"0.213",
-      "Mass (10^22 g  )":"0.002547"
-    },
-    "name":"Helene",
-    "id":612,
-    "mass":1.1389880091539e+16,
-    "radius":17600,
-    "parent":"Saturn"
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "6":"       Cassini-based coordinate grid model i"
+    }
   },{
     "radius":11666.666666667,
     "name":"Telesto",
-    "id":613,
     "parent":"Saturn",
+    "mass":7.194e+15,
     "vars":{
       "1":"",
-      "6":"       Cassini-based coordinate grid model i",
+      "GM (km^3/s^2)":"0.00048",
       "3":"efining latitude and logitude) is ",
       "Mass (10^22 g)":"0.0007194",
       "5":"Voyager flybys; an updated",
       "4":"       valid only near the time of the 1981 ",
       "7":"s not yet published by the IAU.",
-      "Geometric Albedo":"1.0",
+      "6":"       Cassini-based coordinate grid model i",
       "Eccentricity, e":"0.0002",
-      "2":" NOTE: The IAU rotational spin-pole model (d",
-      "Rotational period":"",
+      "Inclination, i  (deg)":"1.180",
       "Density (g cm^-3)":"1.0",
+      "Rotational period":"",
       "Radius (km)":"15 x 12.5 x 7.5",
       "V(1,0)":"+9.1",
-      "Inclination, i  (deg)":"1.180",
-      "GM (km^3/s^2)":"0.00048"
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "Geometric Albedo":"1.0"
     },
-    "mass":7.194e+15
+    "id":613
   },{
     "radius":10333.333333333,
     "name":"Calypso",
-    "id":614,
     "parent":"Saturn",
+    "mass":3.597e+15,
     "vars":{
       "1":"",
-      "6":"       Cassini-based coordinate grid model i",
+      "GM (km^3/s^2)":"0.00024",
       "3":"efining latitude and logitude) is ",
       "Mass (10^22 g)":"0.0003597",
       "5":"Voyager 1 & 2 flybys; an updated",
       "4":"       valid only near the time of the 1981 ",
       "7":"s not yet published by the IAU.",
-      "Geometric Albedo":"0.7",
+      "6":"       Cassini-based coordinate grid model i",
       "Eccentricity, e":"0.0005",
-      "2":" NOTE: The IAU rotational spin-pole model (d",
-      "Rotational period":"",
+      "Inclination, i  (deg)":"1.499",
       "Density (g cm^-3)":"1.0",
+      "Rotational period":"",
       "Radius (km)":"15 x 8 x 8",
       "V(1,0)":"+9.4",
-      "Inclination, i  (deg)":"1.499",
-      "GM (km^3/s^2)":"0.00024"
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "Geometric Albedo":"0.7"
     },
-    "mass":3.597e+15
+    "id":614
   },{
-    "radius":15100,
+    "mass":6.5941411056276e+15,
     "name":"Atlas",
     "parent":"Saturn",
-    "mass":6.5941411056276e+15,
-    "id":615,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1346,12 +1346,14 @@ horizonsExtraData = [{
       "Radius (km)":"18.5x17.2x13.5",
       "V(1,0)":"+9.5",
       "Rotational period":""
-    }
+    },
+    "id":615,
+    "radius":15100
   },{
     "mass":1.4e+17,
     "name":"Prometheus",
-    "id":616,
     "parent":"Saturn",
+    "radius":52666.666666667,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1364,12 +1366,12 @@ horizonsExtraData = [{
       "V(1,0)":"+6.2",
       "Rotational period":""
     },
-    "radius":52666.666666667
+    "id":616
   },{
     "mass":1.3e+17,
     "name":"Pandora",
-    "id":617,
     "parent":"Saturn",
+    "radius":43333.333333333,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1382,13 +1384,11 @@ horizonsExtraData = [{
       "V(1,0)":"+6.9",
       "Rotational period":""
     },
-    "radius":43333.333333333
+    "id":617
   },{
-    "radius":14100,
+    "mass":4.9456058292207e+15,
     "name":"Pan",
     "parent":"Saturn",
-    "mass":4.9456058292207e+15,
-    "id":618,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1400,228 +1400,230 @@ horizonsExtraData = [{
       "Radius (km)":"10",
       "V(1,0)":"",
       "Rotational period":""
-    }
+    },
+    "id":618,
+    "radius":14100
   },{
-    "vars":[],
+    "mass":4.9456058292207e+15,
     "name":"Ymir",
     "id":619,
-    "mass":4.9456058292207e+15,
+    "parent":"Saturn",
     "radius":9000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":8.2426763820346e+15,
     "name":"Paaliaq",
     "id":620,
-    "mass":8.2426763820346e+15,
+    "parent":"Saturn",
     "radius":11000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.697603179575e+15,
     "name":"Tarvos",
     "id":621,
-    "mass":2.697603179575e+15,
+    "parent":"Saturn",
     "radius":7500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1.1989347464778e+15,
     "name":"Ijiraq",
     "id":622,
-    "mass":1.1989347464778e+15,
+    "parent":"Saturn",
     "radius":6000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.0981358063361e+14,
     "name":"Suttungr",
     "id":623,
-    "mass":2.0981358063361e+14,
+    "parent":"Saturn",
     "radius":3500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":3.2970705528138e+15,
     "name":"Kiviuq",
     "id":624,
-    "mass":3.2970705528138e+15,
+    "parent":"Saturn",
     "radius":8000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.0981358063361e+14,
     "name":"Mundilfari",
     "id":625,
-    "mass":2.0981358063361e+14,
+    "parent":"Saturn",
     "radius":3500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.0981358063361e+16,
     "name":"Albiorix",
     "id":626,
-    "mass":2.0981358063361e+16,
+    "parent":"Saturn",
     "radius":16000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":3.1472037095041e+14,
     "name":"Skathi",
     "id":627,
-    "mass":3.1472037095041e+14,
+    "parent":"Saturn",
     "radius":4000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":7.6432090087957e+14,
     "name":"Erriapus",
     "id":628,
-    "mass":7.6432090087957e+14,
+    "parent":"Saturn",
     "radius":5000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":3.8965379260527e+16,
     "name":"Siarnaq",
     "id":629,
-    "mass":3.8965379260527e+16,
+    "parent":"Saturn",
     "radius":20000,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":2.0981358063361e+14,
     "name":"Thrymr",
     "id":630,
-    "mass":2.0981358063361e+14,
+    "parent":"Saturn",
     "radius":3500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":3.4469373961235e+14,
     "name":"Narvi",
     "id":631,
-    "mass":3.4469373961235e+14,
+    "parent":"Saturn",
     "radius":3500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":8992010598583,
     "name":"Methone",
     "id":632,
-    "mass":8992010598583,
+    "parent":"Saturn",
     "radius":1600,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":32970705528138,
     "name":"Pallene",
     "id":633,
-    "mass":32970705528138,
+    "parent":"Saturn",
     "radius":2500,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":4496005299292,
     "name":"Polydeuces",
     "id":634,
-    "mass":4496005299292,
+    "parent":"Saturn",
     "radius":1300,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "mass":77930758521054,
     "name":"Daphnis",
     "id":635,
-    "mass":77930758521054,
+    "parent":"Saturn",
     "radius":3800,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Aegir",
     "id":636,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Bebhionn",
     "id":637,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Bergelmir",
     "id":638,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3500,
     "name":"Bestla",
     "id":639,
-    "radius":3500,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":2500,
     "name":"Farbauti",
     "id":640,
-    "radius":2500,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":2000,
     "name":"Fenrir",
     "id":641,
-    "radius":2000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Fornjot",
     "id":642,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Hati",
     "id":643,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
     "parent":"Saturn",
     "vars":[],
     "name":"Hyrrokkin",
     "id":644
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Kari",
     "id":645,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Loge",
     "id":646,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Skoll",
     "id":647,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Surtur",
     "id":648,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "mass":1498668433097,
     "name":"Anthe",
     "id":649,
-    "mass":1498668433097,
+    "parent":"Saturn",
     "radius":900,
-    "parent":"Saturn"
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Jarnsaxa",
     "id":650,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Greip",
     "id":651,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
-    "vars":[],
+    "radius":3000,
     "name":"Tarqeq",
     "id":652,
-    "radius":3000,
-    "parent":"Saturn"
+    "parent":"Saturn",
+    "vars":[]
   },{
     "parent":"Saturn",
     "vars":[],
@@ -1668,15 +1670,13 @@ horizonsExtraData = [{
     "name":"2007S3",
     "id":65056
   },{
-    "mass":5.68319e+26,
+    "radius":58232000,
     "name":"Saturn",
     "inverseFlattening":10.208248264598,
-    "radius":58232000,
-    "id":699,
     "vars":{
       "Mean daily motion":"0.0334979 deg/d",
       "GM (km^3/s^2)":"37931207.8",
-      "Mom. of inert. I/MRo^2":"0.210",
+      "Planetary Solar Const":"15.04 W/m^2",
       "ks":"3*J2/m            =  0.317",
       "Equat. radius (1 bar)":"60268+-4 km",
       "I/MRo^2 (upper bound)":"0.231",
@@ -1687,7 +1687,7 @@ horizonsExtraData = [{
       "Aroche(ice)/Rp":"2.71",
       "Escape velocity (km/s)":"35.5",
       "Vis. mag. (opposition)":"+0.67",
-      "Visual magnitude V(1,0)":"-8.88",
+      "Density (g/cm^3)":"0.687+-.001",
       "Heat flow/mass (x10^7)":"15 erg/gm*s",
       "Volumetric mean radius":"58232+-6 km",
       "Dipole tilt/offset":"0.0deg/0.0Rp",
@@ -1695,26 +1695,28 @@ horizonsExtraData = [{
       "Polar radius (km)":"54364+-10",
       "Mag.dip.mom(gauss-Rp^3)":"0.21",
       "Sidereal orbit period":"10755.698 d",
-      "Hill's sphere rad. Rp":"1100",
-      "Hydrostatic flat., fh":"0.09829",
-      "Planetary Solar Const":"15.04 W/m^2",
-      "Density (g/cm^3)":"0.687+-.001",
-      "Mass (10^26 kg)":"5.68319",
       "Mean orbit velocity":"9.6624 km/s",
-      "GM 1-sigma (km^3/s^2)":"+- 98",
-      "Pol. grav, gp (m/s^2)":"12.14+-0.01",
-      "Rocky core mass (Mc/M)":"0.1027",
-      "Flattening":"0.09796",
-      "Rotation period":"10h 39m 22.4s",
-      "Obliquity to orbit":"26.73 deg",
+      "Hydrostatic flat., fh":"0.09829",
       "Y factor (He/H ratio)":"",
+      "Obliquity to orbit":"26.73 deg",
+      "Mass (10^26 kg)":"5.68319",
+      "Visual magnitude V(1,0)":"-8.88",
+      "Rotation period":"10h 39m 22.4s",
+      "Pol. grav, gp (m/s^2)":"12.14+-0.01",
+      "Mom. of inert. I/MRo^2":"0.210",
+      "Flattening":"0.09796",
+      "Rocky core mass (Mc/M)":"0.1027",
+      "GM 1-sigma (km^3/s^2)":"+- 98",
+      "Hill's sphere rad. Rp":"1100",
       "Equ. grav, ge (m/s^2)":"10.44"
-    }
+    },
+    "id":699,
+    "mass":5.68319e+26
   },{
     "mass":1.353e+21,
     "name":"Ariel",
-    "id":701,
     "parent":"Uranus",
+    "radius":578900,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1727,12 +1729,12 @@ horizonsExtraData = [{
       "V(1,0)":"+1.45",
       "Rotational period":"Synchronous"
     },
-    "radius":578900
+    "id":701
   },{
     "mass":1.172e+21,
     "name":"Umbriel",
-    "id":702,
     "parent":"Uranus",
+    "radius":584700,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1745,12 +1747,12 @@ horizonsExtraData = [{
       "V(1,0)":"+2.10",
       "Rotational period":"Synchronous"
     },
-    "radius":584700
+    "id":702
   },{
     "mass":3.527e+21,
     "name":"Titania",
-    "id":703,
     "parent":"Uranus",
+    "radius":788900,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1763,12 +1765,12 @@ horizonsExtraData = [{
       "V(1,0)":"+1.02",
       "Rotational period":"Synchronous"
     },
-    "radius":788900
+    "id":703
   },{
     "mass":3.014e+21,
     "name":"Oberon",
-    "id":704,
     "parent":"Uranus",
+    "radius":761400,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1781,12 +1783,12 @@ horizonsExtraData = [{
       "V(1,0)":"+1.23",
       "Rotational period":"Synchronous"
     },
-    "radius":761400
+    "id":704
   },{
     "mass":6.59e+19,
     "name":"Miranda",
-    "id":705,
     "parent":"Uranus",
+    "radius":235700,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1799,12 +1801,12 @@ horizonsExtraData = [{
       "V(1,0)":"+3.6",
       "Rotational period":"Synchronous"
     },
-    "radius":235700
+    "id":705
   },{
-    "radius":13000,
+    "radius":20100,
     "name":"Cordelia",
-    "parent":"Uranus",
     "id":706,
+    "mass":4.4960052992916e+16,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1816,12 +1818,13 @@ horizonsExtraData = [{
       "Radius (km)":"13 +- 2",
       "V(1,0)":"+11.4",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":16000,
+    "radius":21400,
     "name":"Ophelia",
-    "parent":"Uranus",
     "id":707,
+    "mass":5.3952063591499e+16,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1833,12 +1836,13 @@ horizonsExtraData = [{
       "Radius (km)":"16 +- 2",
       "V(1,0)":"+11.1",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":22000,
+    "radius":25700,
     "name":"Bianca",
-    "parent":"Uranus",
     "id":708,
+    "mass":9.2917442852026e+16,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1850,12 +1854,13 @@ horizonsExtraData = [{
       "Radius (km)":"22 +- 3",
       "V(1,0)":"+10.3",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":33000,
+    "radius":39800,
     "name":"Cressida",
-    "parent":"Uranus",
     "id":709,
+    "mass":3.4319507117926e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1867,12 +1872,13 @@ horizonsExtraData = [{
       "Radius (km)":"33 +- 4",
       "V(1,0)":"+9.5",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":29000,
+    "radius":32000,
     "name":"Desdemona",
-    "parent":"Uranus",
     "id":710,
+    "mass":1.7834154353857e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1884,12 +1890,13 @@ horizonsExtraData = [{
       "Radius (km)":"29 +- 3",
       "V(1,0)":"+9.8",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":42000,
+    "radius":46800,
     "name":"Juliet",
-    "parent":"Uranus",
     "id":711,
+    "mass":5.5750465711216e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1901,12 +1908,13 @@ horizonsExtraData = [{
       "Radius (km)":"42 +- 5",
       "V(1,0)":"+8.8",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":55000,
+    "radius":67600,
     "name":"Portia",
-    "parent":"Uranus",
     "id":712,
+    "mass":1.681505981935e+18,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1918,12 +1926,13 @@ horizonsExtraData = [{
       "Radius (km)":"55 +- 6",
       "V(1,0)":"+8.3",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":29000,
+    "radius":36000,
     "name":"Rosalind",
-    "parent":"Uranus",
     "id":713,
+    "mass":2.5477363362652e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1935,12 +1944,13 @@ horizonsExtraData = [{
       "Radius (km)":"29 +- 4",
       "V(1,0)":"+9.8",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":34000,
+    "radius":40300,
     "name":"Belinda",
-    "parent":"Uranus",
     "id":714,
+    "mass":3.5668308707713e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1952,12 +1962,13 @@ horizonsExtraData = [{
       "Radius (km)":"34 +- 4",
       "V(1,0)":"+9.4",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "radius":77000,
+    "radius":81000,
     "name":"Puck",
-    "parent":"Uranus",
     "id":715,
+    "mass":2.8939287443107e+18,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -1969,77 +1980,97 @@ horizonsExtraData = [{
       "Radius (km)":"77 +- 3",
       "V(1,0)":"+7.5",
       "Rotational period":""
-    }
+    },
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Caliban",
-    "id":716
+    "id":716,
+    "mass":2.9973368661944e+17,
+    "radius":36000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Sycorax",
-    "id":717
+    "id":717,
+    "mass":2.6976031795749e+18,
+    "radius":75000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Prospero (1999U3)",
-    "id":718
+    "id":718,
+    "mass":9.8912116584415e+16,
+    "radius":25000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Setebos (1999U1)",
-    "id":719
+    "id":719,
+    "mass":8.6922769119637e+16,
+    "radius":24000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Stephano (1999U2)",
-    "id":720
+    "id":720,
+    "mass":2.5477363362652e+16,
+    "radius":16000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Trinculo",
-    "id":721
+    "id":721,
+    "mass":4.6458721426013e+15,
+    "radius":9000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Francisco",
-    "id":722
+    "id":722,
+    "mass":8.3925432253443e+15,
+    "radius":11000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Margaret",
-    "id":723
+    "id":723,
+    "mass":6.2944074190082e+15,
+    "radius":10000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Ferdinand",
-    "id":724
+    "id":724,
+    "mass":6.2944074190082e+15,
+    "radius":10000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Perdita",
-    "id":725
+    "id":725,
+    "radius":15000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Mab",
-    "id":726
+    "id":726,
+    "radius":24000,
+    "parent":"Uranus"
   },{
-    "parent":"Uranus",
     "vars":[],
     "name":"Cupid",
-    "id":727
+    "id":727,
+    "radius":18000,
+    "parent":"Uranus"
   },{
-    "mass":8.68103e+25,
+    "radius":25362000,
     "name":"Uranus",
     "inverseFlattening":43.610989969472,
-    "radius":25362000,
-    "id":799,
     "vars":{
       "Mean daily motion":"0.01176904 dg/d",
       "GM (km^3/s^2)":"5,793,966",
-      "Mom. of inert. I/MRo^2":"0.225",
+      "Planetary Solar Const":"3.71 W/m^2",
       "ks":"3*J2/m            =  0.357",
       "Equat. radius (1 bar)":"25559+-4 km",
       "I/MRo^2 (upper bound)":"0.232",
@@ -2051,7 +2082,7 @@ horizonsExtraData = [{
       "Hill's sphere rad., Rp":"2700",
       "Escape velocity (km/s)":"21.3",
       "Vis. mag. (opposition)":"+5.52",
-      "Visual magnitude V(1,0)":"-7.19",
+      "Density (g/cm^3)":"1.318",
       "Heat flow/mass (x10^7)":"",
       "Volumetric mean radius":"25362+-12 km",
       "Rocky core mass (Mc/M)":"0.0012",
@@ -2061,23 +2092,25 @@ horizonsExtraData = [{
       "Sidereal orbit period":"30687.153 d",
       "Hydrostatic flat., fh":"0.01987",
       "Mass (10^24 kg)":"86.8103",
-      "Planetary Solar Const":"3.71 W/m^2",
-      "Density (g/cm^3)":"1.318",
-      "Mean orbit velocity":"6.8352 km/s",
-      "Dipole tilt/offset":"58.6dg/0.3Rp",
-      "Pol. grav, gp (m/s^2)":"9.19+-0.02",
-      "GM 1-sigma( km^3/s^2)":"+-23",
-      "Flattening":"0.02293",
-      "Rotation period":"17.24+-0.01 hr",
-      "Obliquity to orbit":"97.86 deg",
       "Y factor (He/H ratio)":"0.262+-.048",
+      "Dipole tilt/offset":"58.6dg/0.3Rp",
+      "Visual magnitude V(1,0)":"-7.19",
+      "Rotation period":"17.24+-0.01 hr",
+      "Pol. grav, gp (m/s^2)":"9.19+-0.02",
+      "Mom. of inert. I/MRo^2":"0.225",
+      "Flattening":"0.02293",
+      "GM 1-sigma( km^3/s^2)":"+-23",
+      "Obliquity to orbit":"97.86 deg",
+      "Mean orbit velocity":"6.8352 km/s",
       "Equ. grav, ge (m/s^2)":"8.87"
-    }
+    },
+    "id":799,
+    "mass":8.68103e+25
   },{
     "mass":2.147e+22,
     "name":"Triton",
-    "id":801,
     "parent":"Neptune",
+    "radius":1352600,
     "vars":{
       "1":"                                            ",
       "3":" Fit to all reported measurements through 20",
@@ -2092,17 +2125,17 @@ horizonsExtraData = [{
       "V(1,0)":"-1.24",
       "Rotational period":"Synchronous"
     },
-    "radius":1352600
+    "id":801
   },{
     "parent":"Neptune",
     "vars":[],
     "name":"Neried",
     "id":802
   },{
-    "radius":29000,
+    "radius":33000,
     "name":"Naiad",
-    "parent":"Neptune",
     "id":803,
+    "mass":1.9482689630264e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -2114,12 +2147,13 @@ horizonsExtraData = [{
       "Radius (km)":"29",
       "V(1,0)":"+10.0",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "radius":40000,
+    "radius":41000,
     "name":"Thalassa",
-    "parent":"Neptune",
     "id":804,
+    "mass":3.746671082743e+17,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -2131,12 +2165,13 @@ horizonsExtraData = [{
       "Radius (km)":"40",
       "V(1,0)":"+9.1",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "radius":74000,
+    "radius":75000,
     "name":"Despina",
-    "parent":"Neptune",
     "id":805,
+    "mass":2.0981358063361e+18,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -2148,12 +2183,13 @@ horizonsExtraData = [{
       "Radius (km)":"74 +- 10",
       "V(1,0)":"+7.9",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "radius":79000,
+    "radius":88000,
     "name":"Galatea",
-    "parent":"Neptune",
     "id":806,
+    "mass":3.746671082743e+18,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -2165,12 +2201,13 @@ horizonsExtraData = [{
       "Radius (km)":"79 +- 12",
       "V(1,0)":"+7.6",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "radius":96500,
+    "radius":97000,
     "name":"Larissa",
-    "parent":"Neptune",
     "id":807,
+    "mass":4.9456058292207e+18,
     "vars":{
       "1":"                                            ",
       "2":"",
@@ -2182,12 +2219,13 @@ horizonsExtraData = [{
       "Radius (km)":"104 x 89 (+-7)",
       "V(1,0)":"+7.3",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "radius":209000,
+    "radius":210000,
     "name":"Proteus",
-    "parent":"Neptune",
     "id":808,
+    "mass":5.0355259352066e+19,
     "vars":{
       "1":"                                            ",
       "3":" Fir to all reported measurements through 20",
@@ -2201,47 +2239,56 @@ horizonsExtraData = [{
       "Radius (km)":"218 x 208 x 201",
       "V(1,0)":"+5.6",
       "Rotational period":""
-    }
+    },
+    "parent":"Neptune"
   },{
-    "parent":"Neptune",
     "vars":[],
     "name":"Halimede",
-    "id":809
+    "id":809,
+    "mass":8.9920105985832e+16,
+    "radius":31000,
+    "parent":"Neptune"
   },{
-    "parent":"Neptune",
     "vars":[],
     "name":"Psamathe",
-    "id":810
+    "id":810,
+    "mass":1.4986684330972e+16,
+    "radius":20000,
+    "parent":"Neptune"
   },{
-    "parent":"Neptune",
     "vars":[],
     "name":"Sao",
-    "id":811
+    "id":811,
+    "mass":8.9920105985832e+16,
+    "radius":22000,
+    "parent":"Neptune"
   },{
-    "parent":"Neptune",
     "vars":[],
     "name":"Laomedeia",
-    "id":812
+    "id":812,
+    "mass":8.9920105985832e+16,
+    "radius":21000,
+    "parent":"Neptune"
   },{
-    "parent":"Neptune",
     "vars":[],
     "name":"Neso",
-    "id":813
+    "id":813,
+    "mass":1.6485352764069e+17,
+    "radius":30000,
+    "parent":"Neptune"
   },{
     "parent":"Neptune",
     "vars":[],
     "name":"S 2004 N1",
     "id":814
   },{
-    "mass":1.0241e+26,
+    "radius":24624000,
     "name":"Neptune",
     "inverseFlattening":58.479532163743,
-    "radius":24624000,
-    "id":899,
     "vars":{
       "Mean daily motion":"0.006020076dg/d",
       "GM (km^3/s^2)":"6,835,107",
-      "Mom. of inert. I/MRo^2":"",
+      "Planetary Solar Const":"1.47 W/m^2",
       "ks":"3*J2/m            =  0.407",
       "Equat. radius (1 bar)":"24766+-15 km",
       "I/MRo^2 (upper bound)":"0.239",
@@ -2253,7 +2300,7 @@ horizonsExtraData = [{
       "Hill's sphere rad., Rp":"4700",
       "Escape velocity (km/s)":"23.5",
       "Vis. mag. (opposition)":"+7.84",
-      "Visual magnitude V(1,0)":"-6.87",
+      "Density (g/cm^3)":"1.638",
       "Heat flow/mass (x10^7)":"2 erg/gm*s",
       "Volumetric mean radius":"24624+-21 km",
       "Rocky core mass (Mc/M)":"",
@@ -2263,23 +2310,27 @@ horizonsExtraData = [{
       "Sidereal orbit period":"60190.029 d",
       "Hydrostatic flat., fh":"0.01804",
       "Rotation period":"16.11+-0.01 hr",
-      "Planetary Solar Const":"1.47 W/m^2",
-      "Density (g/cm^3)":"1.638",
-      "Mean orbit velocity":"5.4778 km/s",
-      "Mass (10^24 kg)":"102.41",
-      "Pol. grav, gp (m/s^2)":"11.41+-0.03",
-      "Dipole tilt/offset":"47deg/0.55Rp",
-      "Flattening":"0.0171",
-      "Y factor (He/H ratio)":"0.235+-.040",
-      "Obliquity to orbit":"29.56 deg",
       "GM 1-sigma (km^3/s^2)":"+-15",
+      "Mass (10^24 kg)":"102.41",
+      "Visual magnitude V(1,0)":"-6.87",
+      "Y factor (He/H ratio)":"0.235+-.040",
+      "Pol. grav, gp (m/s^2)":"11.41+-0.03",
+      "Mom. of inert. I/MRo^2":"",
+      "Flattening":"0.0171",
+      "Dipole tilt/offset":"47deg/0.55Rp",
+      "Obliquity to orbit":"29.56 deg",
+      "Mean orbit velocity":"5.4778 km/s",
       "Equ. grav, ge (m/s^2)":"11.15"
-    }
+    },
+    "id":899,
+    "mass":1.0241e+26
   },{
-    "parent":"Pluto",
     "vars":[],
     "name":"Charon",
-    "id":901
+    "id":901,
+    "mass":1.5466258229563e+21,
+    "radius":603600,
+    "parent":"Pluto"
   },{
     "parent":"Pluto",
     "vars":[],
@@ -2301,9 +2352,9 @@ horizonsExtraData = [{
     "name":"Styx",
     "id":905
   },{
-    "id":999,
-    "vars":[],
+    "mass":"1.309e+22",
     "name":"Pluto",
-	"mass":"1.309e+22",
-	"radius":"1.153e+6"
+    "id":999,
+    "radius":"1.153e+6",
+    "vars":[]
   }];

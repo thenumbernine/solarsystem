@@ -31,6 +31,9 @@ local parentPrefixes = {
 	Sun = '',
 	Jupiter = 'Jup_',
 	Saturn = 'Sat_',
+	Uranus = 'Ura_',
+	Neptune = 'Nep_',
+	Pluto = 'Plu_',
 }
 
 local function getInfo(planet)
