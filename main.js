@@ -2452,19 +2452,16 @@ function init4() {
 	}
 	var calcOrbitPathEndTime = Date.now();
 
-	var saturnPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Saturn].prototype;
-	var atlasPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Atlas].prototype;
-	quat.identity(saturnPlanetClassPrototype.angle);
-	quat.rotateZ(saturnPlanetClassPrototype.angle, saturnPlanetClassPrototype.angle, atlasPlanetClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
-	quat.rotateX(saturnPlanetClassPrototype.angle, saturnPlanetClassPrototype.angle, atlasPlanetClassPrototype.keplerianOrbitalElements.inclination);
+	var setPlanetAngleToMoonOrbitPlane = function(planetName, moonName) {
+		var planetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes[planetName]].prototype;
+		var moonClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes[moonName]].prototype;
+		quat.identity(planetClassPrototype.angle);
+		quat.rotateZ(planetClassPrototype.angle, planetClassPrototype.angle, moonClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
+		quat.rotateX(planetClassPrototype.angle, planetClassPrototype.angle, moonClassPrototype.keplerianOrbitalElements.inclination);
+	};
 
-	var neptunePlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Neptune].prototype;
-	var naiadPlanetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes.Naiad].prototype;
-	quat.identity(neptunePlanetClassPrototype.angle);
-	quat.rotateZ(neptunePlanetClassPrototype.angle, neptunePlanetClassPrototype.angle, naiadPlanetClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
-	quat.rotateX(neptunePlanetClassPrototype.angle, neptunePlanetClassPrototype.angle, naiadPlanetClassPrototype.keplerianOrbitalElements.inclination);
-
-
+	setPlanetAngleToMoonOrbitPlane('Saturn', 'Atlas');
+	setPlanetAngleToMoonOrbitPlane('Neptune', 'Naiad');
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
