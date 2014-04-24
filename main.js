@@ -2330,7 +2330,7 @@ void main() {
 			
 			++planetsDone;
 			if (planetsDone == planets.length) {
-				init4();
+				initOrbitPaths();
 			}
 		};
 
@@ -2345,16 +2345,19 @@ void main() {
 					magFilter : gl.LINEAR,
 					generateMipmap : true
 				});
-				checkDone();
+				//checkDone();
 			};
 			img.onerror = function() {
 				console.log('failed to find texture for planet '+planet.name);
-				checkDone();
+				//checkDone();
 			};
 			img.src = 'textures/'+planet.name.toLowerCase()+'.png';
 		} else {
-			checkDone();
+			//checkDone();
 		}
+		
+		//or... don't wait for textures 
+		checkDone();
 	})(); }
 
 	//while we're here, load the rings
@@ -2433,7 +2436,7 @@ void main() {
 	}
 }
 
-function init4() {
+function initOrbitPaths() {
 	var orbitShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
