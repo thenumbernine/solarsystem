@@ -1682,7 +1682,16 @@ var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 
 var ModifiedDepthShaderProgram = makeClass({
 	super : GL.ShaderProgram,
 	init : function(args) {
-		args.vertexCode = $('#depthfunction').text();
+		
+		// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
+		args.vertexCode = mlstr(function(){/*
+uniform float zNear, zFar, depthConstant;
+float depthfunction(vec4 v) {
+	//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
+	//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w; 
+	return v.z;
+}
+*/}) + (args.vertexCode || '');
 		if (args.uniforms === undefined) args.uniforms = {};
 		args.uniforms.zNear = GL.view.zNear;
 		args.uniforms.zFar = GL.view.zFar;
@@ -1973,21 +1982,38 @@ function init2() {
 	console.log('loading '+imgs.join(', '));
 	$(imgs).preload(function(){
 		$('#loadingDiv').hide();
-		$('#menu').show();
-		$('#timeControlDiv').show();
-		$('#infoDiv').show();
-		init3();
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
 	});
+	
+	$('#menu').show();
+	$('#timeControlDiv').show();
+	$('#infoDiv').show();
+	init3();
 }
 
 function init3() {
 	hsvTex = new GL.HSVTexture(256);
 	
 	colorShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'color-vsh',
-		fragmentCodeID : 'color-fsh',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float pointSize;
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	gl_Position = projMat * vtx4;
+	gl_PointSize = pointSize;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+void main() {
+	gl_FragColor = color;
+}
+*/}),
 		uniforms : {
 			color : [1,1,1,1],
 			pointSize : 4
@@ -1995,8 +2021,38 @@ function init3() {
 	});
 	
 	planetColorShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'planet-color-vsh',
-		fragmentCodeID : 'planet-color-fsh',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform vec3 sunPos;
+uniform float pointSize;
+varying vec3 lightDir;
+varying vec3 normal;
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+}
+void main() {
+	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	normal = quatRotate(angle, normalize(vertex));
+	lightDir = normalize(sunPos - vtx3);
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	gl_Position = projMat * vtx4;
+	gl_PointSize = pointSize;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+varying vec3 lightDir;
+varying vec3 normal;
+uniform float ambient;
+void main() {
+	gl_FragColor = color * max(ambient, dot(lightDir, normal));
+}
+*/}),
 		uniforms : {
 			color : [1,1,1,1],
 			pointSize : 4
@@ -2004,22 +2060,118 @@ function init3() {
 	});
 
 	planetTexShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'planet-tex-vsh',
-		fragmentCodeID : 'planet-tex-fsh',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+attribute vec2 texCoord;
+varying vec2 texCoordv;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform vec3 sunPos;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+varying vec3 lightDir;
+varying vec3 normal;
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+}
+void main() {
+	texCoordv = texCoord;
+	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	normal = quatRotate(angle, normalize(vertex));
+	lightDir = normalize(sunPos - vtx3);
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+varying vec2 texCoordv;
+varying vec3 lightDir;
+varying vec3 normal;
+uniform sampler2D tex;
+uniform float ambient;
+void main() {
+	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, dot(lightDir, normal));
+}
+*/}),
 		uniforms : {
 			tex : 0
 		}
 	});
 
 	hsvShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'heat-vsh',
-		fragmentCodeID : 'heat-fsh',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+attribute vec2 texCoord;
+attribute float tide;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+varying float tidev;
+varying vec2 texCoordv;
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+}
+void main() {
+	tidev = tide;
+	texCoordv = texCoord;
+	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+varying float tidev;
+varying vec2 texCoordv;
+uniform sampler2D tex;
+uniform sampler2D hsvTex;
+uniform float heatAlpha;
+void main() {
+	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
+	vec4 planetColor = texture2D(tex, texCoordv);
+	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+}
+*/}),
 		uniforms : {
 			tex : 0,
 			hsvTex : 1
 		}
 	});
-	
+
+/*
+per-pixel heat shader:
+//will be used by all per-pixel shaders
+attribute vec3 vertex;
+attribute vec2 texCoord;
+uniform mat4 mvMat;
+uniform mat4 objMat;
+uniform mat4 projMat;
+varying vec2 texCoordv;
+varying vec4 worldv;
+void main() {
+	tidev = tide;
+	texCoordv = texCoord;
+	worldv = objMat * vec4(vertex, 1.);
+	gl_Position = projMat * mvMat * worldv;
+	gl_Position.z = depthfunction(gl_Position);
+}
+
+tangent tidal shader:
+varying vec2 texCoordv;
+varying vec4 worldv;
+uniform float heatAlpha;
+uniform sampler2D tex;
+uniform sampler2D hsvTex;
+void main() {
+	float tidev = something(worldv);	//do calculations with this.  fix it if the precision isn't good enough.
+	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
+	vec4 planetColor = texture2D(tex, texCoordv);
+	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+}
+*/
+
 	$('#overlay-slider').slider({
 		range : 'max',
 		width : '200px',
@@ -2206,8 +2358,34 @@ function init3() {
 	//while we're here, load the rings
 	{
 		var ringShader = new ModifiedDepthShaderProgram({
-			vertexCodeID : 'ring-vsh',
-			fragmentCodeID : 'ring-fsh'
+			vertexCode : mlstr(function(){/*
+#define M_PI 3.1415926535897931 
+attribute vec2 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float minRadius;
+uniform float maxRadius;
+varying vec2 texCoordv;
+void main() {
+	texCoordv = vertex;
+	//vertex is the uv of the texcoord wrapped around the annulus 
+	//u coord is radial, v coord is angular 
+	float rad = mix(minRadius, maxRadius, vertex.x);
+	float theta = 2. * M_PI * vertex.y;
+	float cosTheta = cos(theta);
+	float sinTheta = sin(theta);
+	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+			fragmentCode : mlstr(function(){/*
+varying vec2 texCoordv;
+uniform sampler2D tex;
+void main() {
+	gl_FragColor = texture2D(tex, texCoordv);
+}
+*/})
 		});
 		
 		var img = new Image();
@@ -2255,8 +2433,26 @@ function init3() {
 
 function init4() {
 	var orbitShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'orbit-vsh',
-		fragmentCodeID : 'orbit-fsh'
+		vertexCode : mlstr(function(){/*
+attribute vec4 vertex;
+varying float alpha;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	alpha = vertex.w;
+	gl_Position = projMat * vtx4;
+	gl_PointSize = 4.;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+varying float alpha;
+void main() {
+	gl_FragColor = vec4(color.xyz, color.w * alpha);
+}
+*/})
 	});
 
 	//TODO update these when we integrate!
@@ -2597,8 +2793,32 @@ function init4() {
 
 function init5(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
-		vertexCodeID : 'cube-vsh',
-		fragmentCodeID : 'cube-fsh',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+varying vec3 vertexv;
+uniform mat4 projMat;
+
+void main() {
+	vertexv = vertex;
+	gl_Position = projMat * vec4(vertex, 1.);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+precision mediump float;
+varying vec3 vertexv;
+uniform samplerCube skyTex;
+
+uniform vec4 viewAngle;
+vec3 qtransform( vec4 q, vec3 v ){ 
+	return v + 2.0*cross(cross(v, q.xyz ) + q.w*v, q.xyz);
+}
+void main() {
+	vec3 dir = vertexv;
+	dir = qtransform(vec4(viewAngle.xyz, -viewAngle.w), dir);
+	gl_FragColor = .3 * textureCube(skyTex, dir);
+	gl_FragColor.w = 1.; 
+}
+*/}),
 		uniforms : {
 			skyTex : 0
 		}
