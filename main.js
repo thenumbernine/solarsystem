@@ -753,7 +753,7 @@ var orbitZoomFactor = .0003;	// upon mousewheel
 
 var mouse;
 var mouseDir;
-var cubeObj;
+var skyCubeObj;
 
 var skyTexFilenames = [
 	'textures/sky-visible-cube-xp.png',
@@ -1346,9 +1346,11 @@ var planetPointVisRatio = .001;
 		mat4.fromQuat(invRotMat, viewAngleInv);
 		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
 
-		gl.disable(gl.DEPTH_TEST);
-		cubeObj.draw();
-		gl.enable(gl.DEPTH_TEST);
+		if (skyCubeObj) {
+			gl.disable(gl.DEPTH_TEST);
+			skyCubeObj.draw();
+			gl.enable(gl.DEPTH_TEST);
+		}
 
 		viewPosInv[0] = -GL.view.pos[0];
 		viewPosInv[1] = -GL.view.pos[1];
@@ -2770,7 +2772,7 @@ void main() {
 
 	//looks like doing these in realtime will mean toning the detail down a bit ...
 
-	var skyTex = new GL.TextureCube({
+	new GL.TextureCube({
 		flipY : true,
 		generateMipmap : true,
 		magFilter : gl.LINEAR,
@@ -2786,12 +2788,15 @@ void main() {
 			}
 		},
 		done : function() {
-			init5(this);
+			initSkyCube(this);
 		}
 	});
+
+	initScene();
 }
 
-function init5(skyTex) {
+//init the "sky" cubemap (the galaxy background) once the texture for it loads
+function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
@@ -2842,7 +2847,7 @@ void main() {
 		]
 	});
 
-	cubeObj = new GL.SceneObject({
+	skyCubeObj = new GL.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
 		shader : cubeShader,
@@ -2856,7 +2861,9 @@ void main() {
 		parent : null,
 		static : false
 	});
+}
 
+function initScene() {
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
@@ -2903,6 +2910,7 @@ void main() {
 	});
 
 	update();
+
 }
 
 function update() {
