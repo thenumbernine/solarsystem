@@ -2032,7 +2032,7 @@ uniform float pointSize;
 varying vec3 lightDir;
 varying vec3 normal;
 vec3 quatRotate(vec4 q, vec3 v){ 
-	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 void main() {
 	vec3 vtx3 = quatRotate(angle, vertex) + pos;
@@ -2072,7 +2072,7 @@ uniform mat4 projMat;
 varying vec3 lightDir;
 varying vec3 normal;
 vec3 quatRotate(vec4 q, vec3 v){ 
-	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 void main() {
 	texCoordv = texCoord;
@@ -2111,7 +2111,7 @@ uniform mat4 projMat;
 varying float tidev;
 varying vec2 texCoordv;
 vec3 quatRotate(vec4 q, vec3 v){ 
-	return v + 2.*cross(cross(v, q.xyz) - q.w*v, q.xyz);
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 void main() {
 	tidev = tide;
@@ -2809,12 +2809,12 @@ varying vec3 vertexv;
 uniform samplerCube skyTex;
 
 uniform vec4 viewAngle;
-vec3 qtransform( vec4 q, vec3 v ){ 
-	return v + 2.0*cross(cross(v, q.xyz ) + q.w*v, q.xyz);
+vec3 quatRotate( vec4 q, vec3 v ){ 
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 void main() {
 	vec3 dir = vertexv;
-	dir = qtransform(vec4(viewAngle.xyz, -viewAngle.w), dir);
+	dir = quatRotate(viewAngle, dir);
 	gl_FragColor = .3 * textureCube(skyTex, dir);
 	gl_FragColor.w = 1.; 
 }
