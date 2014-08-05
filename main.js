@@ -1762,9 +1762,8 @@ function init1() {
 	$(canvas).disableSelection();
 
 	try {
-		GL.init(canvas);	//needed to call GL.oninit, to call the GL plugins
-		renderer = GL.canvasRenderer;
-		gl = renderer.gl;
+		renderer = new GL.CanvasRenderer({canvas:canvas});
+		gl = renderer.context;
 	} catch (e) {
 		panel.remove();
 		$(canvas).remove();
@@ -1774,6 +1773,10 @@ function init1() {
 	
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
+	renderer.view.angle[0] = -0.4693271591372717;
+	renderer.view.angle[1] = 0.7157221264895661;
+	renderer.view.angle[2] = -0.4298784661116332;
+	renderer.view.angle[3] = 0.28753844912098436;
 	renderer.view.zNear = 1e+3;
 	renderer.view.zFar = 1e+25;
 
@@ -2003,6 +2006,7 @@ function init3() {
 	hsvTex = new GL.HSVTexture(256);
 	
 	colorShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -2028,6 +2032,7 @@ void main() {
 	});
 	
 	planetColorShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -2067,6 +2072,7 @@ void main() {
 	});
 
 	planetTexShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -2107,6 +2113,7 @@ void main() {
 	});
 
 	hsvShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -2197,10 +2204,15 @@ void main() {
 	gl.useProgram(null);
 
 	pointObj = new GL.SceneObject({
+		scene : renderer.scene,
 		mode : gl.POINTS,
 		shader : colorShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({count:1, keep:true, usage:gl.DYNAMIC_DRAW}),
+			vertex : new GL.ArrayBuffer({
+				context : gl,
+				count : 1,
+				usage : gl.DYNAMIC_DRAW
+			}),
 			pointSize : 4
 		},
 		parent : null
@@ -2284,14 +2296,30 @@ void main() {
 					}
 				}
 				
-				var vertexBuffer = new GL.ArrayBuffer({data:vertexArray, keep:true});
+				var vertexBuffer = new GL.ArrayBuffer({
+					context : gl,
+					data : vertexArray
+				});
 				planetClassPrototype.sceneObj = new GL.SceneObject({
+					scene : renderer.scene,
 					mode : gl.TRIANGLES,
-					indexes : new GL.ElementArrayBuffer({data:triIndexArray}),
+					indexes : new GL.ElementArrayBuffer({
+						context : gl,
+						data : triIndexArray
+					}),
 					attrs : {
 						vertex : vertexBuffer,
-						texCoord : new GL.ArrayBuffer({dim:2, data:texCoordArray}),
-						tide : new GL.ArrayBuffer({dim:1, data:tideArray, keep:true, usage:gl.DYNAMIC_DRAW})
+						texCoord : new GL.ArrayBuffer({
+							context : gl,
+							dim : 2,
+							data : texCoordArray
+						}),
+						tide : new GL.ArrayBuffer({
+							context : gl,
+							dim : 1,
+							data : tideArray,
+							usage : gl.DYNAMIC_DRAW
+						})
 					},
 					uniforms : {
 						color : planetClassPrototype.color,
@@ -2304,8 +2332,12 @@ void main() {
 					static : true 
 				});
 				planetClassPrototype.latLonObj = new GL.SceneObject({
+					scene : renderer.scene,
 					mode : gl.LINES,
-					indexes : new GL.ElementArrayBuffer({data:latLonIndexArray}),
+					indexes : new GL.ElementArrayBuffer({
+						context : gl,
+						data : latLonIndexArray
+					}),
 					shader : colorShader,
 					attrs : {
 						vertex : vertexBuffer
@@ -2321,10 +2353,15 @@ void main() {
 				});
 			}
 			planetClassPrototype.lineObj = new GL.SceneObject({
+				scene : renderer.scene,
 				mode : gl.LINES,
 				shader : colorShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({count:2, keep:true, usage:gl.DYNAMIC_DRAW})
+					vertex : new GL.ArrayBuffer({
+						context : gl,
+						count : 2,
+						usage : gl.DYNAMIC_DRAW
+					})
 				},
 				uniforms : {
 					color : planetClassPrototype.color
@@ -2344,6 +2381,7 @@ void main() {
 			var img = new Image();
 			img.onload = function() {
 				planetClassPrototype.tex = new GL.Texture2D({
+					context : gl,
 					//flipY : true,
 					data : img,
 					minFilter : gl.LINEAR_MIPMAP_LINEAR,
@@ -2368,6 +2406,7 @@ void main() {
 	//while we're here, load the rings
 	{
 		var ringShader = new ModifiedDepthShaderProgram({
+			context : gl,
 			vertexCode : mlstr(function(){/*
 #define M_PI 3.1415926535897931 
 attribute vec2 vertex;
@@ -2402,6 +2441,7 @@ void main() {
 		img.onload = function() {
 			var planetClassPrototype = planets[planets.indexes.Saturn].init.prototype;
 			planetClassPrototype.ringTex = new GL.Texture2D({
+				context : gl,
 				data : img,
 				minFilter : gl.LINEAR_MIPMAP_LINEAR,
 				magFilter : gl.LINEAR,
@@ -2420,10 +2460,15 @@ void main() {
 		
 			//and a ring object
 			planetClassPrototype.ringObj = new GL.SceneObject({
+				scene : renderer.scene,
 				mode : gl.TRIANGLE_STRIP,
 				shader : ringShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({dim:2, data:vertexes})
+					vertex : new GL.ArrayBuffer({
+						context : gl,
+						dim : 2,
+						data : vertexes
+					})
 				},
 				uniforms : {
 					tex : 0,
@@ -2443,6 +2488,7 @@ void main() {
 
 function initOrbitPaths() {
 	var orbitShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
@@ -2640,10 +2686,15 @@ void main() {
 			}
 		
 			planetClassPrototype.orbitPathObj = new GL.SceneObject({
+				scene : renderer.scene,
 				mode : gl.LINE_STRIP,
 				shader : orbitShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({dim:4, data:vertexes})
+					vertex : new GL.ArrayBuffer({
+						context : gl,
+						dim : 4,
+						data : vertexes
+					})
 				},
 				uniforms : {
 					color : planetClassPrototype.color
@@ -2750,11 +2801,19 @@ void main() {
 			}
 		}
 		planetClassPrototype.gravWellObj = new GL.SceneObject({
+			scene : renderer.scene,
 			mode : gl.LINES,
-			indexes : new GL.ElementArrayBuffer({data:gravWellIndexes}),
+			indexes : new GL.ElementArrayBuffer({
+				context : gl,
+				data : gravWellIndexes
+			}),
 			shader : orbitShader,
 			attrs : {
-				vertex : new GL.ArrayBuffer({dim:4, data:gravWellVtxs})
+				vertex : new GL.ArrayBuffer({
+					context : gl,
+					dim : 4,
+					data : gravWellVtxs
+				})
 			},
 			uniforms : {
 				color : [1,1,1,.2]
@@ -2781,6 +2840,7 @@ void main() {
 	//looks like doing these in realtime will mean toning the detail down a bit ...
 
 	new GL.TextureCube({
+		context : gl,
 		flipY : true,
 		generateMipmap : true,
 		magFilter : gl.LINEAR,
@@ -2806,6 +2866,7 @@ void main() {
 //init the "sky" cubemap (the galaxy background) once the texture for it loads
 function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
+		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 varying vec3 vertexv;
@@ -2845,6 +2906,7 @@ void main() {
 	}
 
 	var cubeIndexBuf = new GL.ElementArrayBuffer({
+		context : gl,
 		data : [
 			5,7,3,3,1,5,		// <- each value has the x,y,z in the 0,1,2 bits (off = 0, on = 1)
 			6,4,0,0,2,6,
@@ -2856,11 +2918,15 @@ void main() {
 	});
 
 	skyCubeObj = new GL.SceneObject({
+		scene : renderer.scene,
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
 		shader : cubeShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({data : cubeVtxArray})
+			vertex : new GL.ArrayBuffer({
+				context : gl,
+				data : cubeVtxArray
+			})
 		},
 		uniforms : {
 			viewAngle : renderer.view.angle
