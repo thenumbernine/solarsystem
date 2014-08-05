@@ -978,23 +978,26 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 	planetCartesianToSolarSystemBarycentric(destX, destX, planet);
 }
 
+var renderer;
+
+//TODO use renderer.mouseDir?
 function mouseRay() {
-	var viewX = GL.view.pos[0];
-	var viewY = GL.view.pos[1];
-	var viewZ = GL.view.pos[2];
-	var viewFwdX = -2 * (GL.view.angle[0] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[1]); 
-	var viewFwdY = -2 * (GL.view.angle[1] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[0]); 
-	var viewFwdZ = -(1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[1] * GL.view.angle[1])); 
-	var viewRightX = 1 - 2 * (GL.view.angle[1] * GL.view.angle[1] + GL.view.angle[2] * GL.view.angle[2]); 
-	var viewRightY = 2 * (GL.view.angle[0] * GL.view.angle[1] + GL.view.angle[2] * GL.view.angle[3]); 
-	var viewRightZ = 2 * (GL.view.angle[0] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[1]); 
-	var viewUpX = 2 * (GL.view.angle[0] * GL.view.angle[1] - GL.view.angle[3] * GL.view.angle[2]);
-	var viewUpY = 1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[2] * GL.view.angle[2]);
-	var viewUpZ = 2 * (GL.view.angle[1] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[0]);
+	var viewX = renderer.view.pos[0];
+	var viewY = renderer.view.pos[1];
+	var viewZ = renderer.view.pos[2];
+	var viewFwdX = -2 * (renderer.view.angle[0] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[1]); 
+	var viewFwdY = -2 * (renderer.view.angle[1] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[0]); 
+	var viewFwdZ = -(1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[1] * renderer.view.angle[1])); 
+	var viewRightX = 1 - 2 * (renderer.view.angle[1] * renderer.view.angle[1] + renderer.view.angle[2] * renderer.view.angle[2]); 
+	var viewRightY = 2 * (renderer.view.angle[0] * renderer.view.angle[1] + renderer.view.angle[2] * renderer.view.angle[3]); 
+	var viewRightZ = 2 * (renderer.view.angle[0] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[1]); 
+	var viewUpX = 2 * (renderer.view.angle[0] * renderer.view.angle[1] - renderer.view.angle[3] * renderer.view.angle[2]);
+	var viewUpY = 1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[2] * renderer.view.angle[2]);
+	var viewUpZ = 2 * (renderer.view.angle[1] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[0]);
 	var aspectRatio = canvas.width / canvas.height;
 	var mxf = mouse.xf * 2 - 1;
 	var myf = 1 - mouse.yf * 2;
-	var tanFovY = Math.tan(GL.view.fovY * Math.PI / 360);
+	var tanFovY = Math.tan(renderer.view.fovY * Math.PI / 360);
 	var mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
 	var mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
 	var mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
@@ -1009,9 +1012,9 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
-		var deltaX = planet.pos[0] - GL.view.pos[0] - currentOrbitPlanet.pos[0];
-		var deltaY = planet.pos[1] - GL.view.pos[1] - currentOrbitPlanet.pos[1];
-		var deltaZ = planet.pos[2] - GL.view.pos[2] - currentOrbitPlanet.pos[2];
+		var deltaX = planet.pos[0] - renderer.view.pos[0] - currentOrbitPlanet.pos[0];
+		var deltaY = planet.pos[1] - renderer.view.pos[1] - currentOrbitPlanet.pos[1];
+		var deltaZ = planet.pos[2] - renderer.view.pos[2] - currentOrbitPlanet.pos[2];
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 		deltaX /= deltaLength;
 		deltaY /= deltaLength;
@@ -1028,16 +1031,16 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		hoverPlanetText.text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
-			GL.view.pos[0] += planets[orbitPlanetIndex].pos[0];
-			GL.view.pos[1] += planets[orbitPlanetIndex].pos[1];
-			GL.view.pos[2] += planets[orbitPlanetIndex].pos[2];
+			renderer.view.pos[0] += planets[orbitPlanetIndex].pos[0];
+			renderer.view.pos[1] += planets[orbitPlanetIndex].pos[1];
+			renderer.view.pos[2] += planets[orbitPlanetIndex].pos[2];
 			orbitPlanetIndex = bestPlanet.index;
-			GL.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
-			GL.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
-			GL.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
-			var deltaX = GL.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
-			var deltaY = GL.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
-			var deltaZ = GL.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
+			renderer.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
+			renderer.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
+			renderer.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
+			var deltaX = renderer.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
+			var deltaY = renderer.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
+			var deltaZ = renderer.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
 			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 			if (bestPlanet.radius === undefined) {
 				if (bestPlanet.parent !== undefined) {
@@ -1340,11 +1343,11 @@ var planetPointVisRatio = .001;
 	drawScene = function() {
 		var orbitPlanet = planets[orbitPlanetIndex];
 		
-		mat4.identity(GL.mvMat);
+		mat4.identity(renderer.scene.mvMat);
 		
-		quat.conjugate(viewAngleInv, GL.view.angle);
+		quat.conjugate(viewAngleInv, renderer.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
-		mat4.multiply(GL.mvMat, GL.mvMat, invRotMat);
+		mat4.multiply(renderer.scene.mvMat, renderer.scene.mvMat, invRotMat);
 
 		if (skyCubeObj) {
 			gl.disable(gl.DEPTH_TEST);
@@ -1352,10 +1355,10 @@ var planetPointVisRatio = .001;
 			gl.enable(gl.DEPTH_TEST);
 		}
 
-		viewPosInv[0] = -GL.view.pos[0];
-		viewPosInv[1] = -GL.view.pos[1];
-		viewPosInv[2] = -GL.view.pos[2];
-		mat4.translate(GL.mvMat, GL.mvMat, viewPosInv);
+		viewPosInv[0] = -renderer.view.pos[0];
+		viewPosInv[1] = -renderer.view.pos[1];
+		viewPosInv[2] = -renderer.view.pos[2];
+		mat4.translate(renderer.scene.mvMat, renderer.scene.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
@@ -1392,9 +1395,9 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			
 			//update vis ratio
-			var dx = planet.pos[0] - GL.view.pos[0] - orbitPlanet.pos[0];
-			var dy = planet.pos[1] - GL.view.pos[1] - orbitPlanet.pos[1];
-			var dz = planet.pos[2] - GL.view.pos[2] - orbitPlanet.pos[2];
+			var dx = planet.pos[0] - renderer.view.pos[0] - orbitPlanet.pos[0];
+			var dy = planet.pos[1] - renderer.view.pos[1] - orbitPlanet.pos[1];
+			var dz = planet.pos[2] - renderer.view.pos[2] - orbitPlanet.pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//some planets have no radii ... so no object
@@ -1519,11 +1522,11 @@ var planetPointVisRatio = .001;
 			//TODO just give gl-matrix a type param in its init
 			var glMvMat = [];
 			var viewAngleInvd = [];
-			quat.conjugate(viewAngleInvd, GL.view.angle);
+			quat.conjugate(viewAngleInvd, renderer.view.angle);
 			quat.normalize(viewAngleInvd, viewAngleInvd);	//normalize in double precision
 			mat4.fromQuat(glMvMat, viewAngleInvd);
 			var viewPosInvd = [];
-			vec3.negate(viewPosInvd, GL.view.pos);
+			vec3.negate(viewPosInvd, renderer.view.pos);
 			mat4.translate(glMvMat, glMvMat, viewPosInvd);
 			
 			var orbitBasis = [];
@@ -1606,13 +1609,13 @@ function resize() {
 	canvas.height = window.innerHeight;
 	panel.css('height', window.innerHeight);
 	
-	GL.resize();
+	renderer.resize();
 
-	//GL.view.fovY = canvas.height / canvas.width * 90;
+	//renderer.view.fovY = canvas.height / canvas.width * 90;
 
 	/*
 	var aspectRatio = canvas.width / canvas.height;
-	var nearHeight = Math.tan(GL.view.fovY * Math.PI / 360);
+	var nearHeight = Math.tan(renderer.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
 	*/
 	
@@ -1621,13 +1624,13 @@ function resize() {
 	//http://www.terathon.com/gdc07_lengyel.pdf
 	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
 	var epsilon = 0;
-	mat4.identity(GL.projMat);
-	GL.projMat[0] = GL.view.zNear / nearWidth;
-	GL.projMat[5] = GL.view.zNear / nearHeight;
-	GL.projMat[10] = epsilon-1;
-	GL.projMat[11] = (epsilon - 2) * GL.view.zNear;
-	GL.projMat[14] = -1;
-	GL.projMat[15] = 0;
+	mat4.identity(renderer.scene.projMat);
+	renderer.scene.projMat[0] = renderer.view.zNear / nearWidth;
+	renderer.scene.projMat[5] = renderer.view.zNear / nearHeight;
+	renderer.scene.projMat[10] = epsilon-1;
+	renderer.scene.projMat[11] = (epsilon - 2) * renderer.view.zNear;
+	renderer.scene.projMat[14] = -1;
+	renderer.scene.projMat[15] = 0;
 	/**/
 
 	/* or we could just linearly ramp the depth over the range we want, since the rest is going to full anyways * /
@@ -1635,13 +1638,13 @@ function resize() {
 	//z * (-2 / (zFar - zNear)) + ( - 2 * zNear / (zFar - zNear) - 1)
 	var resZNear = 1e+4;
 	var resZFar = 1e+8;
-	mat4.identity(GL.projMat);
-	GL.projMat[0] = GL.view.zNear / nearWidth;
-	GL.projMat[5] = GL.view.zNear / nearHeight;
-	GL.projMat[10] = -2 * (resZFar - resZNear);
-	GL.projMat[11] = -(1 + 2 * resZNear / (resZFar - resZNear));
-	GL.projMat[14] = -1;
-	GL.projMat[15] = 0;
+	mat4.identity(renderer.scene.projMat);
+	renderer.scene.projMat[0] = renderer.view.zNear / nearWidth;
+	renderer.scene.projMat[5] = renderer.view.zNear / nearHeight;
+	renderer.scene.projMat[10] = -2 * (resZFar - resZNear);
+	renderer.scene.projMat[11] = -(1 + 2 * resZNear / (resZFar - resZNear));
+	renderer.scene.projMat[14] = -1;
+	renderer.scene.projMat[15] = 0;
 	/**/
 }
 
@@ -1695,8 +1698,8 @@ float depthfunction(vec4 v) {
 }
 */}) + (args.vertexCode || '');
 		if (args.uniforms === undefined) args.uniforms = {};
-		args.uniforms.zNear = GL.view.zNear;
-		args.uniforms.zFar = GL.view.zFar;
+		args.uniforms.zNear = renderer.view.zNear;
+		args.uniforms.zFar = renderer.view.zFar;
 		args.uniforms.depthConstant = depthConstant;
 		args.vertexPrecision = 'best';
 		args.fragmentPrecision = 'best';
@@ -1759,7 +1762,9 @@ function init1() {
 	$(canvas).disableSelection();
 
 	try {
-		gl = GL.init(canvas);
+		GL.init(canvas);	//needed to call GL.oninit, to call the GL plugins
+		renderer = GL.canvasRenderer;
+		gl = renderer.gl;
 	} catch (e) {
 		panel.remove();
 		$(canvas).remove();
@@ -1769,8 +1774,8 @@ function init1() {
 	
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
-	GL.view.zNear = 1e+3;
-	GL.view.zFar = 1e+25;
+	renderer.view.zNear = 1e+3;
+	renderer.view.zFar = 1e+25;
 
 	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
@@ -2758,7 +2763,7 @@ void main() {
 			parent : null
 		});
 		//scenegraph is a mess
-		//static objects have mvMat pointed to GL.mvMat
+		//static objects have mvMat pointed to renderer.scene.mvMat
 		//but dynamic objects only give control over position and angle
 		//!static implies creating the object's matrices, but !static also implies overwriting them every draw call...
 		planetClassPrototype.localMat = mat4.create();
@@ -2834,9 +2839,9 @@ void main() {
 
 	var cubeVtxArray = new Float32Array(3*8);
 	for (var i = 0; i < 8; i++) {
-		cubeVtxArray[0+3*i] = GL.view.zNear*10*(2*(i&1)-1);
-		cubeVtxArray[1+3*i] = GL.view.zNear*10*(2*((i>>1)&1)-1);
-		cubeVtxArray[2+3*i] = GL.view.zNear*10*(2*((i>>2)&1)-1);
+		cubeVtxArray[0+3*i] = renderer.view.zNear*10*(2*(i&1)-1);
+		cubeVtxArray[1+3*i] = renderer.view.zNear*10*(2*((i>>1)&1)-1);
+		cubeVtxArray[2+3*i] = renderer.view.zNear*10*(2*((i>>2)&1)-1);
 	}
 
 	var cubeIndexBuf = new GL.ElementArrayBuffer({
@@ -2858,7 +2863,7 @@ void main() {
 			vertex : new GL.ArrayBuffer({data : cubeVtxArray})
 		},
 		uniforms : {
-			viewAngle : GL.view.angle
+			viewAngle : renderer.view.angle
 		},
 		texs : [skyTex],
 		parent : null,
@@ -2892,8 +2897,8 @@ function initScene() {
 			dragging = true;
 			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
 			quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
-			quat.multiply(GL.view.angle, GL.view.angle, tmpQ);
-			quat.normalize(GL.view.angle, GL.view.angle);
+			quat.multiply(renderer.view.angle, renderer.view.angle, tmpQ);
+			quat.normalize(renderer.view.angle, renderer.view.angle);
 		},
 		passiveMove : function() {
 			mouseDir = mouseRay();
@@ -2927,8 +2932,8 @@ function update() {
 			var normDelta = vec2.fromValues(mouse.deltaX / magn, mouse.deltaY / magn);
 			var r = quat.create();
 			quat.fromAxisAngle(r, [-normDelta[2], normDelta[1], 0], -magn);
-			quat.mul(GL.view.angle, GL.view.angle, r);
-			quat.normalize(GL.view.angle, GL.view.angle);
+			quat.mul(renderer.view.angle, renderer.view.angle, r);
+			quat.normalize(renderer.view.angle, renderer.view.angle);
 		}
 	}
 
@@ -2947,12 +2952,12 @@ function update() {
 	} else {
 		orbitCenter = orbitPlanet.pos;
 	}
-	var viewAngleZAxisX = 2 * (GL.view.angle[0] * GL.view.angle[2] + GL.view.angle[3] * GL.view.angle[1]); 
-	var viewAngleZAxisY = 2 * (GL.view.angle[1] * GL.view.angle[2] - GL.view.angle[3] * GL.view.angle[0]); 
-	var viewAngleZAxisZ = 1 - 2 * (GL.view.angle[0] * GL.view.angle[0] + GL.view.angle[1] * GL.view.angle[1]); 
-	GL.view.pos[0] = viewAngleZAxisX * orbitDistance;
-	GL.view.pos[1] = viewAngleZAxisY * orbitDistance;
-	GL.view.pos[2] = viewAngleZAxisZ * orbitDistance;
+	var viewAngleZAxisX = 2 * (renderer.view.angle[0] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[1]); 
+	var viewAngleZAxisY = 2 * (renderer.view.angle[1] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[0]); 
+	var viewAngleZAxisZ = 1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[1] * renderer.view.angle[1]); 
+	renderer.view.pos[0] = viewAngleZAxisX * orbitDistance;
+	renderer.view.pos[1] = viewAngleZAxisY * orbitDistance;
+	renderer.view.pos[2] = viewAngleZAxisZ * orbitDistance;
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
@@ -3001,15 +3006,15 @@ function update() {
 		var deltaJulianDate = julianDate - lastJulianDate;
 		var deltaAngle = quat.create();
 		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
-		vec3TransformQuat(GL.view.pos, GL.view.pos, deltaAngle);
-		quatMul(GL.view.angle, deltaAngle, GL.view.angle); 
+		vec3TransformQuat(renderer.view.pos, renderer.view.pos, deltaAngle);
+		quatMul(renderer.view.angle, deltaAngle, renderer.view.angle); 
 	}
 	lastJulianDate = julianDate;
 
-	GL.setupMatrices();
+	renderer.scene.setupMatrices();
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	drawScene();
-	GL.clearAlpha();
+	renderer.clearAlpha();
 
 	requestAnimFrame(update);
 }
