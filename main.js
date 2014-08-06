@@ -978,26 +978,26 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 	planetCartesianToSolarSystemBarycentric(destX, destX, planet);
 }
 
-var renderer;
+var glutil;
 
-//TODO use renderer.mouseDir?
+//TODO use glutil.mouseDir?
 function mouseRay() {
-	var viewX = renderer.view.pos[0];
-	var viewY = renderer.view.pos[1];
-	var viewZ = renderer.view.pos[2];
-	var viewFwdX = -2 * (renderer.view.angle[0] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[1]); 
-	var viewFwdY = -2 * (renderer.view.angle[1] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[0]); 
-	var viewFwdZ = -(1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[1] * renderer.view.angle[1])); 
-	var viewRightX = 1 - 2 * (renderer.view.angle[1] * renderer.view.angle[1] + renderer.view.angle[2] * renderer.view.angle[2]); 
-	var viewRightY = 2 * (renderer.view.angle[0] * renderer.view.angle[1] + renderer.view.angle[2] * renderer.view.angle[3]); 
-	var viewRightZ = 2 * (renderer.view.angle[0] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[1]); 
-	var viewUpX = 2 * (renderer.view.angle[0] * renderer.view.angle[1] - renderer.view.angle[3] * renderer.view.angle[2]);
-	var viewUpY = 1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[2] * renderer.view.angle[2]);
-	var viewUpZ = 2 * (renderer.view.angle[1] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[0]);
+	var viewX = glutil.view.pos[0];
+	var viewY = glutil.view.pos[1];
+	var viewZ = glutil.view.pos[2];
+	var viewFwdX = -2 * (glutil.view.angle[0] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[1]); 
+	var viewFwdY = -2 * (glutil.view.angle[1] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[0]); 
+	var viewFwdZ = -(1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[1] * glutil.view.angle[1])); 
+	var viewRightX = 1 - 2 * (glutil.view.angle[1] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[2]); 
+	var viewRightY = 2 * (glutil.view.angle[0] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[3]); 
+	var viewRightZ = 2 * (glutil.view.angle[0] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[1]); 
+	var viewUpX = 2 * (glutil.view.angle[0] * glutil.view.angle[1] - glutil.view.angle[3] * glutil.view.angle[2]);
+	var viewUpY = 1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[2] * glutil.view.angle[2]);
+	var viewUpZ = 2 * (glutil.view.angle[1] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[0]);
 	var aspectRatio = canvas.width / canvas.height;
 	var mxf = mouse.xf * 2 - 1;
 	var myf = 1 - mouse.yf * 2;
-	var tanFovY = Math.tan(renderer.view.fovY * Math.PI / 360);
+	var tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
 	var mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
 	var mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
 	var mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
@@ -1012,9 +1012,9 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
-		var deltaX = planet.pos[0] - renderer.view.pos[0] - currentOrbitPlanet.pos[0];
-		var deltaY = planet.pos[1] - renderer.view.pos[1] - currentOrbitPlanet.pos[1];
-		var deltaZ = planet.pos[2] - renderer.view.pos[2] - currentOrbitPlanet.pos[2];
+		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
+		var deltaY = planet.pos[1] - glutil.view.pos[1] - currentOrbitPlanet.pos[1];
+		var deltaZ = planet.pos[2] - glutil.view.pos[2] - currentOrbitPlanet.pos[2];
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 		deltaX /= deltaLength;
 		deltaY /= deltaLength;
@@ -1031,16 +1031,16 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		hoverPlanetText.text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
-			renderer.view.pos[0] += planets[orbitPlanetIndex].pos[0];
-			renderer.view.pos[1] += planets[orbitPlanetIndex].pos[1];
-			renderer.view.pos[2] += planets[orbitPlanetIndex].pos[2];
+			glutil.view.pos[0] += planets[orbitPlanetIndex].pos[0];
+			glutil.view.pos[1] += planets[orbitPlanetIndex].pos[1];
+			glutil.view.pos[2] += planets[orbitPlanetIndex].pos[2];
 			orbitPlanetIndex = bestPlanet.index;
-			renderer.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
-			renderer.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
-			renderer.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
-			var deltaX = renderer.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
-			var deltaY = renderer.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
-			var deltaZ = renderer.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
+			glutil.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
+			glutil.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
+			glutil.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
+			var deltaX = glutil.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
+			var deltaY = glutil.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
+			var deltaZ = glutil.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
 			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 			if (bestPlanet.radius === undefined) {
 				if (bestPlanet.parent !== undefined) {
@@ -1343,11 +1343,11 @@ var planetPointVisRatio = .001;
 	drawScene = function() {
 		var orbitPlanet = planets[orbitPlanetIndex];
 		
-		mat4.identity(renderer.scene.mvMat);
+		mat4.identity(glutil.scene.mvMat);
 		
-		quat.conjugate(viewAngleInv, renderer.view.angle);
+		quat.conjugate(viewAngleInv, glutil.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
-		mat4.multiply(renderer.scene.mvMat, renderer.scene.mvMat, invRotMat);
+		mat4.multiply(glutil.scene.mvMat, glutil.scene.mvMat, invRotMat);
 
 		if (skyCubeObj) {
 			gl.disable(gl.DEPTH_TEST);
@@ -1355,10 +1355,10 @@ var planetPointVisRatio = .001;
 			gl.enable(gl.DEPTH_TEST);
 		}
 
-		viewPosInv[0] = -renderer.view.pos[0];
-		viewPosInv[1] = -renderer.view.pos[1];
-		viewPosInv[2] = -renderer.view.pos[2];
-		mat4.translate(renderer.scene.mvMat, renderer.scene.mvMat, viewPosInv);
+		viewPosInv[0] = -glutil.view.pos[0];
+		viewPosInv[1] = -glutil.view.pos[1];
+		viewPosInv[2] = -glutil.view.pos[2];
+		mat4.translate(glutil.scene.mvMat, glutil.scene.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
@@ -1395,9 +1395,9 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			
 			//update vis ratio
-			var dx = planet.pos[0] - renderer.view.pos[0] - orbitPlanet.pos[0];
-			var dy = planet.pos[1] - renderer.view.pos[1] - orbitPlanet.pos[1];
-			var dz = planet.pos[2] - renderer.view.pos[2] - orbitPlanet.pos[2];
+			var dx = planet.pos[0] - glutil.view.pos[0] - orbitPlanet.pos[0];
+			var dy = planet.pos[1] - glutil.view.pos[1] - orbitPlanet.pos[1];
+			var dz = planet.pos[2] - glutil.view.pos[2] - orbitPlanet.pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
 
 			//some planets have no radii ... so no object
@@ -1522,11 +1522,11 @@ var planetPointVisRatio = .001;
 			//TODO just give gl-matrix a type param in its init
 			var glMvMat = [];
 			var viewAngleInvd = [];
-			quat.conjugate(viewAngleInvd, renderer.view.angle);
+			quat.conjugate(viewAngleInvd, glutil.view.angle);
 			quat.normalize(viewAngleInvd, viewAngleInvd);	//normalize in double precision
 			mat4.fromQuat(glMvMat, viewAngleInvd);
 			var viewPosInvd = [];
-			vec3.negate(viewPosInvd, renderer.view.pos);
+			vec3.negate(viewPosInvd, glutil.view.pos);
 			mat4.translate(glMvMat, glMvMat, viewPosInvd);
 			
 			var orbitBasis = [];
@@ -1609,13 +1609,13 @@ function resize() {
 	canvas.height = window.innerHeight;
 	panel.css('height', window.innerHeight);
 	
-	renderer.resize();
+	glutil.resize();
 
-	//renderer.view.fovY = canvas.height / canvas.width * 90;
+	//glutil.view.fovY = canvas.height / canvas.width * 90;
 
 	/*
 	var aspectRatio = canvas.width / canvas.height;
-	var nearHeight = Math.tan(renderer.view.fovY * Math.PI / 360);
+	var nearHeight = Math.tan(glutil.view.fovY * Math.PI / 360);
 	var nearWidth = aspectRatio * nearHeight;
 	*/
 	
@@ -1624,13 +1624,13 @@ function resize() {
 	//http://www.terathon.com/gdc07_lengyel.pdf
 	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
 	var epsilon = 0;
-	mat4.identity(renderer.scene.projMat);
-	renderer.scene.projMat[0] = renderer.view.zNear / nearWidth;
-	renderer.scene.projMat[5] = renderer.view.zNear / nearHeight;
-	renderer.scene.projMat[10] = epsilon-1;
-	renderer.scene.projMat[11] = (epsilon - 2) * renderer.view.zNear;
-	renderer.scene.projMat[14] = -1;
-	renderer.scene.projMat[15] = 0;
+	mat4.identity(glutil.scene.projMat);
+	glutil.scene.projMat[0] = glutil.view.zNear / nearWidth;
+	glutil.scene.projMat[5] = glutil.view.zNear / nearHeight;
+	glutil.scene.projMat[10] = epsilon-1;
+	glutil.scene.projMat[11] = (epsilon - 2) * glutil.view.zNear;
+	glutil.scene.projMat[14] = -1;
+	glutil.scene.projMat[15] = 0;
 	/**/
 
 	/* or we could just linearly ramp the depth over the range we want, since the rest is going to full anyways * /
@@ -1638,13 +1638,13 @@ function resize() {
 	//z * (-2 / (zFar - zNear)) + ( - 2 * zNear / (zFar - zNear) - 1)
 	var resZNear = 1e+4;
 	var resZFar = 1e+8;
-	mat4.identity(renderer.scene.projMat);
-	renderer.scene.projMat[0] = renderer.view.zNear / nearWidth;
-	renderer.scene.projMat[5] = renderer.view.zNear / nearHeight;
-	renderer.scene.projMat[10] = -2 * (resZFar - resZNear);
-	renderer.scene.projMat[11] = -(1 + 2 * resZNear / (resZFar - resZNear));
-	renderer.scene.projMat[14] = -1;
-	renderer.scene.projMat[15] = 0;
+	mat4.identity(glutil.scene.projMat);
+	glutil.scene.projMat[0] = glutil.view.zNear / nearWidth;
+	glutil.scene.projMat[5] = glutil.view.zNear / nearHeight;
+	glutil.scene.projMat[10] = -2 * (resZFar - resZNear);
+	glutil.scene.projMat[11] = -(1 + 2 * resZNear / (resZFar - resZNear));
+	glutil.scene.projMat[14] = -1;
+	glutil.scene.projMat[15] = 0;
 	/**/
 }
 
@@ -1684,28 +1684,7 @@ function refreshCurrentTimeText() {
 
 var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
 
-var ModifiedDepthShaderProgram = makeClass({
-	super : GL.ShaderProgram,
-	init : function(args) {
-		
-		// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
-		args.vertexCode = mlstr(function(){/*
-uniform float zNear, zFar, depthConstant;
-float depthfunction(vec4 v) {
-	//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
-	//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w; 
-	return v.z;
-}
-*/}) + (args.vertexCode || '');
-		if (args.uniforms === undefined) args.uniforms = {};
-		args.uniforms.zNear = renderer.view.zNear;
-		args.uniforms.zFar = renderer.view.zFar;
-		args.uniforms.depthConstant = depthConstant;
-		args.vertexPrecision = 'best';
-		args.fragmentPrecision = 'best';
-		ModifiedDepthShaderProgram.super.call(this, args);
-	}
-});
+var ModifiedDepthShaderProgram;
 
 $(document).ready(init1);
 
@@ -1762,23 +1741,46 @@ function init1() {
 	$(canvas).disableSelection();
 
 	try {
-		renderer = new GL.CanvasRenderer({canvas:canvas});
-		gl = renderer.context;
+		glutil = new GLUtil({canvas:canvas});
+		gl = glutil.context;
 	} catch (e) {
 		panel.remove();
 		$(canvas).remove();
 		$('#webglfail').show();
 		throw e;
 	}
-	
+
+	ModifiedDepthShaderProgram = makeClass({
+		super : glutil.ShaderProgram,
+		init : function(args) {
+			
+			// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
+			args.vertexCode = mlstr(function(){/*
+	uniform float zNear, zFar, depthConstant;
+	float depthfunction(vec4 v) {
+		//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
+		//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w; 
+		return v.z;
+	}
+	*/}) + (args.vertexCode || '');
+			if (args.uniforms === undefined) args.uniforms = {};
+			args.uniforms.zNear = glutil.view.zNear;
+			args.uniforms.zFar = glutil.view.zFar;
+			args.uniforms.depthConstant = depthConstant;
+			args.vertexPrecision = 'best';
+			args.fragmentPrecision = 'best';
+			ModifiedDepthShaderProgram.super.call(this, args);
+		}
+	});
+
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
-	renderer.view.angle[0] = -0.4693271591372717;
-	renderer.view.angle[1] = 0.7157221264895661;
-	renderer.view.angle[2] = -0.4298784661116332;
-	renderer.view.angle[3] = 0.28753844912098436;
-	renderer.view.zNear = 1e+3;
-	renderer.view.zFar = 1e+25;
+	glutil.view.angle[0] = -0.4693271591372717;
+	glutil.view.angle[1] = 0.7157221264895661;
+	glutil.view.angle[2] = -0.4298784661116332;
+	glutil.view.angle[3] = 0.28753844912098436;
+	glutil.view.zNear = 1e+3;
+	glutil.view.zFar = 1e+25;
 
 	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
@@ -2003,7 +2005,7 @@ function init2() {
 }
 
 function init3() {
-	hsvTex = new GL.HSVTexture(256);
+	hsvTex = new glutil.HSVTexture(256);
 	
 	colorShader = new ModifiedDepthShaderProgram({
 		context : gl,
@@ -2203,13 +2205,11 @@ void main() {
 	gl.uniform1f(hsvShader.uniforms.heatAlpha.loc, heatAlpha);
 	gl.useProgram(null);
 
-	pointObj = new GL.SceneObject({
-		scene : renderer.scene,
+	pointObj = new glutil.SceneObject({
 		mode : gl.POINTS,
 		shader : colorShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({
-				context : gl,
+			vertex : new glutil.ArrayBuffer({
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
@@ -2296,26 +2296,21 @@ void main() {
 					}
 				}
 				
-				var vertexBuffer = new GL.ArrayBuffer({
-					context : gl,
+				var vertexBuffer = new glutil.ArrayBuffer({
 					data : vertexArray
 				});
-				planetClassPrototype.sceneObj = new GL.SceneObject({
-					scene : renderer.scene,
+				planetClassPrototype.sceneObj = new glutil.SceneObject({
 					mode : gl.TRIANGLES,
-					indexes : new GL.ElementArrayBuffer({
-						context : gl,
+					indexes : new glutil.ElementArrayBuffer({
 						data : triIndexArray
 					}),
 					attrs : {
 						vertex : vertexBuffer,
-						texCoord : new GL.ArrayBuffer({
-							context : gl,
+						texCoord : new glutil.ArrayBuffer({
 							dim : 2,
 							data : texCoordArray
 						}),
-						tide : new GL.ArrayBuffer({
-							context : gl,
+						tide : new glutil.ArrayBuffer({
 							dim : 1,
 							data : tideArray,
 							usage : gl.DYNAMIC_DRAW
@@ -2331,11 +2326,9 @@ void main() {
 					parent : null,
 					static : true 
 				});
-				planetClassPrototype.latLonObj = new GL.SceneObject({
-					scene : renderer.scene,
+				planetClassPrototype.latLonObj = new glutil.SceneObject({
 					mode : gl.LINES,
-					indexes : new GL.ElementArrayBuffer({
-						context : gl,
+					indexes : new glutil.ElementArrayBuffer({
 						data : latLonIndexArray
 					}),
 					shader : colorShader,
@@ -2352,13 +2345,11 @@ void main() {
 					parent : null
 				});
 			}
-			planetClassPrototype.lineObj = new GL.SceneObject({
-				scene : renderer.scene,
+			planetClassPrototype.lineObj = new glutil.SceneObject({
 				mode : gl.LINES,
 				shader : colorShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({
-						context : gl,
+					vertex : new glutil.ArrayBuffer({
 						count : 2,
 						usage : gl.DYNAMIC_DRAW
 					})
@@ -2380,8 +2371,7 @@ void main() {
 		if (primaryPlanetHorizonIDs.indexOf(planet.id) !== -1) {
 			var img = new Image();
 			img.onload = function() {
-				planetClassPrototype.tex = new GL.Texture2D({
-					context : gl,
+				planetClassPrototype.tex = new glutil.Texture2D({
 					//flipY : true,
 					data : img,
 					minFilter : gl.LINEAR_MIPMAP_LINEAR,
@@ -2440,8 +2430,7 @@ void main() {
 		var img = new Image();
 		img.onload = function() {
 			var planetClassPrototype = planets[planets.indexes.Saturn].init.prototype;
-			planetClassPrototype.ringTex = new GL.Texture2D({
-				context : gl,
+			planetClassPrototype.ringTex = new glutil.Texture2D({
 				data : img,
 				minFilter : gl.LINEAR_MIPMAP_LINEAR,
 				magFilter : gl.LINEAR,
@@ -2459,13 +2448,11 @@ void main() {
 			}
 		
 			//and a ring object
-			planetClassPrototype.ringObj = new GL.SceneObject({
-				scene : renderer.scene,
+			planetClassPrototype.ringObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
 				shader : ringShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({
-						context : gl,
+					vertex : new glutil.ArrayBuffer({
 						dim : 2,
 						data : vertexes
 					})
@@ -2685,13 +2672,11 @@ void main() {
 				vertexes.push(alpha);
 			}
 		
-			planetClassPrototype.orbitPathObj = new GL.SceneObject({
-				scene : renderer.scene,
+			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
 				mode : gl.LINE_STRIP,
 				shader : orbitShader,
 				attrs : {
-					vertex : new GL.ArrayBuffer({
-						context : gl,
+					vertex : new glutil.ArrayBuffer({
 						dim : 4,
 						data : vertexes
 					})
@@ -2800,17 +2785,14 @@ void main() {
 				gravWellIndexes.push(1 + ((thi+1)%thimax) + thimax * (ri-1));	//plus one tangential
 			}
 		}
-		planetClassPrototype.gravWellObj = new GL.SceneObject({
-			scene : renderer.scene,
+		planetClassPrototype.gravWellObj = new glutil.SceneObject({
 			mode : gl.LINES,
-			indexes : new GL.ElementArrayBuffer({
-				context : gl,
+			indexes : new glutil.ElementArrayBuffer({
 				data : gravWellIndexes
 			}),
 			shader : orbitShader,
 			attrs : {
-				vertex : new GL.ArrayBuffer({
-					context : gl,
+				vertex : new glutil.ArrayBuffer({
 					dim : 4,
 					data : gravWellVtxs
 				})
@@ -2822,7 +2804,7 @@ void main() {
 			parent : null
 		});
 		//scenegraph is a mess
-		//static objects have mvMat pointed to renderer.scene.mvMat
+		//static objects have mvMat pointed to glutil.scene.mvMat
 		//but dynamic objects only give control over position and angle
 		//!static implies creating the object's matrices, but !static also implies overwriting them every draw call...
 		planetClassPrototype.localMat = mat4.create();
@@ -2839,8 +2821,7 @@ void main() {
 
 	//looks like doing these in realtime will mean toning the detail down a bit ...
 
-	new GL.TextureCube({
-		context : gl,
+	new glutil.TextureCube({
 		flipY : true,
 		generateMipmap : true,
 		magFilter : gl.LINEAR,
@@ -2900,13 +2881,12 @@ void main() {
 
 	var cubeVtxArray = new Float32Array(3*8);
 	for (var i = 0; i < 8; i++) {
-		cubeVtxArray[0+3*i] = renderer.view.zNear*10*(2*(i&1)-1);
-		cubeVtxArray[1+3*i] = renderer.view.zNear*10*(2*((i>>1)&1)-1);
-		cubeVtxArray[2+3*i] = renderer.view.zNear*10*(2*((i>>2)&1)-1);
+		cubeVtxArray[0+3*i] = glutil.view.zNear*10*(2*(i&1)-1);
+		cubeVtxArray[1+3*i] = glutil.view.zNear*10*(2*((i>>1)&1)-1);
+		cubeVtxArray[2+3*i] = glutil.view.zNear*10*(2*((i>>2)&1)-1);
 	}
 
-	var cubeIndexBuf = new GL.ElementArrayBuffer({
-		context : gl,
+	var cubeIndexBuf = new glutil.ElementArrayBuffer({
 		data : [
 			5,7,3,3,1,5,		// <- each value has the x,y,z in the 0,1,2 bits (off = 0, on = 1)
 			6,4,0,0,2,6,
@@ -2917,19 +2897,17 @@ void main() {
 		]
 	});
 
-	skyCubeObj = new GL.SceneObject({
-		scene : renderer.scene,
+	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
 		shader : cubeShader,
 		attrs : {
-			vertex : new GL.ArrayBuffer({
-				context : gl,
+			vertex : new glutil.ArrayBuffer({
 				data : cubeVtxArray
 			})
 		},
 		uniforms : {
-			viewAngle : renderer.view.angle
+			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],
 		parent : null,
@@ -2963,8 +2941,8 @@ function initScene() {
 			dragging = true;
 			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
 			quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
-			quat.multiply(renderer.view.angle, renderer.view.angle, tmpQ);
-			quat.normalize(renderer.view.angle, renderer.view.angle);
+			quat.multiply(glutil.view.angle, glutil.view.angle, tmpQ);
+			quat.normalize(glutil.view.angle, glutil.view.angle);
 		},
 		passiveMove : function() {
 			mouseDir = mouseRay();
@@ -2998,8 +2976,8 @@ function update() {
 			var normDelta = vec2.fromValues(mouse.deltaX / magn, mouse.deltaY / magn);
 			var r = quat.create();
 			quat.fromAxisAngle(r, [-normDelta[2], normDelta[1], 0], -magn);
-			quat.mul(renderer.view.angle, renderer.view.angle, r);
-			quat.normalize(renderer.view.angle, renderer.view.angle);
+			quat.mul(glutil.view.angle, glutil.view.angle, r);
+			quat.normalize(glutil.view.angle, glutil.view.angle);
 		}
 	}
 
@@ -3018,12 +2996,12 @@ function update() {
 	} else {
 		orbitCenter = orbitPlanet.pos;
 	}
-	var viewAngleZAxisX = 2 * (renderer.view.angle[0] * renderer.view.angle[2] + renderer.view.angle[3] * renderer.view.angle[1]); 
-	var viewAngleZAxisY = 2 * (renderer.view.angle[1] * renderer.view.angle[2] - renderer.view.angle[3] * renderer.view.angle[0]); 
-	var viewAngleZAxisZ = 1 - 2 * (renderer.view.angle[0] * renderer.view.angle[0] + renderer.view.angle[1] * renderer.view.angle[1]); 
-	renderer.view.pos[0] = viewAngleZAxisX * orbitDistance;
-	renderer.view.pos[1] = viewAngleZAxisY * orbitDistance;
-	renderer.view.pos[2] = viewAngleZAxisZ * orbitDistance;
+	var viewAngleZAxisX = 2 * (glutil.view.angle[0] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[1]); 
+	var viewAngleZAxisY = 2 * (glutil.view.angle[1] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[0]); 
+	var viewAngleZAxisZ = 1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[1] * glutil.view.angle[1]); 
+	glutil.view.pos[0] = viewAngleZAxisX * orbitDistance;
+	glutil.view.pos[1] = viewAngleZAxisY * orbitDistance;
+	glutil.view.pos[2] = viewAngleZAxisZ * orbitDistance;
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
@@ -3072,15 +3050,15 @@ function update() {
 		var deltaJulianDate = julianDate - lastJulianDate;
 		var deltaAngle = quat.create();
 		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
-		vec3TransformQuat(renderer.view.pos, renderer.view.pos, deltaAngle);
-		quatMul(renderer.view.angle, deltaAngle, renderer.view.angle); 
+		vec3TransformQuat(glutil.view.pos, glutil.view.pos, deltaAngle);
+		quatMul(glutil.view.angle, deltaAngle, glutil.view.angle); 
 	}
 	lastJulianDate = julianDate;
 
-	renderer.scene.setupMatrices();
+	glutil.scene.setupMatrices();
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	drawScene();
-	renderer.clearAlpha();
+	glutil.clearAlpha();
 
 	requestAnimFrame(update);
 }
