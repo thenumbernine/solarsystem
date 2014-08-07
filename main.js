@@ -1775,10 +1775,10 @@ function init1() {
 
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
-	glutil.view.angle[0] = -0.4693271591372717;
+	/*glutil.view.angle[0] = -0.4693271591372717;
 	glutil.view.angle[1] = 0.7157221264895661;
 	glutil.view.angle[2] = -0.4298784661116332;
-	glutil.view.angle[3] = 0.28753844912098436;
+	glutil.view.angle[3] = 0.28753844912098436;*/
 	glutil.view.zNear = 1e+3;
 	glutil.view.zFar = 1e+25;
 
@@ -2273,7 +2273,7 @@ void main() {
 						}
 						
 						texCoordArray.push(lon / 360 + .5);
-						texCoordArray.push(-lat / 180 + .5);
+						texCoordArray.push(lat / 180 + .5);
 
 						tideArray.push(0);
 
@@ -2372,7 +2372,7 @@ void main() {
 			var img = new Image();
 			img.onload = function() {
 				planetClassPrototype.tex = new glutil.Texture2D({
-					//flipY : true,
+					flipY : true,
 					data : img,
 					minFilter : gl.LINEAR_MIPMAP_LINEAR,
 					magFilter : gl.LINEAR,
@@ -3034,13 +3034,13 @@ function update() {
 	}
 	
 	// set the angle for the time
-	{
+	/*{
 		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
 		var angleOffset = .37;
 		var qdst = planets[planets.indexes.Earth].angle;
 		quat.identity(qdst);
 		quat.rotateZ(qdst, qdst, ((julianDate + angleOffset) % 1) * 2 * Math.PI);
-	}
+	}*/
 	
 	//if we are close enough to the planet then rotate with it
 	if (lastJulianDate !== julianDate && 
