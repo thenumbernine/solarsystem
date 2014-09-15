@@ -630,6 +630,21 @@ Planets = makeClass({
 		}
 	},
 
+	addExtraCometData : function() {
+		for (var i = 0; i < cometData.length; ++i) {
+			var data = cometData[i];
+			Planets.prototype.planetClasses.push(
+				makeClass({
+					super:Planet,
+					name:data.name,
+					isComet:true,
+					orbitData:data,
+					parent:'Sun'
+				})
+			);
+		}
+	},
+
 	//ephemeris data is a few hundred megs
 	//so i'm not putting it on my serverspace
 	//so don't use fromEphemeris
@@ -711,6 +726,7 @@ Planets = makeClass({
 mergeInto(Planets.prototype, Array.prototype);
 
 Planets.prototype.addExtraHorizonData();	//add the 180 other satellites out there...
+//Planets.prototype.addExtraCometData();	//3282 comets ...
 
 Planets.prototype.indexes = {};
 Planets.prototype.planetClassForHorizonID = {};
@@ -868,25 +884,6 @@ function calcGravitationForce(accel, pos) {
 	}
 }
 
-var quatMul;
-(function(){
-	quatMul = function(res, q, r) {
-		var a = (q[3] + q[0]) * (r[3] + r[0]);
-		var b = (q[2] - q[1]) * (r[1] - r[2]);
-		var c = (q[0] - q[3]) * (r[1] + r[2]);
-		var d = (q[1] + q[2]) * (r[0] - r[3]);
-		var e = (q[0] + q[2]) * (r[0] + r[1]);
-		var f = (q[0] - q[2]) * (r[0] - r[1]);
-		var g = (q[3] + q[1]) * (r[3] - r[2]);
-		var h = (q[3] - q[1]) * (r[3] + r[2]);
-
-		res[0] =  a - .5 * ( e + f + g + h);
-		res[1] = -c + .5 * ( e - f + g - h);
-		res[2] = -d + .5 * ( e - f - g + h);
-		res[3] =  b + .5 * (-e - f + g + h);
-	};
-})();
-
 function vec3TransformQuat(dest, src, q) {
 	var vx = src[0];
 	var vy = src[1];
@@ -1031,17 +1028,14 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		hoverPlanetText.text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
-			glutil.view.pos[0] += planets[orbitPlanetIndex].pos[0];
-			glutil.view.pos[1] += planets[orbitPlanetIndex].pos[1];
-			glutil.view.pos[2] += planets[orbitPlanetIndex].pos[2];
+			vec3.add(glutil.view.pos, glutil.view.pos, planets[orbitPlanetIndex].pos);
 			orbitPlanetIndex = bestPlanet.index;
-			glutil.view.pos[0] -= planets[orbitPlanetIndex].pos[0];
-			glutil.view.pos[1] -= planets[orbitPlanetIndex].pos[1];
-			glutil.view.pos[2] -= planets[orbitPlanetIndex].pos[2];
-			var deltaX = glutil.view.pos[0] + planets[orbitPlanetIndex].pos[0] - bestPlanet.pos[0];
-			var deltaY = glutil.view.pos[1] + planets[orbitPlanetIndex].pos[1] - bestPlanet.pos[1];
-			var deltaZ = glutil.view.pos[2] + planets[orbitPlanetIndex].pos[2] - bestPlanet.pos[2];
-			orbitDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+			vec3.sub(glutil.view.pos, glutil.view.pos, planets[orbitPlanetIndex].pos);
+			var delta = vec3.create();
+			vec3.add(delta, glutil.view.pos, planets[orbitPlanetIndex].pos);
+			vec3.sub(delta, delta, bestPlanet.pos);
+			orbitDistance = vec3.length(delta);
+			/* fixed distance  * /
 			if (bestPlanet.radius === undefined) {
 				if (bestPlanet.parent !== undefined) {
 					var parentPlanet = planets[bestPlanet.parent];
@@ -1056,6 +1050,10 @@ function chooseNewPlanet(mouseDir,doChoose) {
 			} else {
 				orbitTargetDistance = 2 * bestPlanet.radius;
 			}
+			/**/
+			/* don't change position */
+			orbitTargetDistance = orbitDistance;
+			/**/
 			refreshOrbitTargetDistanceText();
 			orbitPlanetText.text(bestPlanet.name);
 			refreshMeasureText();
@@ -1349,15 +1347,18 @@ var planetPointVisRatio = .001;
 		mat4.fromQuat(invRotMat, viewAngleInv);
 		mat4.multiply(glutil.scene.mvMat, glutil.scene.mvMat, invRotMat);
 
+		//TODO pull from matrix
+		var viewfwd = vec3.create();
+		vec3.quatZAxis(viewfwd, glutil.view.angle);
+		vec3.scale(viewfwd, viewfwd, -1);
+
 		if (skyCubeObj) {
 			gl.disable(gl.DEPTH_TEST);
 			skyCubeObj.draw();
 			gl.enable(gl.DEPTH_TEST);
 		}
-
-		viewPosInv[0] = -glutil.view.pos[0];
-		viewPosInv[1] = -glutil.view.pos[1];
-		viewPosInv[2] = -glutil.view.pos[2];
+	
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, glutil.scene.mvMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -1368,9 +1369,7 @@ var planetPointVisRatio = .001;
 				if (orbitPlanet !== planet) {
 					//while here, update lines
 					
-					delta[0] = planet.pos[0] - orbitPlanet.pos[0];
-					delta[1] = planet.pos[1] - orbitPlanet.pos[1];
-					delta[2] = planet.pos[2] - orbitPlanet.pos[2];
+					vec3.sub(delta, planet.pos, orbitPlanet.pos);
 					
 					var dist = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]);
 					delta[0] /= dist;
@@ -1404,30 +1403,18 @@ var planetPointVisRatio = .001;
 			if (planet.sceneObj !== undefined) {
 			
 				//update scene object
-				planet.sceneObj.uniforms.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
-				planet.sceneObj.uniforms.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
-				planet.sceneObj.uniforms.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
+				vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitPlanet.pos);
 				if (planet.tiltAngle) {
-					//quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
-					quatMul(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
+					quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
 				} else {
-					//quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
-					planet.sceneObj.uniforms.angle[0] = planet.angle[0];
-					planet.sceneObj.uniforms.angle[1] = planet.angle[1];
-					planet.sceneObj.uniforms.angle[2] = planet.angle[2];
-					planet.sceneObj.uniforms.angle[3] = planet.angle[3];
+					quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
 				}
 				
 				//only allow ring obj if there's a radii and a sphere 
 				//... this way i can just copy over the pos and angle	
 				if (planet.ringObj !== undefined) {
-					planet.ringObj.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
-					planet.ringObj.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
-					planet.ringObj.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
-					planet.ringObj.angle[0] = planet.sceneObj.uniforms.angle[0];
-					planet.ringObj.angle[1] = planet.sceneObj.uniforms.angle[1];
-					planet.ringObj.angle[2] = planet.sceneObj.uniforms.angle[2];
-					planet.ringObj.angle[3] = planet.sceneObj.uniforms.angle[3];
+					vec3.sub(planet.ringObj.pos, planet.pos, orbitPlanet.pos);
+					vec3.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);	
 				}
 			}
 		}
@@ -1441,20 +1428,13 @@ var planetPointVisRatio = .001;
 				updatePlanetClassSceneObj(planet);
 			
 				var Sun = planets[planets.indexes.Sun];
-				planet.sceneObj.uniforms.sunPos[0] = Sun.pos[0] - planet.pos[0];
-				planet.sceneObj.uniforms.sunPos[1] = Sun.pos[1] - planet.pos[1];
-				planet.sceneObj.uniforms.sunPos[2] = Sun.pos[2] - planet.pos[2];
+				vec3.sub(planet.sceneObj.uniforms.sunPos, Sun.pos, planet.pos);
 				
 				planet.sceneObj.draw();
 			
 				if (showLatAndLonLines) {
-					planet.latLonObj.pos[0] = planet.sceneObj.uniforms.pos[0];
-					planet.latLonObj.pos[1] = planet.sceneObj.uniforms.pos[1];
-					planet.latLonObj.pos[2] = planet.sceneObj.uniforms.pos[2];
-					planet.latLonObj.angle[0] = planet.sceneObj.uniforms.angle[0];
-					planet.latLonObj.angle[1] = planet.sceneObj.uniforms.angle[1];
-					planet.latLonObj.angle[2] = planet.sceneObj.uniforms.angle[2];
-					planet.latLonObj.angle[3] = planet.sceneObj.uniforms.angle[3];
+					vec3.copy(planet.latLonObj.pos, planet.sceneObj.uniforms.pos);
+					quat.copy(planet.latLonObj.angle, planet.sceneObj.uniforms.angle);
 					planet.latLonObj.draw();
 				}
 			
@@ -1472,9 +1452,7 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
-				pointObj.attrs.vertex.data[0] = planet.pos[0] - orbitPlanet.pos[0];
-				pointObj.attrs.vertex.data[1] = planet.pos[1] - orbitPlanet.pos[1];
-				pointObj.attrs.vertex.data[2] = planet.pos[2] - orbitPlanet.pos[2];
+				vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitPlanet.pos);
 				pointObj.attrs.vertex.updateData();
 				pointObj.draw({
 					uniforms : {
@@ -1509,9 +1487,22 @@ var planetPointVisRatio = .001;
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
 				if (planet.orbitPathObj) {
+					
+					var parentPlanet = planets[planet.parent];
+					var delta = vec3.create();
+					vec3.sub(delta, parentPlanet.pos, orbitPlanet.pos);
+					vec3.sub(delta, delta, glutil.view.pos);
+					//delta = parent planet pos - orbit planet pos - view pos
+					//recenter around orbitting planet
 					planet.orbitPathObj.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
 					planet.orbitPathObj.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
 					planet.orbitPathObj.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
+					//global positions
+					//less accurate, but can store all as one buffer
+					//you see the orbit paths break down as far out as Saturn 
+					//planet.orbitPathObj.pos[0] = -orbitPlanet.pos[0];
+					//planet.orbitPathObj.pos[1] = -orbitPlanet.pos[1];
+					//planet.orbitPathObj.pos[2] = -orbitPlanet.pos[2];
 					planet.orbitPathObj.draw();
 				}
 			}
@@ -2341,7 +2332,6 @@ void main() {
 					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 					pos : [0,0,0],
 					angle : [0,0,0,1],
-					static : false,
 					parent : null
 				});
 			}
@@ -2465,8 +2455,7 @@ void main() {
 				texs : [planetClassPrototype.ringTex],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
-				parent : null,
-				static : false
+				parent : null
 			});
 		};
 		img.src = 'textures/saturn-rings.png';
@@ -2474,6 +2463,31 @@ void main() {
 }
 
 function initOrbitPaths() {
+	var gravWellShader = new ModifiedDepthShaderProgram({
+		context : gl,
+		vertexCode : mlstr(function(){/*
+attribute vec4 vertex;
+varying float alpha;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	alpha = vertex.w;
+	gl_Position = projMat * vtx4;
+	gl_PointSize = 4.;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+varying float alpha;
+void main() {
+	gl_FragColor = vec4(color.xyz, color.w * alpha);
+}
+*/})
+	});
+
+
 	var orbitShader = new ModifiedDepthShaderProgram({
 		context : gl,
 		vertexCode : mlstr(function(){/*
@@ -2518,6 +2532,81 @@ void main() {
 			console.log(planet.name+' has an invalid orbit planet');
 			planetClassPrototype.orbitAxis = [0,0,1];
 			planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+			continue;
+		}
+
+		//if it's a comet then 
+		//calculate pos and vel and mass by parameters ... ?
+		// or just put an orbit mesh there?
+		if (planet.isComet) {
+
+			var eccentricity = planet.orbitData.eccentricity;
+			var distanceToParent = planet.orbitData.perihelionDistance;
+			var A, B;
+			if (eccentricity == 0) {	//circular
+				eccentricAnomaly = 0;
+				A = [distanceToPlanet, 0, 0];
+				B = [0, distanceToPlanet, 0];
+			} else if (eccentricity < 1) {	//ellipse
+			} else if (eccentricity == 1) {	//parabola
+			} else {	//hyperbola
+			}
+			//eccentricity = half the distance between foci / semi-major axis 
+			var semiMajorAxis = planet.orbitData.semimajorAxis
+
+			var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
+			var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
+			var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+	
+			var eccentricity = planet.orbitData.eccentricity;
+			var eccentricAnomaly;
+
+			//iterate around the eccentric anomaly to reconstruct the path
+			var vertexes = [];
+			var res = 250;
+			for (var i = 0; i < res; ++i) {
+				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+				var pathEccentricAnomaly = eccentricAnomaly + theta;
+				var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+				var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+				
+				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
+				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
+				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
+
+				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
+				vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
+				vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
+				vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
+		
+				//add to buffer
+				vertexes.push(vtxPosX);
+				vertexes.push(vtxPosY);
+				vertexes.push(vtxPosZ);
+			
+				//pack transparency info into the vertex
+				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+				vertexes.push(alpha);
+			}
+		
+			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
+				mode : gl.LINE_STRIP,
+				shader : orbitShader,
+				attrs : {
+					vertex : new glutil.ArrayBuffer({
+						dim : 4,
+						data : vertexes
+					})
+				},
+				uniforms : {
+					color : planetClassPrototype.color
+				},
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				parent : null
+			});	
+	
 			continue;
 		}
 
@@ -2611,7 +2700,9 @@ void main() {
 		var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
 		var checkPosError = checkPosToPosDist / distanceToParent;
 		if (checkPosError === checkPosError) {
-			console.log(planet.name+' error of reconstructed position '+ checkPosError);
+			if (checkPosError > 1e-5) {	//only report significant error
+				console.log(planet.name+' error of reconstructed position '+ checkPosError);
+			}
 		} else {	//NaN? debug!
 			
 		/*		
@@ -2658,9 +2749,15 @@ void main() {
 				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
 
 				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
+				var sun = planets
+				//if centered around the orbitting planet ...
 				vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
 				vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
 				vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
+				//global positions...
+				//vtxPosX += parentPlanet.pos[0];
+				//vtxPosY += parentPlanet.pos[1];
+				//vtxPosZ += parentPlanet.pos[2];
 		
 				//add to buffer
 				vertexes.push(vtxPosX);
@@ -2687,8 +2784,7 @@ void main() {
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
-				parent : null,
-				static : false 
+				parent : null
 			});
 		}
 	}
@@ -2711,7 +2807,8 @@ void main() {
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
-		
+		if (planetClassPrototype.isComet) continue;
+
 		/*
 		gravity wells
 	
@@ -2790,7 +2887,7 @@ void main() {
 			indexes : new glutil.ElementArrayBuffer({
 				data : gravWellIndexes
 			}),
-			shader : orbitShader,
+			shader : gravWellShader,
 			attrs : {
 				vertex : new glutil.ArrayBuffer({
 					dim : 4,
@@ -2910,8 +3007,7 @@ void main() {
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],
-		parent : null,
-		static : false
+		parent : null
 	});
 }
 
@@ -2982,8 +3078,31 @@ function update() {
 	}
 
 	var orbitPlanet = planets[orbitPlanetIndex];
-	
+
+	/* converage angle on target planet * /
+
+	var delta = vec3.create();
+	vec3.scale(delta, glutil.view.pos, -1);
+	var fwd = vec3.create();
+	vec3.quatZAxis(fwd, glutil.view.angle);
+	vec3.scale(fwd, fwd, -1);
+	var axis = vec3.create();
+	vec3.cross(axis, fwd, delta);
+	vec3.scale(axis, axis, 1/vec3.length(delta));	//divide out length of delta so axis length is sin(theta)
+	var sinTheta = vec3.length(axis);
+	var theta = 0;
+	if (sinTheta > 1e-3) {
+		vec3.scale(axis, axis, 1/sinTheta);	//normalize axis
+		theta = Math.asin(Math.clamp(sinTheta, -1,1));
+		var q = quat.create();
+		var convergeAngleCoeff = .5;
+		quat.setAxisAngle(q, axis, theta * convergeAngleCoeff);
+		quat.mul(glutil.view.angle, glutil.view.angle, q);
+	}
+	/**/
+
 	// track ball orbit
+	//assumes z points away from the planet
 
 	var orbitCenter;
 	if (orbitGeodeticLocation !== undefined) {
@@ -2996,12 +3115,11 @@ function update() {
 	} else {
 		orbitCenter = orbitPlanet.pos;
 	}
-	var viewAngleZAxisX = 2 * (glutil.view.angle[0] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[1]); 
-	var viewAngleZAxisY = 2 * (glutil.view.angle[1] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[0]); 
-	var viewAngleZAxisZ = 1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[1] * glutil.view.angle[1]); 
-	glutil.view.pos[0] = viewAngleZAxisX * orbitDistance;
-	glutil.view.pos[1] = viewAngleZAxisY * orbitDistance;
-	glutil.view.pos[2] = viewAngleZAxisZ * orbitDistance;
+	var viewAngleZAxis = vec3.create();
+	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
+	glutil.view.pos[0] = viewAngleZAxis[0] * orbitDistance;
+	glutil.view.pos[1] = viewAngleZAxis[1] * orbitDistance;
+	glutil.view.pos[2] = viewAngleZAxis[2] * orbitDistance;
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
@@ -3034,13 +3152,13 @@ function update() {
 	}
 	
 	// set the angle for the time
-	/*{
+	{
 		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
 		var angleOffset = .37;
 		var qdst = planets[planets.indexes.Earth].angle;
 		quat.identity(qdst);
 		quat.rotateZ(qdst, qdst, ((julianDate + angleOffset) % 1) * 2 * Math.PI);
-	}*/
+	}
 	
 	//if we are close enough to the planet then rotate with it
 	if (lastJulianDate !== julianDate && 
@@ -3051,7 +3169,7 @@ function update() {
 		var deltaAngle = quat.create();
 		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
 		vec3TransformQuat(glutil.view.pos, glutil.view.pos, deltaAngle);
-		quatMul(glutil.view.angle, deltaAngle, glutil.view.angle); 
+		quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
 	}
 	lastJulianDate = julianDate;
 

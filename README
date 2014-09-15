@@ -21,3 +21,15 @@ Jupiter is from http://laps.noaa.gov/albers/sos/sos.html
 Saturn from http://www.mmedia.is/~bjj/data/saturn/
 Neptune from http://www.mmedia.is/~bjj/data/neptune/
 Pluto from http://www.johnstonsarchive.net/spaceart/cylmaps.html
+
+
+TODO
+
+- remove the old 'class-per-planet' system and switch to an 'object-per-planet' system
+	- disable the integrator for the time being, re-enable it with a method for backing up planet data 
+- hierarchy of rendering for each planet and orbital children
+	give it a smaller bounding sphere for the planet mesh
+	give it a larger bounding sphere for children
+	and upon occlusion of each, traverse each
+
+- cron task for updating positions from NASA
