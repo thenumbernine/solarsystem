@@ -571,7 +571,8 @@ Planets = makeClass({
 		for (var i = 0; i < planets.length; ++i) {
 			var planet = planets[i];
 			var astroPhysPlanet = astroPhysPlanets[planet.name.toLowerCase()];
-			
+		
+			//convert km to m
 			planet.pos[0] = astroPhysPlanet[0][0] * 1000;
 			planet.pos[1] = astroPhysPlanet[0][1] * 1000;
 			planet.pos[2] = astroPhysPlanet[0][2] * 1000;
@@ -663,6 +664,8 @@ Planets = makeClass({
 			var tmp = ephemerisData[planet.name.toLowerCase()](date);	// returns pos & vel in terms of km and km/julian day
 			var pos = tmp[0];
 			var vel = tmp[1];
+			
+			//convert km to m
 			planet.pos[0] = pos[0] * 1000;
 			planet.pos[1] = pos[1] * 1000;
 			planet.pos[2] = pos[2] * 1000;
@@ -726,7 +729,7 @@ Planets = makeClass({
 mergeInto(Planets.prototype, Array.prototype);
 
 Planets.prototype.addExtraHorizonData();	//add the 180 other satellites out there...
-//Planets.prototype.addExtraCometData();	//3282 comets ...
+Planets.prototype.addExtraCometData();	//3282 comets ...
 
 Planets.prototype.indexes = {};
 Planets.prototype.planetClassForHorizonID = {};
@@ -1009,6 +1012,7 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
+		if (planet.isComet && !showComets) continue;
 		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
 		var deltaY = planet.pos[1] - glutil.view.pos[1] - currentOrbitPlanet.pos[1];
 		var deltaZ = planet.pos[2] - glutil.view.pos[2] - currentOrbitPlanet.pos[2];
@@ -1196,6 +1200,7 @@ var showLatAndLonLines = false;
 var showGravityWell = false;
 var showDistantPoints = true;
 var showOrbits = true;
+var showComets = false;	//goes slow ...
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -1364,6 +1369,7 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
+			if (planet.isComet && !showComets) continue;
 
 			if (showLinesToOtherPlanets) {
 				if (orbitPlanet !== planet) {
@@ -1392,6 +1398,7 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
+			if (planet.isComet && !showComets) continue;
 			
 			//update vis ratio
 			var dx = planet.pos[0] - glutil.view.pos[0] - orbitPlanet.pos[0];
@@ -1414,7 +1421,7 @@ var planetPointVisRatio = .001;
 				//... this way i can just copy over the pos and angle	
 				if (planet.ringObj !== undefined) {
 					vec3.sub(planet.ringObj.pos, planet.pos, orbitPlanet.pos);
-					vec3.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);	
+					quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);	
 				}
 			}
 		}
@@ -1423,6 +1430,7 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
+			if (planet.isComet && !showComets) continue;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				updatePlanetClassSceneObj(planet);
@@ -1450,6 +1458,7 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
+			if (planet.isComet && !showComets) continue;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
 				vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitPlanet.pos);
@@ -1483,27 +1492,55 @@ var planetPointVisRatio = .001;
 		}
 
 		if (showOrbits) {
+			window.orbitPathsDrawn = 0;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
+				if (planet.isComet && !showComets) continue;
 				if (planet.orbitPathObj) {
-					
+
+					var semiMajorAxis = planet.keplerianOrbitalElements.semiMajorAxis;
+					var eccentricity = planet.keplerianOrbitalElements.eccentricity;
+					var distPeriapsis = semiMajorAxis * (1 + eccentricity);	//largest distance from the parent planet
+				
+					//vector from view to parent planet
 					var parentPlanet = planets[planet.parent];
 					var delta = vec3.create();
 					vec3.sub(delta, parentPlanet.pos, orbitPlanet.pos);
 					vec3.sub(delta, delta, glutil.view.pos);
-					//delta = parent planet pos - orbit planet pos - view pos
-					//recenter around orbitting planet
-					planet.orbitPathObj.pos[0] = planet.pos[0] - orbitPlanet.pos[0];
-					planet.orbitPathObj.pos[1] = planet.pos[1] - orbitPlanet.pos[1];
-					planet.orbitPathObj.pos[2] = planet.pos[2] - orbitPlanet.pos[2];
-					//global positions
-					//less accurate, but can store all as one buffer
-					//you see the orbit paths break down as far out as Saturn 
-					//planet.orbitPathObj.pos[0] = -orbitPlanet.pos[0];
-					//planet.orbitPathObj.pos[1] = -orbitPlanet.pos[1];
-					//planet.orbitPathObj.pos[2] = -orbitPlanet.pos[2];
-					planet.orbitPathObj.draw();
+					var deltaLength = vec3.length(delta); 
+
+					var visRatio = distPeriapsis / deltaLength;
+
+					var cosAngleToParent = vec3.dot(delta, viewfwd) / deltaLength;
+					var angleToParent = Math.acos(Math.clamp(cosAngleToParent, -1, 1));
+
+					//TODO cone/sphere intersection.  sphere center is delta, radius is distPeriapsis, cone center is origin, angle is angle
+					var distToParentPlanet = vec3.dot(delta, viewfwd);
+					//if (distToParentPlanet > 0) 
+					{
+						var tanAngleOfParentInScreen = distPeriapsis / distToParentPlanet;
+						var angleOfParentInScreen = Math.abs(Math.atan(tanAngleOfParentInScreen));
+						if (distToParentPlanet > 0 && (angleToParent < glutil.view.fovY * Math.PI / 180 + angleOfParentInScreen) ||
+							deltaLength < distPeriapsis) {
+						
+							//if sphere around parent planet of size max orbit size 
+							// intersects with the view frustum then don't draw it
+							//test whether the view pos is in the sphere, or if the view dir dot delta
+							//if (deltaLength < distPeriapsis ||	//if we're within the periapsis
+							//	cosAngle > 0)
+							{
+								//recenter around orbitting planet
+								vec3.sub(planet.orbitPathObj.pos, planet.pos, orbitPlanet.pos);
+								//global positions
+								//less accurate, but can store all as one buffer
+								//you see the orbit paths break down as far out as Saturn 
+								//vec3.scale(planet.orbitPathObj.pos, orbitPlanet.pos, -1);
+								planet.orbitPathObj.draw();
+								++orbitPathsDrawn;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -1526,6 +1563,7 @@ var planetPointVisRatio = .001;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
+				if (planet.isComet && !showComets) continue;
 				if (planet.radius === undefined) continue;	
 				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
 				if (planet.visRatio * Math.pow(100, gravityWellRadialMaxLog100) < .001) continue;
@@ -1817,6 +1855,7 @@ function init1() {
 	$.each([
 		'showLinesToOtherPlanets',
 		'showLatAndLonLines',
+		'showComets',
 		'showGravityWell',
 		'showOrbits',
 		'showDistantPoints',
@@ -1864,6 +1903,7 @@ function init1() {
 			if (planetClass) {	//excluding the BCC and Ln points
 				var planet = planets[planetClass.prototype.index];
 				for (var j = 0; j < 3; ++j) {
+					//convert km to m
 					planet.pos[j] = data.pos[j] * 1000;
 					planet.vel[j] = data.vel[j] * 1000;
 				}
@@ -1958,6 +1998,7 @@ function init1() {
 			planets = new Planets();
 			for (var i = 0; i < planets.length; ++i) {
 				var planet = planets[i];
+				//convert km to m
 				planet.pos[0] = positions[planet.name.toLowerCase()][0] * 1000;
 				planet.pos[1] = positions[planet.name.toLowerCase()][1] * 1000;
 				planet.pos[2] = positions[planet.name.toLowerCase()][2] * 1000;
@@ -2541,25 +2582,47 @@ void main() {
 		if (planet.isComet) {
 
 			var eccentricity = planet.orbitData.eccentricity;
-			var distanceToParent = planet.orbitData.perihelionDistance;
-			var A, B;
-			if (eccentricity == 0) {	//circular
-				eccentricAnomaly = 0;
-				A = [distanceToPlanet, 0, 0];
-				B = [0, distanceToPlanet, 0];
-			} else if (eccentricity < 1) {	//ellipse
-			} else if (eccentricity == 1) {	//parabola
-			} else {	//hyperbola
+			if (eccentricity > 1) {
+				console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
+				continue;
 			}
-			//eccentricity = half the distance between foci / semi-major axis 
-			var semiMajorAxis = planet.orbitData.semimajorAxis
+			
+			var distanceToParent = planet.orbitData.perihelionDistance;
+			//TODO rather than assume the comet is at its closest approach, calculate it using the 'timeOfPerihelionPassage' / 'epoch' info
+			
+			var semiMinorAxis = distanceToParent;
+			var semiMajorAxis = semiMinorAxis / Math.sqrt(1 - eccentricity * eccentricity);
 
 			var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-			var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-			var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
-	
-			var eccentricity = planet.orbitData.eccentricity;
-			var eccentricAnomaly;
+			var eccentricAnomaly = Math.acos(cosEccentricAnomaly);
+			
+			var longitudeOfAscendingNode = planet.orbitData.longitudeOfAscendingNode;
+			var cosAscending = Math.cos(longitudeOfAscendingNode);
+			var sinAscending = Math.sin(longitudeOfAscendingNode);
+
+			var argumentOfPericenter = planet.orbitData.argumentOfPerihelion;
+			var cosPericenter = Math.cos(argumentOfPericenter);
+			var sinPericenter = Math.sin(argumentOfPericenter);
+
+			var inclination = planet.orbitData.inclination;
+			var cosInclination = Math.cos(inclination);
+			var sinInclination = Math.sin(inclination);
+			
+			var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+					 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
+					 semiMajorAxis * sinPericenter * sinInclination];
+			var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+					 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+					 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+
+			planetClassPrototype.keplerianOrbitalElements = {
+				semiMajorAxis : semiMajorAxis,
+				eccentricity : eccentricity,
+				eccentricAnomaly : eccentricAnomaly,
+				longitudeOfAscendingNode : longitudeOfAscendingNode,
+				argumentOfPericenter : argumentOfPericenter,
+				inclination : inclination
+			};
 
 			//iterate around the eccentric anomaly to reconstruct the path
 			var vertexes = [];
@@ -2575,9 +2638,9 @@ void main() {
 				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
 
 				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
-				vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
-				vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
-				vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
+				vtxPosX += parentPlanet.pos[0] /*- checkPosToPosX*/ - planet.pos[0];
+				vtxPosY += parentPlanet.pos[1] /*- checkPosToPosY*/ - planet.pos[1];
+				vtxPosZ += parentPlanet.pos[2] /*- checkPosToPosZ*/ - planet.pos[2];
 		
 				//add to buffer
 				vertexes.push(vtxPosX);
@@ -2588,7 +2651,7 @@ void main() {
 				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
 				vertexes.push(alpha);
 			}
-		
+			
 			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
 				mode : gl.LINE_STRIP,
 				shader : orbitShader,
@@ -2724,8 +2787,6 @@ void main() {
 			semiMajorAxis : semiMajorAxis,
 			semiLatusRectum : semiLatusRectum,
 			eccentricity : eccentricity,
-			cosEccentricAnomaly : cosEccentricAnomaly,
-			sinEccentricAnomaly : sinEccentricAnomaly,
 			eccentricAnomaly : eccentricAnomaly,
 			inclination : inclination,
 			argumentOfPericenter : argumentOfPericenter,
@@ -2738,6 +2799,7 @@ void main() {
 			//iterate around the eccentric anomaly to reconstruct the path
 			var vertexes = [];
 			var res = 250;
+			
 			for (var i = 0; i < res; ++i) {
 				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
 				var pathEccentricAnomaly = eccentricAnomaly + theta;
@@ -2768,7 +2830,7 @@ void main() {
 				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
 				vertexes.push(alpha);
 			}
-		
+			
 			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
 				mode : gl.LINE_STRIP,
 				shader : orbitShader,

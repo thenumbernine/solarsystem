@@ -33,9 +33,9 @@ for i=3,#lines do	-- skip headers and ---- line
 			comet.epoch = assert(tonumber(line:sub(45,51):trim()))
 			comet.perihelionDistance = assert(tonumber(line:sub(53,63):trim())) * auInM
 			comet.eccentricity = assert(tonumber(line:sub(65,74):trim()))
-			comet.inclination = assert(tonumber(line:sub(76,84):trim()))	-- wrt J2000 ecliptic plane
-			comet.augmentOfPerihelion = assert(tonumber(line:sub(86,94):trim()))
-			comet.longitudeOfAscendingNode = assert(tonumber(line:sub(96,104):trim()))
+			comet.inclination = math.rad(assert(tonumber(line:sub(76,84):trim())))	-- wrt J2000 ecliptic plane
+			comet.argumentOfPerihelion = math.rad(assert(tonumber(line:sub(86,94):trim())))
+			comet.longitudeOfAscendingNode = math.rad(assert(tonumber(line:sub(96,104):trim())))
 		
 			-- time of perihelion passage
 			do
