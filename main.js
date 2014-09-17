@@ -1018,6 +1018,7 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
 		if (planet.isComet && (!showComets || i - firstCometIndex >= numCometsToShow)) continue;
+		if (planet.hide) continue;
 		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
 		var deltaY = planet.pos[1] - glutil.view.pos[1] - currentOrbitPlanet.pos[1];
 		var deltaZ = planet.pos[2] - glutil.view.pos[2] - currentOrbitPlanet.pos[2];
@@ -1034,7 +1035,7 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	}
 	mouseOverPlanetIndex = undefined;
 	if (bestPlanet !== undefined) {
-		hoverPlanetText.text(bestPlanet.name);
+		$('#hoverPlanetText').text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
 			vec3.add(glutil.view.pos, glutil.view.pos, planets[orbitPlanetIndex].pos);
@@ -1064,7 +1065,7 @@ function chooseNewPlanet(mouseDir,doChoose) {
 			orbitTargetDistance = orbitDistance;
 			/**/
 			refreshOrbitTargetDistanceText();
-			orbitPlanetText.text(bestPlanet.name);
+			$('#orbitPlanetText').text(bestPlanet.name);
 			refreshMeasureText();
 		}
 	}
@@ -1072,8 +1073,8 @@ function chooseNewPlanet(mouseDir,doChoose) {
 
 function refreshMeasureText() {
 	var planet = planets[orbitPlanetIndex];
-	measureMinText.text(planet.measureMin === undefined ? '' : (planet.measureMin.toExponential() + ' m/s^2'));
-	measureMaxText.text(planet.measureMax === undefined ? '' : (planet.measureMax.toExponential() + ' m/s^2'));
+	$('#measureMinText').text(planet.measureMin === undefined ? '' : (planet.measureMin.toExponential() + ' m/s^2'));
+	$('#measureMaxText').text(planet.measureMax === undefined ? '' : (planet.measureMax.toExponential() + ' m/s^2'));
 }
 
 // routines for calculating the earth's angle ...
@@ -1173,12 +1174,6 @@ function getEarthAngle(jd) {
 
 var gl;
 var canvas;
-var panel;
-var panelContent;
-var measureMinText;
-var measureMaxText;
-var orbitTargetDistanceText;
-var currentTimeText;
 
 var hsvTex;
 var colorShader;
@@ -1212,8 +1207,6 @@ var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
 var gravityWellRadialMinLog100 = -1;
 var gravityWellRadialMaxLog100 = 2;
-var hoverPlanetText;
-var orbitPlanetText;
 
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
@@ -1376,6 +1369,7 @@ var planetPointVisRatio = .001;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
+			if (planet.hide) continue;
 			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 			if (planet.lineObj === undefined) continue;
 
@@ -1407,6 +1401,7 @@ var planetPointVisRatio = .001;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
+			if (planet.hide) continue;
 			
 			//update vis ratio
 			var dx = planet.pos[0] - glutil.view.pos[0] - orbitPlanet.pos[0];
@@ -1439,7 +1434,7 @@ var planetPointVisRatio = .001;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
-if (planet.isComet) continue;
+			if (planet.hide) continue;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				updatePlanetClassSceneObj(planet);
@@ -1470,6 +1465,7 @@ if (planet.isComet) continue;
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
+			if (planet.hide) continue;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
 				vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitPlanet.pos);
@@ -1508,6 +1504,8 @@ if (planet.isComet) continue;
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
 				if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
+				if (planet.hide) continue;
+				
 				if (planet.orbitPathObj) {
 
 					var semiMajorAxis = planet.keplerianOrbitalElements.semiMajorAxis;
@@ -1574,6 +1572,7 @@ if (planet.isComet) continue;
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
 				if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
+				if (planet.hide) continue;
 				if (planet.radius === undefined) continue;	
 				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
 				if (planet.visRatio * Math.pow(100, gravityWellRadialMaxLog100) < .001) continue;
@@ -1646,7 +1645,9 @@ var lonStep = 5;
 function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
-	panel.css('height', window.innerHeight);
+	$.each(allSidePanelIDs, function(i,sidePanelID) {
+		$('#'+sidePanelID).css('height', window.innerHeight);
+	});
 	
 	glutil.resize();
 
@@ -1714,11 +1715,11 @@ function refreshOrbitTargetDistanceText() {
 			break;
 		}
 	}
-	orbitTargetDistanceText.text(dist.toFixed(4)+' '+units);
+	$('#orbitTargetDistanceText').text(dist.toFixed(4)+' '+units);
 }
 
 function refreshCurrentTimeText() {
-	currentTimeText.text(astro.julianToCalendar(julianDate));
+	$('#currentTimeText').text(astro.julianToCalendar(julianDate));
 }
 
 var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
@@ -1727,15 +1728,74 @@ var ModifiedDepthShaderProgram;
 
 $(document).ready(init1);
 
-function init1() {
-	panel = $('#panel');
-	panelContent = $('#content');
-	$('#menu').click(function() {
-		if (panelContent.css('display') == 'none') {
-			panelContent.show();
-		} else {
-			panelContent.hide();
+var slideDuration = 500;
+var slideWidth = 300;
+var currentOpenSidePanelID = undefined;
+var allSidePanelIDs = [];
+
+function showSidePanel(sidePanelID) {
+	if (currentOpenSidePanelID !== undefined) {
+		hideSidePanel(currentOpenSidePanelID, true);
+	}
+	$.each(allSidePanelIDs, function(i,sidePanelID) {
+		$('#'+sidePanelID).css('z-index', 1);
+	});
+	var sidePanel = $('#'+sidePanelID);
+	sidePanel.css('z-index', 2);
+	sidePanel.show();
+	$('#menu')
+	.animate({left:slideWidth}, {duration:slideDuration})
+	.attr('src', 'reverse.png');
+	sidePanel.animate({left:0}, {duration:slideDuration});
+	currentOpenSidePanelID = sidePanelID;
+}
+
+function hideSidePanel(sidePanelID, dontMoveOpenButton) {
+	if (sidePanelID === currentOpenSidePanelID) currentOpenSidePanelID = undefined;
+	var sidePanel = $('#'+sidePanelID);
+	if (!dontMoveOpenButton) {
+		$('#menu')
+		.animate({left:0}, {duration:slideDuration})
+		.attr('src', 'play.png');
+	}
+	sidePanel.animate({left:-slideWidth}, {
+		duration:slideDuration,
+		complete:function() {
+			sidePanel.hide();
 		}
+	});
+}
+
+function init1() {
+	allSidePanelIDs = [
+		'mainSidePanel',
+		'overlaySidePanel',
+		'displayOptionsSidePanel',
+		'celestialBodiesSidePanel'
+	];
+	mainSidePanel = $('#mainSidePanel');
+	
+	//keep track of what menu is open
+	//if none are open, open the main menu
+	//if any are ... if it's not main 
+	$('#menu').click(function() {
+		if (currentOpenSidePanelID === undefined) {
+			showSidePanel('mainSidePanel');
+		} else if (currentOpenSidePanelID == 'mainSidePanel') {
+			hideSidePanel(currentOpenSidePanelID);
+		} else {
+			showSidePanel('mainSidePanel');
+		}
+	});
+
+	$.each([
+		{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
+		{buttonID:'mainButtonDisplayOptions', divID:'displayOptionsSidePanel'},
+		{buttonID:'mainButtonCelestialBodies', divID:'celestialBodiesSidePanel'},
+	], function(i, info) {
+		$('#'+info.buttonID).click(function() {
+			showSidePanel(info.divID);
+		});
 	});
 	
 	$('#reset').click(function() {
@@ -1764,10 +1824,6 @@ function init1() {
 		integrateTimeStep /= 2;
 	});
 	
-	measureMinText = $('#measureMin');
-	measureMaxText = $('#measureMax');
-	orbitTargetDistanceText = $('#orbitTargetDistance');
-	currentTimeText = $('#currentTimeText');
 	canvas = $('<canvas>', {
 		css : {
 			left : 0,
@@ -1783,7 +1839,7 @@ function init1() {
 		glutil = new GLUtil({canvas:canvas});
 		gl = glutil.context;
 	} catch (e) {
-		panel.remove();
+		$('#menu').remove();
 		$(canvas).remove();
 		$('#webglfail').show();
 		throw e;
@@ -1820,9 +1876,14 @@ function init1() {
 	glutil.view.angle[3] = 0.28753844912098436;*/
 	glutil.view.zNear = 1e+3;
 	glutil.view.zFar = 1e+25;
+	
+	
+	// overlay side panel 
 
-	$('<span>', {text:'Overlay:'}).appendTo(panelContent);
-	$('<br>').appendTo(panelContent);
+
+	var overlaySidePanel = $('#overlaySidePanel');
+	$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanel);
+	$('<br>').appendTo(overlaySidePanel);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
 			type : 'radio',
@@ -1834,18 +1895,24 @@ function init1() {
 			}
 		})
 			.attr('name', 'display')
-			.appendTo(panelContent);
+			.appendTo(overlaySidePanel);
 		if (thisDisplayMethod == displayMethod) radio.attr('checked', 'checked');
-		$('<span>', {text:thisDisplayMethod}).appendTo(panelContent);
-		$('<br>').appendTo(panelContent);
+		$('<span>', {text:thisDisplayMethod}).appendTo(overlaySidePanel);
+		$('<br>').appendTo(overlaySidePanel);
 	});
-	$('<br>').appendTo(panelContent);
-	$('<span>', {text:'Influencing Planets:'}).appendTo(panelContent);
-	$('<br>').appendTo(panelContent);
+	$('<br>').appendTo(overlaySidePanel);
+	$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanel);
+	$('<br>').appendTo(overlaySidePanel);
 	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
+		//comets don't even have recorded mass... so they can't influence calculations of gravity or tide
+		if (planetClass.prototype.isComet) return;
+	
+		//if this is the sun, or this orbits the sun, or this orbits the earth, then let it go through
 		if (!(planetClass === Planets.prototype.planetClasses[Planets.prototype.indexes.Sun] ||
-			(planetClass.prototype.parent === Planets.prototype.indexes.Sun &&
-			!planetClass.prototype.isComet))) return;
+			planetClass.prototype.parent === Planets.prototype.indexes.Sun ||
+			planetClass.prototype.parent === Planets.prototype.indexes.Earth
+		)) return;
+			
 		planetInfluences[planetIndex] = true;
 		var planetName = planetClass.prototype.name;
 		var checkbox;
@@ -1858,12 +1925,15 @@ function init1() {
 			}
 		})
 			.attr('checked', 'checked')
-			.appendTo(panelContent);
-		$('<span>', {text:planetName}).appendTo(panelContent);
-		$('<br>').appendTo(panelContent);
+			.appendTo(overlaySidePanel);
+		$('<span>', {text:planetName}).appendTo(overlaySidePanel);
+		$('<br>').appendTo(overlaySidePanel);
 	});
-	hoverPlanetText = $('#hoverPlanetText');
-	orbitPlanetText = $('#orbitPlanetText');
+	$('<br>').appendTo(overlaySidePanel);
+	
+	
+	// display options side panel
+	
 
 	$.each([
 		'showLinesToOtherPlanets',
@@ -1899,6 +1969,13 @@ function init1() {
 			});
 		})();
 	});
+
+
+	// celestial bodies side panel
+
+
+	// rest of the init
+
 
 	$(window).resize(resize);
 	resize();
@@ -2045,7 +2122,7 @@ function init2() {
 	});
 	
 	$('#menu').show();
-	//$('#timeControlDiv').show();	//ehh... my integrator isn't the most accurate (RK4 when it should be adaptive RK45 or better) and my orbit paths need to be recalculated every move ... until then, keep it fixed
+	$('#timeControlDiv').show();
 	$('#infoDiv').show();
 	init3();
 }
@@ -2680,7 +2757,8 @@ void main() {
 				longitudeOfAscendingNode : longitudeOfAscendingNode,
 				argumentOfPericenter : argumentOfPericenter,
 				inclination : inclination,
-				timeOfPeriapsisCrossing : timeOfPeriapsisCrossing 
+				timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
+				orbitalPeriod : orbitalPeriod
 			};
 			
 			//iterate around the eccentric anomaly to reconstruct the path
@@ -3145,8 +3223,8 @@ function initScene() {
 	orbitTargetDistance = 2. * trackPlanet.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
-	orbitPlanetText.text(trackPlanet.name);
-	hoverPlanetText.text(trackPlanet.name);
+	$('#orbitPlanetText').text(trackPlanet.name);
+	$('#hoverPlanetText').text(trackPlanet.name);
 
 	var dragging = false;
 	var tmpQ = quat.create();	

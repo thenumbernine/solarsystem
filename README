@@ -25,11 +25,33 @@ Pluto from http://www.johnstonsarchive.net/spaceart/cylmaps.html
 
 TODO
 
-- remove the old 'class-per-planet' system and switch to an 'object-per-planet' system
-	- disable the integrator for the time being, re-enable it with a method for backing up planet data 
+- remove the old 'class-per-planet' system and switch to an 'object-per-planet' system.  the old was more clear with Lua, but porting it directly to JS is very ugly. 
+	- get RK45 integrator working, put ephemeris data online, and re-enable the ffwd/rewind system 
 - hierarchy of rendering for each planet and orbital children
 	give it a smaller bounding sphere for the planet mesh
 	give it a larger bounding sphere for children
 	and upon occlusion of each, traverse each
-
+- add a atmosphere shader to the Earth so it doesn't look so dull
+- make overlays computed by GPU so they can recompute realtime during integration.
 - cron task for updating positions from NASA
+	- or use ephemeris data - for major planets it exists, but what about for moons?
+
+new interface:
+- surface overlay
+	- transparency
+	- what to graph
+	- which bodies to allow to contribute to influence
+	- ranked list of which bodies contribute the most influence
+- display options
+	- lines to other planets
+	- lat / lon
+	- gravity wells
+	- orbits
+	- points at distance
+- bodies
+	- option to enable/disable each
+	- search feature for finding named comets/bodies/etc
+	- option to zoom to planet
+	- comets
+	- planets
+		- moons

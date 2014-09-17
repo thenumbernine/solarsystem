@@ -45,6 +45,7 @@ _gaq.push(['_trackPageview']);
 		<style type='text/css'>
 
 body {
+	font-family:Georgia, serif;
 	background-color:black;
 	color:white;
 }
@@ -68,60 +69,101 @@ a:active {
 	cursor:pointer;
 	color:#00FFFF;
 }
+
+.mainSidePanelButton {
+	margin-left:15px;
+	margin-right:15px;
+	margin-top:5px;
+	margin-bottom:5px;
+	width:250px;
+	height:32px;
+	background-color:black;
+	color:white;
+	font-size:12pt;
+	font-weight:400;
+}
+
+.sidePanel {
+	overflow-x:hidden;
+	position:absolute;
+	z-index:1;
+	padding:10px;
+	width:280px;
+	left:-300px;
+	top:0px;
+	display:none;
+	background-color:rgba(0,0,0,.75);
+}
+		
 		</style>
 	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
 		<div id='timeControlDiv' style='padding:5px; z-index:1; position:absolute; top:0px; right:0px; display:none'>
-			<img id='reset' src='reset.png' style='padding:5px'/>
-			<img id='rewind' src='rewind.png' style='padding:5px'/>
-			<img id='reverse' src='reverse.png' style='padding:5px'/>
-			<img id='pause' src='stop.png' style='padding:5px'/>
-			<img id='play' src='play.png' style='padding:5px'/>
-			<img id='ffwd' src='ffwd.png' style='padding:5px'/>
+			<span id='currentTimeText'></span><br>
+			<!-- this is inaccurate. hide this until I 
+				(a) enable the RK45 adaptive integrator, or something more accurate 
+				(b) put the ephemeris data online
+				... or some combination of the two
+			-->
+			<div style='display:none'>
+				<img id='reset' src='reset.png' style='padding:5px'/>
+				<img id='rewind' src='rewind.png' style='padding:5px'/>
+				<img id='reverse' src='reverse.png' style='padding:5px'/>
+				<img id='pause' src='stop.png' style='padding:5px'/>
+				<img id='play' src='play.png' style='padding:5px'/>
+				<img id='ffwd' src='ffwd.png' style='padding:5px'/>
+			</div>
 		</div>
 
 		<div id='infoDiv' style='padding:5px; z-index:1; position:absolute; bottom:0px; right:64px; display:none'>
-			<span id='hoverPlanetText'></span><br>
-			<span id='currentTimeText'></span><br>
+			Hovering Over: <span id='hoverPlanetText'></span><br>
+			Orbitting: <span id='orbitPlanetText'></span><br>
+			Distance: <span id='orbitTargetDistance'></span><br>
 		</div>
-	
-		<div id='panel' style='overflow-x:hidden; z-index:1; max-width:300px; position:absolute; background-color:rgba(0,0,0,.75)'>		
-			<div id='loadingDiv' style='padding:5px'>Loading Textures... 
-				<progress id='loading' value='0' max='100'></progress><br>
-			</div>
-			<img id='menu' src='menu.png' style='padding:5px; display:none'/><br>
-			
+		
+		<div id='loadingDiv' style='padding:5px' style='position:absolute; left:100px; top:0px'>Loading Textures... 
+			<progress id='loading' value='0' max='100'></progress><br>
+		</div>
+
+		<img id='menu' src='play.png' style='padding:5px; position:absolute; z-index:1; left:0px; top:0px;'/>
+		<div id='mainSidePanel' class='sidePanel'>
+			<div style='padding-top:15px'></div>
+			<button class='mainSidePanelButton' id='mainButtonOverlay'>Overlay</button><br>
+			<button class='mainSidePanelButton' id='mainButtonDisplayOptions'>Display Options</button><br>
+			<!-- <button class='mainSidePanelButton' id='mainButtonCelestialBodies'>Celestial Bodies</button><br> -->
+		</div>
+		
+		<div id='overlaySidePanel' class='sidePanel'>
+			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
+			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
+			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
 			<br>
-			<div id='content' style='display:none'>
-				Orbitting: <span id='orbitPlanetText'></span><br>
-				<br>
-				Distance: <span id='orbitTargetDistance'></span><br>
-				<br>
-				<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
-				<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
-				<br>
-				Overlay:
-				<div id='overlay-slider'></div><br>
-				<input id='showLinesToOtherPlanets' type='checkbox'/>Show Lines to Other Planets<br>
-				<input id='showLatAndLonLines' type='checkbox'/>Show Latitude and Longitude Lines<br>
-				<input id='showGravityWell' type='checkbox'/>Show Gravity Wells<br>
-				<div style='padding-left:10px'>
-					<input id='gravityWellScaleNormalized' type='radio' name='gravityWellScale' checked='checked'/>Normalized Scale<br>
-					<input id='gravityWellScaleFixed' type='radio' name='gravityWellScale'/>Fixed Scale
-					<input id='gravityWellScaleFixedValue' value='2000'/>
-				</div>
-				<!-- too slow with moons -->
-				<input id='showDistantPoints' type='checkbox'/>Show Points in Distance<br>
-				<input id='showOrbits' type='checkbox'/>Show Orbits<br>
-				<div style='padding-left:10px'>
-					<input id='showComets' type='checkbox'/>Show Comets (slow)<br>
-					Number to Show:<input id='numCometsToShow' value='10'/><br>
-				</div>
-				<br>
-				<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
+			Overlay Transparency:<br>
+			<br>
+			<div id='overlay-slider'></div><br>
+		</div>
+
+		<div id='displayOptionsSidePanel' class='sidePanel'>
+			<input id='showLinesToOtherPlanets' type='checkbox'/>Show Lines to Other Planets<br>
+			<input id='showLatAndLonLines' type='checkbox'/>Show Latitude and Longitude Lines<br>
+			<input id='showGravityWell' type='checkbox'/>Show Gravity Wells<br>
+			<div style='padding-left:10px'>
+				<input id='gravityWellScaleNormalized' type='radio' name='gravityWellScale' checked='checked'/>Normalized Scale<br>
+				<input id='gravityWellScaleFixed' type='radio' name='gravityWellScale'/>Fixed Scale
+				<input id='gravityWellScaleFixedValue' value='2000'/>
+			</div>
+			<input id='showDistantPoints' type='checkbox'/>Show Points in Distance<br>
+			<input id='showOrbits' type='checkbox'/>Show Orbits<br>
+			<div style='padding-left:10px'>
+				<input id='showComets' type='checkbox'/>Show Comets (slow)<br>
+				Number to Show:<input id='numCometsToShow' value='10'/><br>
 			</div>
 		</div>
+
+		<div id='celestialBodiesSidePanel' class='sidePanel'>
+		</div>
+
 		<div id='webglfail' style='display:none'>
 			Sorry, your browser does not support WebGL<br>
 			Try one of these other, better browsers:<br>
