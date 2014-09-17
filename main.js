@@ -1073,8 +1073,8 @@ function chooseNewPlanet(mouseDir,doChoose) {
 
 function refreshMeasureText() {
 	var planet = planets[orbitPlanetIndex];
-	$('#measureMinText').text(planet.measureMin === undefined ? '' : (planet.measureMin.toExponential() + ' m/s^2'));
-	$('#measureMaxText').text(planet.measureMax === undefined ? '' : (planet.measureMax.toExponential() + ' m/s^2'));
+	$('#measureMin').text(planet.measureMin === undefined ? '' : (planet.measureMin.toExponential() + ' m/s^2'));
+	$('#measureMax').text(planet.measureMax === undefined ? '' : (planet.measureMax.toExponential() + ' m/s^2'));
 }
 
 // routines for calculating the earth's angle ...
@@ -1715,7 +1715,7 @@ function refreshOrbitTargetDistanceText() {
 			break;
 		}
 	}
-	$('#orbitTargetDistanceText').text(dist.toFixed(4)+' '+units);
+	$('#orbitTargetDistance').text(dist.toFixed(4)+' '+units);
 }
 
 function refreshCurrentTimeText() {
@@ -1903,16 +1903,37 @@ function init1() {
 	$('<br>').appendTo(overlaySidePanel);
 	$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanel);
 	$('<br>').appendTo(overlaySidePanel);
+	
+	//add radio buttons hierarchically ...
+	var overlayControlsForPlanets = {};
+	
 	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
 		//comets don't even have recorded mass... so they can't influence calculations of gravity or tide
 		if (planetClass.prototype.isComet) return;
-	
+
+		//if any other planet doesn't have recorded mass then skip it
+		if (planetClass.prototype.mass === undefined) return;
+
 		//if this is the sun, or this orbits the sun, or this orbits the earth, then let it go through
+		/*
 		if (!(planetClass === Planets.prototype.planetClasses[Planets.prototype.indexes.Sun] ||
 			planetClass.prototype.parent === Planets.prototype.indexes.Sun ||
 			planetClass.prototype.parent === Planets.prototype.indexes.Earth
 		)) return;
-			
+		*/
+
+		var parentPlanetIndex = planetClass.prototype.parent;
+		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
+
+		var div = $('<div>', {
+			css : {paddingLeft:'5px'}
+		});
+		if (parentPlanetIndex === undefined) {
+			div.appendTo(overlaySidePanel);
+		} else {
+			div.appendTo(overlayControlsForPlanets[parentPlanetIndex].childDiv);
+		}
+		
 		planetInfluences[planetIndex] = true;
 		var planetName = planetClass.prototype.name;
 		var checkbox;
@@ -1925,10 +1946,51 @@ function init1() {
 			}
 		})
 			.attr('checked', 'checked')
-			.appendTo(overlaySidePanel);
-		$('<span>', {text:planetName}).appendTo(overlaySidePanel);
-		$('<br>').appendTo(overlaySidePanel);
+			.appendTo(div);
+		$('<span>', {text:planetName}).appendTo(div);
+
+		var childDiv;
+		var toggleChildDiv = $('<span>', {
+			css : {
+				paddingLeft : '10px',
+				cursor : 'pointer'
+			},
+			text : '...',
+			click : function() {
+				if (childDiv.css('display') == 'none') {
+					childDiv.show();
+				} else {
+					childDiv.hide();
+				}
+			}
+		}).appendTo(div);
+		$('<br>').appendTo(div);
+
+		childDiv = $('<div>').appendTo(div);
+		overlayControlsForPlanets[planetIndex] = {	//JS only handles string keys, so get ready to typecast back to int
+			planetClass : planetClass,
+			childDiv : childDiv,
+			toggleChildDiv : toggleChildDiv
+		};
 	});
+
+	for (var planetIndex in overlayControlsForPlanets) {
+		var planetIndex = +planetIndex;
+		var controls = overlayControlsForPlanets[planetIndex];
+		//if a planet didn't get any children, hide its 'toggle child div'
+		if (controls.childDiv.children().length == 0) {
+			controls.toggleChildDiv.hide();
+			continue;
+		}
+
+		//if a planet got children and it's not the sun or earth then hide by default
+		if (planetIndex !== Planets.prototype.indexes.Sun && 
+			planetIndex !== Planets.prototype.indexes.Earth)
+		{
+			controls.childDiv.hide();
+		}
+	}
+	
 	$('<br>').appendTo(overlaySidePanel);
 	
 	
