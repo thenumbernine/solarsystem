@@ -1714,7 +1714,7 @@ function refreshOrbitTargetDistanceText() {
 			break;
 		}
 	}
-	orbitTargetDistanceText.text(dist.toExponential()+' '+units);
+	orbitTargetDistanceText.text(dist.toFixed(4)+' '+units);
 }
 
 function refreshCurrentTimeText() {
@@ -1843,6 +1843,9 @@ function init1() {
 	$('<span>', {text:'Influencing Planets:'}).appendTo(panelContent);
 	$('<br>').appendTo(panelContent);
 	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
+		if (!(planetClass === Planets.prototype.planetClasses[Planets.prototype.indexes.Sun] ||
+			(planetClass.prototype.parent === Planets.prototype.indexes.Sun &&
+			!planetClass.prototype.isComet))) return;
 		planetInfluences[planetIndex] = true;
 		var planetName = planetClass.prototype.name;
 		var checkbox;
@@ -2042,7 +2045,7 @@ function init2() {
 	});
 	
 	$('#menu').show();
-	$('#timeControlDiv').show();
+	//$('#timeControlDiv').show();	//ehh... my integrator isn't the most accurate (RK4 when it should be adaptive RK45 or better) and my orbit paths need to be recalculated every move ... until then, keep it fixed
 	$('#infoDiv').show();
 	init3();
 }
