@@ -2605,14 +2605,23 @@ void main() {
 				console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
 				continue;
 			}
-			
-			var semiMinorAxis = planet.orbitData.perihelionDistance;
-			var semiMajorAxis = semiMinorAxis / Math.sqrt(1 - eccentricity * eccentricity);
+		
+			/*
+			a = semi-major axis = (rper + rap) / 2
+			e = eccentricity = (rap - rper) / (rap + rper) = (rap - rper) / (2a)
+			rap = 2a - rper
+			rper = 2a - rap
+			rper = (1 - e) a
+			rap = (1 + e) a
+			a = 
+			*/
+			var pericenterDistance = planet.orbitData.perihelionDistance;
+			var semiMajorAxis = pericenterDistance / (1 - eccentricity);
 
 			var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 			var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 			var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
-			var timeOfPeriapsisCrossing = planet.orbitData.timeOfPerihelionPassage;
+			var timeOfPeriapsisCrossing = planet.orbitData.timeOfPerihelionPassage;	//julian day
 			
 			var longitudeOfAscendingNode = planet.orbitData.longitudeOfAscendingNode;
 			var cosAscending = Math.cos(longitudeOfAscendingNode);
@@ -2635,16 +2644,16 @@ void main() {
 
 			//how long until it crosses the periapsis
 			// solve for eccentric anomaly...
-			var tau = -(julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;
+			var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;	//unitless
 			var pathEccentricAnomaly = 2 * Math.PI * tau;
 			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
 			var posX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
 			var posY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
 			var posZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;	//m/day
-			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;
-			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;
+			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
+			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
 			planet.pos[0] = posX + parentPlanet.pos[0];
 			planet.pos[1] = posY + parentPlanet.pos[1];
 			planet.pos[2] = posZ + parentPlanet.pos[2];
