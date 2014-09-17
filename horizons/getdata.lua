@@ -1,5 +1,5 @@
 require 'ext'
-require 'socket'
+local socket = require 'socket'
 if not json then pcall(function() json = require 'json' end) end
 if not json then pcall(function() json = require 'dkjson' end) end
 if not json then error 'failed to find json module' end
@@ -74,7 +74,7 @@ local function getMajorBodies(data)
 		local designation = line:sub(47,57)
 		local alias = line:sub(60, 78)
 		if id > 0 then
-			bodies:insert{id=id, name=name}
+			bodies:insert{id=id, name=name:trim()}
 		end
 		i = i + 1
 	end
@@ -83,8 +83,8 @@ end
 
 local entries = {}
 local function run()
-	local startDate = '2013-Aug-14 22:07'
-	local endDate = '2013-Aug-14 22:08'
+	local startDate = '2014-Sep-18 22:07'
+	local endDate = '2014-Sep-18 22:08'
 
 	socket.sleep(3)	-- stop two seconds for terminal negotiation ... or implement it
 	readUntil('Horizons>')
@@ -102,10 +102,12 @@ local function run()
 	local majorBodies = {'10', '1'}	-- debug: sun and mercury
 	--]]
 
+-- NOTICE planet Hartley 2 has no orbit data past 2012-MAR-16 
+
 	local first = true
 	for _,body in ipairs(majorBodies) do
 		-- first option
-		send(body.id)		-- get sun data
+		send(body.id)		-- get planet data
 		readUntil('<cr>:')
 		send('e')		-- get its ephemeris data
 		readUntil(' :')
@@ -162,5 +164,5 @@ end)
 f:close()
 conn:close()
 
---io.writefile('horizons-results.json', json.encode(entries))
+io.writefile('full-horizons-results.json', 'horizonsData = '..json.encode(entries, {indent=true})..';')
 

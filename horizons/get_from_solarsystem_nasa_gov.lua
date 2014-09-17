@@ -6,7 +6,7 @@ run this after the fact to fill in the missing blanks on mass and radius of obje
 
 require 'ext'
 local json = require 'dkjson'
-require 'socket'
+local socket = require 'socket'
 local http = require 'socket.http'
 require 'htmlparser.htmlparser'
 require 'htmlparser.common'
