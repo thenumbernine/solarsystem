@@ -1925,7 +1925,7 @@ function init1() {
 		}
 		
 		initPlanets = planets.clone();
-		julianDate = 2456519.421527778;
+		julianDate = 2456919.460625;	//sep 18 2014 corresponding to when the last horizons data update was
 		initJulianDate = julianDate;
 		refreshCurrentTimeText();
 		
@@ -2635,16 +2635,16 @@ void main() {
 
 			//how long until it crosses the periapsis
 			// solve for eccentric anomaly...
-			var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;
+			var tau = -(julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;
 			var pathEccentricAnomaly = 2 * Math.PI * tau;
 			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
 			var posX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
 			var posY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
 			var posZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
-			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;	//m/day
+			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;
+			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / -orbitalPeriod;
 			planet.pos[0] = posX + parentPlanet.pos[0];
 			planet.pos[1] = posY + parentPlanet.pos[1];
 			planet.pos[2] = posZ + parentPlanet.pos[2];
