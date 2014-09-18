@@ -524,8 +524,6 @@ var Planet = makeClass({
 	}
 });
 
-var firstCometIndex;	//inclusive
-var lastCometIndex;		//exclusive
 
 var Planets;
 Planets = makeClass({
@@ -635,20 +633,20 @@ Planets = makeClass({
 	},
 
 	addExtraCometData : function() {
-		firstCometIndex = Planets.prototype.planetClasses.length;
+	
 		for (var i = 0; i < cometData.length; ++i) {
 			var data = cometData[i];
 			Planets.prototype.planetClasses.push(
 				makeClass({
-					super:Planet,
-					name:data.name,
-					isComet:true,
-					orbitData:data,
-					parent:'Sun'
+					super : Planet,
+					name : data.name,
+					isComet : true,
+					orbitData : data,
+					parent : 'Sun',
+					hide : true	//hide by default
 				})
 			);
 		}
-		lastCometIndex = Planets.prototype.planetClasses.length;
 	},
 
 	//ephemeris data is a few hundred megs
@@ -1017,7 +1015,6 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = planets.length-1; i >= 0; --i) {
 		var planet = planets[i];
-		if (planet.isComet && (!showComets || i - firstCometIndex >= numCometsToShow)) continue;
 		if (planet.hide) continue;
 		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
 		var deltaY = planet.pos[1] - glutil.view.pos[1] - currentOrbitPlanet.pos[1];
@@ -1200,8 +1197,6 @@ var showLatAndLonLines = false;
 var showGravityWell = false;
 var showDistantPoints = true;
 var showOrbits = true;
-var showComets = false;	//goes slow when rendering all of them 
-var numCometsToShow = 10;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -1368,7 +1363,6 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
-			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 			if (planet.hide) continue;
 			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 			if (planet.lineObj === undefined) continue;
@@ -1400,7 +1394,6 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
-			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 			if (planet.hide) continue;
 			
 			//update vis ratio
@@ -1433,7 +1426,6 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
-			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 			if (planet.hide) continue;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
@@ -1464,7 +1456,6 @@ var planetPointVisRatio = .001;
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
 			var planetClassPrototype = planet.init.prototype;
-			if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 			if (planet.hide) continue;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
@@ -1503,7 +1494,6 @@ var planetPointVisRatio = .001;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 				if (planet.hide) continue;
 				
 				if (planet.orbitPathObj) {
@@ -1571,7 +1561,6 @@ var planetPointVisRatio = .001;
 			for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 				var planet = planets[planetIndex];
 				var planetClassPrototype = planet.init.prototype;
-				if (planet.isComet && (!showComets || planetIndex - firstCometIndex >= numCometsToShow)) continue;
 				if (planet.hide) continue;
 				if (planet.radius === undefined) continue;	
 				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
@@ -1903,130 +1892,111 @@ function init1() {
 	$('<br>').appendTo(overlaySidePanel);
 	$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanel);
 	$('<br>').appendTo(overlaySidePanel);
-	
+
 	//add radio buttons hierarchically ...
 	var overlayControlsForPlanets = {};
-	
-	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
-		//comets don't even have recorded mass... so they can't influence calculations of gravity or tide
-		if (planetClass.prototype.isComet) return;
 
-		//if any other planet doesn't have recorded mass then skip it
-		if (planetClass.prototype.mass === undefined) return;
-
-		//if this is the sun, or this orbits the sun, or this orbits the earth, then let it go through
+	var HierarchicalCheckboxControl = makeClass({
 		/*
-		if (!(planetClass === Planets.prototype.planetClasses[Planets.prototype.indexes.Sun] ||
-			planetClass.prototype.parent === Planets.prototype.indexes.Sun ||
-			planetClass.prototype.parent === Planets.prototype.indexes.Earth
-		)) return;
+		args:
+			title	<- used to identify this checkbox
+			change		<- callback upon changing the checkbox value
+			isChecked
+			... and anything else that can be referenced through this.args
 		*/
-
-		var parentPlanetIndex = planetClass.prototype.parent;
-		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
-
-		var parentControls;
-		var controls = {};
-		var div = $('<div>', {
-			css : {paddingLeft:'5px'}
-		});
-		if (parentPlanetIndex === undefined) {
-			div.appendTo(overlaySidePanel);
-		} else {
-			parentControls = overlayControlsForPlanets[parentPlanetIndex];
-			div.appendTo(parentControls.childDiv);
-			parentControls.childControls.push(controls);
-		}
-		
-		planetInfluences[planetIndex] = true;
-		var planetName = planetClass.prototype.name;
-		var checkbox;
-		checkbox = $('<input>', {
-			type : 'checkbox',
-			value : '1',
-			change : function() {
-				//refresh all parent controls' moon checkboxes -- to whiteout or grey them
-				for (var c = controls.parentControls; c; c = c.parentControls) {
-					c.recomputeMoonCheckbox();
-				}
-				
-				planetInfluences[planetIndex] = checkbox.is(':checked');
-				invalidateForces();
-			}
-		})
-			.prop('checked', 1)
-			.appendTo(div);
-		$('<span>', {text:planetName}).appendTo(div);
-
-		var childDiv;
-		var toggleChildDiv = $('<span>', {
-			css : {
-				paddingLeft : '10px',
-				cursor : 'pointer'
-			}
-		}).appendTo(div);
+		init : function(args) {
+			this.args = args;
+			this.childControls = [];
+			this.div = $('<div>', {
+				css : {paddingLeft:'5px'}
+			});
 	
-		var moonCheckbox;
-		moonCheckbox = $('<input>', {
-			type : 'checkbox',
-			value : '1',
-			change : function() {
-				//select / deselect all children
-				controls.setAllChildren($(this).prop('checked'));
-			}
-		})
-			.prop('checked', 1)
-			.appendTo(toggleChildDiv);
-		
-		$('<span>', {
-			css : {
-				cursor : 'pointer'
-			},
-			text : 'moons...',
-			click : function() {
-				if (childDiv.css('display') == 'none') {
-					childDiv.show();
-				} else {
-					childDiv.hide();
+			var thiz = this;
+			this.checkbox = $('<input>', {
+				type : 'checkbox',
+				value : '1',
+				change : function() {
+					//refresh all parent controls' moon checkboxes -- to whiteout or grey them
+					for (var c = thiz.parentControls; c; c = c.parentControls) {
+						c.recomputeMoonCheckbox();
+					}
+					
+					args.change.call(thiz);
 				}
-			}	
-		}).appendTo(toggleChildDiv);
+			})
+				.prop('checked', args.isChecked)
+				.appendTo(this.div);
+			
+			$('<span>', {
+				text : args.title
+			}).appendTo(this.div);
 		
-		$('<br>').appendTo(div);
+			this.toggleChildDiv = $('<span>', {
+				css : {
+					paddingLeft : '10px',
+					cursor : 'pointer'
+				}
+			}).appendTo(this.div);
 
-		childDiv = $('<div>').appendTo(div);
-		overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
-		controls.planetClass = planetClass;	//planet class associated with this control
-		controls.checkbox = checkbox;		// checkbox for planet class
-		controls.moonCheckbox = moonCheckbox;	//checkbox for all moons -- fast toggle on or off
-		controls.childDiv = childDiv;		//div containing all child planet class div info
-		controls.toggleChildDiv = toggleChildDiv;	//div containing toggle child info
-		controls.parentControls = parentControls;	//parent control 
-		controls.childControls = [];				//child controls
-		controls.setAllChildren = function(checked) {
-			for (var i = 0; i < controls.childControls.length; ++i) {
-				var ch = controls.childControls[i].checkbox;
+			this.moonCheckbox = $('<input>', {
+				type : 'checkbox',
+				value : '1',
+				change : function() {
+					//select / deselect all children
+					thiz.setAllChildren($(this).prop('checked'));
+				}
+			})
+				.prop('checked', 1)
+				.appendTo(this.toggleChildDiv);
+	
+			$('<span>', {
+				css : {
+					cursor : 'pointer'
+				},
+				text : '...',
+				click : function() {
+					if (thiz.childDiv.css('display') == 'none') {
+						thiz.childDiv.show();
+					} else {
+						thiz.childDiv.hide();
+					}
+				}	
+			}).appendTo(this.toggleChildDiv);
+	
+			$('<br>').appendTo(this.div);
+		
+			this.childDiv = $('<div>').appendTo(this.div);
+
+		},
+		addChild : function(childControl) {
+			childControl.div.appendTo(this.childDiv);
+			childControl.parentControls = this;
+			this.childControls.push(childControl);
+		},
+		setAllChildren : function(checked) {
+			for (var i = 0; i < this.childControls.length; ++i) {
+				var ch = this.childControls[i].checkbox;
 				if (checked) {
 					if (!ch.prop('checked')) { ch.prop('checked', 1); ch.trigger('change'); }
 				} else {
 					if (ch.prop('checked')) { ch.prop('checked', 0); ch.trigger('change'); }
 				}
-				controls.childControls[i].setAllChildren(checked);
+				this.childControls[i].setAllChildren(checked);
 			}
-		};
-		controls.recomputeMoonCheckbox = function() {
+		},
+		recomputeMoonCheckbox : function() {
 			var numChecked = 0;
 			var total = 0;
-			for (var i = 0; i < controls.childControls.length; ++i) {
+			for (var i = 0; i < this.childControls.length; ++i) {
 				++total;
 				//check the child
-				if (controls.childControls[i].checkbox.prop('checked')) {
+				if (this.childControls[i].checkbox.prop('checked')) {
 					++numChecked;
 				}
 				//check the child's children if they exist
-				if (controls.childControls[i].childControls.length > 0) {
-					if (controls.childControls[i].moonCheckbox.prop('checked')) {
-						if (controls.childControls[i].moonCheckbox.prop('indeterminate')) {
+				if (this.childControls[i].childControls.length > 0) {
+					if (this.childControls[i].moonCheckbox.prop('checked')) {
+						if (this.childControls[i].moonCheckbox.prop('indeterminate')) {
 							numChecked += .5;
 						} else {
 							++numChecked;
@@ -2036,22 +2006,56 @@ function init1() {
 				}
 			}
 			if (numChecked == 0) {
-				controls.moonCheckbox.prop('checked', 0)
+				this.moonCheckbox.prop('checked', 0)
 					.prop('indeterminate', 0);
 			} else if (numChecked == total) {
-				controls.moonCheckbox.prop('checked', 1)
+				this.moonCheckbox.prop('checked', 1)
 					.prop('indeterminate', 0);
 			} else {
-				controls.moonCheckbox.prop('checked', 1)
+				this.moonCheckbox.prop('checked', 1)
 					.prop('indeterminate', 1);
 			}
 		}
 	});
 
+	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
+		//comets don't even have recorded mass... so they can't influence calculations of gravity or tide
+		if (planetClass.prototype.isComet) return;
+
+		//if any other planet doesn't have recorded mass then skip it
+		if (planetClass.prototype.mass === undefined) return;
+
+		var parentPlanetIndex = planetClass.prototype.parent;
+		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
+
+		var controls = new HierarchicalCheckboxControl({
+			title : planetClass.prototype.name,
+			isChecked : true,
+			change : function() {			
+				planetInfluences[this.args.planetIndex] = this.checkbox.is(':checked');
+				invalidateForces();
+			},
+			planetIndex : planetIndex
+		});
+
+		//add to parent or to the side panel
+		if (parentPlanetIndex === undefined) {
+			controls.div.appendTo(overlaySidePanel);
+		} else {
+			overlayControlsForPlanets[parentPlanetIndex].addChild(controls);
+		}
+		
+		planetInfluences[planetIndex] = true;
+		
+		overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
+	});
+
 	for (var planetIndex in overlayControlsForPlanets) {
 		var planetIndex = +planetIndex;
 		var controls = overlayControlsForPlanets[planetIndex];
-		
+	
+		controls.recomputeMoonCheckbox();
+
 		//if a planet didn't get any children, hide its 'toggle child div'
 		if (controls.childDiv.children().length == 0) {
 			controls.toggleChildDiv.hide();
@@ -2075,7 +2079,6 @@ function init1() {
 	$.each([
 		'showLinesToOtherPlanets',
 		'showLatAndLonLines',
-		'showComets',
 		'showGravityWell',
 		'showOrbits',
 		'showDistantPoints',
@@ -2096,7 +2099,6 @@ function init1() {
 
 	$.each([
 		'gravityWellScaleFixedValue',
-		'numCometsToShow'
 	], function(_, toggle) {
 		(function(){
 			var textfield = $('#'+toggle);
@@ -2109,6 +2111,78 @@ function init1() {
 
 
 	// celestial bodies side panel
+
+
+	var celestialBodiesSidePanel = $('#celestialBodiesSidePanel');
+
+	//add radio buttons hierarchically ...
+	var celestialBodiesControlsForPlanets = {};
+
+	var cometParent;
+
+	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
+
+		var parentPlanetIndex = planetClass.prototype.parent;
+		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
+
+		if (planetClass.prototype.isComet) {
+			parentPlanetIndex = -1;
+			if (!cometParent) {
+				cometParent = new HierarchicalCheckboxControl({
+					title : 'Comets'
+				});
+				cometParent.div.appendTo(celestialBodiesSidePanel);
+				cometParent.childDiv.hide();
+				cometParent.checkbox.hide();
+			}
+		}
+
+		var controls = new HierarchicalCheckboxControl({
+			title : planetClass.prototype.name,
+			isChecked : !planetClass.prototype.hide,
+			change : function() {
+				Planets.prototype.planetClasses[this.args.planetIndex].prototype.hide = !this.checkbox.is(':checked');		
+			},
+			planetIndex : planetIndex
+		});
+	
+		if (planetClass.prototype.isComet) {
+			cometParent.addChild(controls);
+		} else {
+			if (parentPlanetIndex === undefined) {
+				controls.div.appendTo(celestialBodiesSidePanel);
+			} else {
+				celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
+			}
+		}
+
+		celestialBodiesControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
+	});
+
+	if (cometParent) cometParent.recomputeMoonCheckbox();
+	for (var planetIndex in celestialBodiesControlsForPlanets) {
+		var planetIndex = +planetIndex;
+		var controls = celestialBodiesControlsForPlanets[planetIndex];
+		
+		controls.recomputeMoonCheckbox();
+		
+		//if a planet didn't get any children, hide its 'toggle child div'
+		if (controls.childDiv.children().length == 0) {
+			controls.toggleChildDiv.hide();
+			continue;
+		}
+
+		//if a planet got children and it's not the sun or earth then hide by default
+		if (planetIndex !== Planets.prototype.indexes.Sun && 
+			planetIndex !== Planets.prototype.indexes.Earth)
+		{
+			controls.childDiv.hide();
+		}
+	}
+	
+	$('<br>').appendTo(celestialBodiesSidePanel);
+	
+
 
 
 	// rest of the init
@@ -2814,6 +2888,7 @@ void main() {
 		//calculate pos and vel and mass by parameters ... ?
 		// or just put an orbit mesh there?
 		if (planet.isComet) {
+		
 			var eccentricity = planet.orbitData.eccentricity;
 			if (eccentricity >= 1) {
 				console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
