@@ -1,6 +1,6 @@
- solar system in webgl
+Solar System in WebGL
 
- lets you see gravitational / tidal forces of various planets on various other planets
+allows you see gravitational / tidal forces of various planets on various other planets
 
  Calculations are done using Newtonian coefficients rewritten in terms of Riemann metric tensor.  See Ch. 12 of "Gravitation" by Misner, Thorne, and Wheeler.
 This is equivalent to linearized gravity when the velocity is assumed to be purely timelike.  I have a cartesian Schwarzschild metric in black-hole-skymap,
@@ -22,6 +22,9 @@ Saturn from http://www.mmedia.is/~bjj/data/saturn/
 Neptune from http://www.mmedia.is/~bjj/data/neptune/
 Pluto from http://www.johnstonsarchive.net/spaceart/cylmaps.html
 
+Position and velocity data is from NASA Horizons telnet server horizons.jpl.nasa.gov
+Planet characteristics are from NASA Horizons server and from http://solarsystem.nasa.gov/planets/index.cfm
+Comets and small bodies are from NASA JPL SSD data files at http://ssd.jpl.nasa.gov/?sb_elem
 
 TODO
 
@@ -30,28 +33,9 @@ TODO
 - hierarchy of rendering for each planet and orbital children
 	give it a smaller bounding sphere for the planet mesh
 	give it a larger bounding sphere for children
-	and upon occlusion of each, traverse each
+	occlusion test of each, traverse each
+- correct orientation of skybox.  the solar system is not in plane with the milky way, it is perpendicular to it.
 - add a atmosphere shader to the Earth so it doesn't look so dull
 - make overlays computed by GPU so they can recompute realtime during integration.
 - cron task for updating positions from NASA
 	- or use ephemeris data - for major planets it exists, but what about for moons?
-
-new interface:
-- surface overlay
-	- transparency
-	- what to graph
-	- which bodies to allow to contribute to influence
-	- ranked list of which bodies contribute the most influence
-- display options
-	- lines to other planets
-	- lat / lon
-	- gravity wells
-	- orbits
-	- points at distance
-- bodies
-	- option to enable/disable each
-	- search feature for finding named comets/bodies/etc
-	- option to zoom to planet
-	- comets
-	- planets
-		- moons

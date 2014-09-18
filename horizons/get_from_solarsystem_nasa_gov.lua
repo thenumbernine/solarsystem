@@ -1,5 +1,5 @@
 --[[
-based on http://solarsystem.nasa.gov/planets/profile.cfm?Object=Jup_Lysithea
+based on http://solarsystem.nasa.gov/planets/index.cfm
 this isn't horizons.  i am keeping the master copy in this folder.  i should move it elsewhere and list these as sources.
 run this after the fact to fill in the missing blanks on mass and radius of objects we've already got position and velocity info for
 --]]
