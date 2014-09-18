@@ -1925,13 +1925,17 @@ function init1() {
 		var parentPlanetIndex = planetClass.prototype.parent;
 		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
 
+		var parentControls;
+		var controls = {};
 		var div = $('<div>', {
 			css : {paddingLeft:'5px'}
 		});
 		if (parentPlanetIndex === undefined) {
 			div.appendTo(overlaySidePanel);
 		} else {
-			div.appendTo(overlayControlsForPlanets[parentPlanetIndex].childDiv);
+			parentControls = overlayControlsForPlanets[parentPlanetIndex];
+			div.appendTo(parentControls.childDiv);
+			parentControls.childControls.push(controls);
 		}
 		
 		planetInfluences[planetIndex] = true;
@@ -1941,11 +1945,16 @@ function init1() {
 			type : 'checkbox',
 			value : '1',
 			change : function() {
+				//refresh all parent controls' moon checkboxes -- to whiteout or grey them
+				for (var c = controls.parentControls; c; c = c.parentControls) {
+					c.recomputeMoonCheckbox();
+				}
+				
 				planetInfluences[planetIndex] = checkbox.is(':checked');
 				invalidateForces();
 			}
 		})
-			.attr('checked', 'checked')
+			.prop('checked', 1)
 			.appendTo(div);
 		$('<span>', {text:planetName}).appendTo(div);
 
@@ -1954,29 +1963,95 @@ function init1() {
 			css : {
 				paddingLeft : '10px',
 				cursor : 'pointer'
+			}
+		}).appendTo(div);
+	
+		var moonCheckbox;
+		moonCheckbox = $('<input>', {
+			type : 'checkbox',
+			value : '1',
+			change : function() {
+				//select / deselect all children
+				controls.setAllChildren($(this).prop('checked'));
+			}
+		})
+			.prop('checked', 1)
+			.appendTo(toggleChildDiv);
+		
+		$('<span>', {
+			css : {
+				cursor : 'pointer'
 			},
-			text : '...',
+			text : 'moons...',
 			click : function() {
 				if (childDiv.css('display') == 'none') {
 					childDiv.show();
 				} else {
 					childDiv.hide();
 				}
-			}
-		}).appendTo(div);
+			}	
+		}).appendTo(toggleChildDiv);
+		
 		$('<br>').appendTo(div);
 
 		childDiv = $('<div>').appendTo(div);
-		overlayControlsForPlanets[planetIndex] = {	//JS only handles string keys, so get ready to typecast back to int
-			planetClass : planetClass,
-			childDiv : childDiv,
-			toggleChildDiv : toggleChildDiv
+		overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
+		controls.planetClass = planetClass;	//planet class associated with this control
+		controls.checkbox = checkbox;		// checkbox for planet class
+		controls.moonCheckbox = moonCheckbox;	//checkbox for all moons -- fast toggle on or off
+		controls.childDiv = childDiv;		//div containing all child planet class div info
+		controls.toggleChildDiv = toggleChildDiv;	//div containing toggle child info
+		controls.parentControls = parentControls;	//parent control 
+		controls.childControls = [];				//child controls
+		controls.setAllChildren = function(checked) {
+			for (var i = 0; i < controls.childControls.length; ++i) {
+				var ch = controls.childControls[i].checkbox;
+				if (checked) {
+					if (!ch.prop('checked')) { ch.prop('checked', 1); ch.trigger('change'); }
+				} else {
+					if (ch.prop('checked')) { ch.prop('checked', 0); ch.trigger('change'); }
+				}
+				controls.childControls[i].setAllChildren(checked);
+			}
 		};
+		controls.recomputeMoonCheckbox = function() {
+			var numChecked = 0;
+			var total = 0;
+			for (var i = 0; i < controls.childControls.length; ++i) {
+				++total;
+				//check the child
+				if (controls.childControls[i].checkbox.prop('checked')) {
+					++numChecked;
+				}
+				//check the child's children if they exist
+				if (controls.childControls[i].childControls.length > 0) {
+					if (controls.childControls[i].moonCheckbox.prop('checked')) {
+						if (controls.childControls[i].moonCheckbox.prop('indeterminate')) {
+							numChecked += .5;
+						} else {
+							++numChecked;
+						}
+					}
+					++total;
+				}
+			}
+			if (numChecked == 0) {
+				controls.moonCheckbox.prop('checked', 0)
+					.prop('indeterminate', 0);
+			} else if (numChecked == total) {
+				controls.moonCheckbox.prop('checked', 1)
+					.prop('indeterminate', 0);
+			} else {
+				controls.moonCheckbox.prop('checked', 1)
+					.prop('indeterminate', 1);
+			}
+		}
 	});
 
 	for (var planetIndex in overlayControlsForPlanets) {
 		var planetIndex = +planetIndex;
 		var controls = overlayControlsForPlanets[planetIndex];
+		
 		//if a planet didn't get any children, hide its 'toggle child div'
 		if (controls.childDiv.children().length == 0) {
 			controls.toggleChildDiv.hide();
