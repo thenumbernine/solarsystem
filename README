@@ -39,3 +39,4 @@ TODO
 - make overlays computed by GPU so they can recompute realtime during integration.
 - cron task for updating positions from NASA
 	- or use ephemeris data - for major planets it exists, but what about for moons?
+- smoother blending when selecting planets

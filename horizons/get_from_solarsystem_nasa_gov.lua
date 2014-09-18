@@ -45,6 +45,7 @@ local function getInfo(planet)
 	local urlname = upperCase(prefix)..upperCase(planet.name)
 	local url = [[http://solarsystem.nasa.gov/planets/profile.cfm?Object=]]..urlname
 	local page = assert(http.request(url))
+	io.writefile('solarsystem.nasa.gov_planets_profile_'..planet.name..'.html', page)
 	local tree = htmlparser.new(page):parse()
 	local spans = htmlparser.xpath(tree, '//span')
 	print(#spans,'spans')
@@ -84,7 +85,6 @@ local function getInfo(planet)
 			-- .. but then we need the density ... in the "More Facts" section ...
 		--end
 	end
-	--io.writefile('tmp.html', page)
 end
 
 for _,planet in ipairs(planets) do
