@@ -40,3 +40,5 @@ TODO
 - cron task for updating positions from NASA
 	- or use ephemeris data - for major planets it exists, but what about for moons?
 - smoother blending when selecting planets
+- converting the 3000 comet data from text columns to json makes sense.  converting the 1/2 million numbered & unnumbered asteroids doesn't -- 3x the text size, which is already 45mb/20mb each.
+	- work around?  instead of exploding data, how about compress it and query it from the client? sqlite3 maybe?
