@@ -1,7 +1,10 @@
 #!/usr/bin/env lua -lluarocks.require
-require 'ext'
+--[[
+script to convert text files to another format
+either JSON or SQLite3 at the moment 
+--]]
 
--- TODO write out to sqlite3, see if that saves us any space
+require 'ext'
 
 local julian = assert(loadfile('../lua/julian.lua'))()	-- in ../lua/julian.lua
 local json = require 'dkjson'
@@ -21,56 +24,6 @@ local unnumberedAsteriods = readCache('ELEMENTS.UNNUM', 'http://ssd.jpl.nasa.gov
 readCache('ELEMENTS.COMET', 'http://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
 
 local auInM = 149597870700	-- 1AU in meters
-
---[[
-holds list of {start, finish, name} for each column
---]]
-local Columns = class()
-
-function Columns:init(lines)
-	local line1, line2 = lines[1], lines[2]
-	self.columns = table()
-	local current = 1
-	while true do
-		local start, finish = line2:find('%-+', current)
-		if not start then break end
-		assert(finish)
-		self.columns:insert{
-			start = start,
-			finish = finish,
-			name = line1:sub(start,finish):trim(),
-		}
-		current = finish + 1
-	end
-	self.columnsByName = self.columns:map(function(column)
-		return column, column.name
-	end)
-end
-
-local ColumnAccess = class()
-
-function ColumnAccess:init(columns, line)
-	self.columns = assert(columns)
-	self.line = assert(line)
-end
-	
-function ColumnAccess:__index(name)
-	local m = getmetatable(self)
-	if m[name] then return m[name] end
-	local columns = assert(rawget(self, 'columns'))
-	local line = assert(rawget(self, 'line'))
-	local col = columns.columnsByName[name] or error("failed to find column "..tostring(name))
-	local start, finish = col.start, col.finish
-	if col == columns.columns:last() then 	-- allow last column to read to end of line
-		return line:sub(start)
-	else
-		return line:sub(start, finish)
-	end
-end
-
-function Columns:__call(line)
-	return ColumnAccess(self, line)
-end
 
 local OutputToJSON = class()
 
@@ -99,63 +52,78 @@ end
 local OutputToSQLite3 = class()
 
 --[[
-args:
-	variableName = the database filename, given a suffix of .sqlite3
+I'm going to define columns up front, then sql merges will be easier
 --]]
-function OutputToSQLite3:init(args)
-	local databaseName = assert(args.variableName)
+OutputToSQLite3.columns = {
+	{name='pk', type='integer primary key'},
+	{name='bodyType', type='integer'},	-- 0 = comet, 1 = numbered asteroid, 2 = unnumbered asteroid
+	{name='idNumber', type='text'},	-- comets, asteroids
+	{name='name', type='text'},
+	{name='epoch', type='number'},
+	{name='perihelionDistance', type='number'},	-- comets
+	{name='semiMajorAxis', type='number'},	-- asteroids
+	{name='eccentricity', type='number'},
+	{name='inclindation', type='number'},
+	{name='argumentOfPerihelion', type='number'},
+	{name='longitudeOfAscendingNode', type='number'},
+	{name='meanAnomaly', type='number'},	-- asteroids
+	{name='absoluteMagnitude', type='number'},	-- asteroids
+	{name='magnitudeSlopeParameter', type='number'},	-- asteroids
+	{name='timeOfPerihelionPassage', type='number'},	-- comets
+	{name='orbitSolutionReference', type='text'},
+}
 
+OutputToSQLite3.tableName = 'data'
+
+function OutputToSQLite3:staticInit()
 	local luasql = require 'luasql.sqlite3'
 	self.env = assert(luasql.sqlite3())
-	self.conn = assert(self.env:connect(databaseName..'.sqlite3'))
+	self.conn = assert(self.env:connect('database.sqlite3'))
+	self.conn:execute('drop table '..self.tableName)	--might fail if the table is new
+
+	local columnDescs = table()
+	for _,column in ipairs(self.columns) do
+		columnDescs:insert(column.name .. ' ' .. column.type)
+	end
+	local cmd = 'create table '..self.tableName..' ('..columnDescs:concat(', ')..')'
+	-- don't create the table until the first body
+	assert(self.conn:execute(cmd))
+end
+
+
+--[[
+args:
+	bodyType = 0 = comet, 1 = numbered asteroid, 2 = unnumbered asteroid
+--]]
+function OutputToSQLite3:init(args)
+	self.bodyType = assert(args.bodyType)
 end
 
 function OutputToSQLite3:processBody(body)
-	if not self.createdTable then
-		self.createdTable = true
-		
-		self.tableName = 'data'
-		self.conn:execute('drop table '..self.tableName)	--might fail if the table is new
-
-		self.columns = table()
-
-		local luaToSqlite3Types = {
-			number = 'real',
-			string = 'text',
-		}
-
-		local columnDescs = table()
-		for columnName,value in pairs(body) do
-			local columnType = assert(luaToSqlite3Types[type(value)])
-			self.columns:insert{
-				name = columnName,
-				type = columnType
-			}
-			columnDescs:insert(columnName .. ' ' .. columnType)
-		end
-		local cmd = 'create table '..self.tableName..'('..columnDescs:concat(', ')..')'
-		print(cmd)	
-		-- don't create the table until the first body
-		assert(self.conn:execute(cmd))
-	end
-
+	body.bodyType = self.bodyType
 	local valueStrs = table()
 	for _,column in ipairs(self.columns) do
 		local value = body[column.name]
 		if column.type == 'text' then
-			value = ('%q'):format(value)
+			if value then value = ('%q'):format(tostring(value)) end 	--preserve nils
+		elseif column.type == 'number' then
+			value = tonumber(value)
 		end
+		if value == nil then value = 'null' end
 		valueStrs:insert(value)
 	end
 	local cmd = 'insert into '..self.tableName..' values ('..valueStrs:concat(',')..')'
-	print(cmd)	
 	assert(self.conn:execute(cmd))
 end
 
-function OutputToSQLite3:done()
+function OutputToSQLite3:done() end
+
+function OutputToSQLite3:staticDone()
 	self.conn:close()
 	self.env:close()
 end
+
+local Columns = require 'columns'
 
 --[[
 args:
@@ -194,12 +162,15 @@ end
 --local outputMethod = OutputToJSON
 local outputMethod = OutputToSQLite3
 
+outputMethod:staticInit()
+
 -- process comets
 processToFile{
 	inputFilename = 'ELEMENTS.COMET',
 	outputMethod = outputMethod{
 		filename = 'comets.json',
 		variableName = 'cometData',
+		bodyType = 0,
 	},
 	processRow = function(row)
 		local body = {}
@@ -235,6 +206,7 @@ processToFile{
 	outputMethod = outputMethod{
 		filename = 'smallbodies-numbered.json',
 		variableName = 'numberedSmallBodyData',
+		bodyType = 1,
 	},
 	processRow = function(row)
 		local body = {}
@@ -260,6 +232,7 @@ processToFile{
 	outputMethod = outputMethod{
 		filename = 'smallbodies-unnumbered.json',
 		variableName = 'unnumberedSmallBodyData',
+		bodyType = 2,
 	},
 	processRow = function(row)
 		local body = {}
@@ -278,3 +251,4 @@ processToFile{
 	end,
 }
 
+outputMethod:staticDone()
