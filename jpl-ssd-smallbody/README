@@ -1,0 +1,6 @@
+1) getdata.lua	- downloads JPL SSD data for comets and asteroids.
+				- generates "database.sqlite3" via LuaSQL (notice: it isn't too hard to reroute this to a MySQL or PostgreSQL destination)
+2) search.lua (executed remotely via Xavante)	- queries database for planets and returns orbit parameters. (same notice: source can vary)
+
+produces files:
+database.sqlite3	- converted JPL SSD data into database 

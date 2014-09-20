@@ -2,3 +2,7 @@ instructions:
 1) getdata.lua	-- gets the pos and vel of all major bodies (planets and moons).  also records extra data of bodies to be parsed later.
 2) parse.lua	-- parses mass, radius, etc variables from the recorded telnet session.
 3) get_from_solarsystem_nasa_gov.lua		-- fills in the blanks that parse didn't using more reliable websites
+
+results:
+full-horizons-results.json		- list of dynamic data for each body (position and velocity) and julian timestamp
+full-horizons-extra-data.json	- list of static data for each body.  mass, radius, eccentricity, etc.
