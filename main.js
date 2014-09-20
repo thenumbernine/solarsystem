@@ -1519,8 +1519,9 @@ var planetPointVisRatio = .001;
 					{
 						var tanAngleOfParentInScreen = distPeriapsis / distToParentPlanet;
 						var angleOfParentInScreen = Math.abs(Math.atan(tanAngleOfParentInScreen));
-						if (distToParentPlanet > 0 && (angleToParent < glutil.view.fovY * Math.PI / 180 + angleOfParentInScreen) ||
-							deltaLength < distPeriapsis) {
+						//if (distToParentPlanet > 0 && (angleToParent < glutil.view.fovY * Math.PI / 180 + angleOfParentInScreen) ||
+						//	deltaLength < distPeriapsis)
+						{
 						
 							//if sphere around parent planet of size max orbit size 
 							// intersects with the view frustum then don't draw it
@@ -3211,6 +3212,7 @@ void main() {
 	};
 
 	setPlanetAngleToMoonOrbitPlane('Saturn', 'Atlas');
+	setPlanetAngleToMoonOrbitPlane('Uranus', 'Cordelia');
 	setPlanetAngleToMoonOrbitPlane('Neptune', 'Naiad');
 
 	//looks like low grav wells run into fp accuracy issues
