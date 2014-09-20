@@ -593,9 +593,9 @@ Planets = makeClass({
 		}
 
 		//I need to fix up my export script ...
-		if (horizonsData.length != horizonsExtraData.length) throw 'static to dynamic data lengths differ: dynamic has '+horizonsData.length+' while static has '+horizonsExtraData.length;
-		for (var i = 0; i < horizonsData.length; ++i) {
-			var data = horizonsData[i];
+		if (horizonsData.coords.length != horizonsExtraData.length) throw 'static to dynamic data lengths differ: dynamic has '+horizonsData.coords.length+' while static has '+horizonsExtraData.length;
+		for (var i = 0; i < horizonsData.coords.length; ++i) {
+			var data = horizonsData.coords[i];
 			var extra = horizonsExtraData[i];
 			assert(data.id == extra.id, "got some bad data");
 			if (data.name.match(/^L[1-5]/)) {
@@ -629,23 +629,6 @@ Planets = makeClass({
 					currentIDs[data.id] = true;
 				}
 			}
-		}
-	},
-
-	addExtraCometData : function() {
-	
-		for (var i = 0; i < cometData.length; ++i) {
-			var data = cometData[i];
-			Planets.prototype.planetClasses.push(
-				makeClass({
-					super : Planet,
-					name : data.name,
-					isComet : true,
-					orbitData : data,
-					parent : 'Sun',
-					hide : true	//hide by default
-				})
-			);
 		}
 	},
 
@@ -732,7 +715,6 @@ Planets = makeClass({
 mergeInto(Planets.prototype, Array.prototype);
 
 Planets.prototype.addExtraHorizonData();	//add the 180 other satellites out there...
-Planets.prototype.addExtraCometData();	//3282 comets ...
 
 Planets.prototype.indexes = {};
 Planets.prototype.planetClassForHorizonID = {};
@@ -2200,8 +2182,8 @@ function init1() {
 		//so I'm thinking cron job to update and then integrate to extrapolate for later time.
 		
 		planets = new Planets();
-		for (var i = 0; i < horizonsData.length; ++i) {
-			var data = horizonsData[i];
+		for (var i = 0; i < horizonsData.coords.length; ++i) {
+			var data = horizonsData.coords[i];
 			var planetClass = Planets.prototype.planetClassForHorizonID[data.id];
 			if (planetClass) {	//excluding the BCC and Ln points
 				var planet = planets[planetClass.prototype.index];
@@ -2214,7 +2196,7 @@ function init1() {
 		}
 		
 		initPlanets = planets.clone();
-		julianDate = 2456919.460625;	//sep 18 2014 corresponding to when the last horizons data update was
+		julianDate = horizonsData.julianDate;	//sep 18 2014 corresponding to when the last horizons data update was
 		initJulianDate = julianDate;
 		refreshCurrentTimeText();
 		

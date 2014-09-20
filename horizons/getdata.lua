@@ -1,8 +1,7 @@
 require 'ext'
 local socket = require 'socket'
-if not json then pcall(function() json = require 'json' end) end
-if not json then pcall(function() json = require 'dkjson' end) end
-if not json then error 'failed to find json module' end
+local json = require 'dkjson'
+local julian = assert(loadfile('../lua/julian.lua'))()
 
 -- try to match the astro-phys date on file
 
@@ -81,10 +80,14 @@ local function getMajorBodies(data)
 	return bodies
 end
 
+local time = os.time()
+local date = os.date('*t', time)
+local julianDate = julian.fromCalendar(date)
+local startDate = os.date('%Y-%b-%d %H:%M', time)	--'2014-Sep-18 22:07'
+local endDate = os.date('%Y-%b-%d %H:%M', time+61)	--'2014-Sep-18 22:08'
+
 local entries = {}
 local function run()
-	local startDate = '2014-Sep-18 22:07'
-	local endDate = '2014-Sep-18 22:08'
 
 	socket.sleep(3)	-- stop two seconds for terminal negotiation ... or implement it
 	readUntil('Horizons>')
@@ -164,5 +167,9 @@ end)
 f:close()
 conn:close()
 
+entries = {
+	coords = entries,
+	julianDate = julianDate,
+}
 io.writefile('full-horizons-results.json', 'horizonsData = '..json.encode(entries, {indent=true})..';')
 

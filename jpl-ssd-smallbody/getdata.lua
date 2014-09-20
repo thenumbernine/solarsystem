@@ -6,7 +6,7 @@ either JSON or SQLite3 at the moment
 
 require 'ext'
 
-local julian = assert(loadfile('../lua/julian.lua'))()	-- in ../lua/julian.lua
+local julian = assert(loadfile('../lua/julian.lua'))()
 local json = require 'dkjson'
 
 local function readCache(filename, url)
