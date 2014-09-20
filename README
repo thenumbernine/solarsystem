@@ -26,6 +26,10 @@ Position and velocity data is from NASA Horizons telnet server horizons.jpl.nasa
 Planet characteristics are from NASA Horizons server and from http://solarsystem.nasa.gov/planets/index.cfm
 Comets and small bodies are from NASA JPL SSD data files at http://ssd.jpl.nasa.gov/?sb_elem
 
+See horizons/README for how to gather data from NASA Horizons telnet site
+See jpl-ssd-smallbody/README for how to gather data from NASA JPL/SSD
+See lua/eph.lua for gathering data from NASA Horizons Ephemeris 406
+
 TODO
 
 - remove the old 'class-per-planet' system and switch to an 'object-per-planet' system.  the old was more clear with Lua, but porting it directly to JS is very ugly. 

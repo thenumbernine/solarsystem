@@ -1,5 +1,8 @@
 #!/usr/bin/env lua -lluarocks.require
 require 'ext'
+
+-- TODO write out to sqlite3, see if that saves us any space
+
 local julian = assert(loadfile('../lua/julian.lua'))()	-- in ../lua/julian.lua
 local json = require 'dkjson'
 
@@ -69,29 +72,110 @@ function Columns:__call(line)
 	return ColumnAccess(self, line)
 end
 
+local OutputToJSON = class()
+
+--[[
+args:
+	filename
+	variableName
+--]]
+function OutputToJSON:init(args)
+	self.filename = assert(args.filename)
+	self.variableName = assert(args.variableName)
+
+	self.outputLines = table()
+	self.outputLines:insert(self.variableName..' = [')
+end
+
+function OutputToJSON:processBody(body)
+	self.outputLines:insert('\t'..json.encode(body)..',')
+end
+
+function OutputToJSON:done()
+	self.outputLines:insert('];')
+	io.writefile(self.filename, self.outputLines:concat('\n'))
+end
+
+local OutputToSQLite3 = class()
+
+--[[
+args:
+	variableName = the database filename, given a suffix of .sqlite3
+--]]
+function OutputToSQLite3:init(args)
+	local databaseName = assert(args.variableName)
+
+	local luasql = require 'luasql.sqlite3'
+	self.env = assert(luasql.sqlite3())
+	self.conn = assert(self.env:connect(databaseName..'.sqlite3'))
+end
+
+function OutputToSQLite3:processBody(body)
+	if not self.createdTable then
+		self.createdTable = true
+		
+		self.tableName = 'data'
+		self.conn:execute('drop table '..self.tableName)	--might fail if the table is new
+
+		self.columns = table()
+
+		local luaToSqlite3Types = {
+			number = 'real',
+			string = 'text',
+		}
+
+		local columnDescs = table()
+		for columnName,value in pairs(body) do
+			local columnType = assert(luaToSqlite3Types[type(value)])
+			self.columns:insert{
+				name = columnName,
+				type = columnType
+			}
+			columnDescs:insert(columnName .. ' ' .. columnType)
+		end
+		local cmd = 'create table '..self.tableName..'('..columnDescs:concat(', ')..')'
+		print(cmd)	
+		-- don't create the table until the first body
+		assert(self.conn:execute(cmd))
+	end
+
+	local valueStrs = table()
+	for _,column in ipairs(self.columns) do
+		local value = body[column.name]
+		if column.type == 'text' then
+			value = ('%q'):format(value)
+		end
+		valueStrs:insert(value)
+	end
+	local cmd = 'insert into '..self.tableName..' values ('..valueStrs:concat(',')..')'
+	print(cmd)	
+	assert(self.conn:execute(cmd))
+end
+
+function OutputToSQLite3:done()
+	self.conn:close()
+	self.env:close()
+end
+
 --[[
 args:
 	inputFile (text)
-	outputFile (json)
+	processRow = function(line)
+	outputMethod
 --]]
-local function processFile(args)
+local function processToFile(args)
 	local inputFilename = assert(args.inputFilename)
-	local outputFilename = assert(args.outputFilename)
-	local variableName = assert(args.variableName)
 	local processRow = assert(args.processRow)
+	local outputMethod = assert(args.outputMethod)
 
 	local lastTime = os.time()
 	local lines = io.readfile(inputFilename):split('\n')
 	local cols = Columns(lines)
-	local outputLines = table()
-	outputLines:insert(variableName..' = [')
 	for i=3,#lines do	-- skip headers and ---- line
 		local line = lines[i]
 		if #line:trim() > 0 then
 			xpcall(function()
-				local row = cols(line)
-				local body = assert(processRow(row))
-				outputLines:insert('\t'..json.encode(body)..',')
+				outputMethod:processBody(assert(processRow(cols(line))))
 			end, function(err)
 				io.stderr:write('failed on file '..inputFilename..' line '..i..'\n')
 				io.stderr:write(err..'\n'..debug.traceback()..'\n')
@@ -104,16 +188,19 @@ local function processFile(args)
 			lastTime = thisTime
 		end
 	end
-	outputLines:insert('];')
-	io.writefile(outputFilename, outputLines:concat('\n'))
-
+	outputMethod:done()
 end
 
+--local outputMethod = OutputToJSON
+local outputMethod = OutputToSQLite3
+
 -- process comets
-processFile{
+processToFile{
 	inputFilename = 'ELEMENTS.COMET',
-	outputFilename = 'comets.json',
-	variableName = 'cometData',
+	outputMethod = outputMethod{
+		filename = 'comets.json',
+		variableName = 'cometData',
+	},
 	processRow = function(row)
 		local body = {}
 		local numberAndName = row['Num  Name']
@@ -143,10 +230,12 @@ processFile{
 }
 
 -- process numbered bodies 
-processFile{
+processToFile{
 	inputFilename = 'ELEMENTS.NUMBR',
-	outputFilename = 'smallbodies-numbered.json',
-	variableName = 'numberedSmallBodyData',
+	outputMethod = outputMethod{
+		filename = 'smallbodies-numbered.json',
+		variableName = 'numberedSmallBodyData',
+	},
 	processRow = function(row)
 		local body = {}
 		body.idNumber = row.Num:trim()
@@ -166,10 +255,12 @@ processFile{
 }
 
 -- process unnumbered bodies 
-processFile{
+processToFile{
 	inputFilename = 'ELEMENTS.UNNUM',
-	outputFilename = 'smallbodies-unnumbered.json',
-	variableName = 'unnumberedSmallBodyData',
+	outputMethod = outputMethod{
+		filename = 'smallbodies-unnumbered.json',
+		variableName = 'unnumberedSmallBodyData',
+	},
 	processRow = function(row)
 		local body = {}
 		body.name = row.Designation:trim()
