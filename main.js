@@ -714,7 +714,9 @@ Planets = makeClass({
 
 	//assume class will be removed separately, just remove the instance
 	remove : function(index) {
-		assert(index >= 0 && index < this.length);
+		if (!(index >= 0 && index < this.length)) {
+			throw "tried to remove OOB planet "+index;
+		}
 		for (var i = index; i < this.length-1; ++i) {
 			this[i] = this[i+1];
 		}

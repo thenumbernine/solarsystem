@@ -41,7 +41,7 @@ TODO
 - when mouseover from a distance, if a planet and its moons are compressed to a single point in view, have the planet name show up first (related to hierarchical representation of planets)
 - correct orientation of skybox.  the solar system is not in plane with the milky way, it is perpendicular to it.
 - add a atmosphere shader to the Earth (and other planets) so it doesn't look so dull
-- make overlays computed by GPU so they can recompute realtime during integration.
+- make overlays computed by GPU so they can recompute realtime during integration (like they run in realtime for the LuaJIT version.  what's up V8?)
 - cron task for updating positions from NASA
 	- or use ephemeris data - for major planets it exists, but what about for moons?
 - smoother blending camera angle when selecting planets
