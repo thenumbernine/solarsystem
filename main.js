@@ -2167,6 +2167,7 @@ function init1() {
 			timeout : 5000
 		}).error(function() {
 			button.prop('disabled', 0);
+			//TODO animate background color of search text
 		}).done(function(results) {
 			button.prop('disabled', 0);
 			console.log('results',results);
@@ -2889,25 +2890,22 @@ function initPlanetOrbitPathObj(planet) {
 	//if it's a comet then 
 	//calculate pos and vel and mass by parameters ... ?
 	// or just put an orbit mesh there?
-	if (planet.isComet) {
+	if (planet.isComet || planet.isAsteroid) {
 	
 		var eccentricity = assert(planet.orbitData.eccentricity);
 		if (eccentricity >= 1) {
 			console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
 			return;
 		}
-	
-		/*
-		a = semi-major axis = (rper + rap) / 2
-		e = eccentricity = (rap - rper) / (rap + rper) = (rap - rper) / (2a)
-		rap = 2a - rper
-		rper = 2a - rap
-		rper = (1 - e) a
-		rap = (1 + e) a
-		a = 
-		*/
-		var pericenterDistance = assert(planet.orbitData.perihelionDistance);
-		var semiMajorAxis = pericenterDistance / (1 - eccentricity);
+
+		var pericenterDistance, semiMajorAxis;
+		if (planet.isComet) {
+			pericenterDistance = assert(planet.orbitData.perihelionDistance);
+			semiMajorAxis = pericenterDistance / (1 - eccentricity);
+		} else if (planet.isAsteroid) {
+			semiMajorAxis = assert(planet.orbitData.semiMajorAxis);
+			pericenterDistance = semiMajorAxis * (1 - eccentricity);
+		}
 
 		var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;

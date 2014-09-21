@@ -196,7 +196,7 @@ processToFile{
 		body.idNumber = row.Num:trim()
 		body.name = row.Name:trim()
 		body.epoch = assert(tonumber(row.Epoch:trim()))
-		body.semiMajorAxis = assert(tonumber(row.a:trim()))
+		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))
 		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
