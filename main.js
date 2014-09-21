@@ -2114,7 +2114,7 @@ function init1() {
 				cometParent = new HierarchicalCheckboxControl({
 					title : 'Comets'
 				});
-				cometParent.div.appendTo(celestialBodiesSidePanel);
+				cometParent.div.appendTo($('#celestialBodiesVisibleBodies'));
 				cometParent.childDiv.hide();
 				cometParent.checkbox.hide();
 			}
@@ -2133,7 +2133,7 @@ function init1() {
 			cometParent.addChild(controls);
 		} else {
 			if (parentPlanetIndex === undefined) {
-				controls.div.appendTo(celestialBodiesSidePanel);
+				controls.div.appendTo($('#celestialBodiesVisibleBodies'));
 			} else {
 				celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
 			}
@@ -2163,9 +2163,34 @@ function init1() {
 		}
 	}
 	
-	$('<br>').appendTo(celestialBodiesSidePanel);
+	$('<br>').appendTo($('#celestialBodiesVisibleBodies'));
 	
 
+	$('#celestialBodiesSearch').click(function() {
+		$.ajax({
+			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+			dataType : 'json',
+			data : {
+				comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
+				numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
+				unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
+				text : $('#celestialBodiesSearchText').val()
+			}
+		}).done(function(results) {
+			console.log('results',results);
+			var resultsDiv = $('#celestialBodiesSearchResults');
+			resultsDiv.empty();
+			for (var i = 0; i < results.rows.length; ++i) {
+				var row = results.rows[i];
+				$('<div>', {
+					text : row.name
+				}).appendTo(resultsDiv);
+				//TODO put an 'add' button next to each
+				//on clicking it, add the body to the planet list 
+				//and repopulate the 'extra' div
+			}
+		});
+	});
 
 
 	// rest of the init

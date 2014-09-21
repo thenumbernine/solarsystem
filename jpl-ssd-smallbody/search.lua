@@ -59,7 +59,7 @@ function run(env)
 			if isNumbered then bodyTypeCond:insert('bodyType == 1') end
 			if isUnnumbered then bodyTypeCond:insert('bodyType == 2') end
 	
-			local fromStmt = 'data where name like '..('%q'):format(searchText)..' and ('..bodyTypeCond:concat(' or ')..')'
+			local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
 			
 			local cmd = 'select count() from '..fromStmt
 			cur = assert(conn:execute(cmd))
@@ -95,7 +95,7 @@ function run(env)
 
 			local json = require 'dkjson'
 			local results = {rows=rows, count=count}
-			return 'results = '..json.encode(results)..';'
+			return json.encode(results)
 		end, function(err)
 			if cur then cur:close() end
 			if conn then conn:close() end
