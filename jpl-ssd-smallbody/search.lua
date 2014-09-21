@@ -30,9 +30,9 @@ function run(env)
 	local searchText = ''
 	local searchPage = 1
 	if get then
-		isComet = get.comet
-		isNumbered = get.numbered
-		isUnnumbered = get.unnumbered
+		isComet = get.comet ~= '0'
+		isNumbered = get.numbered ~= '0'
+		isUnnumbered = get.unnumbered ~= '0'
 		searchText = get.text or ''
 		searchPage = math.max(1, tonumber(get.page) or 1)
 	end

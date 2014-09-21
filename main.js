@@ -2217,9 +2217,13 @@ function init1() {
 					$('<button>', {
 						text : '+',
 						click : function() {
-							rowDiv.remove();
+							//rowDiv.remove();
 								
 							var newRowDiv = $('<div>');
+							
+							//if the planet is already added then bail
+							if (planets.indexes[name] !== undefined) return;
+							
 							$('<button>', {
 								text : '-',
 								click : function() {
@@ -3054,8 +3058,7 @@ function initPlanetOrbitPathObj(planet) {
 				var func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
 				var deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
 				var delta = func / deriv;
-				if (delta == 0) break;
-				console.log(delta);
+				if (Math.abs(delta) < 1e-15) break;
 				eccentricAnomaly -= delta;
 			}
 			var sinEccentricAnomaly = Math.sin(eccentricAnomaly);	
