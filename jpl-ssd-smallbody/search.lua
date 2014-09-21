@@ -7,6 +7,9 @@ local bodyTypeForEnum = {
 	[1] = 'numbered asteroid',
 	[2] = 'unnumbered asteroid',
 }
+		
+local columnForIndex = require 'coldesc'
+local columnForName = table.map(columnForIndex, function(column) return column, column.name end)
 
 --[[
 GET parameters:
@@ -81,11 +84,11 @@ function run(env)
 				local body = {}
 				for k,v in pairs(row) do
 					if k == 'pk' then	-- don't return PK
+						v = nil
 					elseif k == 'bodyType' then
-						body[k] = bodyTypeForEnum[row[k]]
-					else
-						body[k] = row[k]
+						v = bodyTypeForEnum[v]
 					end
+					body[k] = v
 				end
 				table.insert(rows, body)
 				

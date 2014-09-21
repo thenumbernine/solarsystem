@@ -54,24 +54,7 @@ local OutputToSQLite3 = class()
 --[[
 I'm going to define columns up front, then sql merges will be easier
 --]]
-OutputToSQLite3.columns = {
-	{name='pk', type='integer primary key'},
-	{name='bodyType', type='integer'},	-- 0 = comet, 1 = numbered asteroid, 2 = unnumbered asteroid
-	{name='idNumber', type='text'},	-- comets, asteroids
-	{name='name', type='text'},
-	{name='epoch', type='number'},
-	{name='perihelionDistance', type='number'},	-- comets
-	{name='semiMajorAxis', type='number'},	-- asteroids
-	{name='eccentricity', type='number'},
-	{name='inclindation', type='number'},
-	{name='argumentOfPerihelion', type='number'},
-	{name='longitudeOfAscendingNode', type='number'},
-	{name='meanAnomaly', type='number'},	-- asteroids
-	{name='absoluteMagnitude', type='number'},	-- asteroids
-	{name='magnitudeSlopeParameter', type='number'},	-- asteroids
-	{name='timeOfPerihelionPassage', type='number'},	-- comets
-	{name='orbitSolutionReference', type='text'},
-}
+OutputToSQLite3.columns = require 'coldesc'
 
 OutputToSQLite3.tableName = 'data'
 
@@ -215,7 +198,7 @@ processToFile{
 		body.epoch = assert(tonumber(row.Epoch:trim()))
 		body.semiMajorAxis = assert(tonumber(row.a:trim()))
 		body.eccentricity = assert(tonumber(row.e:trim()))
-		body.inclindation = math.rad(assert(tonumber(row.i:trim())))
+		body.inclination = math.rad(assert(tonumber(row.i:trim())))
 		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
 		body.meanAnomaly = math.rad(assert(tonumber(row.M:trim())))
@@ -240,7 +223,7 @@ processToFile{
 		body.epoch = assert(tonumber(row.Epoch:trim()))
 		body.semiMajorAxis = assert(tonumber(row.a:trim()))
 		body.eccentricity = assert(tonumber(row.e:trim()))
-		body.inclindation = math.rad(assert(tonumber(row.i:trim())))
+		body.inclination = math.rad(assert(tonumber(row.i:trim())))
 		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
 		body.meanAnomaly = math.rad(assert(tonumber(row.M:trim())))

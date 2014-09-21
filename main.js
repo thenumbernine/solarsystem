@@ -2002,9 +2002,6 @@ function init1() {
 	});
 
 	$.each(Planets.prototype.planetClasses, function(planetIndex,planetClass) {
-		//comets don't even have recorded mass... so they can't influence calculations of gravity or tide
-		if (planetClass.prototype.isComet) return;
-
 		//if any other planet doesn't have recorded mass then skip it
 		if (planetClass.prototype.mass === undefined) return;
 
@@ -2108,18 +2105,6 @@ function init1() {
 		var parentPlanetIndex = planetClass.prototype.parent;
 		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
 
-		if (planetClass.prototype.isComet) {
-			parentPlanetIndex = -1;
-			if (!cometParent) {
-				cometParent = new HierarchicalCheckboxControl({
-					title : 'Comets'
-				});
-				cometParent.div.appendTo($('#celestialBodiesVisibleBodies'));
-				cometParent.childDiv.hide();
-				cometParent.checkbox.hide();
-			}
-		}
-
 		var controls = new HierarchicalCheckboxControl({
 			title : planetClass.prototype.name,
 			isChecked : !planetClass.prototype.hide,
@@ -2129,14 +2114,10 @@ function init1() {
 			planetIndex : planetIndex
 		});
 	
-		if (planetClass.prototype.isComet) {
-			cometParent.addChild(controls);
+		if (parentPlanetIndex === undefined) {
+			controls.div.appendTo($('#celestialBodiesVisibleBodies'));
 		} else {
-			if (parentPlanetIndex === undefined) {
-				controls.div.appendTo($('#celestialBodiesVisibleBodies'));
-			} else {
-				celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
-			}
+			celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
 		}
 
 		celestialBodiesControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
@@ -2166,7 +2147,14 @@ function init1() {
 	$('<br>').appendTo($('#celestialBodiesVisibleBodies'));
 	
 
+	$('#celestialBodiesSearchText').keydown(function(e){
+		if (e.keyCode == 13) {
+			$('#celestialBodiesSearch').trigger('click');
+		}
+	});
 	$('#celestialBodiesSearch').click(function() {
+		var button = $(this);
+		button.prop('disabled', 1);
 		$.ajax({
 			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
 			dataType : 'json',
@@ -2175,20 +2163,68 @@ function init1() {
 				numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
 				unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
 				text : $('#celestialBodiesSearchText').val()
-			}
+			},
+			timeout : 5000
+		}).error(function() {
+			button.prop('disabled', 0);
 		}).done(function(results) {
+			button.prop('disabled', 0);
 			console.log('results',results);
 			var resultsDiv = $('#celestialBodiesSearchResults');
 			resultsDiv.empty();
-			for (var i = 0; i < results.rows.length; ++i) {
-				var row = results.rows[i];
-				$('<div>', {
-					text : row.name
-				}).appendTo(resultsDiv);
+			$.each(results.rows, function(i,row) {
+				var rowDiv = $('<div>');
+				rowDiv.appendTo(resultsDiv);
+
+				var name = row.name;
+				if (row.idNumber) {
+					name = row.idNumber+'/'+name;
+				}
+						
+				$('<button>', {
+					text : '+',
+					click : function() {
+						$(this).click = function() {};	//disable click
+						$(this).prop('disabled', 1);
+						
+						//add the row to the bodies
+
+						console.log('making class from',row);
+						var index = Planets.prototype.planetClasses.length;
+
+
+						Planets.prototype.planetClasses.push(
+							makeClass({
+								super : Planet,
+								name : name,
+								isComet : row.bodyType == 'comet',
+								isAsteroid : row.bodyType == 'numbered' || row.bodyType == 'unnumbered',
+								orbitData : row,
+								parent : planets.indexes.Sun,
+								index : index
+							})
+						);
+						
+						//instanciate it
+						var planet = new planets.planetClasses[index]();
+						planets[index] = planet;
+						planets.length = index+1;
+						
+						//add copy to initPlanets for when we get reset() working
+						initPlanets[index] = planet.clone();
+						initPlanets.length = planets.length;
+
+						initPlanetColorSchRadiusAngle(planet);
+						initPlanetSceneLatLonLineObjs(planet);
+						initPlanetOrbitPathObj(planet);
+					}
+				}).appendTo(rowDiv);
+
+				$('<span>', {text:name}).appendTo(rowDiv);
 				//TODO put an 'add' button next to each
 				//on clicking it, add the body to the planet list 
 				//and repopulate the 'extra' div
-			}
+			});
 		});
 	});
 
@@ -2344,6 +2380,152 @@ function init2() {
 	$('#timeControlDiv').show();
 	$('#infoDiv').show();
 	init3();
+}
+
+function initPlanetColorSchRadiusAngle(planet) {
+	var planetClassPrototype = planet.init.prototype;
+	var colors = {
+		Sun:[1,1,0],
+		Mercury:[.7,0,.2],
+		Venus:[0,1,0],
+		Earth:[0,0,1],
+		Moon:[.6,.6,.6],
+		Mars:[1,0,0],
+		Jupiter:[1,.5,0],
+		Saturn:[1,0,.5],
+		Uranus:[0,1,1],
+		Neptune:[1,0,1],
+		Pluto:[0,.5,1]
+	};
+	var color = colors[planet.name];
+	if (!color) {
+		//console.log("failed to find color for "+planet.name);
+		planetClassPrototype.color = [Math.random(), Math.random(), Math.random(), 1];
+		vec3.normalize(planetClassPrototype.color, planetClassPrototype.color);
+	} else {
+		planetClassPrototype.color = [color[0], color[1], color[2], 1];
+	}
+	planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
+	planetClassPrototype.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
+}
+
+function initPlanetSceneLatLonLineObjs(planet) {
+	var planetClassPrototype = planet.init.prototype;
+	if (planet.radius === undefined) {
+		//only/always use a point/basis/etc?
+	} else {
+		var triIndexArray = [];
+		var latLonIndexArray = [];
+		var vertexArray = [];
+		var texCoordArray = [];
+		var tideArray = [];
+
+		var latdiv = Math.floor((latMax-latMin)/latStep);
+		var londiv = Math.floor((lonMax-lonMin)/lonStep);
+		var vtx = [0,0,0];
+		for (var loni=0; loni <= londiv; ++loni) {
+			var lon = lonMin + loni * lonStep;
+			for (var lati=0; lati <= latdiv; ++lati) {
+				var lat = latMin + lati * latStep;
+				
+				planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
+				for (var j = 0; j < 3; ++j) {
+					vertexArray.push(vtx[j]);
+				}
+				
+				texCoordArray.push(lon / 360 + .5);
+				texCoordArray.push(lat / 180 + .5);
+
+				tideArray.push(0);
+
+				if (loni < londiv && lati < latdiv) {
+					for (var j = 0; j < quad.length; ++j) {
+						var ofs = quad[j];
+						var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
+						triIndexArray.push(index);
+					}
+					//if we're using 5 div step then every 6 will be 30 degrees
+					if ((loni * lonStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latdiv+1) * loni);
+						latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
+					}
+					if ((lati * latStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latdiv+1) * loni);
+						latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
+					}
+				}
+			}
+		}
+		
+		var vertexBuffer = new glutil.ArrayBuffer({
+			data : vertexArray
+		});
+		planetClassPrototype.sceneObj = new glutil.SceneObject({
+			mode : gl.TRIANGLES,
+			indexes : new glutil.ElementArrayBuffer({
+				data : triIndexArray
+			}),
+			attrs : {
+				vertex : vertexBuffer,
+				texCoord : new glutil.ArrayBuffer({
+					dim : 2,
+					data : texCoordArray
+				}),
+				tide : new glutil.ArrayBuffer({
+					dim : 1,
+					data : tideArray,
+					usage : gl.DYNAMIC_DRAW
+				})
+			},
+			uniforms : {
+				color : planetClassPrototype.color,
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				sunPos : [0,0,0],
+				ambient : planetClassPrototype.name == 'Sun' ? 1 : .3
+			},
+			parent : null,
+			static : true 
+		});
+		planetClassPrototype.latLonObj = new glutil.SceneObject({
+			mode : gl.LINES,
+			indexes : new glutil.ElementArrayBuffer({
+				data : latLonIndexArray
+			}),
+			shader : colorShader,
+			attrs : {
+				vertex : vertexBuffer
+			},
+			uniforms : {
+				color : [1,1,1,.2]
+			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			parent : null
+		});
+	}
+	
+	if (!(planetClassPrototype.isComet || planetClassPrototype.isAsteroid) &&
+		(planetClassPrototype.parent === planets.indexes.Sun ||
+		planet === planets[planets.indexes.Sun]))
+	{
+		planetClassPrototype.lineObj = new glutil.SceneObject({
+			mode : gl.LINES,
+			shader : colorShader,
+			attrs : {
+				vertex : new glutil.ArrayBuffer({
+					count : 2,
+					usage : gl.DYNAMIC_DRAW
+				})
+			},
+			uniforms : {
+				color : planetClassPrototype.color
+			},
+			parent : null,
+			static : true 
+		});
+	}
 }
 
 function init3() {
@@ -2560,153 +2742,17 @@ void main() {
 		parent : null
 	});
 
-	var colors = {
-		Sun:[1,1,0],
-		Mercury:[.7,0,.2],
-		Venus:[0,1,0],
-		Earth:[0,0,1],
-		Moon:[.6,.6,.6],
-		Mars:[1,0,0],
-		Jupiter:[1,.5,0],
-		Saturn:[1,0,.5],
-		Uranus:[0,1,1],
-		Neptune:[1,0,1],
-		Pluto:[0,.5,1]
-	};
 	var planetsDone = 0;
 
 	for (var planetIndex_ = 0; planetIndex_ < planets.length; ++planetIndex_) { (function(){
 		var planetIndex = planetIndex_;
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
-		var color = colors[planet.name];
-		if (!color) {
-			//console.log("failed to find color for "+planet.name);
-			planetClassPrototype.color = [Math.random(), Math.random(), Math.random(), 1];
-			vec3.normalize(planetClassPrototype.color, planetClassPrototype.color);
-		} else {
-			planetClassPrototype.color = [color[0], color[1], color[2], 1];
-		}
-		planetClassPrototype.schwarzschildRadius = 2 * planetClassPrototype.mass * kilogramsPerMeter; 
-		planetClassPrototype.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
-	
+		initPlanetColorSchRadiusAngle(planet);
+		
 		var checkDone = function() {
 			
-			if (planet.radius === undefined) {
-				//only/always use a point/basis/etc?
-			} else {
-				var triIndexArray = [];
-				var latLonIndexArray = [];
-				var vertexArray = [];
-				var texCoordArray = [];
-				var tideArray = [];
-
-				var latdiv = Math.floor((latMax-latMin)/latStep);
-				var londiv = Math.floor((lonMax-lonMin)/lonStep);
-				var vtx = [0,0,0];
-				for (var loni=0; loni <= londiv; ++loni) {
-					var lon = lonMin + loni * lonStep;
-					for (var lati=0; lati <= latdiv; ++lati) {
-						var lat = latMin + lati * latStep;
-						
-						planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
-						for (var j = 0; j < 3; ++j) {
-							vertexArray.push(vtx[j]);
-						}
-						
-						texCoordArray.push(lon / 360 + .5);
-						texCoordArray.push(lat / 180 + .5);
-
-						tideArray.push(0);
-
-						if (loni < londiv && lati < latdiv) {
-							for (var j = 0; j < quad.length; ++j) {
-								var ofs = quad[j];
-								var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-								triIndexArray.push(index);
-							}
-							//if we're using 5 div step then every 6 will be 30 degrees
-							if ((loni * lonStep) % 30 == 0) {
-								latLonIndexArray.push(lati + (latdiv+1) * loni);
-								latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
-							}
-							if ((lati * latStep) % 30 == 0) {
-								latLonIndexArray.push(lati + (latdiv+1) * loni);
-								latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
-							}
-						}
-					}
-				}
-				
-				var vertexBuffer = new glutil.ArrayBuffer({
-					data : vertexArray
-				});
-				planetClassPrototype.sceneObj = new glutil.SceneObject({
-					mode : gl.TRIANGLES,
-					indexes : new glutil.ElementArrayBuffer({
-						data : triIndexArray
-					}),
-					attrs : {
-						vertex : vertexBuffer,
-						texCoord : new glutil.ArrayBuffer({
-							dim : 2,
-							data : texCoordArray
-						}),
-						tide : new glutil.ArrayBuffer({
-							dim : 1,
-							data : tideArray,
-							usage : gl.DYNAMIC_DRAW
-						})
-					},
-					uniforms : {
-						color : planetClassPrototype.color,
-						pos : [0,0,0],
-						angle : [0,0,0,1],
-						sunPos : [0,0,0],
-						ambient : planetClassPrototype.name == 'Sun' ? 1 : .3
-					},
-					parent : null,
-					static : true 
-				});
-				planetClassPrototype.latLonObj = new glutil.SceneObject({
-					mode : gl.LINES,
-					indexes : new glutil.ElementArrayBuffer({
-						data : latLonIndexArray
-					}),
-					shader : colorShader,
-					attrs : {
-						vertex : vertexBuffer
-					},
-					uniforms : {
-						color : [1,1,1,.2]
-					},
-					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-					pos : [0,0,0],
-					angle : [0,0,0,1],
-					parent : null
-				});
-			}
-			
-			if (!planetClassPrototype.isComet &&
-				(planetClassPrototype.parent === planets.indexes.Sun ||
-				planet === planets[planets.indexes.Sun]))
-			{
-				planetClassPrototype.lineObj = new glutil.SceneObject({
-					mode : gl.LINES,
-					shader : colorShader,
-					attrs : {
-						vertex : new glutil.ArrayBuffer({
-							count : 2,
-							usage : gl.DYNAMIC_DRAW
-						})
-					},
-					uniforms : {
-						color : planetClassPrototype.color
-					},
-					parent : null,
-					static : true 
-				});
-			}	
+			initPlanetSceneLatLonLineObjs(planet);
 			
 			++planetsDone;
 			if (planetsDone == planets.length) {
@@ -2819,6 +2865,345 @@ void main() {
 	}
 }
 
+var orbitShader;
+function initPlanetOrbitPathObj(planet) {
+	var planetClassPrototype = planet.init.prototype;
+	var planetIndex = planet.index;
+
+	// based on planet position and velocity, find plane of orbit
+	if (planet.parent === undefined) {
+		console.log(planet.name+' has no orbit parent');
+		planetClassPrototype.orbitAxis = [0,0,1];
+		planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+		return;
+	}
+
+	var parentPlanet = planets[planet.parent];
+	if (parentPlanet === undefined) {
+		console.log(planet.name+' has an invalid orbit planet');
+		planetClassPrototype.orbitAxis = [0,0,1];
+		planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+		return;
+	}
+
+	//if it's a comet then 
+	//calculate pos and vel and mass by parameters ... ?
+	// or just put an orbit mesh there?
+	if (planet.isComet) {
+	
+		var eccentricity = assert(planet.orbitData.eccentricity);
+		if (eccentricity >= 1) {
+			console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
+			return;
+		}
+	
+		/*
+		a = semi-major axis = (rper + rap) / 2
+		e = eccentricity = (rap - rper) / (rap + rper) = (rap - rper) / (2a)
+		rap = 2a - rper
+		rper = 2a - rap
+		rper = (1 - e) a
+		rap = (1 + e) a
+		a = 
+		*/
+		var pericenterDistance = assert(planet.orbitData.perihelionDistance);
+		var semiMajorAxis = pericenterDistance / (1 - eccentricity);
+
+		var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
+		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
+		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+		var timeOfPeriapsisCrossing = assert(planet.orbitData.timeOfPerihelionPassage);	//julian day
+		
+		var longitudeOfAscendingNode = assert(planet.orbitData.longitudeOfAscendingNode);
+		var cosAscending = Math.cos(longitudeOfAscendingNode);
+		var sinAscending = Math.sin(longitudeOfAscendingNode);
+
+		var argumentOfPericenter = assert(planet.orbitData.argumentOfPerihelion);
+		var cosPericenter = Math.cos(argumentOfPericenter);
+		var sinPericenter = Math.sin(argumentOfPericenter);
+
+		var inclination = assert(planet.orbitData.inclination);
+		var cosInclination = Math.cos(inclination);
+		var sinInclination = Math.sin(inclination);
+	
+		var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
+				 semiMajorAxis * sinPericenter * sinInclination];
+		var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+
+		//how long until it crosses the periapsis
+		// solve for eccentric anomaly...
+		var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;	//unitless
+		var pathEccentricAnomaly = 2 * Math.PI * tau;
+		var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+		var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+		var posX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
+		var posY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
+		var posZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
+		var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
+		var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+		var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+		planet.pos[0] = posX + parentPlanet.pos[0];
+		planet.pos[1] = posY + parentPlanet.pos[1];
+		planet.pos[2] = posZ + parentPlanet.pos[2];
+		planet.vel[0] = velX + parentPlanet.vel[0];
+		planet.vel[1] = velY + parentPlanet.vel[1];
+		planet.vel[2] = velZ + parentPlanet.vel[2];
+		vec3.copy(initPlanets[planetIndex].pos, planet.pos);
+		vec3.copy(initPlanets[planetIndex].vel, planet.vel);
+		velX = velX / (60*60*24);	//m/s
+		velY = velY / (60*60*24);
+		velZ = velZ / (60*60*24);
+		var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
+
+		//TODO rather than assume the comet is at its closest approach, calculate it using the 'timeOfPerihelionPassage' / 'epoch' info
+		var distanceToParent = vec3.length(planet.pos);
+		var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
+		var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
+		var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+		
+		planetClassPrototype.keplerianOrbitalElements = {
+			semiMajorAxis : semiMajorAxis,
+			eccentricity : eccentricity,
+			eccentricAnomaly : eccentricAnomaly,
+			longitudeOfAscendingNode : longitudeOfAscendingNode,
+			argumentOfPericenter : argumentOfPericenter,
+			inclination : inclination,
+			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
+			orbitalPeriod : orbitalPeriod
+		};
+		
+		//iterate around the eccentric anomaly to reconstruct the path
+		var vertexes = [];
+		var res = 250;
+		for (var i = 0; i < res; ++i) {
+			var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+			var pathEccentricAnomaly = eccentricAnomaly + theta;
+			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+			
+			var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
+			var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
+			var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
+
+			//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
+			vtxPosX += parentPlanet.pos[0] /*- checkPosToPosX*/ - planet.pos[0];
+			vtxPosY += parentPlanet.pos[1] /*- checkPosToPosY*/ - planet.pos[1];
+			vtxPosZ += parentPlanet.pos[2] /*- checkPosToPosZ*/ - planet.pos[2];
+	
+			//add to buffer
+			vertexes.push(vtxPosX);
+			vertexes.push(vtxPosY);
+			vertexes.push(vtxPosZ);
+		
+			//pack transparency info into the vertex
+			var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+			vertexes.push(alpha);
+		}
+
+		planetClassPrototype.orbitPathObj = new glutil.SceneObject({
+			mode : gl.LINE_STRIP,
+			shader : orbitShader,
+			attrs : {
+				vertex : new glutil.ArrayBuffer({
+					dim : 4,
+					data : vertexes
+				})
+			},
+			uniforms : {
+				color : planetClassPrototype.color
+			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			parent : null
+		});	
+
+		return;
+	}
+
+	//consider position relative to orbitting parent
+	// should I be doing the same thing with the velocity?  probably...
+	var posX = planet.pos[0] - parentPlanet.pos[0];
+	var posY = planet.pos[1] - parentPlanet.pos[1];
+	var posZ = planet.pos[2] - parentPlanet.pos[2];
+
+	//convert from m/day to m/s to coincide with the units of our gravitational constant
+	var velX = (planet.vel[0] - parentPlanet.vel[0]) / (60 * 60 * 24);
+	var velY = (planet.vel[1] - parentPlanet.vel[1]) / (60 * 60 * 24);
+	var velZ = (planet.vel[2] - parentPlanet.vel[2]) / (60 * 60 * 24);
+
+	var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
+
+	var angularMomentumX = posY * velZ - posZ * velY; //m^2/s
+	var angularMomentumY = posZ * velX - posX * velZ; 
+	var angularMomentumZ = posX * velY - posY * velX; 
+	var angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
+	var angularMomentumMag = Math.sqrt(angularMomentumMagSq);
+	if (angularMomentumMag < 1e-9) {
+		planetClassPrototype.orbitAxis = [0,0,1];
+	} else {
+		var axisX = angularMomentumX / angularMomentumMag;
+		var axisY = angularMomentumY / angularMomentumMag;
+		var axisZ = angularMomentumZ / angularMomentumMag;
+		planetClassPrototype.orbitAxis = [axisX, axisY, axisZ];
+	}
+
+	var basisX = [0,0,0];
+	var basisY = [0,0,0];
+	var basisZ = planetClassPrototype.orbitAxis;
+	//TODO use the inclination and longitudeOfAscendingNode
+	calcBasis(basisX, basisY, basisZ);
+	//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
+	planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
+
+	//now decompose the relative position in the coordinates of the orbit basis
+	//i've eliminated all but one of the rotation degrees of freedom ...
+
+	//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
+
+	var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
+	var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
+	var gravitationalParameter = gravitationalConstant * (planet.mass + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+	var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
+	var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
+	var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
+	var eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
+	
+	var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
+	var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
+	var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+	
+	var sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
+	var cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
+	var inclination = Math.atan2(sinInclination, cosInclination);
+
+	var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
+	var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
+	var argumentOfPericenter = Math.atan(sinPericenter, cosPericenter);
+
+	var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
+	var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
+	var longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);
+
+	var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
+	var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+	var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
+
+	var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
+			 semiMajorAxis * sinPericenter * sinInclination];
+	var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+
+	/*
+	to convert back:
+	pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
+	rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly) 
+	*/
+	var checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
+	var checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
+	var checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
+
+	var checkPosToPosX = checkPosX - posX;
+	var checkPosToPosY = checkPosY - posY;
+	var checkPosToPosZ = checkPosZ - posZ;
+	var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
+	var checkPosError = checkPosToPosDist / distanceToParent;
+	if (checkPosError === checkPosError) {
+		if (checkPosError > 1e-5) {	//only report significant error
+			console.log(planet.name+' error of reconstructed position '+ checkPosError);
+		}
+	} else {	//NaN? debug!
+		
+	/*		
+		for (k in planetClassPrototype) {
+			var v = planetClassPrototype[k];
+			if (k != 'name' && typeof(v) != 'function') {
+				console.log(planetClassPrototype.name, k, v);
+			}
+		}
+	*/
+		console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
+	}
+
+	planetClassPrototype.keplerianOrbitalElements = {
+		relVelSq : velSq,
+		gravitationalParameter : gravitationalParameter,
+		specificOrbitalEnergy : specificOrbitalEnergy,
+		distanceToParent : distanceToParent,
+		semiMajorAxis : semiMajorAxis,
+		semiLatusRectum : semiLatusRectum,
+		eccentricity : eccentricity,
+		eccentricAnomaly : eccentricAnomaly,
+		inclination : inclination,
+		argumentOfPericenter : argumentOfPericenter,
+		longitudeOfAscendingNode : longitudeOfAscendingNode,
+		timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
+		orbitalPeriod : orbitalPeriod
+	};	
+
+	//not NaN, we successfully reconstructed the position
+	if (checkPosError === checkPosError) {
+		//iterate around the eccentric anomaly to reconstruct the path
+		var vertexes = [];
+		var res = 250;
+		
+		for (var i = 0; i < res; ++i) {
+			var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+			var pathEccentricAnomaly = eccentricAnomaly + theta;
+			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+			
+			var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
+			var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
+			var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
+
+			//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
+			var sun = planets
+			//if centered around the orbitting planet ...
+			vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
+			vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
+			vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
+			//global positions...
+			//vtxPosX += parentPlanet.pos[0];
+			//vtxPosY += parentPlanet.pos[1];
+			//vtxPosZ += parentPlanet.pos[2];
+	
+			//add to buffer
+			vertexes.push(vtxPosX);
+			vertexes.push(vtxPosY);
+			vertexes.push(vtxPosZ);
+		
+			//pack transparency info into the vertex
+			var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+			vertexes.push(alpha);
+		}
+		
+		planetClassPrototype.orbitPathObj = new glutil.SceneObject({
+			mode : gl.LINE_STRIP,
+			shader : orbitShader,
+			attrs : {
+				vertex : new glutil.ArrayBuffer({
+					dim : 4,
+					data : vertexes
+				})
+			},
+			uniforms : {
+				color : planetClassPrototype.color
+			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			parent : null
+		});
+	}
+
+}
+
 function initOrbitPaths() {
 	var gravWellShader = new ModifiedDepthShaderProgram({
 		context : gl,
@@ -2845,7 +3230,7 @@ void main() {
 	});
 
 
-	var orbitShader = new ModifiedDepthShaderProgram({
+	orbitShader = new ModifiedDepthShaderProgram({
 		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
@@ -2871,342 +3256,8 @@ void main() {
 
 	//TODO update these when we integrate!
 	var calcOrbitPathStartTime = Date.now();
-	for (var planetIndex_ = 0; planetIndex_ < planets.length; ++planetIndex_) {
-		var planetIndex = planetIndex_;
-		var planet = planets[planetIndex];
-		var planetClassPrototype = planet.init.prototype;
-
-		// based on planet position and velocity, find plane of orbit
-		if (planet.parent === undefined) {
-			console.log(planet.name+' has no orbit parent');
-			planetClassPrototype.orbitAxis = [0,0,1];
-			planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
-			continue;
-		}
-
-		var parentPlanet = planets[planet.parent];
-		if (parentPlanet === undefined) {
-			console.log(planet.name+' has an invalid orbit planet');
-			planetClassPrototype.orbitAxis = [0,0,1];
-			planetClassPrototype.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
-			continue;
-		}
-
-		//if it's a comet then 
-		//calculate pos and vel and mass by parameters ... ?
-		// or just put an orbit mesh there?
-		if (planet.isComet) {
-		
-			var eccentricity = planet.orbitData.eccentricity;
-			if (eccentricity >= 1) {
-				console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
-				continue;
-			}
-		
-			/*
-			a = semi-major axis = (rper + rap) / 2
-			e = eccentricity = (rap - rper) / (rap + rper) = (rap - rper) / (2a)
-			rap = 2a - rper
-			rper = 2a - rap
-			rper = (1 - e) a
-			rap = (1 + e) a
-			a = 
-			*/
-			var pericenterDistance = planet.orbitData.perihelionDistance;
-			var semiMajorAxis = pericenterDistance / (1 - eccentricity);
-
-			var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
-			var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
-			var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
-			var timeOfPeriapsisCrossing = planet.orbitData.timeOfPerihelionPassage;	//julian day
-			
-			var longitudeOfAscendingNode = planet.orbitData.longitudeOfAscendingNode;
-			var cosAscending = Math.cos(longitudeOfAscendingNode);
-			var sinAscending = Math.sin(longitudeOfAscendingNode);
-
-			var argumentOfPericenter = planet.orbitData.argumentOfPerihelion;
-			var cosPericenter = Math.cos(argumentOfPericenter);
-			var sinPericenter = Math.sin(argumentOfPericenter);
-
-			var inclination = planet.orbitData.inclination;
-			var cosInclination = Math.cos(inclination);
-			var sinInclination = Math.sin(inclination);
-		
-			var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-					 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-					 semiMajorAxis * sinPericenter * sinInclination];
-			var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-					 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-					 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
-
-			//how long until it crosses the periapsis
-			// solve for eccentric anomaly...
-			var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;	//unitless
-			var pathEccentricAnomaly = 2 * Math.PI * tau;
-			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
-			var posX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
-			var posY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
-			var posZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
-			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			planet.pos[0] = posX + parentPlanet.pos[0];
-			planet.pos[1] = posY + parentPlanet.pos[1];
-			planet.pos[2] = posZ + parentPlanet.pos[2];
-			planet.vel[0] = velX + parentPlanet.vel[0];
-			planet.vel[1] = velY + parentPlanet.vel[1];
-			planet.vel[2] = velZ + parentPlanet.vel[2];
-			vec3.copy(initPlanets[planetIndex].pos, planet.pos);
-			vec3.copy(initPlanets[planetIndex].vel, planet.vel);
-			velX = velX / (60*60*24);	//m/s
-			velY = velY / (60*60*24);
-			velZ = velZ / (60*60*24);
-			var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
-
-			//TODO rather than assume the comet is at its closest approach, calculate it using the 'timeOfPerihelionPassage' / 'epoch' info
-			var distanceToParent = vec3.length(planet.pos);
-			var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-			var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-			var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
-			
-			planetClassPrototype.keplerianOrbitalElements = {
-				semiMajorAxis : semiMajorAxis,
-				eccentricity : eccentricity,
-				eccentricAnomaly : eccentricAnomaly,
-				longitudeOfAscendingNode : longitudeOfAscendingNode,
-				argumentOfPericenter : argumentOfPericenter,
-				inclination : inclination,
-				timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-				orbitalPeriod : orbitalPeriod
-			};
-			
-			//iterate around the eccentric anomaly to reconstruct the path
-			var vertexes = [];
-			var res = 250;
-			for (var i = 0; i < res; ++i) {
-				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
-				var pathEccentricAnomaly = eccentricAnomaly + theta;
-				var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-				var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
-				
-				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
-				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
-				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-
-				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
-				vtxPosX += parentPlanet.pos[0] /*- checkPosToPosX*/ - planet.pos[0];
-				vtxPosY += parentPlanet.pos[1] /*- checkPosToPosY*/ - planet.pos[1];
-				vtxPosZ += parentPlanet.pos[2] /*- checkPosToPosZ*/ - planet.pos[2];
-		
-				//add to buffer
-				vertexes.push(vtxPosX);
-				vertexes.push(vtxPosY);
-				vertexes.push(vtxPosZ);
-			
-				//pack transparency info into the vertex
-				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
-				vertexes.push(alpha);
-			}
-
-			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
-				mode : gl.LINE_STRIP,
-				shader : orbitShader,
-				attrs : {
-					vertex : new glutil.ArrayBuffer({
-						dim : 4,
-						data : vertexes
-					})
-				},
-				uniforms : {
-					color : planetClassPrototype.color
-				},
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				parent : null
-			});	
-	
-			continue;
-		}
-
-		//consider position relative to orbitting parent
-		// should I be doing the same thing with the velocity?  probably...
-		var posX = planet.pos[0] - parentPlanet.pos[0];
-		var posY = planet.pos[1] - parentPlanet.pos[1];
-		var posZ = planet.pos[2] - parentPlanet.pos[2];
-
-		//convert from m/day to m/s to coincide with the units of our gravitational constant
-		var velX = (planet.vel[0] - parentPlanet.vel[0]) / (60 * 60 * 24);
-		var velY = (planet.vel[1] - parentPlanet.vel[1]) / (60 * 60 * 24);
-		var velZ = (planet.vel[2] - parentPlanet.vel[2]) / (60 * 60 * 24);
-
-		var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
-
-		var angularMomentumX = posY * velZ - posZ * velY; //m^2/s
-		var angularMomentumY = posZ * velX - posX * velZ; 
-		var angularMomentumZ = posX * velY - posY * velX; 
-		var angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
-		var angularMomentumMag = Math.sqrt(angularMomentumMagSq);
-		if (angularMomentumMag < 1e-9) {
-			planetClassPrototype.orbitAxis = [0,0,1];
-		} else {
-			var axisX = angularMomentumX / angularMomentumMag;
-			var axisY = angularMomentumY / angularMomentumMag;
-			var axisZ = angularMomentumZ / angularMomentumMag;
-			planetClassPrototype.orbitAxis = [axisX, axisY, axisZ];
-		}
-
-		var basisX = [0,0,0];
-		var basisY = [0,0,0];
-		var basisZ = planetClassPrototype.orbitAxis;
-		//TODO use the inclination and longitudeOfAscendingNode
-		calcBasis(basisX, basisY, basisZ);
-		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
-		planetClassPrototype.orbitBasis = [basisX, basisY, basisZ];
-
-		//now decompose the relative position in the coordinates of the orbit basis
-		//i've eliminated all but one of the rotation degrees of freedom ...
-
-		//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
-
-		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
-		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-		var gravitationalParameter = gravitationalConstant * (planet.mass + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
-		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
-		var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
-		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
-		var eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
-		
-		var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-		var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-		var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
-		
-		var sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
-		var cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
-		var inclination = Math.atan2(sinInclination, cosInclination);
-
-		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
-		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
-		var argumentOfPericenter = Math.atan(sinPericenter, cosPericenter);
-
-		var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
-		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
-		var longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);
-
-		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
-		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
-		var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
-
-		var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * sinPericenter * sinInclination];
-		var B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
-	
-		/*
-		to convert back:
-		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
-		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly) 
-		*/
-		var checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
-		var checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
-		var checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-
-		var checkPosToPosX = checkPosX - posX;
-		var checkPosToPosY = checkPosY - posY;
-		var checkPosToPosZ = checkPosZ - posZ;
-		var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
-		var checkPosError = checkPosToPosDist / distanceToParent;
-		if (checkPosError === checkPosError) {
-			if (checkPosError > 1e-5) {	//only report significant error
-				console.log(planet.name+' error of reconstructed position '+ checkPosError);
-			}
-		} else {	//NaN? debug!
-			
-		/*		
-			for (k in planetClassPrototype) {
-				var v = planetClassPrototype[k];
-				if (k != 'name' && typeof(v) != 'function') {
-					console.log(planetClassPrototype.name, k, v);
-				}
-			}
-		*/
-			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
-		}
-
-		planetClassPrototype.keplerianOrbitalElements = {
-			relVelSq : velSq,
-			gravitationalParameter : gravitationalParameter,
-			specificOrbitalEnergy : specificOrbitalEnergy,
-			distanceToParent : distanceToParent,
-			semiMajorAxis : semiMajorAxis,
-			semiLatusRectum : semiLatusRectum,
-			eccentricity : eccentricity,
-			eccentricAnomaly : eccentricAnomaly,
-			inclination : inclination,
-			argumentOfPericenter : argumentOfPericenter,
-			longitudeOfAscendingNode : longitudeOfAscendingNode,
-			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			orbitalPeriod : orbitalPeriod
-		};	
-
-		//not NaN, we successfully reconstructed the position
-		if (checkPosError === checkPosError) {
-			//iterate around the eccentric anomaly to reconstruct the path
-			var vertexes = [];
-			var res = 250;
-			
-			for (var i = 0; i < res; ++i) {
-				var theta = (i / (res - 1) - .5) * 2 * Math.PI;
-				var pathEccentricAnomaly = eccentricAnomaly + theta;
-				var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-				var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
-				
-				var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
-				var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
-				var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-
-				//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
-				var sun = planets
-				//if centered around the orbitting planet ...
-				vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
-				vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
-				vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
-				//global positions...
-				//vtxPosX += parentPlanet.pos[0];
-				//vtxPosY += parentPlanet.pos[1];
-				//vtxPosZ += parentPlanet.pos[2];
-		
-				//add to buffer
-				vertexes.push(vtxPosX);
-				vertexes.push(vtxPosY);
-				vertexes.push(vtxPosZ);
-			
-				//pack transparency info into the vertex
-				var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
-				vertexes.push(alpha);
-			}
-			
-			planetClassPrototype.orbitPathObj = new glutil.SceneObject({
-				mode : gl.LINE_STRIP,
-				shader : orbitShader,
-				attrs : {
-					vertex : new glutil.ArrayBuffer({
-						dim : 4,
-						data : vertexes
-					})
-				},
-				uniforms : {
-					color : planetClassPrototype.color
-				},
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				parent : null
-			});
-		}
+	for (var i = 0; i < planets.length; ++i) {
+		initPlanetOrbitPathObj(planets[i]);
 	}
 	var calcOrbitPathEndTime = Date.now();
 
@@ -3228,7 +3279,6 @@ void main() {
 	for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 		var planet = planets[planetIndex];
 		var planetClassPrototype = planet.init.prototype;
-		if (planetClassPrototype.isComet) continue;
 
 		/*
 		gravity wells
