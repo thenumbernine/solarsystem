@@ -107,7 +107,7 @@ function julian.fromCalendar(date)
           ( 367 * ( m - 2 - 12 * ( ( m - 14 ) / 12 ) ) ) / 12 -
           ( 3 * ( ( y + 4900 + ( m - 14 ) / 12 ) / 100 ) ) / 4 +
           d - 32075	
-	jd = jd + (date.hour + (date.min + date.sec / 60) / 60) / 24 
+	jd = jd + ((date.hour or 0) + ((date.min or 0) + (date.sec or 0) / 60) / 60) / 24 
 	return jd
 --]]
 end
