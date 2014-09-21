@@ -2201,7 +2201,6 @@ function init1() {
 				button.prop('disabled', 0);
 				
 				var pageSize = 20;	//fixed atm
-				console.log('rows:', results.count);
 				var pageMax = Math.floor((results.count-1) / pageSize);	
 				
 				var resultsDiv = $('#celestialBodiesSearchResults');
@@ -2288,7 +2287,6 @@ function init1() {
 				});
 
 				//and add prev/next/pages if there is 
-				console.log(pageIndex, pageMax);
 				if (pageMax > 0) {
 					if (pageIndex > 0) {
 						$('<button>', {
