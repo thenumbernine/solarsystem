@@ -1904,7 +1904,6 @@ function init1() {
 			var thiz = this;
 			this.checkbox = $('<input>', {
 				type : 'checkbox',
-				value : '1',
 				change : function() {
 					//refresh all parent controls' moon checkboxes -- to whiteout or grey them
 					for (var c = thiz.parentControls; c; c = c.parentControls) {
@@ -1930,7 +1929,6 @@ function init1() {
 
 			this.moonCheckbox = $('<input>', {
 				type : 'checkbox',
-				value : '1',
 				change : function() {
 					//select / deselect all children
 					thiz.setAllChildren($(this).prop('checked'));
@@ -2243,9 +2241,8 @@ function init1() {
 								}
 							}).appendTo(newRowDiv);
 							$('<input>', {
-								type:'checkbox',
-								value:1,
-								change:function() {
+								type : 'checkbox',
+								change : function() {
 									var index = planets.indexes[name];
 									Planets.prototype.planetClasses[index].prototype.hide = !$(this).is(':checked');
 								}
