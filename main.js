@@ -2242,6 +2242,16 @@ function init1() {
 									}
 								}
 							}).appendTo(newRowDiv);
+							$('<input>', {
+								type:'checkbox',
+								value:1,
+								change:function() {
+									var index = planets.indexes[name];
+									Planets.prototype.planetClasses[index].prototype.hide = !$(this).is(':checked');
+								}
+							})
+								.prop('checked', 1)
+								.appendTo(newRowDiv);
 							$('<span>', {text:name}).appendTo(newRowDiv);
 							$('<br>').appendTo(newRowDiv);
 							$('#celestialBodiesExtraResults').append(newRowDiv);
