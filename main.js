@@ -795,12 +795,12 @@ var kilogramsPerMeter = gravitationalConstant / (speedOfLight * speedOfLight);
 var calcTidalForce;
 (function(){
 	x = [];
-	srcPlanetToPos = [];
+	n = [];
 
 	calcTidalForce = function(accel, pos, srcPlanet) {
-		srcPlanetToPos[0] = pos[0] - srcPlanet.pos[0];
-		srcPlanetToPos[1] = pos[1] - srcPlanet.pos[1];
-		srcPlanetToPos[2] = pos[2] - srcPlanet.pos[2];
+		n[0] = pos[0] - srcPlanet.pos[0];
+		n[1] = pos[1] - srcPlanet.pos[1];
+		n[2] = pos[2] - srcPlanet.pos[2];
 		
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
@@ -816,19 +816,14 @@ var calcTidalForce;
 			var xToTheThird = xLength * xToTheSecond;
 			var xToTheFourth = xLength * xToTheThird;
 			var xToTheFifth = xLength * xToTheFourth;
+
+			var xDotN = x[0] * n[0] + x[1] * n[1] + x[2] * n[2];
 			
-			// a^i = -R^i_jkl dt^j dx^k dt^l = -R^i_tjt = R^i_ttj = -phi_,ij
-			// looks like dt^j = [1,0,0,0] so that we only get the t part of R (which is zero)
+			// a^i = R^i_jkl n^j dx^k n^l
+			// R^i_tjt = R^i_ttj = phi_,ij
 			// but what if phi changes wrt time? then phi_,tt is nonzero, and how does our Riemann metric change?
 			for (i = 0; i < 3; ++i) {
-				for (j = 0; j < 3; ++j) { 
-					if (i == j) {
-						phi_ij = gravitationalConstant * planet.mass * (3 * x[i] * x[i] / xToTheFifth - 1 / xToTheThird);
-					} else {
-						phi_ij = gravitationalConstant * planet.mass * (3 * x[i] * x[j]) / xToTheFifth;
-					}
-					accel[i] -= phi_ij * srcPlanetToPos[j];
-				}
+				accel[i] = gravitationalConstant * planet.mass * (3 * xDotN * x[i] / xToTheFifth - n[i] / xToTheThird);
 			}
 		}
 	};
