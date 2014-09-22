@@ -2159,161 +2159,171 @@ function init1() {
 		}
 	};
 	updateExtraResultsTitle();	
+
+	var processSearch = function(pageIndex) {
+		var button = $('#celestialBodiesSearch');
+		var searchText = $('#celestialBodiesSearchText');
+		var searchStr = searchText.val();
+		button.prop('disabled', 1);
+		searchText.val('searching...');
+		searchText.prop('disabled', 1);
+		$.ajax({
+			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+			dataType : 'json',
+			data : {
+				comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
+				numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
+				unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
+				text : searchStr,
+				page : pageIndex+1	//1-based
+			},
+			timeout : 5000
+		}).error(function() {
+			searchText.val(searchStr);
+			searchText.prop('disabled', 0);
+			button.prop('disabled', 0);
+			//TODO animate background color of search text
+		}).done(function(results) {
+			searchText.val(searchStr);
+			searchText.prop('disabled', 0);
+			button.prop('disabled', 0);
+			
+			var pageSize = 20;	//fixed atm
+			var pageMax = Math.floor((results.count-1) / pageSize);	
+			
+			var resultsDiv = $('#celestialBodiesSearchResults');
+			resultsDiv.empty();
+			$.each(results.rows, function(i,row) {
+				var rowDiv = $('<div>');
+				rowDiv.appendTo(resultsDiv);
+
+				var name = row.name;
+				if (row.idNumber) {
+					name = row.idNumber+'/'+name;
+				}
+						
+				$('<button>', {
+					text : '+',
+					click : function() {
+						//rowDiv.remove();
+							
+						var newRowDiv = $('<div>');
+						
+						//if the planet is already added then bail
+						if (planets.indexes[name] !== undefined) return;
+						
+						$('<button>', {
+							text : '-',
+							click : function() {
+								var index = planets.indexes[name];
+								newRowDiv.remove();
+								updateExtraResultsTitle();
+								planets.remove(index);
+								initPlanets.remove(index);
+								Planets.prototype.planetClasses.splice(index, 1);
+								//now remap indexes
+								for (var i = index; i < Planets.prototype.planetClasses.length; ++i) {
+									Planets.prototype.planetClasses[index].prototype.index = i;
+								}
+								if (orbitPlanetIndex == index) orbitPlanetIndex = planets.indexes.Sun;
+								if (orbitPlanetIndex > index) --orbitPlanetIndex;
+								//TODO destruct WebGL geometry?  or is it gc'd automatically?
+								//now rebuild indexes
+								Planets.prototype.indexes = {};
+								for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
+									Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
+								}
+							}
+						}).appendTo(newRowDiv);
+						$('<input>', {
+							type : 'checkbox',
+							change : function() {
+								var index = planets.indexes[name];
+								Planets.prototype.planetClasses[index].prototype.hide = !$(this).is(':checked');
+							}
+						})
+							.prop('checked', 1)
+							.appendTo(newRowDiv);
+						$('<span>', {text:name}).appendTo(newRowDiv);
+						$('<br>').appendTo(newRowDiv);
+						$('#celestialBodiesExtraResults').append(newRowDiv);
+						updateExtraResultsTitle();
+
+						//add the row to the bodies
+					
+						var index = Planets.prototype.planetClasses.length;
+						var newPlanetClass = makeClass({
+							super : Planet,
+							name : name,
+							isComet : row.bodyType == 'comet',
+							isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+							orbitData : row,
+							parent : planets.indexes.Sun,
+							index : index
+						});
+						
+						Planets.prototype.planetClasses.push(newPlanetClass);
+						
+						//instanciate it
+						var planet = new newPlanetClass();
+						planets[index] = planet;
+						planets.length = index+1;
+						
+						//add copy to initPlanets for when we get reset() working
+						initPlanets[index] = planet.clone();
+						initPlanets.length = planets.length;
+
+						planets.indexes[newPlanetClass.prototype.name] = index;
+
+						initPlanetColorSchRadiusAngle(planet);
+						initPlanetSceneLatLonLineObjs(planet);
+						initPlanetOrbitPathObj(planet);
+					}
+				}).appendTo(rowDiv);
+
+				$('<span>', {text:name}).appendTo(rowDiv);
+				//TODO put an 'add' button next to each
+				//on clicking it, add the body to the planet list 
+				//and repopulate the 'extra' div
+			});
+
+			//and add prev/next/pages if there is 
+			if (pageMax > 0) {
+				var nextButton, prevButton;
+				var changePage = function(dir) {
+					//TODO remove or grey out results as well?
+					if (nextButton) nextButton.prop('disabled', 1);
+					if (prevButton) prevButton.prop('disabled', 1);
+					processSearch(pageIndex+dir);
+				};
+				if (pageIndex > 0) {
+					prevButton = $('<button>', {
+						text : 'Prev',
+						click : function() {
+							changePage(-1);
+						}
+					}).appendTo($('#celestialBodiesSearchResults'));
+				}
+				if (pageIndex < pageMax) {
+					nextButton = $('<button>', {
+						text : 'Next',
+						click : function() {
+							changePage(1);
+						}
+					}).appendTo($('#celestialBodiesSearchResults'));
+				}
+				$('<span>', {text:(pageIndex+1)+' of '+pageMax}).appendTo($('#celestialBodiesSearchResults'));
+			}
+		});
+	};
+	
 	$('#celestialBodiesSearchText').keydown(function(e){
 		if (e.keyCode == 13) {
 			$('#celestialBodiesSearch').trigger('click');
 		}
 	});
+	
 	$('#celestialBodiesSearch').click(function() {
-		var button = $(this);
-		var searchText = $('#celestialBodiesSearchText');
-		var searchStr = searchText.val();
-		var processSearch = function(pageIndex) {
-			button.prop('disabled', 1);
-			searchText.val('searching...');
-			searchText.prop('disabled', 1);
-			$.ajax({
-				url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-				dataType : 'json',
-				data : {
-					comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
-					numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
-					unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
-					text : searchStr,
-					page : pageIndex+1	//1-based
-				},
-				timeout : 5000
-			}).error(function() {
-				searchText.val(searchStr);
-				searchText.prop('disabled', 0);
-				button.prop('disabled', 0);
-				//TODO animate background color of search text
-			}).done(function(results) {
-				searchText.val(searchStr);
-				searchText.prop('disabled', 0);
-				button.prop('disabled', 0);
-				
-				var pageSize = 20;	//fixed atm
-				var pageMax = Math.floor((results.count-1) / pageSize);	
-				
-				var resultsDiv = $('#celestialBodiesSearchResults');
-				resultsDiv.empty();
-				$.each(results.rows, function(i,row) {
-					var rowDiv = $('<div>');
-					rowDiv.appendTo(resultsDiv);
-
-					var name = row.name;
-					if (row.idNumber) {
-						name = row.idNumber+'/'+name;
-					}
-							
-					$('<button>', {
-						text : '+',
-						click : function() {
-							//rowDiv.remove();
-								
-							var newRowDiv = $('<div>');
-							
-							//if the planet is already added then bail
-							if (planets.indexes[name] !== undefined) return;
-							
-							$('<button>', {
-								text : '-',
-								click : function() {
-									var index = planets.indexes[name];
-									newRowDiv.remove();
-									updateExtraResultsTitle();
-									planets.remove(index);
-									initPlanets.remove(index);
-									Planets.prototype.planetClasses.splice(index, 1);
-									//now remap indexes
-									for (var i = index; i < Planets.prototype.planetClasses.length; ++i) {
-										Planets.prototype.planetClasses[index].prototype.index = i;
-									}
-									if (orbitPlanetIndex == index) orbitPlanetIndex = planets.indexes.Sun;
-									if (orbitPlanetIndex > index) --orbitPlanetIndex;
-									//TODO destruct WebGL geometry?  or is it gc'd automatically?
-									//now rebuild indexes
-									Planets.prototype.indexes = {};
-									for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
-										Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
-									}
-								}
-							}).appendTo(newRowDiv);
-							$('<input>', {
-								type : 'checkbox',
-								change : function() {
-									var index = planets.indexes[name];
-									Planets.prototype.planetClasses[index].prototype.hide = !$(this).is(':checked');
-								}
-							})
-								.prop('checked', 1)
-								.appendTo(newRowDiv);
-							$('<span>', {text:name}).appendTo(newRowDiv);
-							$('<br>').appendTo(newRowDiv);
-							$('#celestialBodiesExtraResults').append(newRowDiv);
-							updateExtraResultsTitle();
-
-							//add the row to the bodies
-						
-							var index = Planets.prototype.planetClasses.length;
-							var newPlanetClass = makeClass({
-								super : Planet,
-								name : name,
-								isComet : row.bodyType == 'comet',
-								isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
-								orbitData : row,
-								parent : planets.indexes.Sun,
-								index : index
-							});
-							
-							Planets.prototype.planetClasses.push(newPlanetClass);
-							
-							//instanciate it
-							var planet = new newPlanetClass();
-							planets[index] = planet;
-							planets.length = index+1;
-							
-							//add copy to initPlanets for when we get reset() working
-							initPlanets[index] = planet.clone();
-							initPlanets.length = planets.length;
-
-							planets.indexes[newPlanetClass.prototype.name] = index;
-
-							initPlanetColorSchRadiusAngle(planet);
-							initPlanetSceneLatLonLineObjs(planet);
-							initPlanetOrbitPathObj(planet);
-						}
-					}).appendTo(rowDiv);
-
-					$('<span>', {text:name}).appendTo(rowDiv);
-					//TODO put an 'add' button next to each
-					//on clicking it, add the body to the planet list 
-					//and repopulate the 'extra' div
-				});
-
-				//and add prev/next/pages if there is 
-				if (pageMax > 0) {
-					if (pageIndex > 0) {
-						$('<button>', {
-							text : 'Prev',
-							click : function() {
-								processSearch(pageIndex-1);
-							}
-						}).appendTo($('#celestialBodiesSearchResults'));
-					}
-					if (pageIndex < pageMax) {
-						$('<button>', {
-							text : 'Next',
-							click : function() {
-								processSearch(pageIndex+1);
-							}
-						}).appendTo($('#celestialBodiesSearchResults'));
-					}
-					$('<span>', {text:(pageIndex+1)+' of '+pageMax}).appendTo($('#celestialBodiesSearchResults'));
-				}
-			});
-		};
 		processSearch(0);
 	});
 	$('#celestialBodiesSearch').trigger('click');	//fire one off 
