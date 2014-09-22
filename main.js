@@ -2160,6 +2160,13 @@ function init1() {
 	};
 	updateExtraResultsTitle();	
 
+	//these are added to the end of the result
+	//they should get greyed upon new query (search, prev, next click)
+	//they should be regenerated upon new content
+	//they should be re-enabled upon error
+	var nextButton = undefined;
+	var prevButton = undefined;
+
 	var processSearch = function(pageIndex) {
 		var button = $('#celestialBodiesSearch');
 		var searchText = $('#celestialBodiesSearchText');
@@ -2167,6 +2174,10 @@ function init1() {
 		button.prop('disabled', 1);
 		searchText.val('searching...');
 		searchText.prop('disabled', 1);
+			
+		if (prevButton) prevButton.prop('disabled', 1);
+		if (nextButton) nextButton.prop('disabled', 1);
+					
 		$.ajax({
 			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
 			dataType : 'json',
@@ -2183,6 +2194,8 @@ function init1() {
 			searchText.prop('disabled', 0);
 			button.prop('disabled', 0);
 			//TODO animate background color of search text
+			if (prevButton) prevButton.prop('disabled', 0);
+			if (nextButton) nextButton.prop('disabled', 0);
 		}).done(function(results) {
 			searchText.val(searchStr);
 			searchText.prop('disabled', 0);
@@ -2289,7 +2302,6 @@ function init1() {
 
 			//and add prev/next/pages if there is 
 			if (pageMax > 0) {
-				var nextButton, prevButton;
 				var changePage = function(dir) {
 					//TODO remove or grey out results as well?
 					if (nextButton) nextButton.prop('disabled', 1);
