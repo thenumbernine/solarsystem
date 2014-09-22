@@ -2196,6 +2196,21 @@ function init1() {
 			//TODO animate background color of search text
 			if (prevButton) prevButton.prop('disabled', 0);
 			if (nextButton) nextButton.prop('disabled', 0);
+			
+			var warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
+			$('#celestialBodiesSearchComets').before(warning);
+			setTimeout(function() {
+				//after five seconds, fade away
+				warning.animate({
+					height : 0,
+					opacity : 0
+				}, {
+					duration : 500,
+					complete : function() {
+						warning.remove();
+					}
+				});
+			}, 3000);
 		}).done(function(results) {
 			searchText.val(searchStr);
 			searchText.prop('disabled', 0);
