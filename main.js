@@ -2151,21 +2151,14 @@ function init1() {
 	
 	$('<br>').appendTo($('#celestialBodiesVisibleBodies'));
 
-	var updateExtraResultsTitle = function() {
-		if ($('#celestialBodiesExtraResults').is(':empty')) {
-			$('#celestialBodiesExtraResultsTitle').hide();
-		} else {
-			$('#celestialBodiesExtraResultsTitle').show();
-		}
-	};
-	updateExtraResultsTitle();	
-
 	//these are added to the end of the result
 	//they should get greyed upon new query (search, prev, next click)
 	//they should be regenerated upon new content
 	//they should be re-enabled upon error
 	var nextButton = undefined;
 	var prevButton = undefined;
+
+	var searchResults = [];
 
 	var processSearch = function(pageIndex) {
 		var button = $('#celestialBodiesSearch');
@@ -2217,7 +2210,9 @@ function init1() {
 			button.prop('disabled', 0);
 			
 			var pageSize = 20;	//fixed atm
-			var pageMax = Math.floor((results.count-1) / pageSize);	
+			var pageMax = Math.floor((results.count-1) / pageSize);
+
+			searchResults = [];
 			
 			var resultsDiv = $('#celestialBodiesSearchResults');
 			resultsDiv.empty();
@@ -2229,23 +2224,16 @@ function init1() {
 				if (row.idNumber) {
 					name = row.idNumber+'/'+name;
 				}
-						
-				$('<button>', {
-					text : '+',
-					click : function() {
-						//rowDiv.remove();
-							
-						var newRowDiv = $('<div>');
-						
-						//if the planet is already added then bail
-						if (planets.indexes[name] !== undefined) return;
-						
-						$('<button>', {
-							text : '-',
-							click : function() {
+				
+				var checkbox = $('<input>', {
+					type : 'checkbox',
+					change : function() {
+					
+						if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
+
+							//only remove if it's already there 
+							if (planets.indexes[name] !== undefined) {
 								var index = planets.indexes[name];
-								newRowDiv.remove();
-								updateExtraResultsTitle();
 								planets.remove(index);
 								initPlanets.remove(index);
 								Planets.prototype.planetClasses.splice(index, 1);
@@ -2262,57 +2250,61 @@ function init1() {
 									Planets.prototype.indexes[Planets.prototype.planetClasses[i].prototype.name] = i;
 								}
 							}
-						}).appendTo(newRowDiv);
-						$('<input>', {
-							type : 'checkbox',
-							change : function() {
-								var index = planets.indexes[name];
-								Planets.prototype.planetClasses[index].prototype.hide = !$(this).is(':checked');
+
+						} else {	//check checkbox => add planet
+						
+							//only add if it's not there
+							if (planets.indexes[name] === undefined) {	
+
+								//add the row to the bodies
+							
+								var index = Planets.prototype.planetClasses.length;
+								var newPlanetClass = makeClass({
+									super : Planet,
+									name : name,
+									isComet : row.bodyType == 'comet',
+									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+									orbitData : row,
+									parent : planets.indexes.Sun,
+									index : index
+								});
+								
+								Planets.prototype.planetClasses.push(newPlanetClass);
+								
+								//instanciate it
+								var planet = new newPlanetClass();
+								planets[index] = planet;
+								planets.length = index+1;
+								
+								//add copy to initPlanets for when we get reset() working
+								initPlanets[index] = planet.clone();
+								initPlanets.length = planets.length;
+
+								planets.indexes[newPlanetClass.prototype.name] = index;
+
+								initPlanetColorSchRadiusAngle(planet);
+								initPlanetSceneLatLonLineObjs(planet);
+								initPlanetOrbitPathObj(planet);
+
 							}
-						})
-							.prop('checked', 1)
-							.appendTo(newRowDiv);
-						$('<span>', {text:name}).appendTo(newRowDiv);
-						$('<br>').appendTo(newRowDiv);
-						$('#celestialBodiesExtraResults').append(newRowDiv);
-						updateExtraResultsTitle();
-
-						//add the row to the bodies
-					
-						var index = Planets.prototype.planetClasses.length;
-						var newPlanetClass = makeClass({
-							super : Planet,
-							name : name,
-							isComet : row.bodyType == 'comet',
-							isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
-							orbitData : row,
-							parent : planets.indexes.Sun,
-							index : index
-						});
-						
-						Planets.prototype.planetClasses.push(newPlanetClass);
-						
-						//instanciate it
-						var planet = new newPlanetClass();
-						planets[index] = planet;
-						planets.length = index+1;
-						
-						//add copy to initPlanets for when we get reset() working
-						initPlanets[index] = planet.clone();
-						initPlanets.length = planets.length;
-
-						planets.indexes[newPlanetClass.prototype.name] = index;
-
-						initPlanetColorSchRadiusAngle(planet);
-						initPlanetSceneLatLonLineObjs(planet);
-						initPlanetOrbitPathObj(planet);
+						}
 					}
-				}).appendTo(rowDiv);
+				})
+					.prop('checked', planets.indexes[name] !== undefined)
+					.appendTo(rowDiv);
 
 				$('<span>', {text:name}).appendTo(rowDiv);
 				//TODO put an 'add' button next to each
 				//on clicking it, add the body to the planet list 
 				//and repopulate the 'extra' div
+			
+				searchResults.push({
+					checkbox : checkbox,
+					div : rowDiv,
+					data : row,
+					name : name
+				});
+				
 			});
 
 			//and add prev/next/pages if there is 
@@ -2349,7 +2341,23 @@ function init1() {
 			$('#celestialBodiesSearch').trigger('click');
 		}
 	});
-	
+
+	//change a check box, immediately update search results
+	$.each([$('#celestialBodiesSearchComets'), $('#celestialBodiesSearchNumbered'), $('#celestialBodiesSearchUnnumbered')], function(_,checkbox) {
+		checkbox.change(function() {
+			$('#celestialBodiesSearch').trigger('click');
+		});
+	});
+
+	$('#celestialBodiesSearchToggleAll').click(function() {
+		var checked = $(this).is(':checked');
+		$.each(searchResults, function(i,result) {
+			if (result.checkbox.prop('checked') != checked) {
+				result.checkbox.trigger('click');
+			}
+		});
+	});
+
 	$('#celestialBodiesSearch').click(function() {
 		processSearch(0);
 	});
