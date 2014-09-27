@@ -955,7 +955,7 @@ function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
 	// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
 	vec3TransformQuat(destX, srcX, planet.angle);
 	
-	// now rotate by axial tilt (along
+	// now rotate by axial tilt
 	var tiltAngle = planet.tiltAngle;
 	if (tiltAngle !== undefined) {
 		vec3TransformQuat(destX, destX, tiltAngle);
@@ -1003,7 +1003,7 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var bestPlanet = undefined;
 	var bestPlanetIndex = undefined;
 	var currentOrbitPlanet = planets[orbitPlanetIndex];
-	for (var i = planets.length-1; i >= 0; --i) {
+	for (var i = 0; i < planets.length; ++i) {
 		var planet = planets[i];
 		if (planet.hide) continue;
 		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
@@ -1158,6 +1158,10 @@ var displayMethod = 'None';
 var planetInfluences = [];
 
 var showLinesToOtherPlanets = false;
+var showVelocityVectors = false;
+var velocityVectorScale = 30;
+var showRotationAxis = false;
+var showOrbitAxis = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
 var showDistantPoints = true;
@@ -1330,12 +1334,11 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.hide) continue;
 			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
+			if (orbitPlanet.pos === undefined) continue;
 			if (planet.lineObj === undefined) continue;
 
 			if (showLinesToOtherPlanets) {
-				if (orbitPlanet !== planet && 
-					orbitPlanet.pos !== undefined)
-				{
+				if (orbitPlanet !== planet) {
 					//while here, update lines
 				
 					vec3.sub(delta, planet.pos, orbitPlanet.pos);
@@ -1354,6 +1357,47 @@ var planetPointVisRatio = .001;
 					planet.lineObj.draw();
 				}
 			}
+
+			if (showVelocityVectors) {
+				vec3.sub(delta, planet.pos, orbitPlanet.pos);
+				planet.lineObj.attrs.vertex.data[0] = delta[0];
+				planet.lineObj.attrs.vertex.data[1] = delta[1];
+				planet.lineObj.attrs.vertex.data[2] = delta[2];
+				planet.lineObj.attrs.vertex.data[3] = delta[0] + planet.vel[0] * velocityVectorScale;
+				planet.lineObj.attrs.vertex.data[4] = delta[1] + planet.vel[1] * velocityVectorScale;
+				planet.lineObj.attrs.vertex.data[5] = delta[2] + planet.vel[2] * velocityVectorScale;
+				planet.lineObj.attrs.vertex.updateData();
+				planet.lineObj.draw();
+			}
+		
+			if (showRotationAxis) {
+				vec3.sub(delta, planet.pos, orbitPlanet.pos);
+				var axis = [0,0,1];
+				if (planet.tiltAngle) {
+					vec3.quatZAxis(axis, planet.tiltAngle);
+				}
+				planet.lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[3] = delta[0] + axis[0] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[4] = delta[1] + axis[1] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[5] = delta[2] + axis[2] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.updateData();
+				planet.lineObj.draw();
+			}
+			
+			if (showOrbitAxis) {
+				vec3.sub(delta, planet.pos, orbitPlanet.pos);
+				planet.lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[2] = delta[2] + planet.orbitAxis[2] * 2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[3] = delta[0] + planet.orbitAxis[0] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[4] = delta[1] + planet.orbitAxis[1] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
+				planet.lineObj.attrs.vertex.updateData();
+				planet.lineObj.draw();
+			}
+	
 		}
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -2039,6 +2083,9 @@ function init1() {
 
 	$.each([
 		'showLinesToOtherPlanets',
+		'showVelocityVectors',
+		'showRotationAxis',
+		'showOrbitAxis',
 		'showLatAndLonLines',
 		'showGravityWell',
 		'showOrbits',
@@ -3401,17 +3448,34 @@ void main() {
 	}
 	var calcOrbitPathEndTime = Date.now();
 
-	var setPlanetAngleToMoonOrbitPlane = function(planetName, moonName) {
+	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {
 		var planetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes[planetName]].prototype;
 		var moonClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes[moonName]].prototype;
-		quat.identity(planetClassPrototype.angle);
-		quat.rotateZ(planetClassPrototype.angle, planetClassPrototype.angle, moonClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
-		quat.rotateX(planetClassPrototype.angle, planetClassPrototype.angle, moonClassPrototype.keplerianOrbitalElements.inclination);
+		assert(planetClassPrototype.tiltAngle === undefined);
+		planetClassPrototype.tiltAngle = [0,0,0,1];
+		quat.rotateZ(planetClassPrototype.tiltAngle, planetClassPrototype.tiltAngle, moonClassPrototype.keplerianOrbitalElements.longitudeOfAscendingNode);
+		quat.rotateX(planetClassPrototype.tiltAngle, planetClassPrototype.tiltAngle, moonClassPrototype.keplerianOrbitalElements.inclination);
 	};
 
-	setPlanetAngleToMoonOrbitPlane('Saturn', 'Atlas');
-	setPlanetAngleToMoonOrbitPlane('Uranus', 'Cordelia');
-	setPlanetAngleToMoonOrbitPlane('Neptune', 'Naiad');
+	//accepts degrees
+	//TODO start at orbit axis plane rather than earth's (ie J2000) orbit axis plane
+	var setPlanetTiltAngleToFixedValue = function(planetName, inclination, tiltDirection) {
+		if (tiltDirection === undefined) tiltDirection = 0;
+		var planetClassPrototype = Planets.prototype.planetClasses[Planets.prototype.indexes[planetName]].prototype;
+		planetClassPrototype.tiltAngle = [0,0,0,1];
+		quat.rotateZ(planetClassPrototype.tiltAngle, planetClassPrototype.tiltAngle, Math.rad(tiltDirection));
+		quat.rotateX(planetClassPrototype.tiltAngle, planetClassPrototype.tiltAngle, Math.rad(inclination));
+	};
+
+	setPlanetTiltAngleToFixedValue('Mercury', 2.11/60);		//TODO tilt from mercury orbit plane.  until then it's off
+	setPlanetTiltAngleToFixedValue('Venus', 177.3);			//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
+	setPlanetTiltAngleToFixedValue('Earth', 23.44, 180);
+	setPlanetTiltAngleToMoonOrbitPlane('Mars', 'Phobos');		//ours: 25.79, exact: 25.19
+	setPlanetTiltAngleToMoonOrbitPlane('Jupiter', 'Metis');		//ours: 3.12, exact: 3.13
+	setPlanetTiltAngleToMoonOrbitPlane('Saturn', 'Atlas');		//ours: 26.75, exact: 26.73
+	setPlanetTiltAngleToMoonOrbitPlane('Uranus', 'Cordelia');	//ours: 97.71, exact: 97.77
+	setPlanetTiltAngleToMoonOrbitPlane('Neptune', 'Galatea');	//ours: 28.365, exact: 28.32
+	setPlanetTiltAngleToMoonOrbitPlane('Pluto', 'Charon');		//ours: 119, exact: 123
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
@@ -3571,6 +3635,7 @@ precision mediump float;
 varying vec3 vertexv;
 uniform samplerCube skyTex;
 
+uniform vec4 angle;
 uniform vec4 viewAngle;
 vec3 quatRotate( vec4 q, vec3 v ){ 
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
@@ -3578,6 +3643,7 @@ vec3 quatRotate( vec4 q, vec3 v ){
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
+	dir = quatRotate(vec4(angle.xyz, -angle.w), dir);
 	gl_FragColor = .3 * textureCube(skyTex, dir);
 	gl_FragColor.w = 1.; 
 }
@@ -3605,6 +3671,29 @@ void main() {
 		]
 	});
 
+	/*
+	alpha = 12h 51m 26.27549s	<- right ascension
+	delta = 27 deg 07' 41.7043"	<- declination
+	theta = 122.93191857 deg	<- position angle
+	var rx = [Math.sin(.5*alpha), 0, 0, Math.cos(.5*alpha)];
+	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
+	*/
+	
+	/*
+	right ascention is "to the right of the vernal equinox" ...
+	but we're at the Autumnal equinox and NASA's J2000 coordinates say we're at x+ ... 
+	shouldn't NASA's J2000 coordinate system be rotated 180' about the z axis, so x+ is the vernal equinox and x- is the Autumnal equinox?
+	to correctly orientate the galactic center wrt the vernal equinox at x- I'm going to give alpha another 180 degrees...
+	*/
+	var alpha = 2*Math.PI/24 * (12 + 1/60 * 51.2627549) + Math.PI;
+	var delta = 2*Math.PI/180 * (27 + 1/60 * (6 + 1/60 * 41.7043));
+	var theta = 2*Math.PI/180 * 122.93191857;
+	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
+	var ry = [0, -Math.sin(.5*delta), 0, Math.cos(.5*delta)];
+	var rx = [Math.sin(.5*theta), 0, 0, Math.cos(.5*theta)];
+	var j2000ToGalactic = [0,0,0,1];
+	quat.mul(j2000ToGalactic, ry, rx);
+	quat.mul(j2000ToGalactic, rz, j2000ToGalactic);
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
@@ -3615,6 +3704,7 @@ void main() {
 			})
 		},
 		uniforms : {
+			angle : j2000ToGalactic,
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],
