@@ -764,6 +764,7 @@ var mouseOverPlanetIndex;
 var orbitPlanetIndex;
 var orbitGeodeticLocation;
 var orbitDistance;
+var orbitOffset = [0,0,0];
 var orbitTargetDistance;
 var orbitZoomFactor = .0003;	// upon mousewheel
 
@@ -1024,33 +1025,8 @@ function chooseNewPlanet(mouseDir,doChoose) {
 		$('#hoverPlanetText').text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
 		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
-			vec3.add(glutil.view.pos, glutil.view.pos, planets[orbitPlanetIndex].pos);
+			vec3.sub(orbitOffset, planets[orbitPlanetIndex].pos, planets[bestPlanetIndex].pos);
 			orbitPlanetIndex = bestPlanet.index;
-			vec3.sub(glutil.view.pos, glutil.view.pos, planets[orbitPlanetIndex].pos);
-			var delta = vec3.create();
-			vec3.add(delta, glutil.view.pos, planets[orbitPlanetIndex].pos);
-			vec3.sub(delta, delta, bestPlanet.pos);
-			orbitDistance = vec3.length(delta);
-			/* fixed distance  * /
-			if (bestPlanet.radius === undefined) {
-				if (bestPlanet.parent !== undefined) {
-					var parentPlanet = planets[bestPlanet.parent];
-					if (parentPlanet !== undefined) {
-						orbitTargetDistance = vec3.distance(bestPlanet.pos, parentPlanet.pos);
-					} else {
-						orbitTargetDistance = 1e+6; 
-					}
-				} else {
-					orbitTargetDistance = 1e+6; 
-				}
-			} else {
-				orbitTargetDistance = 2 * bestPlanet.radius;
-			}
-			/**/
-			/* don't change position */
-			orbitTargetDistance = orbitDistance;
-			/**/
-			refreshOrbitTargetDistanceText();
 			$('#orbitPlanetText').text(bestPlanet.name);
 			refreshMeasureText();
 		}
@@ -3752,9 +3728,10 @@ function update() {
 	}
 	var viewAngleZAxis = vec3.create();
 	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
-	glutil.view.pos[0] = viewAngleZAxis[0] * orbitDistance;
-	glutil.view.pos[1] = viewAngleZAxis[1] * orbitDistance;
-	glutil.view.pos[2] = viewAngleZAxis[2] * orbitDistance;
+	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance);
+	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
+	var orbitConvergeCoeff = .9;
+	vec3.scale(orbitOffset, orbitOffset, orbitConvergeCoeff);
 	{
 		var logDist = Math.log(orbitDistance);
 		var logTarget = Math.log(orbitTargetDistance);
