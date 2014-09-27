@@ -3166,7 +3166,7 @@ function initPlanetOrbitPathObj(planet) {
 		var vertexes = [];
 		var res = 250;
 		for (var i = 0; i < res; ++i) {
-			var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+			var theta = i / (res - 1) * 2 * Math.PI;
 			var pathEccentricAnomaly = eccentricAnomaly + theta;
 			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
@@ -3186,7 +3186,9 @@ function initPlanetOrbitPathObj(planet) {
 			vertexes.push(vtxPosZ);
 		
 			//pack transparency info into the vertex
-			var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+			//comets (and asteroids?) aren't evaluated perfectly, so I'm getting a bit of an offest ... TODO fixme
+			var alphaAngleOffset = 238/250;
+			var alpha = ((i / (res-1) + alphaAngleOffset) % 1) * .5 + .5;
 			vertexes.push(alpha);
 		}
 
@@ -3340,7 +3342,7 @@ function initPlanetOrbitPathObj(planet) {
 		var res = 250;
 		
 		for (var i = 0; i < res; ++i) {
-			var theta = (i / (res - 1) - .5) * 2 * Math.PI;
+			var theta = i / (res - 1) * 2 * Math.PI;
 			var pathEccentricAnomaly = eccentricAnomaly + theta;
 			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
@@ -3366,7 +3368,7 @@ function initPlanetOrbitPathObj(planet) {
 			vertexes.push(vtxPosZ);
 		
 			//pack transparency info into the vertex
-			var alpha = 1 - Math.abs(2 * i / (res-1) - 1);
+			var alpha = (i / (res-1)) * .5 + .5;
 			vertexes.push(alpha);
 		}
 		
