@@ -33,16 +33,29 @@ See lua/eph.lua for gathering data from NASA Horizons Ephemeris 406
 TODO
 
 - remove the old 'class-per-planet' system and switch to an 'object-per-planet' system.  the old was more clear with Lua, but porting it directly to JS is very ugly. 
-	- get RK45 integrator working, put ephemeris data online, and re-enable the ffwd/rewind system 
+	- put ephemeris data online, and re-enable the ffwd/rewind system
+	- get keplerian parameters merged with integrator / with ephemeris data
+		- then only integrate the main 11 bodies and update all other planets accordingly
 - hierarchy of rendering for each planet and orbital children
-	give it a smaller bounding sphere for the planet mesh
-	give it a larger bounding sphere for children
-	occlusion test of each, traverse each
-- when mouseover from a distance, if a planet and its moons are compressed to a single point in view, have the planet name show up first (related to hierarchical representation of planets)
-- correct orientation of skybox.  the solar system is not in plane with the milky way, it is perpendicular to it.
+	- give it a smaller bounding sphere for the planet mesh
+	- give it a larger bounding sphere for children
+	- occlusion test, traverse if passes 
+	- give each node separate scale factor and coordinate system units, so we don't lose precision as we go from solar system to galaxy to  supercluster 
+	- when mouseover from a distance, if a planet and its moons are compressed to a single point in view, have the planet name show up first (related to hierarchical representation of planets)
+- correct orientation of skybox
 - add a atmosphere shader to the Earth (and other planets) so it doesn't look so dull
+- get planet magnitude for accurate distant rendering
+- long term, render all to a float buffer and use HDR / post-processing / point spread function
 - make overlays computed by GPU so they can recompute realtime during integration (like they run in realtime for the LuaJIT version.  what's up V8?)
 - cron task for updating positions from NASA
 	- or use ephemeris data - for major planets it exists, but what about for moons?
-- smoother blending camera angle when selecting planets
-
+- forward integrate from the last datapoint to the current julian date (assuming it's recent) for accurate planet locations 
+	- do this once you get keplerian parameter updates merged with integration / ephemeris updates
+- click on a star to see its details
+- merge with larger star catalog
+- merge with exoplanet data (?)
+- merge with universe data
+- merge planet toggle with asteroid/comet search/toggle with star search/select/toggle
+- make a million-point static buffer for rendering comets?
+	- download the current locations from NASA?  180 objects is slow, I'd imagine a million would take a while.
+		- maybe make a script for calculating position and velocity from keplerian elements / GPU program / think about this one ...

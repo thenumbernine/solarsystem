@@ -2602,6 +2602,7 @@ function initStars() {
 		}
 	};
 	*/
+	var numElem = 5;
 	xhr.onload = function(e) {
 		console.log('loaded star data!');
 		var arrayBuffer = this.response;
@@ -2612,10 +2613,10 @@ function initStars() {
 		for (var j = 0; j < len; ++j) {
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 		
-			if (j % 4 < 3) {
-				//convert from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
+			if (j % numElem < 3) {
+				//convert xyz from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
 				if (Math.abs(x) > 1e+20) {
-					console.log('star '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution'); 
+					console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution'); 
 				}
 				x *= 3.08567758e+16;
 			}
@@ -2627,6 +2628,7 @@ function initStars() {
 			context : gl,
 			vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
+attribute float colorIndex;
 varying float alpha;
 uniform mat4 mvMat;
 uniform mat4 projMat;
@@ -2635,9 +2637,9 @@ uniform float visibleMagnitudeBias;
 #define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
-	float distance = length(vertex.xyz) * PARSECS_PER_M;	//in parsecs
+	float distanceInParsecs = length(vertex.xyz) * PARSECS_PER_M;	//in parsecs
 	float absoluteMagnitude = vertex.w;
-	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distance) / M_LOG_10);
+	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	alpha = pow(1./2.5, apparentMagnitude - visibleMagnitudeBias);
 	gl_PointSize = 1.;
 	gl_Position = projMat * vtx4;
@@ -2654,14 +2656,13 @@ void main() {
 		});
 
 		//now that we have the float buffer ...
+		var starsBuffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
 		starsObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			shader : starsShader,
 			attrs : {
-				vertex : new glutil.ArrayBuffer({
-					data : floatBuffer,
-					dim : 4
-				})
+				vertex : {buffer : starsBuffer, size : 4, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0},	//xyz abs-mag
+				colorIndex : {buffer : starsBuffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 4 * Float32Array.BYTES_PER_ELEMENT}	//color-index
 			},
 			uniforms : {
 				pointSize : 1,
@@ -3815,18 +3816,12 @@ void main() {
 		]
 	});
 
-	/*
-	right ascention is "to the right of the vernal equinox" ...
-	but we're at the Autumnal equinox and NASA's J2000 coordinates say we're at x+ ... 
-	shouldn't NASA's J2000 coordinate system be rotated 180' about the z axis, so x+ is the vernal equinox and x- is the Autumnal equinox?
-
-	my galaxy texture is centered at x+ and lies in the xy plane
-	*/
+	//my galaxy texture is centered at x+ and lies in the xy plane
 	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
 	//eqn 10
 	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
-	var delta = 2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
-	var theta = 2*Math.PI/180 * 122.93191857;
+	var delta = -2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
+	var theta = -2*Math.PI/180 * 122.93191857;
 	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
 	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
 	var rx = [Math.sin(.5*theta), 0, 0, Math.cos(.5*theta)];
