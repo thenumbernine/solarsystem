@@ -2699,7 +2699,8 @@ function initPlanetSceneLatLonLineObjs(planet) {
 	
 	if (!(planetClassPrototype.isComet || planetClassPrototype.isAsteroid) &&
 		(planetClassPrototype.parent === planets.indexes.Sun ||
-		planet === planets[planets.indexes.Sun]))
+		planet === planets[planets.indexes.Sun] ||
+		planet === planets[planets.indexes.Moon]))
 	{
 		planetClassPrototype.lineObj = new glutil.SceneObject({
 			mode : gl.LINES,
@@ -3708,27 +3709,24 @@ void main() {
 	});
 
 	/*
-	alpha = 12h 51m 26.27549s	<- right ascension
-	delta = 27 deg 07' 41.7043"	<- declination
-	theta = 122.93191857 deg	<- position angle
-	... TODO need to convert this from celestial to equatorial coordinates?
-	*/
-	
-	/*
 	right ascention is "to the right of the vernal equinox" ...
 	but we're at the Autumnal equinox and NASA's J2000 coordinates say we're at x+ ... 
 	shouldn't NASA's J2000 coordinate system be rotated 180' about the z axis, so x+ is the vernal equinox and x- is the Autumnal equinox?
-	to correctly orientate the galactic center wrt the vernal equinox at x- I'm going to give alpha another 180 degrees...
+
+	my galaxy texture is centered at x+ and lies in the xy plane
 	*/
-	var alpha = 2*Math.PI/24 * (12 + 1/60 * 51.2627549) + Math.PI;
-	var delta = 2*Math.PI/180 * (27 + 1/60 * (6 + 1/60 * 41.7043));
+	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
+	//eqn 10
+	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
+	var delta = 2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
 	var theta = 2*Math.PI/180 * 122.93191857;
 	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
-	var ry = [0, -Math.sin(.5*delta), 0, Math.cos(.5*delta)];
+	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
 	var rx = [Math.sin(.5*theta), 0, 0, Math.cos(.5*theta)];
 	var j2000ToGalactic = [0,0,0,1];
 	quat.mul(j2000ToGalactic, ry, rx);
 	quat.mul(j2000ToGalactic, rz, j2000ToGalactic);
+	quat.conjugate(j2000ToGalactic, j2000ToGalactic);
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
@@ -3739,7 +3737,7 @@ void main() {
 			})
 		},
 		uniforms : {
-			angle : [0,0,0,1],//j2000ToGalactic,
+			angle : j2000ToGalactic,
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],
