@@ -1,5 +1,12 @@
 hygxyz.csv = CSV data from http://astronexus.com/hyg
 
 getdata.lua = LuaJIT script that extracts the xyz contents and store them as a binary buffer
+	produces:
+	stardata.f32	<- arrays per star of ...
+		float x		<- ICRF/J2000 coordinates (units of parsecs)
+		float y
+		float z
+		float mag	<- absolute magnitude
+	namedStars.json	<- table of the 87 stars with proper names, and their associated (zero-based) indexes in the stardata.f32 buffer 
 
 getstarinfo.lua = Xavante script to return information about the star
