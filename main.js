@@ -1054,6 +1054,10 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 	var processList = function(list) {
 		for (var i = 0; i < list.length; ++i) {
 			var target = list[i];
+			
+			//very special case.  need to rework this all.  remove duplicate entries here, however I'm keeping them for the separate rendering systems.
+			if (list === stars && target.name == 'Sol') continue;
+			
 			if (target.hide) continue;
 			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
 			var deltaY = target.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
@@ -2680,7 +2684,6 @@ function initStars() {
 	*/
 	var numElem = 5;
 	xhr.onload = function(e) {
-		console.log('loaded star data!');
 		var arrayBuffer = this.response;
 		var data = new DataView(arrayBuffer);
 		
@@ -2713,7 +2716,7 @@ uniform float visibleMagnitudeBias;
 #define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
-	float distanceInParsecs = length(vertex.xyz) * PARSECS_PER_M;	//in parsecs
+	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
 	float absoluteMagnitude = vertex.w;
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
