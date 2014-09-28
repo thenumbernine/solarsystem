@@ -773,6 +773,7 @@ var mouseDir;
 var skyCubeObj;
 var pointObj;
 var starsObj;
+var starsShader;
 
 var skyTexFilenames = [
 	'textures/sky-visible-cube-xp.png',
@@ -1328,9 +1329,16 @@ var planetPointVisRatio = .001;
 			skyCubeObj.draw();
 			gl.enable(gl.DEPTH_TEST);
 		}
-	
+
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, glutil.scene.mvMat, viewPosInv);
+
+
+		if (showStars) {
+			gl.disable(gl.DEPTH_TEST);
+			starsObj.draw();
+			gl.enable(gl.DEPTH_TEST);
+		}
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
 			var planet = planets[planetIndex];
@@ -1631,10 +1639,6 @@ var planetPointVisRatio = .001;
 
 				planet.gravWellObj.draw();
 			}
-		}
-	
-		if (showStars) {
-			starsObj.draw();
 		}
 	};
 })();
@@ -2583,7 +2587,7 @@ function init2() {
 
 function initStars() {
 	var xhr = new XMLHttpRequest();
-	xhr.open('GET', 'hyg/starpositions.f32', true);
+	xhr.open('GET', 'hyg/stardata.f32', true);
 	xhr.responseType = 'arraybuffer';
 	/* if we want a progress bar ...
 	xhr.onprogress = function(e) {
@@ -2602,26 +2606,63 @@ function initStars() {
 		for (var j = 0; j < len; ++j) {
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 		
-			//convert from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
-			if (Math.abs(x) > 1e+20) {
-				console.log('star '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution'); 
+			if (j % 4 < 3) {
+				//convert from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
+				if (Math.abs(x) > 1e+20) {
+					console.log('star '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution'); 
+				}
+				x *= 3.08567758e+16;
 			}
-			x *= 3.08567758e+16;
 
 			floatBuffer[j] = x;
 		}
 
+		starsShader = new ModifiedDepthShaderProgram({
+			context : gl,
+			vertexCode : mlstr(function(){/*
+attribute vec4 vertex;
+varying float alpha;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float visibleMagnitudeBias;
+#define M_LOG_10			2.3025850929940459010936137929093092679977416992188
+#define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	float distance = length(vertex.xyz) * PARSECS_PER_M;	//in parsecs
+	float absoluteMagnitude = vertex.w;
+	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distance) / M_LOG_10);
+	alpha = pow(1./2.5, apparentMagnitude - visibleMagnitudeBias);
+	gl_PointSize = 1.;
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+varying float alpha;
+void main() {
+	gl_FragColor = vec4(color.xyz, color.w * alpha);
+}
+*/})
+		});
+
 		//now that we have the float buffer ...
 		starsObj = new glutil.SceneObject({
 			mode : gl.POINTS,
-			shader : colorShader,
+			shader : starsShader,
 			attrs : {
-				vertex : new glutil.ArrayBuffer({data : floatBuffer})
+				vertex : new glutil.ArrayBuffer({
+					data : floatBuffer,
+					dim : 4
+				})
 			},
 			uniforms : {
 				pointSize : 1,
 				color : [1,1,1,1],
+				visibleMagnitudeBias : 2
 			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null
 		});
 
@@ -3526,7 +3567,6 @@ void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
 	alpha = vertex.w;
 	gl_Position = projMat * vtx4;
-	gl_PointSize = 4.;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -3778,7 +3818,7 @@ void main() {
 	*/
 	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
 	//eqn 10
-	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549)) + Math.PI;
+	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
 	var delta = -2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
 	var theta = 2*Math.PI/180 * 122.93191857;
 	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
@@ -3787,6 +3827,7 @@ void main() {
 	var j2000ToGalactic = [0,0,0,1];
 	quat.mul(j2000ToGalactic, ry, rx);
 	quat.mul(j2000ToGalactic, rz, j2000ToGalactic);
+	quat.conjugate(j2000ToGalactic, j2000ToGalactic);
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
