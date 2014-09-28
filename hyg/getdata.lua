@@ -13,14 +13,15 @@ local header = lines:remove(1)
 local columnNames = header:split(',')	-- columnNames[1] = 'StarID'
 local columnForNames = columnNames:map(function(name,i) return i,name end)	-- columnForNames.StarID = 1
 
+assert(lines:remove(1):split(',')[columnForNames.ProperName] == 'Sol')	-- assert that the first star is the sun, named "Sol" (and at xyz = 000)
+
 local numElem = 5
 local buffer = ffi.new('float[?]', numElem * #lines)	-- allocate space for xyz of each planet 
 
 local maxAbs = 0
 local namedStars = {}
 local columnCounts = {}
-assert(lines[1]:split(',')[columnForNames.ProperName] == 'Sol')	-- assert that the first star is the sun, named "Sol" (and at xyz = 000)
-for i=2,#lines do
+for i=1,#lines do
 	local line = lines[i]
 	local parts = line:split(',')
 	if #parts ~= #columnNames then error("line "..(i+2).." does not have enoguh columns\n"..line) end 
@@ -34,7 +35,7 @@ for i=2,#lines do
 	local z = assert(tonumber(data.Z))
 	local mag = assert(tonumber(data.AbsMag))	--apparent magnitude
 	local colorIndex = tonumber(data.ColorIndex) or .656	-- fill in blanks with something close to white
-	local zeroBasedIndex = i-2
+	local zeroBasedIndex = i-1
 	buffer[0 + numElem * zeroBasedIndex] = x
 	buffer[1 + numElem * zeroBasedIndex] = y
 	buffer[2 + numElem * zeroBasedIndex] = z
