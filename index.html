@@ -98,14 +98,14 @@ a:active {
 	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
-		<div id='timeControlDiv' style='padding:5px; z-index:1; position:absolute; top:0px; right:0px; display:none'>
+		<div id='timeDiv' style='padding:5px; z-index:1; position:absolute; top:0px; right:0px; display:none'>
 			<span id='currentTimeText'></span><br>
 			<!-- this is inaccurate. hide this until I 
 				(a) enable the RK45 adaptive integrator, or something more accurate 
 				(b) put the ephemeris data online
 				... or some combination of the two
 			-->
-			<div style='display:none'>
+			<div id='timeControlDiv' style='display:none'>
 				<img id='reset' src='reset.png' style='padding:5px'/>
 				<img id='rewind' src='rewind.png' style='padding:5px'/>
 				<img id='reverse' src='reverse.png' style='padding:5px'/>

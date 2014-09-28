@@ -1765,6 +1765,34 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	});
 }
 
+function calendarToJulian(d) {
+	var year = d.getUTCFullYear();
+	var month = d.getUTCMonth();
+	var day = d.getUTCDate();
+	var hour = d.getUTCHours();
+	var min = d.getUTCMinutes();
+	var sec = d.getUTCSeconds();
+//http://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
+//testing against results in Wikipedia page: http://en.wikipedia.org/wiki/Julian_day
+// (notice I couldn't recreate these results with the algorithm on the same page)
+//for UTC date 2000 jan 1 12:00:00 this gives 2451545 - right on
+//for UTC date 2013 jan 1 00:30:00 this gives 2456294.0208333335 - right on
+	var oneBasedMonth = 1 + month;
+	var astronomicalYear = year < 0 ? year + 1 : year;
+	if (oneBasedMonth <= 2) {	//jan or feb
+		--astronomicalYear;
+		oneBasedMonth += 12;
+	}
+	var a = Math.floor(astronomicalYear / 100);
+	var b = Math.floor(a / 4);
+	var c = 2 - a + b;
+	var e = Math.floor(365.25 * (astronomicalYear + 4716));
+	var f = Math.floor(30.6001 * (oneBasedMonth + 1));
+	var jdn = c + day + e + f - 1524.5;
+	jdn += (hour + (min + sec / 60) / 60) / 24;
+	return jdn;
+}
+
 function init1() {
 	allSidePanelIDs = [
 		'mainSidePanel',
@@ -2412,11 +2440,17 @@ function init1() {
 				}
 			}	
 		}
+
 		
-		initPlanets = planets.clone();
-		julianDate = horizonsData.julianDate;	//sep 18 2014 corresponding to when the last horizons data update was
+		julianDate = horizonsData.julianDate;	//get most recent recorded date from planets
+		//TODO get current julian date from client
+		// integrate forward by the small timestep between the two
+		
+		
 		initJulianDate = julianDate;
 		refreshCurrentTimeText();
+		
+		initPlanets = planets.clone();
 		
 		init2();
 	}
@@ -2534,7 +2568,7 @@ function init2() {
 	});
 	
 	$('#menu').show();
-	$('#timeControlDiv').show();
+	$('#timeDiv').show();
 	$('#infoDiv').show();
 	init3();
 }
@@ -3188,7 +3222,7 @@ function initPlanetOrbitPathObj(planet) {
 			//pack transparency info into the vertex
 			//comets (and asteroids?) aren't evaluated perfectly, so I'm getting a bit of an offest ... TODO fixme
 			var alphaAngleOffset = 238/250;
-			var alpha = ((i / (res-1) + alphaAngleOffset) % 1) * .5 + .5;
+			var alpha = ((i / (res-1) + alphaAngleOffset) % 1) * .75 + .25;
 			vertexes.push(alpha);
 		}
 
@@ -3368,7 +3402,7 @@ function initPlanetOrbitPathObj(planet) {
 			vertexes.push(vtxPosZ);
 		
 			//pack transparency info into the vertex
-			var alpha = (i / (res-1)) * .5 + .5;
+			var alpha = (i / (res-1)) * .75 + .25;
 			vertexes.push(alpha);
 		}
 		
@@ -3677,8 +3711,7 @@ void main() {
 	alpha = 12h 51m 26.27549s	<- right ascension
 	delta = 27 deg 07' 41.7043"	<- declination
 	theta = 122.93191857 deg	<- position angle
-	var rx = [Math.sin(.5*alpha), 0, 0, Math.cos(.5*alpha)];
-	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
+	... TODO need to convert this from celestial to equatorial coordinates?
 	*/
 	
 	/*
@@ -3706,7 +3739,7 @@ void main() {
 			})
 		},
 		uniforms : {
-			angle : j2000ToGalactic,
+			angle : [0,0,0,1],//j2000ToGalactic,
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],
@@ -3858,14 +3891,14 @@ function update() {
 	// set the angle for the time
 	{
 		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
-		var angleOffset = .37;
 		var qdst = planets[planets.indexes.Earth].angle;
 		quat.identity(qdst);
-		quat.rotateZ(qdst, qdst, ((julianDate + angleOffset) % 1) * 2 * Math.PI);
+		quat.rotateZ(qdst, qdst, (julianDate % 1) * 2 * Math.PI);
 	}
 	
 	//if we are close enough to the planet then rotate with it
-	if (lastJulianDate !== julianDate && 
+	if (false &&
+		lastJulianDate !== julianDate && 
 		orbitPlanetIndex == planets.indexes.Earth &&	//only for earth at the moment ...
 		orbitDistance < orbitPlanet.radius * 10) 
 	{
