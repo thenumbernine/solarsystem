@@ -2743,33 +2743,133 @@ function initStars() {
 			floatBuffer[j] = x;
 		}
 
+		//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
+		//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
+		var colorIndexMin = 3.5;
+		var colorIndexMax = -.41;
+		var colorIndexTexWidth = 1024;
+		Stars.prototype.colorIndexTex = new glutil.Texture2D({
+			width : colorIndexTexWidth,
+			height : 1,
+			internalFormat : gl.RGBA,
+			format : gl.RGBA,	//TODO function callback support for format == gl.RGB
+			type : gl.UNSIGNED_BYTE,
+			magFilter : gl.LINEAR,
+			minFilter : gl.NEAREST,
+			wrap : gl.CLAMP_TO_EDGE,
+			data : function(texX, texY) {
+//console.log('texX',texX);
+				var frac = (texX + .5) / colorIndexTexWidth;
+//console.log('frac',frac);
+				var bv = frac * (colorIndexMax - colorIndexMin) + colorIndexMin;
+//console.log('bv',bv);
+				var t = 4600 * ((1 / ((.92 * bv) + 1.7)) + (1 / ((.92 * bv) + .62)));
+//console.log('t',t);
+			
+				var x, y = 0;
+
+				if (t>=1667 && t<=4000) {
+					x = ((-0.2661239 * Math.pow(10,9)) / Math.pow(t,3)) + ((-0.2343580 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.8776956 * Math.pow(10,3)) / t) + 0.179910;
+				} else if (t > 4000 && t <= 25000) {
+					x = ((-3.0258469 * Math.pow(10,9)) / Math.pow(t,3)) + ((2.1070379 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.2226347 * Math.pow(10,3)) / t) + 0.240390;
+				}
+//console.log('x',x);
+
+				if (t >= 1667 && t <= 2222) {
+					y = -1.1063814 * Math.pow(x,3) - 1.34811020 * Math.pow(x,2) + 2.18555832 * x - 0.20219683;
+				} else if (t > 2222 && t <= 4000) {
+					y = -0.9549476 * Math.pow(x,3) - 1.37418593 * Math.pow(x,2) + 2.09137015 * x - 0.16748867;
+				} else if (t > 4000 && t <= 25000) {
+					y = 3.0817580 * Math.pow(x,3) - 5.87338670 * Math.pow(x,2) + 3.75112997 * x - 0.37001483;
+				}
+//console.log('y',y);
+				
+				//the rest is found at http://en.wikipedia.org/wiki/SRGB
+
+				// xyY to XYZ, Y = 1
+				var Y = (y == 0)? 0 : 1;
+				var X = (y == 0)? 0 : (x * Y) / y;
+				var Z = (y == 0)? 0 : ((1 - x - y) * Y) / y;
+//console.log('X',X);
+//console.log('Y',Y);
+//console.log('Z',Z);
+
+				var R_linear = 3.2406 * X - 1.5372 * Y - .4986 * Z;
+				var G_linear = -.9689 * X + 1.8758 * Y + .0415 * Z;
+				var B_linear = .0557 * X - .2040 * Y + 1.0570 * Z;
+//console.log('R_linear',R_linear);
+//console.log('G_linear',G_linear);
+//console.log('B_linear',B_linear);
+
+				var srgbGammaAdjust = function(C_linear) {
+					var a = .055;
+					if (C_linear <= .0031308) return 12.92 * C_linear;
+					return (1 + a) * Math.pow(C_linear, 1/0.5) - a;
+				};
+				
+				var R_srgb = srgbGammaAdjust(R_linear);
+				var G_srgb = srgbGammaAdjust(G_linear);
+				var B_srgb = srgbGammaAdjust(B_linear);
+//console.log('R_srgb',R_srgb);
+//console.log('G_srgb',G_srgb);
+//console.log('B_srgb',B_srgb);
+				
+				var result = [
+					Math.clamp(R_srgb, 0, 1),
+					Math.clamp(G_srgb, 0, 1),
+					Math.clamp(B_srgb, 0, 1),
+					1];
+
+				return result;
+			}
+		});
+
+		var toGLSLFloat = function(x) {
+			x = ''+x;
+			if (x.indexOf('.') == -1) x = x + '.';
+			return x;
+		};
+
 		Stars.prototype.sceneShader = new ModifiedDepthShaderProgram({
 			context : gl,
-			vertexCode : mlstr(function(){/*
+			vertexCode : 
+'#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
+'#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
+			mlstr(function(){/*
 attribute vec4 vertex;
 attribute float colorIndex;
 varying float alpha;
+varying vec3 color;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float visibleMagnitudeBias;
+uniform sampler2D colorIndexTex;
 #define M_LOG_10			2.3025850929940459010936137929093092679977416992188
 #define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	
+	//calculate apparent magnitude, convert to alpha
 	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
 	float absoluteMagnitude = vertex.w;
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+	
+	//calculate color
+	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
+
+	//TODO point sprite / point spread function?
 	gl_PointSize = 1.;
+	
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 		fragmentCode : mlstr(function(){/*
-uniform vec4 color;
+varying vec3 color;
 varying float alpha;
 void main() {
-	gl_FragColor = vec4(color.xyz, color.w * alpha);
+	gl_FragColor = vec4(color, alpha);
 }
 */})
 		});
@@ -2779,6 +2879,7 @@ void main() {
 		Stars.prototype.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			shader : Stars.prototype.sceneShader,
+			texs : [Stars.prototype.colorIndexTex],
 			attrs : {
 				vertex : new glutil.Attribute({buffer : Stars.prototype.buffer, size : 4, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
 				colorIndex : new glutil.Attribute({buffer : Stars.prototype.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 4 * Float32Array.BYTES_PER_ELEMENT})	//color-index
@@ -2786,7 +2887,8 @@ void main() {
 			uniforms : {
 				pointSize : 1,
 				color : [1,1,1,1],
-				visibleMagnitudeBias : starsVisibleMagnitudeBias
+				visibleMagnitudeBias : starsVisibleMagnitudeBias,
+				colorIndexTex : 0
 			},
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null
