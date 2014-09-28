@@ -766,7 +766,28 @@ for (var i = 0; i < Planets.prototype.planetClasses.length; ++i) {
 	}
 }
 
+//only instanciate these for the named stars.  87 in all.
+var Star = makeClass({
+	init : function(args) {
+		this.name = args.name;
+		this.index = args.index;	//index in the stars.buffer, stride of stars.buffer.dim
+		//note stars.buffer holds x y z abs-mag color-index
+		this.pos = [
+			Stars.prototype.buffer.data[0 + this.index * Stars.prototype.buffer.dim],
+			Stars.prototype.buffer.data[1 + this.index * Stars.prototype.buffer.dim],
+			Stars.prototype.buffer.data[2 + this.index * Stars.prototype.buffer.dim]
+		];
+	}
+});
+
 var Stars = makeClass({
+	init : function() {
+		//keep traack of named stars ...
+		this.length = namedStars.length;
+		for (var i = 0; i < this.length; ++i) {
+			this[i] = new Star(namedStars[i]);
+		}
+	}
 });
 var stars = undefined;
 
@@ -1021,29 +1042,45 @@ function mouseRay() {
 
 function chooseNewOrbitObject(mouseDir,doChoose) {
 	var bestDot = 0;
-	var bestPlanet = undefined;
-	for (var i = 0; i < planets.length; ++i) {
-		var planet = planets[i];
-		if (planet.hide) continue;
-		var deltaX = planet.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
-		var deltaY = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
-		var deltaZ = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
-		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-		deltaX /= deltaLength;
-		deltaY /= deltaLength;
-		deltaZ /= deltaLength;
-		var dot = deltaX * mouseDir[0] + deltaY * mouseDir[1] + deltaZ * mouseDir[2];
-		if (dot > bestDot) {
-			bestDot = dot;
-			bestPlanet = planet;
+	var bestTarget = undefined;
+
+	/*
+	list contains:
+	.length
+	[i]
+		.hide
+		.pos[j]
+	*/
+	var processList = function(list) {
+		for (var i = 0; i < list.length; ++i) {
+			var target = list[i];
+			if (target.hide) continue;
+			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
+			var deltaY = target.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
+			var deltaZ = target.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+			var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+			deltaX /= deltaLength;
+			deltaY /= deltaLength;
+			deltaZ /= deltaLength;
+			var dot = deltaX * mouseDir[0] + deltaY * mouseDir[1] + deltaZ * mouseDir[2];
+			if (dot > bestDot) {
+				bestDot = dot;
+				bestTarget = target;
+			}
 		}
+	};
+	processList(planets);
+
+	if (stars !== undefined) {
+		processList(stars);
 	}
+	
 	mouseOverTarget = undefined;
-	if (bestPlanet !== undefined) {
-		$('#hoverPlanetText').text(bestPlanet.name);
-		mouseOverTarget = bestPlanet;
-		if (bestPlanet !== orbitTarget && doChoose) {
-			setOrbitTarget(bestPlanet);
+	if (bestTarget !== undefined) {
+		$('#hoverTargetText').text(bestTarget.name);
+		mouseOverTarget = bestTarget;
+		if (bestTarget !== orbitTarget && doChoose) {
+			setOrbitTarget(bestTarget);
 			refreshMeasureText();
 		}
 	}
@@ -2663,7 +2700,6 @@ function initStars() {
 			floatBuffer[j] = x;
 		}
 
-		stars = new Stars();
 		Stars.prototype.sceneShader = new ModifiedDepthShaderProgram({
 			context : gl,
 			vertexCode : mlstr(function(){/*
@@ -2712,6 +2748,9 @@ void main() {
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null
 		});
+		
+		//assign after all prototype buffer stuff is written, so Stars can call Star can use it during ctor
+		stars = new Stars();
 
 	};
 	xhr.send();
@@ -3890,7 +3929,7 @@ void main() {
 function setOrbitTarget(newTarget) {
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
 	orbitTarget = newTarget
-	$('#orbitPlanetText').text(orbitTarget.name);
+	$('#orbitTargetText').text(orbitTarget.name);
 }
 
 function initScene() {
@@ -3905,7 +3944,7 @@ function initScene() {
 	orbitTargetDistance = 2. * trackPlanet.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
-	$('#hoverPlanetText').text(trackPlanet.name);
+	$('#hoverTargetText').text(trackPlanet.name);
 
 	var dragging = false;
 	var tmpQ = quat.create();	
