@@ -81,7 +81,7 @@ local function getMajorBodies(data)
 end
 
 local time = os.time()
-local date = os.date('*t', time)
+local date = os.date('!*t', time)
 local julianDate = julian.fromCalendar(date)
 local startDate = os.date('%Y-%b-%d %H:%M', time)	--'2014-Sep-18 22:07'
 local endDate = os.date('%Y-%b-%d %H:%M', time+61)	--'2014-Sep-18 22:08'

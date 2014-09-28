@@ -64,13 +64,7 @@ local timezone = ffi.new('struct timezone[1]')
 timezone[0].tz_minuteswest = 0
 timezone[0].tz_dsttime = 0
 function currentDate()
-	--[[
-	ffi.C.gettimeofday(timeofday, timezone)
-	timeofday[0].tv_sec = timeofday[0].tv_sec -- - timeZoneOffset
-	--]]
-	local datetable = os.date('*t')	--, tonumber(timeofday[0].tv_sec))
-	--datetable.sec = datetable.sec + tonumber(timeofday[0].tv_usec) * 1e-6
-	return datetable
+	return os.date('!*t')
 end
 
 
