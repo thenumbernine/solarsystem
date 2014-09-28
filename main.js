@@ -771,6 +771,8 @@ var orbitZoomFactor = .0003;	// upon mousewheel
 var mouse;
 var mouseDir;
 var skyCubeObj;
+var pointObj;
+var starsObj;
 
 var skyTexFilenames = [
 	'textures/sky-visible-cube-xp.png',
@@ -1166,6 +1168,7 @@ var showLatAndLonLines = false;
 var showGravityWell = false;
 var showDistantPoints = true;
 var showOrbits = true;
+var showStars = false;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -1628,6 +1631,10 @@ var planetPointVisRatio = .001;
 
 				planet.gravWellObj.draw();
 			}
+		}
+	
+		if (showStars) {
+			starsObj.draw();
 		}
 	};
 })();
@@ -2570,7 +2577,56 @@ function init2() {
 	$('#menu').show();
 	$('#timeDiv').show();
 	$('#infoDiv').show();
+
 	init3();
+}
+
+function initStars() {
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'hyg/starpositions.f32', true);
+	xhr.responseType = 'arraybuffer';
+	/* if we want a progress bar ...
+	xhr.onprogress = function(e) {
+		if (e.total) {
+			progress.attr('value', parseInt(e.loaded / e.total * 100));
+		}
+	};
+	*/
+	xhr.onload = function(e) {
+		console.log('loaded star data!');
+		var arrayBuffer = this.response;
+		var data = new DataView(arrayBuffer);
+		
+		var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
+		var len = floatBuffer.length;
+		for (var j = 0; j < len; ++j) {
+			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
+		
+			//convert from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
+			if (Math.abs(x) > 1e+20) {
+				console.log('star '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution'); 
+			}
+			x *= 3.08567758e+16;
+
+			floatBuffer[j] = x;
+		}
+
+		//now that we have the float buffer ...
+		starsObj = new glutil.SceneObject({
+			mode : gl.POINTS,
+			shader : colorShader,
+			attrs : {
+				vertex : new glutil.ArrayBuffer({data : floatBuffer})
+			},
+			uniforms : {
+				pointSize : 1,
+				color : [1,1,1,1],
+			},
+			parent : null
+		});
+
+	};
+	xhr.send();
 }
 
 function initPlanetColorSchRadiusAngle(planet) {
@@ -2929,10 +2985,15 @@ void main() {
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
+		},
+		uniforms : {
 			pointSize : 4
 		},
 		parent : null
 	});
+
+	//init stars now that shaders are made 
+	initStars();
 
 	var planetsDone = 0;
 
@@ -3717,8 +3778,8 @@ void main() {
 	*/
 	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
 	//eqn 10
-	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
-	var delta = 2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
+	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549)) + Math.PI;
+	var delta = -2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
 	var theta = 2*Math.PI/180 * 122.93191857;
 	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
 	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
@@ -3726,7 +3787,6 @@ void main() {
 	var j2000ToGalactic = [0,0,0,1];
 	quat.mul(j2000ToGalactic, ry, rx);
 	quat.mul(j2000ToGalactic, rz, j2000ToGalactic);
-	quat.conjugate(j2000ToGalactic, j2000ToGalactic);
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
