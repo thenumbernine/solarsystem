@@ -1167,9 +1167,10 @@ var showRotationAxis = false;
 var showOrbitAxis = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
-var showDistantPoints = true;
+var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
-var showStars = false;
+var showStars = true;
+var starsVisibleMagnitudeBias = 2;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -1335,9 +1336,12 @@ var planetPointVisRatio = .001;
 
 
 		if (showStars) {
-			gl.disable(gl.DEPTH_TEST);
-			starsObj.draw();
-			gl.enable(gl.DEPTH_TEST);
+			if (starsObj) {
+				gl.disable(gl.DEPTH_TEST);
+				starsObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+				starsObj.draw();
+				gl.enable(gl.DEPTH_TEST);
+			}
 		}
 
 		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
@@ -1478,7 +1482,7 @@ var planetPointVisRatio = .001;
 			var planetClassPrototype = planet.init.prototype;
 			if (planet.hide) continue;
 			
-			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showDistantPoints) {
+			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showPlanetsAsDistantPoints) {
 				vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitPlanet.pos);
 				pointObj.attrs.vertex.updateData();
 				pointObj.draw({
@@ -2128,7 +2132,8 @@ function init1() {
 		'showLatAndLonLines',
 		'showGravityWell',
 		'showOrbits',
-		'showDistantPoints',
+		'showStars',
+		'showPlanetsAsDistantPoints',
 		'gravityWellScaleNormalized',
 		'gravityWellScaleFixed'
 	], function(_, toggle) {
@@ -2146,6 +2151,7 @@ function init1() {
 
 	$.each([
 		'gravityWellScaleFixedValue',
+		'starsVisibleMagnitudeBias'
 	], function(_, toggle) {
 		(function(){
 			var textfield = $('#'+toggle);
@@ -3819,7 +3825,7 @@ void main() {
 	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
 	//eqn 10
 	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
-	var delta = -2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
+	var delta = 2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
 	var theta = 2*Math.PI/180 * 122.93191857;
 	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
 	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
