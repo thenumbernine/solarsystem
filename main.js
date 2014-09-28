@@ -3289,7 +3289,7 @@ function initPlanetOrbitPathObj(planet) {
 
 	var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
 	var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-	var gravitationalParameter = gravitationalConstant * (planet.mass + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+	var gravitationalParameter = gravitationalConstant * ((planet.mass || 0) + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
 	var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
 	var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
 	var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
