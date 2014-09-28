@@ -75,7 +75,7 @@ io.writefile('namedStars.json', 'namedStars = [\n\t' ..
 			else
 				v = tostring(v)
 			end
-			kvs:insert('[' .. ('%q'):format(k) .. '] : ' .. v)
+			kvs:insert(('%q'):format(k) .. ':' .. v)
 		end
 		return '{' .. kvs:concat(', ') .. '}'
 	end):concat(',\n\t') .. '\n];')
