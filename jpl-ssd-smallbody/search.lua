@@ -49,7 +49,8 @@ function run(env)
 	local function text()
 		local env, conn, cur
 		if not isComet and not isNumbered and not isUnnumbered then
-			coroutine.yield('please specify comet, numbered, or unnumbered')
+			local json = require 'dkjson'
+			coroutine.yield(json.encode{rows={}, count=0})
 			return
 		end
 		local results = select(2, xpcall(function()

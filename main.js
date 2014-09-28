@@ -2294,8 +2294,11 @@ function init1() {
 	var prevButton = undefined;
 
 	var searchResults = [];
-
-	var processSearch = function(pageIndex) {
+	
+	var searchLastID = 0;	//uid to inc so if we search twice, the first can be invalidated
+	
+	//dataSource = 'remote' for remote queries, 'local' for the currently-selected planets
+	var processSearch = function(pageIndex, dataSource) {
 		var button = $('#celestialBodiesSearch');
 		var searchText = $('#celestialBodiesSearchText');
 		var searchStr = searchText.val();
@@ -2305,45 +2308,18 @@ function init1() {
 			
 		if (prevButton) prevButton.prop('disabled', 1);
 		if (nextButton) nextButton.prop('disabled', 1);
+
+		var searchID = ++searchLastID;
+
+		var processResults = function(results) {
+			if (searchID < searchLastID-1) return;	//someone else has searched
+			
+			searchText.val(searchStr);
+			searchText.prop('disabled', 0);
+			button.prop('disabled', 0);
+			
+			$('#celestialBodiesSearchToggleAll').prop('checked', 0);	//disable too?
 					
-		$.ajax({
-			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-			dataType : 'json',
-			data : {
-				comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
-				numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
-				unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
-				text : searchStr,
-				page : pageIndex+1	//1-based
-			},
-			timeout : 5000
-		}).error(function() {
-			searchText.val(searchStr);
-			searchText.prop('disabled', 0);
-			button.prop('disabled', 0);
-			//TODO animate background color of search text
-			if (prevButton) prevButton.prop('disabled', 0);
-			if (nextButton) nextButton.prop('disabled', 0);
-			
-			var warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
-			$('#celestialBodiesSearchComets').before(warning);
-			setTimeout(function() {
-				//after five seconds, fade away
-				warning.animate({
-					height : 0,
-					opacity : 0
-				}, {
-					duration : 500,
-					complete : function() {
-						warning.remove();
-					}
-				});
-			}, 3000);
-		}).done(function(results) {
-			searchText.val(searchStr);
-			searchText.prop('disabled', 0);
-			button.prop('disabled', 0);
-			
 			var pageSize = 20;	//fixed atm
 			var pageMax = Math.floor((results.count-1) / pageSize);
 
@@ -2461,7 +2437,7 @@ function init1() {
 					//TODO remove or grey out results as well?
 					if (nextButton) nextButton.prop('disabled', 1);
 					if (prevButton) prevButton.prop('disabled', 1);
-					processSearch(pageIndex+dir);
+					processSearch(pageIndex+dir, dataSource);
 				};
 				if (pageIndex > 0) {
 					prevButton = $('<button>', {
@@ -2481,7 +2457,64 @@ function init1() {
 				}
 				$('<span>', {text:(pageIndex+1)+' of '+pageMax}).appendTo($('#celestialBodiesSearchResults'));
 			}
-		});
+		};
+
+		if (dataSource == 'remote') {
+			$.ajax({
+				url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+				dataType : 'json',
+				data : {
+					comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
+					numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
+					unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
+					text : searchStr,
+					page : pageIndex+1	//1-based
+				},
+				timeout : 5000
+			}).error(function() {
+				searchText.val(searchStr);
+				searchText.prop('disabled', 0);
+				button.prop('disabled', 0);
+				//TODO animate background color of search text
+				if (prevButton) prevButton.prop('disabled', 0);
+				if (nextButton) nextButton.prop('disabled', 0);
+				
+				var warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
+				$('#celestialBodiesSearchWarning').after(warning);
+				setTimeout(function() {
+					//after five seconds, fade away
+					warning.animate({
+						height : 0,
+						opacity : 0
+					}, {
+						duration : 500,
+						complete : function() {
+							warning.remove();
+						}
+					});
+				}, 3000);
+			}).done(processResults);
+		} else if (dataSource == 'local') {
+			var rows = [];
+			var searchingComets = $('#celestialBodiesSearchComets').prop('checked');
+			var searchingNumbered = $('#celestialBodiesSearchNumbered').prop('checked');
+			var searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
+			for (var i = 0; i < planets.length; ++i) {
+				var planet = planets[i];
+				var row = planet.orbitData;
+				if (row) {
+					if ((row.bodyType == 'comet' && searchingComets) ||
+						(row.bodyType == 'numbered asteroid' && searchingNumbered) ||
+						(row.bodyType == 'unnumbered asteroid' && searchingUnnumbered))
+					{
+						rows.push(row);
+					}
+				}
+			}
+			processResults({rows:rows, count:rows.length});
+		} else {
+			throw "got an unknown data source request " + dataSource;
+		}
 	};
 	
 	$('#celestialBodiesSearchText').keydown(function(e){
@@ -2491,7 +2524,12 @@ function init1() {
 	});
 
 	//change a check box, immediately update search results
-	$.each([$('#celestialBodiesSearchComets'), $('#celestialBodiesSearchNumbered'), $('#celestialBodiesSearchUnnumbered')], function(_,checkbox) {
+	$.each([
+		$('#celestialBodiesSearchComets'), 
+		$('#celestialBodiesSearchNumbered'), 
+		$('#celestialBodiesSearchUnnumbered'),
+		$('#celestialBodiesSearchVisible')
+	], function(_,checkbox) {
 		checkbox.change(function() {
 			$('#celestialBodiesSearch').trigger('click');
 		});
@@ -2507,7 +2545,9 @@ function init1() {
 	});
 
 	$('#celestialBodiesSearch').click(function() {
-		processSearch(0);
+		processSearch(0, 
+			$('#celestialBodiesSearchVisible').prop('checked') ? 'local' : 'remote'
+		);
 	});
 	$('#celestialBodiesSearch').trigger('click');	//fire one off 
 
