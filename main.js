@@ -1219,7 +1219,7 @@ var showGravityWell = false;
 var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
 var showStars = true;
-var starsVisibleMagnitudeBias = 2;
+var starsVisibleMagnitudeBias = 4;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -2743,7 +2743,7 @@ void main() {
 			uniforms : {
 				pointSize : 1,
 				color : [1,1,1,1],
-				visibleMagnitudeBias : 2
+				visibleMagnitudeBias : starsVisibleMagnitudeBias
 			},
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null
