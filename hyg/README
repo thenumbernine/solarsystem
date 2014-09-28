@@ -1,0 +1,5 @@
+hygxyz.csv = CSV data from http://astronexus.com/hyg
+
+getdata.lua = LuaJIT script that extracts the xyz contents and store them as a binary buffer
+
+getstarinfo.lua = Xavante script to return information about the star
