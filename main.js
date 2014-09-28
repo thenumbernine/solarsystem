@@ -421,6 +421,15 @@ var Planet = makeClass({
 		return p;
 	},
 
+	copy : function(src) {
+		this.pos[0] = src.pos[0];
+		this.pos[1] = src.pos[1];
+		this.pos[2] = src.pos[2];
+		this.vel[0] = src.vel[0];
+		this.vel[1] = src.vel[1];
+		this.vel[2] = src.vel[2];
+	},
+
 	add : function(other) {
 		var a = this;
 		var b = other;
@@ -670,6 +679,12 @@ Planets = makeClass({
 		return newPlanets;
 	},
 
+	copy : function(srcPlanets) {
+		for (var i = 0; i < this.length; ++i) {
+			this[i].copy(srcPlanets[i]);
+		}
+	},
+
 	add : function(other) {
 		var a = this;
 		var b = other;
@@ -761,7 +776,7 @@ var dateTime = Date.now();
 
 // track ball motion variables
 var mouseOverPlanetIndex;
-var orbitPlanetIndex;
+var orbitPlanet;
 var orbitGeodeticLocation;
 var orbitDistance;
 var orbitOffset = [0,0,0];
@@ -1005,13 +1020,12 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	var bestDot = 0;
 	var bestPlanet = undefined;
 	var bestPlanetIndex = undefined;
-	var currentOrbitPlanet = planets[orbitPlanetIndex];
 	for (var i = 0; i < planets.length; ++i) {
 		var planet = planets[i];
 		if (planet.hide) continue;
-		var deltaX = planet.pos[0] - glutil.view.pos[0] - currentOrbitPlanet.pos[0];
-		var deltaY = planet.pos[1] - glutil.view.pos[1] - currentOrbitPlanet.pos[1];
-		var deltaZ = planet.pos[2] - glutil.view.pos[2] - currentOrbitPlanet.pos[2];
+		var deltaX = planet.pos[0] - glutil.view.pos[0] - orbitPlanet.pos[0];
+		var deltaY = planet.pos[1] - glutil.view.pos[1] - orbitPlanet.pos[1];
+		var deltaZ = planet.pos[2] - glutil.view.pos[2] - orbitPlanet.pos[2];
 		var deltaLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
 		deltaX /= deltaLength;
 		deltaY /= deltaLength;
@@ -1027,9 +1041,9 @@ function chooseNewPlanet(mouseDir,doChoose) {
 	if (bestPlanet !== undefined) {
 		$('#hoverPlanetText').text(bestPlanet.name);
 		mouseOverPlanetIndex = bestPlanetIndex;
-		if (bestPlanet.index !== orbitPlanetIndex && doChoose) {
-			vec3.sub(orbitOffset, planets[orbitPlanetIndex].pos, planets[bestPlanetIndex].pos);
-			orbitPlanetIndex = bestPlanet.index;
+		if (bestPlanet !== orbitPlanet && doChoose) {
+			vec3.sub(orbitOffset, orbitPlanet.pos, planets[bestPlanetIndex].pos);
+			orbitPlanet = bestPlanet;
 			$('#orbitPlanetText').text(bestPlanet.name);
 			refreshMeasureText();
 		}
@@ -1037,9 +1051,8 @@ function chooseNewPlanet(mouseDir,doChoose) {
 }
 
 function refreshMeasureText() {
-	var planet = planets[orbitPlanetIndex];
-	$('#measureMin').text(planet.measureMin === undefined ? '' : (planet.measureMin.toExponential() + ' m/s^2'));
-	$('#measureMax').text(planet.measureMax === undefined ? '' : (planet.measureMax.toExponential() + ' m/s^2'));
+	$('#measureMin').text(orbitPlanet.measureMin === undefined ? '' : (orbitPlanet.measureMin.toExponential() + ' m/s^2'));
+	$('#measureMax').text(orbitPlanet.measureMax === undefined ? '' : (orbitPlanet.measureMax.toExponential() + ' m/s^2'));
 }
 
 // routines for calculating the earth's angle ...
@@ -1293,7 +1306,7 @@ var updatePlanetClassSceneObj;
 				}
 				planetClassPrototype.sceneObj.attrs.tide.updateData();
 				//if it updated...
-				if (planet.index == orbitPlanetIndex) {
+				if (planet == orbitPlanet) {
 					refreshMeasureText();
 				}
 			}
@@ -1312,8 +1325,6 @@ var planetPointVisRatio = .001;
 	var viewPosInv = vec3.create();
 	
 	drawScene = function() {
-		var orbitPlanet = planets[orbitPlanetIndex];
-		
 		mat4.identity(glutil.scene.mvMat);
 		
 		quat.conjugate(viewAngleInv, glutil.view.angle);
@@ -1843,7 +1854,7 @@ function init1() {
 	$('#reset').click(function() {
 		integrationPaused = true;
 		integrateTimeStep = defaultIntegrateTimeStep; 
-		planets = initPlanets;
+		planets.copy(initPlanets);
 		julianDate = initJulianDate;
 		refreshCurrentTimeText();
 	});
@@ -2302,6 +2313,7 @@ function init1() {
 							//only remove if it's already there 
 							if (planets.indexes[name] !== undefined) {
 								var index = planets.indexes[name];
+								var planet = planets[index];
 								planets.remove(index);
 								initPlanets.remove(index);
 								Planets.prototype.planetClasses.splice(index, 1);
@@ -2309,8 +2321,10 @@ function init1() {
 								for (var i = index; i < Planets.prototype.planetClasses.length; ++i) {
 									Planets.prototype.planetClasses[index].prototype.index = i;
 								}
-								if (orbitPlanetIndex == index) orbitPlanetIndex = planets.indexes.Sun;
-								if (orbitPlanetIndex > index) --orbitPlanetIndex;
+								if (orbitPlanet == planet) {
+									orbitPlanet = planets[planets.indexes.Sun];
+									$('#orbitPlanetText').text(trackPlanet.name);
+								}
 								//TODO destruct WebGL geometry?  or is it gc'd automatically?
 								//now rebuild indexes
 								Planets.prototype.indexes = {};
@@ -2640,7 +2654,7 @@ void main() {
 	float distanceInParsecs = length(vertex.xyz) * PARSECS_PER_M;	//in parsecs
 	float absoluteMagnitude = vertex.w;
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
-	alpha = pow(1./2.5, apparentMagnitude - visibleMagnitudeBias);
+	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
 	gl_PointSize = 1.;
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -3855,7 +3869,7 @@ function initScene() {
 	gl.clearColor(0,0,0,0);
 
 	var trackPlanet = planets[planets.indexes.Earth];
-	orbitPlanetIndex = trackPlanet.index;
+	orbitPlanet = trackPlanet;
 	orbitTargetDistance = 2. * trackPlanet.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
@@ -3912,8 +3926,6 @@ function update() {
 			quat.normalize(glutil.view.angle, glutil.view.angle);
 		}
 	}
-
-	var orbitPlanet = planets[orbitPlanetIndex];
 
 	/* converage angle on target planet * /
 
@@ -3983,7 +3995,13 @@ function update() {
 */
 	if (!integrationPaused) {
 		// if we're integrating ...
-		planets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
+		//buffer the new state
+		var newPlanets = integrate.run(julianDate, planets, integrateTimeStep, integrateFunction, integrationMethod, integrationArgs);
+		//copy it over the old
+		// ... so we don't overwrite our objects
+		// ... so we can use object pointers for things like selected and hover-over planets
+		// ... so we can use abstraction when considering mouseover of other objects, like stars, or galaxies, or small bodies or satellites or whatever else
+		planets.copy(newPlanets);
 		julianDate += integrateTimeStep;
 		refreshCurrentTimeText();
 	}
@@ -3999,7 +4017,7 @@ function update() {
 	//if we are close enough to the planet then rotate with it
 	if (false &&
 		lastJulianDate !== julianDate && 
-		orbitPlanetIndex == planets.indexes.Earth &&	//only for earth at the moment ...
+		orbitPlanet == planets[planets.indexes.Earth] &&	//only for earth at the moment ...
 		orbitDistance < orbitPlanet.radius * 10) 
 	{
 		var deltaJulianDate = julianDate - lastJulianDate;
