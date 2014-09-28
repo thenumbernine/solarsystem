@@ -13,7 +13,8 @@ local header = lines:remove(1)
 local columnNames = header:split(',')	-- columnNames[1] = 'StarID'
 local columnForNames = columnNames:map(function(name,i) return i,name end)	-- columnForNames.StarID = 1
 
-assert(lines:remove(1):split(',')[columnForNames.ProperName] == 'Sol')	-- assert that the first star is the sun, named "Sol" (and at xyz = 000)
+-- nahh .. keep the sun ... I can use it for rendering in the star dataset when viewing the solar system from far away.  I just need to remove it from the dataset when up close. 
+--assert(lines:remove(1):split(',')[columnForNames.ProperName] == 'Sol')	-- assert that the first star is the sun, named "Sol" (and at xyz = 000)
 
 local numElem = 5
 local buffer = ffi.new('float[?]', numElem * #lines)	-- allocate space for xyz of each planet 
@@ -24,7 +25,7 @@ local columnCounts = {}
 for i=1,#lines do
 	local line = lines[i]
 	local parts = line:split(',')
-	if #parts ~= #columnNames then error("line "..(i+2).." does not have enoguh columns\n"..line) end 
+	if #parts ~= #columnNames then error("line "..(i+1).." does not have enoguh columns\n"..line) end 
 	local data = parts:map(function(part, i) 
 		local columnName = columnNames[i]
 		if #part > 0 then columnCounts[columnName] = (columnCounts[columnName] or 0) + 1 end
@@ -44,7 +45,7 @@ for i=1,#lines do
 	maxAbs = math.max(maxAbs, x)
 	maxAbs = math.max(maxAbs, y)
 	maxAbs = math.max(maxAbs, z)
-	assert(zeroBasedIndex == tonumber(data.StarID)-1)	-- this assertion isn't required, I was just curious if it was enforced
+	assert(zeroBasedIndex == tonumber(data.StarID))	-- this assertion isn't required, I was just curious if it was enforced
 	if #data.ProperName > 0 then
 		table.insert(namedStars, {name=data.ProperName, index=zeroBasedIndex})
 	end
