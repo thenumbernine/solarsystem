@@ -1363,6 +1363,7 @@ var planetPointVisRatio = .001;
 	var viewAngleInv = quat.create();
 	var invRotMat = mat4.create();
 	var viewPosInv = vec3.create();
+	var viewfwd = vec3.create();
 	
 	drawScene = function() {
 		mat4.identity(glutil.scene.mvMat);
@@ -1372,7 +1373,6 @@ var planetPointVisRatio = .001;
 		mat4.multiply(glutil.scene.mvMat, glutil.scene.mvMat, invRotMat);
 
 		//TODO pull from matrix
-		var viewfwd = vec3.create();
 		vec3.quatZAxis(viewfwd, glutil.view.angle);
 		vec3.scale(viewfwd, viewfwd, -1);
 
@@ -1519,6 +1519,21 @@ var planetPointVisRatio = .001;
 			
 				if (planet.ringObj !== undefined) {
 					gl.disable(gl.CULL_FACE);
+					//to provide to the ring shader:
+					//1) vector from planet to the sun (for fwd-vs-back scattering)
+					//2) radius and eccentricity of planet (for self-shadows)
+					//3) axis of planet rotation / normal of ring plane (for unlit side) ... can be derived from the angle, which is copied into the ring object
+					
+					//TODO cache rotation axis -- for here and for showing axis (like we already do for orbit axis)
+					var axis = [];
+					var sunDir = [];
+					vec3.sub(sunDir, planet.pos, planets[planets.indexes.Sun].pos);
+					vec3.normalize(sunDir, sunDir);
+					vec3.quatZAxis(axis, planet.ringObj.angle);
+					var axisDotSun = vec3.dot(axis, sunDir);
+					planet.ringObj.uniforms.lookingAtLitSide = (vec3.dot(viewfwd, axis) > 0) == (axisDotSun > 0);
+					var viewDotSun = vec3.dot(viewfwd, sunDir);
+					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;
 					planet.ringObj.draw();
 					gl.enable(gl.CULL_FACE);
 				}
@@ -2722,7 +2737,11 @@ function init2() {
 		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
 		imgs.push('textures/'+planetClassPrototype.name.toLowerCase()+'.png');
 	});
-	imgs.push('textures/saturn-rings.png');
+	imgs.push('textures/saturn-rings-color.png');
+	imgs.push('textures/saturn-rings-transparency.png');
+	imgs.push('textures/saturn-rings-back-scattered.png');
+	imgs.push('textures/saturn-rings-forward-scattered.png');
+	imgs.push('textures/saturn-rings-unlit-side.png');
 	for (var i = 0; i < skyTexFilenames.length; ++i) {
 		imgs.push(skyTexFilenames[i]);
 	}
@@ -2882,7 +2901,6 @@ if (true) {
 		};
 
 		Stars.prototype.sceneShader = new ModifiedDepthShaderProgram({
-			context : gl,
 			vertexCode : 
 '#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
 '#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
@@ -3108,7 +3126,6 @@ function init3() {
 	hsvTex = new glutil.HSVTexture(256);
 	
 	colorShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -3134,7 +3151,6 @@ void main() {
 	});
 	
 	planetColorShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -3174,7 +3190,6 @@ void main() {
 	});
 
 	planetTexShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -3215,7 +3230,6 @@ void main() {
 	});
 
 	hsvShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 attribute vec2 texCoord;
@@ -3368,9 +3382,8 @@ void main() {
 	})(); }
 
 	//while we're here, load the rings
-	{
+	(function(){
 		var ringShader = new ModifiedDepthShaderProgram({
-			context : gl,
 			vertexCode : mlstr(function(){/*
 #define M_PI 3.1415926535897931 
 attribute vec2 vertex;
@@ -3381,36 +3394,65 @@ uniform float maxRadius;
 varying vec2 texCoordv;
 void main() {
 	texCoordv = vertex;
+	
 	//vertex is the uv of the texcoord wrapped around the annulus 
 	//u coord is radial, v coord is angular 
 	float rad = mix(minRadius, maxRadius, vertex.x);
 	float theta = 2. * M_PI * vertex.y;
 	float cosTheta = cos(theta);
 	float sinTheta = sin(theta);
+	
+	//rotate the planet-local-frame vector into modelview space
 	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 			fragmentCode : mlstr(function(){/*
 varying vec2 texCoordv;
-uniform sampler2D tex;
+//described here:
+//http://www.mmedia.is/~bjj/data/s_rings/index.html
+uniform sampler2D colorTex;
+uniform sampler2D backScatteredTex;	//from the sun looking at the rings
+uniform sampler2D forwardScatteredTex;	//looking at the rings towards the sun
+uniform sampler2D transparencyTex;
+uniform sampler2D unlitSideTex;
+uniform bool lookingAtLitSide;
+uniform float backToFrontLitBlend;
 void main() {
-	gl_FragColor = texture2D(tex, texCoordv);
+	vec3 color = texture2D(colorTex, texCoordv).rgb;
+	gl_FragColor.rgb = color;
+	if (lookingAtLitSide) {
+		float backScattered = texture2D(backScatteredTex, texCoordv).r;
+		float forwardScattered = texture2D(forwardScatteredTex, texCoordv).r;
+		gl_FragColor.rgb *= mix(backScattered, forwardScattered, backToFrontLitBlend);
+	} else {
+		float unlitSide = texture2D(unlitSideTex, texCoordv).r;
+		gl_FragColor.rgb *= unlitSide;
+	}
+	float transparency = texture2D(transparencyTex, texCoordv).r;
+	gl_FragColor.a = transparency;
 }
 */})
 		});
 		
-		var img = new Image();
-		img.onload = function() {
-			var planetClassPrototype = planets[planets.indexes.Saturn].init.prototype;
-			planetClassPrototype.ringTex = new glutil.Texture2D({
-				data : img,
-				minFilter : gl.LINEAR_MIPMAP_LINEAR,
-				magFilter : gl.LINEAR,
-				generateMipmap : true
-			});
-
+		var planetClassPrototype = planets[planets.indexes.Saturn].init.prototype;
+	
+		var texSrcInfo = [
+			{field:'ringColorTex', url:'textures/saturn-rings-color.png', format:gl.RGBA},
+			{field:'ringBackScatteredTex', url:'textures/saturn-rings-back-scattered.png', format:gl.LUMINANCE},
+			{field:'ringForwardScatteredTex', url:'textures/saturn-rings-forward-scattered.png', format:gl.LUMINANCE},
+			{field:'ringTransparencyTex', url:'textures/saturn-rings-transparency.png', format:gl.LUMINANCE},
+			{field:'ringUnlitSideTex', url:'textures/saturn-rings-unlit-side.png', format:gl.LUMINANCE}
+		];
+		var numLoaded = 0;
+		var onLoadSaturnRingTex = function(url) {
+			++numLoaded;
+			if (numLoaded < texSrcInfo.length) return;
+			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
+		
+			//done! create the ring object
 			var vertexes = [];
 			var res = 200;
 			for (var i = 0; i < res; ++i) {
@@ -3419,6 +3461,11 @@ void main() {
 				vertexes.push(f);
 				vertexes.push(0);
 				vertexes.push(f);
+			}
+
+			var texs = [];
+			for (var i = 0; i < texSrcInfo.length; ++i) {
+				texs[i] = planetClassPrototype[texSrcInfo[i].field];
 			}
 		
 			//and a ring object
@@ -3432,18 +3479,40 @@ void main() {
 					})
 				},
 				uniforms : {
-					tex : 0,
-					minRadius : 7.4e+7,	//meters
-					maxRadius : 1.4025e+8
+					colorTex : 0,
+					backScatteredTex : 1,
+					forwardScatteredTex : 2,
+					transparencyTex : 3,
+					unlitSideTex : 4,
+					minRadius : 74510000,
+					maxRadius : 140390000,
+					planetRadius : planets[planets.indexes.Saturn].radius,
+					lookingAtLitSide : true,
+					backToFrontLitBlend : 0
 				},
-				texs : [planetClassPrototype.ringTex],
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				texs : texs,
 				pos : [0,0,0],
 				angle : [0,0,0,1],
 				parent : null
 			});
 		};
-		img.src = 'textures/saturn-rings.png';
-	}
+		$.each(texSrcInfo, function(i,info) {
+			planetClassPrototype[info.field] = new glutil.Texture2D({
+				url : info.url,
+				format : info.format,
+				internalFormat : info.format,
+				minFilter : gl.LINEAR_MIPMAP_LINEAR,
+				magFilter : gl.LINEAR,
+				wrap : {
+					s :  gl.CLAMP_TO_EDGE,
+					t : gl.REPEAT
+				},
+				generateMipmap : true,
+				onload : onLoadSaturnRingTex
+			});
+		});
+	})();
 }
 
 var orbitShader;
@@ -3784,7 +3853,6 @@ function initPlanetOrbitPathObj(planet) {
 
 function initOrbitPaths() {
 	var gravWellShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
@@ -3809,7 +3877,6 @@ void main() {
 
 
 	orbitShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
@@ -4034,7 +4101,6 @@ var galacticCenterDirection = {
 //init the "sky" cubemap (the galaxy background) once the texture for it loads
 function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
-		context : gl,
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 varying vec3 vertexv;
@@ -4049,6 +4115,9 @@ void main() {
 precision mediump float;
 varying vec3 vertexv;
 uniform samplerCube skyTex;
+	
+//TODO scale this from low value in solar system (.3 or so) to a large value at the range of the star field (1) before fading into the universe model
+const float brightness = .3;
 
 uniform vec4 angle;
 uniform vec4 viewAngle;
@@ -4058,9 +4127,9 @@ vec3 quatRotate( vec4 q, vec3 v ){
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
-	dir = quatRotate(vec4(-angle.xyz, angle.w), dir);
-	gl_FragColor = textureCube(skyTex, dir);
-	gl_FragColor.w = 1.; 
+	dir = quatRotate(vec4(-angle.xyz, angle.w), dir);	
+	gl_FragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
+	gl_FragColor.a = 1.; 
 }
 */}),
 		uniforms : {
