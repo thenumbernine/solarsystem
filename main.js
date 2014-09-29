@@ -1516,9 +1516,21 @@ var planetPointVisRatio = .001;
 					quat.copy(planet.latLonObj.angle, planet.sceneObj.uniforms.angle);
 					planet.latLonObj.draw();
 				}
-			
+			}
+		}
+
+		//draw rings and transparent objects last
+		//disable depth writing so orbits are drawn in front and behind them
+		//do this last so (without depth writing) other planets in the background don't show up in front of the rings
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
+			if (planet.hide) continue;
+
+			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				if (planet.ringObj !== undefined) {
 					gl.disable(gl.CULL_FACE);
+					gl.depthMask(false);
 					//to provide to the ring shader:
 					//1) vector from planet to the sun (for fwd-vs-back scattering)
 					//2) radius and eccentricity of planet (for self-shadows)
@@ -1535,6 +1547,8 @@ var planetPointVisRatio = .001;
 					var viewDotSun = vec3.dot(viewfwd, sunDir);
 					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;
 					planet.ringObj.draw();
+					
+					gl.depthMask(true);
 					gl.enable(gl.CULL_FACE);
 				}
 			}
@@ -2737,6 +2751,7 @@ function init2() {
 		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
 		imgs.push('textures/'+planetClassPrototype.name.toLowerCase()+'.png');
 	});
+	imgs.push('textures/jupiter-rings-color.png');
 	imgs.push('textures/saturn-rings-color.png');
 	imgs.push('textures/saturn-rings-transparency.png');
 	imgs.push('textures/saturn-rings-back-scattered.png');
@@ -3381,7 +3396,114 @@ void main() {
 		checkDone();
 	})(); }
 
-	//while we're here, load the rings
+	//ring texture for Jupiter
+	//http://www.celestiamotherlode.net/catalog/jupiter.php
+	(function(){
+		var ringShader = new ModifiedDepthShaderProgram({
+			//vertex code matches Saturn
+			vertexCode : mlstr(function(){/*
+#define M_PI 3.1415926535897931 
+attribute vec2 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float minRadius;
+uniform float maxRadius;
+varying vec2 texCoordv;
+void main() {
+	texCoordv = vertex;
+	
+	//vertex is the uv of the texcoord wrapped around the annulus 
+	//u coord is radial, v coord is angular 
+	float rad = mix(minRadius, maxRadius, vertex.x);
+	float theta = 2. * M_PI * vertex.y;
+	float cosTheta = cos(theta);
+	float sinTheta = sin(theta);
+	
+	//rotate the planet-local-frame vector into modelview space
+	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+			fragmentCode : mlstr(function(){/*
+varying vec2 texCoordv;
+uniform sampler2D colorTex;
+void main() {
+	gl_FragColor = texture2D(colorTex, texCoordv);
+}
+*/})
+		});
+		
+		var planetClassPrototype = planets[planets.indexes.Jupiter].init.prototype;
+	
+		var texSrcInfo = [
+			{field:'ringColorTex', url:'textures/jupiter-rings-color.png', format:gl.RGBA},
+		];
+		var numLoaded = 0;
+		var onLoadRingTex = function(url) {
+			++numLoaded;
+			if (numLoaded < texSrcInfo.length) return;
+			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
+		
+			//done! create the ring object
+			var vertexes = [];
+			var res = 200;
+			for (var i = 0; i < res; ++i) {
+				var f = i / (res - 1);
+				vertexes.push(1);
+				vertexes.push(f);
+				vertexes.push(0);
+				vertexes.push(f);
+			}
+
+			var texs = [];
+			for (var i = 0; i < texSrcInfo.length; ++i) {
+				texs[i] = planetClassPrototype[texSrcInfo[i].field];
+			}
+		
+			//and a ring object
+			planetClassPrototype.ringObj = new glutil.SceneObject({
+				mode : gl.TRIANGLE_STRIP,
+				shader : ringShader,
+				attrs : {
+					vertex : new glutil.ArrayBuffer({
+						dim : 2,
+						data : vertexes
+					})
+				},
+				uniforms : {
+					colorTex : 0,
+					minRadius : 102200000,
+					maxRadius : 227000000,
+					planetRadius : planetClassPrototype.radius
+				},
+				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+				texs : texs,
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				parent : null
+			});
+		};
+		$.each(texSrcInfo, function(i,info) {
+			planetClassPrototype[info.field] = new glutil.Texture2D({
+				url : info.url,
+				format : info.format,
+				internalFormat : info.format,
+				minFilter : gl.LINEAR_MIPMAP_LINEAR,
+				magFilter : gl.LINEAR,
+				wrap : {
+					s :  gl.CLAMP_TO_EDGE,
+					t : gl.REPEAT
+				},
+				generateMipmap : true,
+				onload : onLoadRingTex
+			});
+		});
+	})();
+
+
+	//Saturn's rings
 	(function(){
 		var ringShader = new ModifiedDepthShaderProgram({
 			vertexCode : mlstr(function(){/*
@@ -3447,7 +3569,7 @@ void main() {
 			{field:'ringUnlitSideTex', url:'textures/saturn-rings-unlit-side.png', format:gl.LUMINANCE}
 		];
 		var numLoaded = 0;
-		var onLoadSaturnRingTex = function(url) {
+		var onLoadRingTex = function(url) {
 			++numLoaded;
 			if (numLoaded < texSrcInfo.length) return;
 			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
@@ -3486,7 +3608,7 @@ void main() {
 					unlitSideTex : 4,
 					minRadius : 74510000,
 					maxRadius : 140390000,
-					planetRadius : planets[planets.indexes.Saturn].radius,
+					planetRadius : planetClassPrototype.radius,
 					lookingAtLitSide : true,
 					backToFrontLitBlend : 0
 				},
@@ -3509,7 +3631,7 @@ void main() {
 					t : gl.REPEAT
 				},
 				generateMipmap : true,
-				onload : onLoadSaturnRingTex
+				onload : onLoadRingTex
 			});
 		});
 	})();
