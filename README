@@ -68,3 +68,25 @@ TODO
 	- close-up render of correct size
 	- extra feature: show proportional to our own sun
 - ui overall: merge planet toggle with asteroid/comet search/toggle with star search/select/toggle
+- exoplanets, and from that, hierarchy
+
+
+Hierarchical structure:
+
+stars = new Stars(); has Star() objects
+	<- derived from the following:
+		stardata.f32 = float buffer used for rendering stars as a point cloud
+			contains star positions, absolute magnitude, color index, and maybe velocity later
+		namedStars.json = data file for selecting individual stars and star systems
+
+Star has the following:
+	- planets ( should or shouldn't include moons?  no for hierarchy, yes for integrating n-body sim)
+	- smallbodies 	
+		<- local to our solar system.
+		currently remote, because it contains a million objects
+		might do point cloud with these?
+		might do gpu-based kepler generation for time-varying coordinates ... if there is accuracy enough on the gpu ...
+		doesn't seem intuitive to allow selection of all million at once, or visually sensible to show all orbits at once ...
+
+planets has the following:
+	- moons.  currently only for our solar system.  grabbed from NASA Horizons and another NASA site.

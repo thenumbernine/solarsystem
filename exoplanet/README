@@ -1,0 +1,3 @@
+data from http://exoplanet.eu/catalog/
+
+getdata.lua <- parses the CSV database, generates files
