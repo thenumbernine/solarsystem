@@ -813,7 +813,6 @@ var mouse;
 var mouseDir;
 var skyCubeObj;
 var pointObj;
-var starsShader;
 
 var skyTexFilenames = [
 	'textures/sky-visible-cube-xp.png',
@@ -1042,7 +1041,7 @@ function mouseRay() {
 }
 
 function chooseNewOrbitObject(mouseDir,doChoose) {
-	var bestDot = 0;
+	var bestDot = Math.cos(Math.deg(10));
 	var bestTarget = undefined;
 
 	/*
@@ -1057,7 +1056,7 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 			var target = list[i];
 			
 			//very special case.  need to rework this all.  remove duplicate entries here, however I'm keeping them for the separate rendering systems.
-			if (list === stars && target.name == 'Sol') continue;
+			if (list === stars && target.index == 0) continue;
 			
 			if (target.hide) continue;
 			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
@@ -2256,7 +2255,7 @@ function init1() {
 		});
 	
 		if (parentPlanetIndex === undefined) {
-			controls.div.appendTo($('#celestialBodiesVisibleBodies'));
+			controls.div.appendTo($('#celestialBodiesVisiblePlanets'));
 		} else {
 			celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
 		}
@@ -2285,7 +2284,7 @@ function init1() {
 		}
 	}
 	
-	$('<br>').appendTo($('#celestialBodiesVisibleBodies'));
+	$('<br>').appendTo($('#celestialBodiesVisiblePlanets'));
 
 	//these are added to the end of the result
 	//they should get greyed upon new query (search, prev, next click)
@@ -2381,7 +2380,7 @@ function init1() {
 									name : name,
 									isComet : row.bodyType == 'comet',
 									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
-									orbitData : row,
+									sourceJPLSSDData : row,
 									parent : planets.indexes.Sun,
 									index : index
 								});
@@ -2502,7 +2501,7 @@ function init1() {
 			var searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
 			for (var i = 0; i < planets.length; ++i) {
 				var planet = planets[i];
-				var row = planet.orbitData;
+				var row = planet.sourceJPLSSDData;
 				if (row) {
 					if ((row.bodyType == 'comet' && searchingComets) ||
 						(row.bodyType == 'numbered asteroid' && searchingNumbered) ||
@@ -2551,6 +2550,8 @@ function init1() {
 		);
 	});
 	$('#celestialBodiesSearch').trigger('click');	//fire one off 
+
+
 
 	// rest of the init
 
@@ -2686,6 +2687,33 @@ function init1() {
 	}
 }
 
+//call this once we get back our star data
+function initStarsControls() {
+	$('<div>', {text:'Stars'}).appendTo($('#celestialBodiesVisibleStars'));
+	//TODO maybe some pages or something for this, like the asteroid/smallbody search?
+	for (var i = 0; i < stars.length; ++i) {
+		(function(){
+			var star = stars[i];
+			$('<div>', {
+				css : {
+					textDecoration : 'underline',
+					cursor : 'pointer',
+					paddingLeft : '10px'
+				},
+				click : function() {
+					//work around our duplicate star/sun...
+					if (star.index == 0) {
+						setOrbitTarget(planets[planets.indexes.Sun]);
+					} else {
+						setOrbitTarget(star);
+					}
+				},
+				text : star.name
+			}).appendTo($('#celestialBodiesVisibleStars'));
+		})();
+	}
+}
+
 function init2() {
 
 	var imgs = [];
@@ -2746,8 +2774,8 @@ function initStars() {
 
 		//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 		//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
-		var colorIndexMin = 3.5;
-		var colorIndexMax = -.41;
+		var colorIndexMin = 2.;
+		var colorIndexMax = -.4;
 		var colorIndexTexWidth = 1024;
 		Stars.prototype.colorIndexTex = new glutil.Texture2D({
 			width : colorIndexTexWidth,
@@ -2764,6 +2792,10 @@ function initStars() {
 //console.log('frac',frac);
 				var bv = frac * (colorIndexMax - colorIndexMin) + colorIndexMin;
 //console.log('bv',bv);
+				
+//from here on out is the OP of the above article	
+if (false) {
+				
 				var t = 4600 * ((1 / ((.92 * bv) + 1.7)) + (1 / ((.92 * bv) + .62)));
 //console.log('t',t);
 			
@@ -2822,6 +2854,24 @@ function initStars() {
 					1];
 
 				return result;
+
+}	//...and this is the reply ...
+if (true) {
+
+				var t;  r=0.0; g=0.0; b=0.0; if (t<-0.4) t=-0.4; if (t> 2.0) t= 2.0;
+				if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); r=0.61+(0.11*t)+(0.1*t*t); }
+				else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); r=0.83+(0.17*t)          ; }
+				else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); r=1.00                   ; }
+				if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); g=0.70+(0.07*t)+(0.1*t*t); }
+				else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); g=0.87+(0.11*t)          ; }
+				else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); g=0.98-(0.16*t)          ; }
+				else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); g=0.82         -(0.5*t*t); }
+				if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); b=1.00                   ; }
+				else if ((bv>= 0.40)&&(bv<1.50)) { t=(bv-0.40)/(1.50-0.40); b=1.00-(0.47*t)+(0.1*t*t); }
+				else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); b=0.63         -(0.6*t*t); }
+
+				return [r,g,b,1];
+}
 			}
 		});
 
@@ -2854,6 +2904,10 @@ void main() {
 	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
 	float absoluteMagnitude = vertex.w;
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
+	
+	//something to note: these power functions give us a sudden falloff,
+	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
+	// one last fix would be to never scale the vertices and render different scaled objects at separate coordinate systems
 	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
 	
 	//calculate color
@@ -2898,6 +2952,7 @@ void main() {
 		//assign after all prototype buffer stuff is written, so Stars can call Star can use it during ctor
 		stars = new Stars();
 
+		initStarsControls();
 	};
 	xhr.send();
 }
@@ -3430,7 +3485,7 @@ function initPlanetOrbitPathObj(planet) {
 	// or just put an orbit mesh there?
 	if (planet.isComet || planet.isAsteroid) {
 	
-		eccentricity = assertExists(planet.orbitData, 'eccentricity');
+		eccentricity = assertExists(planet.sourceJPLSSDData, 'eccentricity');
 		if (eccentricity >= 1) {
 			console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
 			return;
@@ -3438,10 +3493,10 @@ function initPlanetOrbitPathObj(planet) {
 
 		var pericenterDistance, semiMajorAxis;
 		if (planet.isComet) {
-			pericenterDistance = assert(planet.orbitData.perihelionDistance);
+			pericenterDistance = assert(planet.sourceJPLSSDData.perihelionDistance);
 			semiMajorAxis = pericenterDistance / (1 - eccentricity);
 		} else if (planet.isAsteroid) {
-			semiMajorAxis = assert(planet.orbitData.semiMajorAxis);
+			semiMajorAxis = assert(planet.sourceJPLSSDData.semiMajorAxis);
 			pericenterDistance = semiMajorAxis * (1 - eccentricity);
 		}
 
@@ -3449,15 +3504,15 @@ function initPlanetOrbitPathObj(planet) {
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
 		
-		var longitudeOfAscendingNode = assert(planet.orbitData.longitudeOfAscendingNode);
+		var longitudeOfAscendingNode = assert(planet.sourceJPLSSDData.longitudeOfAscendingNode);
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
 		var sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		var argumentOfPericenter = assert(planet.orbitData.argumentOfPerihelion);
+		var argumentOfPericenter = assert(planet.sourceJPLSSDData.argumentOfPerihelion);
 		var cosPericenter = Math.cos(argumentOfPericenter);
 		var sinPericenter = Math.sin(argumentOfPericenter);
 
-		var inclination = assert(planet.orbitData.inclination);
+		var inclination = assert(planet.sourceJPLSSDData.inclination);
 		var cosInclination = Math.cos(inclination);
 		var sinInclination = Math.sin(inclination);
 	
@@ -3472,7 +3527,7 @@ function initPlanetOrbitPathObj(planet) {
 		if (planet.isComet) {
 			//how long until it crosses the periapsis
 			// solve for eccentric anomaly...
-			timeOfPeriapsisCrossing = planet.orbitData.timeOfPerihelionPassage;	//julian day
+			timeOfPeriapsisCrossing = planet.sourceJPLSSDData.timeOfPerihelionPassage;	//julian day
 			var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;	//unitless
 			var pathEccentricAnomaly = 2 * Math.PI * tau;
 			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
@@ -3504,7 +3559,7 @@ function initPlanetOrbitPathObj(planet) {
 		} else if (planet.isAsteroid) {
 			//solve Newton Rhapson
 			//f(E) = M - E + e sin E = 0
-			var meanAnomaly = planet.orbitData.meanAnomaly;
+			var meanAnomaly = planet.sourceJPLSSDData.meanAnomaly;
 			eccentricAnomaly = meanAnomaly;
 			for (var i = 0; i < 10; ++i) {
 				var func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
@@ -3951,6 +4006,31 @@ void main() {
 	initScene();
 }
 
+//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 11
+var galacticCenterDirection = {
+	alpha : 2*Math.PI/24 * (17 + 1/60 * (45 + 1/60 * 37.19910)),	//right ascension = x->y rotation
+	delta : 2*Math.PI/180 * (-28 + 1/60 * (56 + 1/60 * 10.2207)),		//declination = z->y rotation
+	theta : 2*Math.PI/180 * 122.93191857,							//position angle = x->z rotation
+	epsilon : 23.4*Math.PI/180,										//tilt plane = final y->z rotation
+	//the quaternion to hold it
+	angle : [0,0,0,1],
+	update : function() {
+		var rz = [0, 0, Math.sin(.5*this.alpha), Math.cos(.5*this.alpha)];
+		var ry = [0, -Math.sin(.5*this.delta), 0, Math.cos(.5*this.delta)];
+		var rx = [Math.sin(.5*this.theta), 0, 0, Math.cos(.5*this.theta)];
+		quat.identity(this.angle);
+		
+		//convert from equatorial coordinate system (alpha, delta, theta) to eccliptical coordinate system (alpha, beta, gamma)
+		//http://en.wikipedia.org/wiki/Ecliptic_coordinate_system#Conversion_from_equatorial_coordinates_to_ecliptic_coordinates says rect coords differ by a yz rotation of epsilon = earth's tilt 
+		var tmp = [0,Math.sin(.5*this.epsilon),0,Math.cos(.5*this.epsilon)];
+		quat.mul(this.angle, tmp, this.angle);
+		
+		quat.mul(this.angle, rx, this.angle);
+		quat.mul(this.angle, ry, this.angle);
+		quat.mul(this.angle, rz, this.angle);
+	}
+};
+
 //init the "sky" cubemap (the galaxy background) once the texture for it loads
 function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
@@ -3978,8 +4058,8 @@ vec3 quatRotate( vec4 q, vec3 v ){
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
-	dir = quatRotate(vec4(angle.xyz, -angle.w), dir);
-	gl_FragColor = .3 * textureCube(skyTex, dir);
+	dir = quatRotate(vec4(-angle.xyz, angle.w), dir);
+	gl_FragColor = textureCube(skyTex, dir);
 	gl_FragColor.w = 1.; 
 }
 */}),
@@ -4007,18 +4087,7 @@ void main() {
 	});
 
 	//my galaxy texture is centered at x+ and lies in the xy plane
-	//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010
-	//eqn 10
-	var alpha = 2*Math.PI/24 * (12 + 1/60 * (51 + 1/60 * 26.27549));
-	var delta = -2*Math.PI/180 * (27 + 1/60 * (7 + 1/60 * 41.7043));
-	var theta = -2*Math.PI/180 * 122.93191857;
-	var rz = [0, 0, Math.sin(.5*alpha), Math.cos(.5*alpha)];
-	var ry = [0, Math.sin(.5*delta), 0, Math.cos(.5*delta)];
-	var rx = [Math.sin(.5*theta), 0, 0, Math.cos(.5*theta)];
-	var j2000ToGalactic = [0,0,0,1];
-	quat.mul(j2000ToGalactic, ry, rx);
-	quat.mul(j2000ToGalactic, rz, j2000ToGalactic);
-	quat.conjugate(j2000ToGalactic, j2000ToGalactic);
+	galacticCenterDirection.update();
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
@@ -4029,7 +4098,7 @@ void main() {
 			})
 		},
 		uniforms : {
-			angle : j2000ToGalactic,
+			angle : galacticCenterDirection.angle,
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],

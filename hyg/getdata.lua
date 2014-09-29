@@ -60,6 +60,10 @@ for _,name in ipairs(columnNames) do
 	print('',name,columnCounts[name])
 end
 
+-- make name of sun consistent with NASA data
+assert(namedStars[1].name == 'Sol')
+namedStars[1].name = 'Sun'
+
 -- write 
 local filename = 'stardata.f32'
 local fh = ffi.C.fopen(filename, 'wb') or error("failed to open file "..filename.." for writing")
