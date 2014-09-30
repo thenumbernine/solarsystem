@@ -4195,31 +4195,6 @@ void main() {
 	initScene();
 }
 
-//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 11
-var galacticCenterDirection = {
-	alpha : 2*Math.PI/24 * (17 + 1/60 * (45 + 1/60 * 37.19910)),	//right ascension = x->y rotation
-	delta : 2*Math.PI/180 * (-28 + 1/60 * (56 + 1/60 * 10.2207)),		//declination = z->y rotation
-	theta : 2*Math.PI/180 * 122.93191857,							//position angle = x->z rotation
-	epsilon : 23.4*Math.PI/180,										//tilt plane = final y->z rotation
-	//the quaternion to hold it
-	angle : [0,0,0,1],
-	update : function() {
-		var rz = [0, 0, Math.sin(.5*this.alpha), Math.cos(.5*this.alpha)];
-		var ry = [0, -Math.sin(.5*this.delta), 0, Math.cos(.5*this.delta)];
-		var rx = [Math.sin(.5*this.theta), 0, 0, Math.cos(.5*this.theta)];
-		quat.identity(this.angle);
-		
-		//convert from equatorial coordinate system (alpha, delta, theta) to eccliptical coordinate system (alpha, beta, gamma)
-		//http://en.wikipedia.org/wiki/Ecliptic_coordinate_system#Conversion_from_equatorial_coordinates_to_ecliptic_coordinates says rect coords differ by a yz rotation of epsilon = earth's tilt 
-		var tmp = [0,Math.sin(.5*this.epsilon),0,Math.cos(.5*this.epsilon)];
-		quat.mul(this.angle, tmp, this.angle);
-		
-		quat.mul(this.angle, rx, this.angle);
-		quat.mul(this.angle, ry, this.angle);
-		quat.mul(this.angle, rz, this.angle);
-	}
-};
-
 //init the "sky" cubemap (the galaxy background) once the texture for it loads
 function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
@@ -4241,15 +4216,21 @@ uniform samplerCube skyTex;
 //TODO scale this from low value in solar system (.3 or so) to a large value at the range of the star field (1) before fading into the universe model
 const float brightness = .3;
 
-uniform vec4 angle;
+//uniform vec4 angle;
 uniform vec4 viewAngle;
 vec3 quatRotate( vec4 q, vec3 v ){ 
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
+
+//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
+const mat3 nj = mat3(-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
+					 -0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
+					 -0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
+
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
-	dir = quatRotate(vec4(-angle.xyz, angle.w), dir);	
+	dir = nj * dir;	
 	gl_FragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
 	gl_FragColor.a = 1.; 
 }
@@ -4278,7 +4259,6 @@ void main() {
 	});
 
 	//my galaxy texture is centered at x+ and lies in the xy plane
-	galacticCenterDirection.update();
 	skyCubeObj = new glutil.SceneObject({
 		mode : gl.TRIANGLES,
 		indexes : cubeIndexBuf,
@@ -4289,7 +4269,6 @@ void main() {
 			})
 		},
 		uniforms : {
-			angle : galacticCenterDirection.angle,
 			viewAngle : glutil.view.angle
 		},
 		texs : [skyTex],

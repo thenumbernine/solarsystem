@@ -35,6 +35,7 @@ See lua/eph.lua for gathering data from NASA Horizons Ephemeris 406
 TODO
 
 - planets:
+	- unify all planet meshes into one whose eccentricity is generated in-shader via uniforms
 	- put ephemeris data online, and re-enable the ffwd/rewind system
 	- get keplerian parameters merged with integrator / with ephemeris data
 		- then only integrate the main 11 bodies and update all other planets accordingly
