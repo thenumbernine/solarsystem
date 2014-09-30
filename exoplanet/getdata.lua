@@ -13,6 +13,15 @@ local columnNames = table.remove(data.rows, 1)
 setmetatable(columnNames, nil)
 data:setColumnNames(columnNames)
 
+-- replace empties with nil
+for _,row in ipairs(data.rows) do
+	assert(#row == #columnNames)
+	for i=1,#columnNames do
+		if row[i] == '' then row[i] = nil end
+	end
+end
+
+
 if arg[1] == 'v' then	-- verbose print all
 	local columnNames = {'ra', 'st_rah', 'dec', 'st_glon', 'st_glat', 'st_elon', 'st_elat'}
 	for i,row in ipairs(data.rows) do
@@ -45,46 +54,81 @@ for _,row in ipairs(data.rows) do
 	
 		-- "right ascension of the planetary system" / "declination of the planetary system"
 		-- are these the ra/dec of the star wrt the earth, or of the planet wrt its host star? 
-		local rightAscension = math.rad(assert(row.ra))			-- right ascension, in degress -> radians
-		local declination = math.rad(assert(row.dec))			-- declination, in degrees -> radians	
+		local rightAscension = math.rad(assert(tonumber(row.ra)))			-- right ascension, in degress -> radians
+		local declination = math.rad(assert(tonumber(row.dec)))			-- declination, in degrees -> radians	
 		-- there is also row.st_rah, the right ascension in hours, and galactic and ecliptic coordinates
-		local rightAscensionHours = math.rad(assert(row.st_rah)) * math.pi * 2 / 24	-- right ascension, in hours -> radians
-		local galacticLongitude = math.rad(row.st_glon)
-		local galacticLatitude = math.rad(row.st_glat)
-		local eclipticLongitude = math.rad(row.st_elon)
-		local eclipticLatitude = math.rad(row.st_elat)
+		local rightAscensionHours = math.rad(assert(tonumber(row.st_rah))) * math.pi * 2 / 24	-- right ascension, in hours -> radians
+		local galacticLongitude = math.rad(tonumber(row.st_glon))
+		local galacticLatitude = math.rad(tonumber(row.st_glat))
+		local eclipticLongitude = math.rad(tonumber(row.st_elon))
+		local eclipticLatitude = math.rad(tonumber(row.st_elat))
 
 		local vec3 = require 'vec.vec3'
 		local quat = require 'vec.quat'
 		
-		local eclipticCartesian = 
-			Quat():fromAngleAxis(0,0,1,math.deg(eclipticLongitude)):rotate(	-- right ascension / longitude / eastward angle
-				Quat():fromAngleAxis(0,-1,0,math.deg(eclipticLatitude)):rotate(	-- declination / latitude / northward angle
+		local eclipticCartesian = vec3(
+			math.cos(eclipticLatitude) * math.cos(eclipticLongitude),
+			math.cos(eclipticLatitude) * math.sin(eclipticLongitude),
+			math.sin(eclipticLatitude))
+			--[[
+			quat():fromAngleAxis(0,0,-1,math.deg(eclipticLongitude)):rotate(	-- right ascension / longitude / eastward angle
+				quat():fromAngleAxis(0,1,0,math.deg(eclipticLatitude)):rotate(	-- declination / latitude / northward angle
 					vec3(1,0,0)	-- starting point, sun @ vernal equinox
 				)
 			)
-		print('ecliptic', eclipticCartesian)
---[[		
-		local eclipticInEquatorial = 
-			Quat():fromAngleAxis(-1,0,0,math.rad(23.4)):rotate(
-				eclipticCartesian
-			)
-		print('ecliptic in equatorial', eclipticInEquatorial)
---]]
-		local galacticCenterInEcliptic = 
-			Quat():fromAngleAxis(0,0,1, math.pi/12*(17 + 1/60*(45 + 1/60*(37.19910)))):rotate(
-				Quat():fromAngleAxis(0,-1,0, math.pi/180*(-28 + 1/60*(56 + 1/60*(10.2207)))):rotate(
-					vec3(1,0,0)
-				)
-			)
-		local galacticCartesian = 
-			Quat():fromAngleAxis(0,0,1,math.deg(galacticLongitude)):rotate(	-- right ascension / longitude / eastward angle
-				Quat():fromAngleAxis(0,-1,0,math.deg(galacticLatitude)):rotate(	-- declination / latitude / northward angle
-					vec3(1,0,0)
-				)
-			)
+			--]]
+		print('ecliptic', eclipticCartesian, 'length', eclipticCartesian:length())
 
+		local galacticCartesian = vec3(
+			math.cos(galacticLatitude) * math.cos(galacticLongitude),
+			math.cos(galacticLatitude) * math.sin(galacticLongitude),
+			math.sin(galacticLatitude))		
+			--[[
+			quat():fromAngleAxis(0,0,-1,math.deg(galacticLongitude)):rotate(	-- right ascension / longitude / eastward angle
+				quat():fromAngleAxis(0,1,0,math.deg(galacticLatitude)):rotate(	-- declination / latitude / northward angle
+					vec3(1,0,0)
+				)
+			)
+			--]]
+		print('galacticCartesian', galacticCartesian, 'length', galacticCartesian:length())
 		
+		-- now use the "Reconsidering the galactic coordinate system" paper to convert galactic coordinates to ecliptic coordinates ...
+		-- [[ eqn 9, J2000 ecliptic to galactic
+		local m = {	-- row major, so m[i][j] = m_ij
+			{-0.054875539390, -0.873437104725, -0.483834991775},
+			{0.494109453633, -0.444829594298, 0.746982248696},
+			{-0.867666135681, -0.198076389622, 0.455983794523},	
+		}
+		--]]
+		--[[ eqn 8, IAU 1976 to galactic
+		local m = {
+			{-0.066988739410, -0.872755765850, -0.483538914637},
+			{0.492728466081, -0.450346958020, 0.744584633279},
+			{-0.867600811149, -0.188374601732, 0.460199784785},
+		}
+		--]]
+		--[[	transpose?
+		local newM = {}
+		for i=1,3 do
+			newM[i] = {}
+			for j=1,3 do
+				newM[i][j] = m[j][i]
+			end
+		end
+		m = newM
+		--]]
+
+		local eclipticToGalacticCartesian = vec3(
+			eclipticCartesian[1] * m[1][1] + eclipticCartesian[2] * m[1][2] + eclipticCartesian[3] * m[1][3],
+			eclipticCartesian[1] * m[2][1] + eclipticCartesian[2] * m[2][2] + eclipticCartesian[3] * m[2][3],
+			eclipticCartesian[1] * m[3][1] + eclipticCartesian[2] * m[3][2] + eclipticCartesian[3] * m[3][3])
+
+		print('eclipticToGalacticCartesian', eclipticToGalacticCartesian, 'length', eclipticToGalacticCartesian:length())
+		
+		local err = math.acos(vec3.dot(galacticCartesian, eclipticToGalacticCartesian))
+		print('error (degrees)', math.deg(err))
+		print('error (delta)', galacticCartesian - eclipticToGalacticCartesian)
+
 		-- lets see how well I got these ...
 		-- compare galactic vs ecliptic coordinate reconstruction
 		
@@ -95,7 +139,10 @@ for _,row in ipairs(data.rows) do
 		local temperature = row.st_teff							-- the temperature, in K.  one way of measuring color index
 		local mass = row.st_mass and row.st_mass * sunMassInKg	-- mass, in solar masses -> kg
 		local radius = row.st_rad and row.st_rad * sunRadiusInM	-- radius, in solar radii -> m
-		local density = row.st_dens and row.st_dens * 1000		-- density, in g/cm^3 -> kg/m^3
+		local density
+		if row.st_dens then
+			density = (tonumber(row.st_dens) or error('failed to deduce density from '..tostring(row.st_dens))) * 1000		-- density, in g/cm^3 -> kg/m^3
+		end
 		-- surface gravity?
 		-- luminosity?
 		-- metalicity?
@@ -111,7 +158,11 @@ for _,row in ipairs(data.rows) do
 	local star = results.stars[starName]
 
 	-- inclination is "angular distance of the orbital plane from the line of sight"
-	local inclination = math.rad(assert(row.pl_orbincl))		-- inclination, in degrees -> radians
+	-- does this mean we should add (or subtract) the star coordinate (wrt the sun)'s declination?
+	local inclination
+	if row.pl_orbincl then
+		inclination = math.rad(assert(tonumber(row.pl_orbincl)))		-- inclination, in degrees -> radians
+	end
 
 	local radius		-- radius, in m
 	if row.pl_rade then
@@ -151,10 +202,12 @@ for _,row in ipairs(data.rows) do
 		inclination = inclination,
 		timeOfPeriastronCrossing = assert(row.pl_orbtper),	-- time of periastron crossing, in days
 		argumentOfPericenter = math.rad(assert(row.pl_orblper)),	-- longitude of periastron <=> argument of periapsis / pericenter, in degrees -> radians
-		temperature = assert(row.pl_eqt),					-- equilibrium temperature, in K
+		temperature = tonumber(row.pl_eqt),					-- equilibrium temperature, in K
 		numberOfMoons = row.pl_mnum,
 	}
 	table.insert(star.planets, planet)
+
+	if io.read(1) == 'q' then break end
 end
 
 

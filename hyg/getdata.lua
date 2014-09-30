@@ -34,6 +34,14 @@ for i=1,#lines do
 	local x = assert(tonumber(data.X))
 	local y = assert(tonumber(data.Y))
 	local z = assert(tonumber(data.Z))
+
+	-- HYG is in equatorial coordinates
+	-- rotate equatorial xyz to ecliptic xyz
+	local epsilon = math.rad(23.4)	-- earth tilt
+	local cosEps = math.cos(epsilon)
+	local sinEps = math.sin(epsilon)
+	y, z = cosEps * y + sinEps * z, -sinEps * y + cosEps * z
+	
 	local mag = assert(tonumber(data.AbsMag))	--apparent magnitude
 	local colorIndex = tonumber(data.ColorIndex) or .656	-- fill in blanks with something close to white
 	local zeroBasedIndex = i-1

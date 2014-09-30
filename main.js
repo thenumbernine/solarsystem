@@ -4223,14 +4223,21 @@ vec3 quatRotate( vec4 q, vec3 v ){
 }
 
 //"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
-const mat3 nj = mat3(-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
-					 -0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
-					 -0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
-
+//..but this is in equatorial coordinates, so rotate to get to ecliptic
+const mat3 nj = mat3(	//represented transposed
+	-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
+	-0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
+	-0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
+#define M_COS_EPSILON	0.9177546256839811400496387250314000993967056274414
+#define M_SIN_EPSILON	0.3971478906347805648557880431326339021325111389160
+const mat3 equatorialToEcliptical = mat3(	//represented transposed
+	1., 0., 0.,
+	0., M_COS_EPSILON, M_SIN_EPSILON,
+	0., -M_SIN_EPSILON, M_COS_EPSILON);
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
-	dir = nj * dir;	
+	dir = nj * equatorialToEcliptical * dir;	
 	gl_FragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
 	gl_FragColor.a = 1.; 
 }
