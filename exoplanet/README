@@ -1,3 +1,21 @@
-data from http://exoplanet.eu/catalog/
+data from ... well, let's see, there are a few places
+	
+	http://exoplanet.eu/catalog/
+		is large
+		produces exoplanet.eu_catalog.csv
+	
+	http://exoplanetarchive.ipac.caltech.edu/
+		largest
+		seems most up to date
+		produces planets.csv
+	
+going with caltech for now.
+
+for the record there's only 1 star name in the HYG star database that is in the NASA database
+but there are only 87 named stars.  there are also 100,000 other unnamed stars.  chances are i'm going to have some overlaps ...
+
+the other concern: this doesn't show absolute magnitude or color index of the stars. 
+	might have to sprinkle them in there ...
+	could look them up in another sources, like ViZier ...
 
 getdata.lua <- parses the CSV database, generates files
