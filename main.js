@@ -868,7 +868,7 @@ var calcTidalForce;
 			// R^i_tjt = R^i_ttj = phi_,ij
 			// but what if phi changes wrt time? then phi_,tt is nonzero, and how does our Riemann metric change?
 			for (i = 0; i < 3; ++i) {
-				accel[i] = gravitationalConstant * planet.mass * (3 * xDotN * x[i] / xToTheFifth - n[i] / xToTheThird);
+				accel[i] += gravitationalConstant * planet.mass * (3 * xDotN * x[i] / xToTheFifth - n[i] / xToTheThird);
 			}
 		}
 	};
@@ -1257,20 +1257,18 @@ var updatePlanetClassSceneObj;
 		var showTide = displayMethod != 'None';
 		if (!showTide) {
 			if (planetClassPrototype.tex === undefined) {
-				if (planetClassPrototype.sceneObj.shader !== planetColorShader) {
-					planetClassPrototype.sceneObj.shader = planetColorShader;
-				}
+				planetClassPrototype.sceneObj.shader = planetColorShader;
+				planetClassPrototype.sceneObj.texs.length = 0;
 			} else {
-				if (planetClassPrototype.sceneObj.shader !== planetTexShader) {
-					planetClassPrototype.sceneObj.shader = planetTexShader;
-				}
+				planetClassPrototype.sceneObj.shader = planetTexShader;
+				planetClassPrototype.sceneObj.texs.length = 1;
 				planetClassPrototype.sceneObj.texs[0] = planetClassPrototype.tex;
 			}
 		} else {
-			if (planetClassPrototype.sceneObj.shader !== planetHSVShader) {
-				planetClassPrototype.sceneObj.shader = planetHSVShader;
-			}
+			planetClassPrototype.sceneObj.shader = planetHSVShader;
+			planetClassPrototype.sceneObj.texs.length = 2;
 			planetClassPrototype.sceneObj.texs[0] = planetClassPrototype.tex;
+			planetClassPrototype.sceneObj.texs[1] = hsvTex;
 			//and update calculated variable if it is out of date ...
 			if (planetClassPrototype.lastMeasureCalcDate !== julianDate) {
 				planetClassPrototype.lastMeasureCalcDate = julianDate;
@@ -3409,10 +3407,7 @@ void main() {
 				sunPos : [0,0,0],
 				ambient : .3
 			},
-			texs : [
-				undefined,
-				hsvTex
-			],
+			texs : [],
 			parent : null,
 			static : true 
 		});
