@@ -464,7 +464,10 @@ var Planet = makeClass({
 	toString : function() {
 		return 'Planet('+JSON.stringify(this)+')';
 	},
-	
+
+	//no longer used for mesh construction -- that all goes on in the shader
+	//this is only used for getting positions for updating the tidal array calculations 
+	// and for (geosynchronously) orbitting geodetic locations (which is currently disabled) 
 	geodeticPosition : function(destX, lat, lon, height) {
 		var phi = Math.rad(lat);
 		var lambda = Math.rad(lon);
@@ -485,7 +488,7 @@ var Planet = makeClass({
 			var NPlusH = N + height;
 			destX[0] = NPlusH * cosPhi * Math.cos(lambda);
 			destX[1] = NPlusH * cosPhi * Math.sin(lambda);
-			destX[2] = (N * (1 - eccentricitySquared) + height) * Math.sin(phi);
+			destX[2] = (N * (1 - eccentricitySquared) + height) * sinPhi;
 		} else {
 			var NPlusH = equatorialRadius + height;
 			destX[0] = NPlusH * cosPhi * Math.cos(lambda);
@@ -1195,6 +1198,7 @@ var canvas;
 
 var hsvTex;
 var colorShader;
+var latLonShader;
 var planetColorShader;
 var planetTexShader;
 var hsvShader;
@@ -1271,9 +1275,12 @@ var updatePlanetClassSceneObj;
 				var measureMax = undefined;
 				var vertexIndex = 0;
 				for (var tideIndex = 0; tideIndex < planetClassPrototype.sceneObj.attrs.tide.data.length; ++tideIndex) {
-					x[0] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					x[1] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					x[2] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					var lat = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					var lon = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					planetClassPrototype.geodeticPosition(x, lat, lon, 0);
+					//x[0] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					//x[1] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
+					//x[2] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
 					planetCartesianToSolarSystemBarycentric(x, x, planet);
 				
 					accel[0] = accel[1] = accel[2] = 0;
@@ -1505,15 +1512,22 @@ var planetPointVisRatio = .001;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
 				updatePlanetClassSceneObj(planet);
-			
+		
+				//calculate sun position for lighting
 				var Sun = planets[planets.indexes.Sun];
 				vec3.sub(planet.sceneObj.uniforms.sunPos, Sun.pos, planet.pos);
+
+				//update ellipsoid parameters
+				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
+				planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : 1.;
 				
 				planet.sceneObj.draw();
 			
 				if (showLatAndLonLines) {
 					vec3.copy(planet.latLonObj.pos, planet.sceneObj.uniforms.pos);
 					quat.copy(planet.latLonObj.angle, planet.sceneObj.uniforms.angle);
+					planet.latLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
+					planet.latLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : 1.;
 					planet.latLonObj.draw();
 				}
 			}
@@ -3022,6 +3036,9 @@ function initPlanetSceneLatLonLineObjs(planet) {
 	if (planet.radius === undefined) {
 		//only/always use a point/basis/etc?
 	} else {
+//		planetClassPrototype.sceneObj = planetSceneObj;
+//		planetClassPrototype.latLonObj = planetLatLonObj;
+
 		var triIndexArray = [];
 		var latLonIndexArray = [];
 		var vertexArray = [];
@@ -3035,14 +3052,17 @@ function initPlanetSceneLatLonLineObjs(planet) {
 			var lon = lonMin + loni * lonStep;
 			for (var lati=0; lati <= latdiv; ++lati) {
 				var lat = latMin + lati * latStep;
-				
+			
+				/*
 				planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
 				for (var j = 0; j < 3; ++j) {
 					vertexArray.push(vtx[j]);
-				}
+				}*/
+				vertexArray.push(lat);
+				vertexArray.push(lon);
 				
-				texCoordArray.push(lon / 360 + .5);
-				texCoordArray.push(lat / 180 + .5);
+				//texCoordArray.push(lon / 360 + .5);
+				//texCoordArray.push(lat / 180 + .5);
 
 				tideArray.push(0);
 
@@ -3064,26 +3084,17 @@ function initPlanetSceneLatLonLineObjs(planet) {
 				}
 			}
 		}
-		
-		var vertexBuffer = new glutil.ArrayBuffer({
-			data : vertexArray
-		});
+	
+		//these could be merged if you don't mind evaluating the cos() and sin() in-shader
+		var vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
+		//var texCoordBuffer = new glutil.ArrayBuffer({dim : 2, data : texCoordArray});
 		planetClassPrototype.sceneObj = new glutil.SceneObject({
 			mode : gl.TRIANGLES,
-			indexes : new glutil.ElementArrayBuffer({
-				data : triIndexArray
-			}),
+			indexes : new glutil.ElementArrayBuffer({data : triIndexArray}),
 			attrs : {
 				vertex : vertexBuffer,
-				texCoord : new glutil.ArrayBuffer({
-					dim : 2,
-					data : texCoordArray
-				}),
-				tide : new glutil.ArrayBuffer({
-					dim : 1,
-					data : tideArray,
-					usage : gl.DYNAMIC_DRAW
-				})
+				//texCoord : texCoordBuffer,
+				tide : new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW})
 			},
 			uniforms : {
 				color : planetClassPrototype.color,
@@ -3100,7 +3111,7 @@ function initPlanetSceneLatLonLineObjs(planet) {
 			indexes : new glutil.ElementArrayBuffer({
 				data : latLonIndexArray
 			}),
-			shader : colorShader,
+			shader : latLonShader,
 			attrs : {
 				vertex : vertexBuffer
 			},
@@ -3164,28 +3175,84 @@ void main() {
 			pointSize : 4
 		}
 	});
-	
-	planetColorShader = new ModifiedDepthShaderProgram({
+
+	var geodeticPositionCode = mlstr(function(){/*
+//I could move the uniforms here, but then the function would be imposing on the shader 
+#define M_PI 3.141592653589793115997963468544185161590576171875
+vec3 geodeticPosition(vec2 latLon) {
+	float phi = latLon.x * M_PI / 180.;
+	float lambda = latLon.y * M_PI / 180.;
+	float cosPhi = cos(phi);
+	float sinPhi = sin(phi);
+	float eccentricitySquared = (2. * inverseFlattening - 1.) / (inverseFlattening * inverseFlattening);
+	float sinPhiSquared = sinPhi * sinPhi;
+	float N = equatorialRadius / sqrt(1. - eccentricitySquared * sinPhiSquared);
+	const float height = 0.;
+	float NPlusH = N + height;	//plus height, if you want?  no one is using height at the moment.  heightmaps someday...
+	return vec3(
+		NPlusH * cosPhi * cos(lambda),
+		NPlusH * cosPhi * sin(lambda),
+		(N * (1. - eccentricitySquared) + height) * sinPhi);
+}
+*/});
+
+	latLonShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
+attribute vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
 uniform mat4 projMat;
-uniform vec3 pos;
-uniform vec4 angle;
-uniform vec3 sunPos;
-uniform float pointSize;
-varying vec3 lightDir;
-varying vec3 normal;
+uniform float equatorialRadius;
+uniform float inverseFlattening;
+
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
+void main() {
+	vec4 vtx4 = mvMat * vec4(geodeticPosition(vertex), 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+uniform vec4 color;
+void main() {
+	gl_FragColor = color;
+}
+*/}),
+		uniforms : {
+			color : [1,1,1,1]
+		}
+	});
+
+
+
+	planetColorShader = new ModifiedDepthShaderProgram({
+		vertexCode : mlstr(function(){/*
+attribute vec2 vertex;		//lat/lon pairs:
+uniform mat4 mvMat;			//modelview matrix
+uniform mat4 projMat;		//projection matrix
+uniform vec3 pos;			//offset to planet position
+uniform vec4 angle;			//planet angle
+uniform vec3 sunPos;		//sun pos, for lighting calculations
+uniform float equatorialRadius;		//or use planet radius
+uniform float inverseFlattening;	//default 1 if it does not exist
+//to fragment shader:
+varying vec3 lightDir;		//light position
+varying vec3 normal;		//surface normal
+
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
 vec3 quatRotate(vec4 q, vec3 v){ 
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
+
 void main() {
-	vec3 vtx3 = quatRotate(angle, vertex) + pos;
-	normal = quatRotate(angle, normalize(vertex));
+	//vertex is really the lat/lon in degrees
+	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	normal = quatRotate(angle, normalize(modelVertex));
 	lightDir = normalize(sunPos - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
-	gl_PointSize = pointSize;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -3206,23 +3273,31 @@ void main() {
 
 	planetTexShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
-attribute vec2 texCoord;
+attribute vec2 vertex;		//lat/lon pairs
+uniform mat4 mvMat;			//modelview matrix
+uniform mat4 projMat;		//projection matrix
+uniform vec3 pos;			//offset to planet position
+uniform vec4 angle;			//planet angle
+uniform vec3 sunPos;		//sun pos, for lighting calculations
+uniform float equatorialRadius;		//or use planet radius
+uniform float inverseFlattening;	//default 1 if it does not exist
+//to fragment shader:
 varying vec2 texCoordv;
-uniform vec3 pos;
-uniform vec4 angle;
-uniform vec3 sunPos;
-uniform mat4 mvMat;
-uniform mat4 projMat;
 varying vec3 lightDir;
 varying vec3 normal;
+
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
 vec3 quatRotate(vec4 q, vec3 v){ 
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
+
 void main() {
-	texCoordv = texCoord;
-	vec3 vtx3 = quatRotate(angle, vertex) + pos;
-	normal = quatRotate(angle, normalize(vertex));
+	//vertex is really the lat/lon in degrees
+	vec3 modelVertex = geodeticPosition(vertex);
+	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	normal = quatRotate(angle, normalize(modelVertex));
 	lightDir = normalize(sunPos - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
