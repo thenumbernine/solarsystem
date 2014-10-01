@@ -4101,11 +4101,19 @@ function downloadOrbitPaths() {
 		s += lines.join('\n') + '\n';
 	}
 
-	var a = document.createElement('a');
-	a.href = "data:application/octet-stream;charset=utf-8;base64,"+btoa(s);
-	document.body.appendChild(a);
-	$(a).attr('id', 'clickToDownload');
-	$(a).trigger('click');
+	console.log('size of orbit path data is '+s.length);
+
+	var l = Math.floor(s.length/2);
+
+	var p1 = s.substr(0,l);
+	var p2 = s.substr(l);
+	$.each([p1,p2], function(i,p) {
+		var a = document.createElement('a');
+		a.href = "data:application/octet-stream;charset=utf-8;base64,"+btoa(p);
+		document.body.appendChild(a);
+		$(a).attr('id', 'part'+i);
+		$(a).trigger('click');
+	});
 }
 
 function initOrbitPaths() {
