@@ -795,6 +795,10 @@ var Stars = makeClass({
 });
 var stars = undefined;
 
+
+var orbitPathResolution = 250;
+var ringResolution = 200;
+
 var planets = undefined;
 var julianDate = 0;
 var lastJulianDate = 0;
@@ -1201,6 +1205,7 @@ var latLonShader;
 var planetColorShader;
 var planetTexShader;
 var planetHSVShader;
+var orbitShader;
 
 var pointObj;
 var planetSceneObj;
@@ -3047,7 +3052,9 @@ function initPlanetSceneLatLonLineObjs(planet) {
 		planetClassPrototype.latLonObj = planetLatLonObj;
 		planetClassPrototype.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
 	}
-	
+
+	//TODO instead of creating these per-planet if the planet is special (9 planets of Sun .. plus the moon)
+	// how about we build it for all planets of each star system (with the Moon as an exception of course)
 	if (!(planetClassPrototype.isComet || planetClassPrototype.isAsteroid) &&
 		(planetClassPrototype.parent === planets.indexes.Sun ||
 		planet === planets[planets.indexes.Sun] ||
@@ -3527,9 +3534,8 @@ void main() {
 		
 			//done! create the ring object
 			var vertexes = [];
-			var res = 200;
-			for (var i = 0; i < res; ++i) {
-				var f = i / (res - 1);
+			for (var i = 0; i < ringResolution; ++i) {
+				var f = i / (ringResolution - 1);
 				vertexes.push(1);
 				vertexes.push(f);
 				vertexes.push(0);
@@ -3655,9 +3661,8 @@ void main() {
 		
 			//done! create the ring object
 			var vertexes = [];
-			var res = 200;
-			for (var i = 0; i < res; ++i) {
-				var f = i / (res - 1);
+			for (var i = 0; i < ringResolution; ++i) {
+				var f = i / (ringResolution - 1);
 				vertexes.push(1);
 				vertexes.push(f);
 				vertexes.push(0);
@@ -3716,7 +3721,12 @@ void main() {
 	})();
 }
 
-var orbitShader;
+function initAllPlanetsOrbitPathObjs() {
+	for (var i = 0; i < planets.length; ++i) {
+		initPlanetOrbitPathObj(planets[i]);
+	}
+}
+
 function initPlanetOrbitPathObj(planet) {
 	var planetClassPrototype = planet.init.prototype;
 	var planetIndex = planet.index;
@@ -4002,9 +4012,8 @@ function initPlanetOrbitPathObj(planet) {
 
 	//iterate around the eccentric anomaly to reconstruct the path
 	var vertexes = [];
-	var res = 250;
-	for (var i = 0; i < res; ++i) {
-		var frac = i / (res - 1);
+	for (var i = 0; i < orbitPathResolution; ++i) {
+		var frac = i / (orbitPathResolution - 1);
 		var theta = frac * 2 * Math.PI;
 		var pathEccentricAnomaly = eccentricAnomaly + theta;
 		var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
@@ -4050,6 +4059,53 @@ function initPlanetOrbitPathObj(planet) {
 		parent : null
 	});
 
+}
+
+//exteporaneous function
+function downloadOrbitPaths() {
+	var s = '';	
+	for (var i = 0; i < planets.length; ++i) {
+		var lines = [];
+		
+		var planet = planets[i];
+		if (planet.orbitPathObj) {
+			var name = '';
+			if (planet.id) name += planet.id + ' ';
+			name += planet.name;
+			if (planet.parent) name += ', moon of ' + planets[planet.parent].name;
+		
+			lines.push('#####');
+			lines.push('# ' + name);
+			
+			//json.stringify chokes on float32arrays
+			var alpha = [];
+			var vsrc = planet.orbitPathObj.attrs.vertex.data;
+			if (vsrc.length % 4 != 0) throw 'this shouldnt be';
+			var vtx = [];
+			for (var j = 0; j < vsrc.length; j += 4) {
+				for (var k = 0; k < 3; ++k) {
+					vtx[k] = vsrc[j+k] + planet.pos[k];	//position .. offset it by the planet's position
+				}
+				lines.push('v ' + vtx[j+0] + ' ' + vtx[j+1] + ' ' + vtx[j+2]);
+				alpha[j/4] = vsrc[j+3];	//alpha
+			}
+			for (var j = 0; j < alpha.length; ++j) {
+				lines.push('vt ' + alpha[j] + ' .5');
+			}
+			for (var j = 1; j <= alpha.length; ++j) {
+				var jn = (j % alpha.length) + 1;
+				lines.push('l v'+j+'/vt'+j+' v'+jn+'/vt'+jn);
+			}
+		}
+
+		s += lines.join('\n') + '\n';
+	}
+
+	var a = document.createElement('a');
+	a.href = "data:application/octet-stream;charset=utf-8;base64,"+btoa(s);
+	document.body.appendChild(a);
+	$(a).attr('id', 'clickToDownload');
+	$(a).trigger('click');
 }
 
 function initOrbitPaths() {
@@ -4101,9 +4157,7 @@ void main() {
 
 	//TODO update these when we integrate!
 	var calcOrbitPathStartTime = Date.now();
-	for (var i = 0; i < planets.length; ++i) {
-		initPlanetOrbitPathObj(planets[i]);
-	}
+	initAllPlanetsOrbitPathObjs();
 	var calcOrbitPathEndTime = Date.now();
 
 	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {

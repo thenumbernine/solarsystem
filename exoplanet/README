@@ -15,3 +15,5 @@ for the record there's only 1 star name in the HYG star database that is in the 
 but there are only 87 named stars.  there are also 100,000 other unnamed stars.  chances are i'm going to have some overlaps ...
 
 getdata.lua <- parses the CSV database, generates files
+
+	creates exoplanetResults.json

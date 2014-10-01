@@ -34,6 +34,8 @@ local results = {
 	stars = {}
 }
 local maxAngleError = 0	-- angle error of galactic (to equatorial) to ecliptical coordinates
+local foundDistance = 0
+local didntFindDistance = 0
 for _,row in ipairs(data.rows) do
 	local starName = assert(row.pl_hostname)
 	if not results.stars[starName] then
@@ -63,7 +65,7 @@ for _,row in ipairs(data.rows) do
 				)
 			)
 			--]]
-		print('ecliptic', eclipticCartesian, 'length', eclipticCartesian:length())
+		--print('ecliptic', eclipticCartesian, 'length', eclipticCartesian:length())
 
 		local galacticCartesian = vec3(
 			math.cos(galacticLatitude) * math.cos(galacticLongitude),
@@ -76,7 +78,7 @@ for _,row in ipairs(data.rows) do
 				)
 			)
 			--]]
-		print('galacticCartesian', galacticCartesian, 'length', galacticCartesian:length())
+		--print('galacticCartesian', galacticCartesian, 'length', galacticCartesian:length())
 
 		local epsilon = math.rad(23.4)
 		local cosEps = math.cos(epsilon)
@@ -85,7 +87,7 @@ for _,row in ipairs(data.rows) do
 			eclipticCartesian[1],
 			eclipticCartesian[2] * cosEps - eclipticCartesian[3] * sinEps,
 			eclipticCartesian[2] * sinEps + eclipticCartesian[3] * cosEps)
-		print('equatorialCartesian', equatorialCartesian, 'length', equatorialCartesian:length())
+		--print('equatorialCartesian', equatorialCartesian, 'length', equatorialCartesian:length())
 
 		-- now use the "Reconsidering the galactic coordinate system" paper to convert galactic coordinates to ecliptic coordinates ...
 		-- [[ eqn 9, J2000 equatorial to galactic
@@ -99,12 +101,12 @@ for _,row in ipairs(data.rows) do
 			equatorialCartesian[1] * m[2][1] + equatorialCartesian[2] * m[2][2] + equatorialCartesian[3] * m[2][3],
 			equatorialCartesian[1] * m[3][1] + equatorialCartesian[2] * m[3][2] + equatorialCartesian[3] * m[3][3])
 
-		print('eclipticToGalacticCartesian', eclipticToGalacticCartesian, 'length', eclipticToGalacticCartesian:length())
+		--print('eclipticToGalacticCartesian', eclipticToGalacticCartesian, 'length', eclipticToGalacticCartesian:length())
 		
 		local err = math.acos(vec3.dot(galacticCartesian, eclipticToGalacticCartesian))
 		maxAngleError = maxAngleError and math.max(maxAngleError, err) or err
-		print('error (degrees)', math.deg(err))
-		print('error (delta)', galacticCartesian - eclipticToGalacticCartesian)
+		--print('error (degrees)', math.deg(err))
+		--print('error (delta)', galacticCartesian - eclipticToGalacticCartesian)
 
 		-- lets see how well I got these ...
 		-- compare galactic vs ecliptic coordinate reconstruction
@@ -114,6 +116,17 @@ for _,row in ipairs(data.rows) do
 		if row.st_dist then
 			distance = assert(tonumber(row.st_dist)) * parsecInM		-- distance, in parsecs -> meters
 		end
+		local x, y, z
+		if distance then
+			x = eclipticCartesian[1] * distance
+			y = eclipticCartesian[2] * distance
+			z = eclipticCartesian[3] * distance
+			foundDistance = foundDistance + 1
+		else	
+			didntFindDistance = didntFindDistance + 1
+			print('star '..starName..' missing distance!')
+		end
+		
 		-- use some of the above to get the x,y,z coordinates, in parsecs
 
 		local temperature = row.st_teff							-- the temperature, in K.  one way of measuring color index
@@ -132,6 +145,7 @@ for _,row in ipairs(data.rows) do
 			temperature = temperature,
 			mass = mass,
 			density = density,
+			x = x, y = y, z = z,	-- meters
 			planets = {},
 		}
 	end
@@ -218,3 +232,6 @@ for _,row in ipairs(data.rows) do
 end
 
 print('max angle error (deg)', math.deg(maxAngleError))
+print("didn't find distance for "..didntFindDistance.." of "..(foundDistance + didntFindDistance).." stars")
+
+io.writefile('exoplanetResults.json', 'exoplanetInfo = \n' .. json.encode(results, {indent=true}) .. '\n;')
