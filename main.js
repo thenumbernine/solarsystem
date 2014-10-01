@@ -815,7 +815,6 @@ var orbitZoomFactor = .0003;	// upon mousewheel
 var mouse;
 var mouseDir;
 var skyCubeObj;
-var pointObj;
 
 var skyTexFilenames = [
 	'textures/sky-visible-cube-xp.png',
@@ -1201,7 +1200,12 @@ var colorShader;
 var latLonShader;
 var planetColorShader;
 var planetTexShader;
-var hsvShader;
+var planetHSVShader;
+
+var pointObj;
+var planetSceneObj;
+var planetLatLonObj;
+
 var displayMethods = [
 	'None',
 	'Tangent Tidal',
@@ -1255,33 +1259,28 @@ var updatePlanetClassSceneObj;
 			if (planetClassPrototype.tex === undefined) {
 				if (planetClassPrototype.sceneObj.shader !== planetColorShader) {
 					planetClassPrototype.sceneObj.shader = planetColorShader;
-					planetClassPrototype.sceneObj.texs = [];
 				}
 			} else {
 				if (planetClassPrototype.sceneObj.shader !== planetTexShader) {
 					planetClassPrototype.sceneObj.shader = planetTexShader;
-					planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex];
 				}
+				planetClassPrototype.sceneObj.texs[0] = planetClassPrototype.tex;
 			}
 		} else {
-			if (planetClassPrototype.sceneObj.shader !== hsvShader) {
-				planetClassPrototype.sceneObj.shader = hsvShader;
-				planetClassPrototype.sceneObj.texs = [planetClassPrototype.tex, hsvTex];
+			if (planetClassPrototype.sceneObj.shader !== planetHSVShader) {
+				planetClassPrototype.sceneObj.shader = planetHSVShader;
 			}
+			planetClassPrototype.sceneObj.texs[0] = planetClassPrototype.tex;
 			//and update calculated variable if it is out of date ...
 			if (planetClassPrototype.lastMeasureCalcDate !== julianDate) {
 				planetClassPrototype.lastMeasureCalcDate = julianDate;
 				var measureMin = undefined;
 				var measureMax = undefined;
 				var vertexIndex = 0;
-				for (var tideIndex = 0; tideIndex < planetClassPrototype.sceneObj.attrs.tide.data.length; ++tideIndex) {
+				for (var tideIndex = 0; tideIndex < planetClassPrototype.tideBuffer.data.length; ++tideIndex) {
 					var lat = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
 					var lon = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					planetClassPrototype.geodeticPosition(x, lat, lon, 0);
-					//x[0] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					//x[1] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					//x[2] = planetClassPrototype.sceneObj.attrs.vertex.data[vertexIndex++];
-					planetCartesianToSolarSystemBarycentric(x, x, planet);
+					planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 				
 					accel[0] = accel[1] = accel[2] = 0;
 					switch (displayMethod) {
@@ -1342,16 +1341,16 @@ var updatePlanetClassSceneObj;
 					
 					if (measureMin === undefined || t < measureMin) measureMin = t;
 					if (measureMax === undefined || t > measureMax) measureMax = t;
-					planetClassPrototype.sceneObj.attrs.tide.data[tideIndex] = t;
+					planetClassPrototype.tideBuffer.data[tideIndex] = t;
 				}
 				planetClassPrototype.measureMin = measureMin;
 				planetClassPrototype.measureMax = measureMax;
-				for (var i = 0; i < planetClassPrototype.sceneObj.attrs.tide.data.length; ++i) {
-					planetClassPrototype.sceneObj.attrs.tide.data[i] = 
-						(255/256 - (planetClassPrototype.sceneObj.attrs.tide.data[i] - measureMin) 
+				for (var i = 0; i < planetClassPrototype.tideBuffer.data.length; ++i) {
+					planetClassPrototype.tideBuffer.data[i] = 
+						(255/256 - (planetClassPrototype.tideBuffer.data[i] - measureMin) 
 							/ (measureMax - measureMin) * 254/256) * colorBarHSVRange;
 				}
-				planetClassPrototype.sceneObj.attrs.tide.updateData();
+				planetClassPrototype.tideBuffer.updateData();
 				//if it updated...
 				if (planet == orbitTarget) {
 					refreshMeasureText();
@@ -1483,11 +1482,19 @@ var planetPointVisRatio = .001;
 			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz); 
+		}
 
-			//some planets have no radii ... so no object
-			if (planet.sceneObj !== undefined) {
-			
+		//draw sphere planets
+		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
+			var planet = planets[planetIndex];
+			var planetClassPrototype = planet.init.prototype;
+			if (planet.hide) continue;
+
+			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
+				updatePlanetClassSceneObj(planet);
+	
 				//update scene object
+				//don't forget one is shared among all planets
 				vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitTarget.pos);
 				if (planet.tiltAngle) {
 					quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
@@ -1501,26 +1508,22 @@ var planetPointVisRatio = .001;
 					vec3.sub(planet.ringObj.pos, planet.pos, orbitTarget.pos);
 					quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);	
 				}
-			}
-		}
 
-		//draw sphere planets
-		for (var planetIndex = 0; planetIndex < planets.length; ++planetIndex) {
-			var planet = planets[planetIndex];
-			var planetClassPrototype = planet.init.prototype;
-			if (planet.hide) continue;
-
-			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
-				updatePlanetClassSceneObj(planet);
-		
 				//calculate sun position for lighting
 				var Sun = planets[planets.indexes.Sun];
 				vec3.sub(planet.sceneObj.uniforms.sunPos, Sun.pos, planet.pos);
 
 				//update ellipsoid parameters
 				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
-				planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : 1.;
+				planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
+				planet.sceneObj.uniforms.color = planet.color;
 				
+				planet.sceneObj.attrs.tide = planet.tideBuffer;
+				
+				//TODO - ambient for each star
+				// TODO even more - absolute magnitude, radiance, HDR, etc
+				planet.sceneObj.uniforms.ambient = planet.name == 'Sun' ? 1 : .3;
+
 				planet.sceneObj.draw();
 			
 				if (showLatAndLonLines) {
@@ -1743,12 +1746,14 @@ var planetPointVisRatio = .001;
 
 //quad of tris 
 var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
-var latMin = -90;
-var latMax = 90;
-var latStep = 5;
-var lonMin = -180;
-var lonMax = 180;
-var lonStep = 5;
+var latitudeMin = -90;
+var latitudeMax = 90;
+var latitudeStep = 5;
+var longitudeMin = -180;
+var longitudeMax = 180;
+var longitudeStep = 5;
+var latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
+var longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
 
 function resize() {
 	canvas.width = window.innerWidth;
@@ -3036,93 +3041,13 @@ function initPlanetSceneLatLonLineObjs(planet) {
 	if (planet.radius === undefined) {
 		//only/always use a point/basis/etc?
 	} else {
-//		planetClassPrototype.sceneObj = planetSceneObj;
-//		planetClassPrototype.latLonObj = planetLatLonObj;
-
-		var triIndexArray = [];
-		var latLonIndexArray = [];
-		var vertexArray = [];
-		var texCoordArray = [];
 		var tideArray = [];
-
-		var latdiv = Math.floor((latMax-latMin)/latStep);
-		var londiv = Math.floor((lonMax-lonMin)/lonStep);
-		var vtx = [0,0,0];
-		for (var loni=0; loni <= londiv; ++loni) {
-			var lon = lonMin + loni * lonStep;
-			for (var lati=0; lati <= latdiv; ++lati) {
-				var lat = latMin + lati * latStep;
-			
-				/*
-				planetClassPrototype.geodeticPosition(vtx, lat, lon, 0);
-				for (var j = 0; j < 3; ++j) {
-					vertexArray.push(vtx[j]);
-				}*/
-				vertexArray.push(lat);
-				vertexArray.push(lon);
-				
-				//texCoordArray.push(lon / 360 + .5);
-				//texCoordArray.push(lat / 180 + .5);
-
-				tideArray.push(0);
-
-				if (loni < londiv && lati < latdiv) {
-					for (var j = 0; j < quad.length; ++j) {
-						var ofs = quad[j];
-						var index = (lati + ofs[0]) + (latdiv + 1) * (loni + ofs[1]);
-						triIndexArray.push(index);
-					}
-					//if we're using 5 div step then every 6 will be 30 degrees
-					if ((loni * lonStep) % 30 == 0) {
-						latLonIndexArray.push(lati + (latdiv+1) * loni);
-						latLonIndexArray.push(lati+1 + (latdiv+1) * loni);
-					}
-					if ((lati * latStep) % 30 == 0) {
-						latLonIndexArray.push(lati + (latdiv+1) * loni);
-						latLonIndexArray.push(lati + (latdiv+1) * (loni+1));
-					}
-				}
-			}
-		}
-	
-		//these could be merged if you don't mind evaluating the cos() and sin() in-shader
-		var vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
-		//var texCoordBuffer = new glutil.ArrayBuffer({dim : 2, data : texCoordArray});
-		planetClassPrototype.sceneObj = new glutil.SceneObject({
-			mode : gl.TRIANGLES,
-			indexes : new glutil.ElementArrayBuffer({data : triIndexArray}),
-			attrs : {
-				vertex : vertexBuffer,
-				//texCoord : texCoordBuffer,
-				tide : new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW})
-			},
-			uniforms : {
-				color : planetClassPrototype.color,
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				sunPos : [0,0,0],
-				ambient : planetClassPrototype.name == 'Sun' ? 1 : .3
-			},
-			parent : null,
-			static : true 
-		});
-		planetClassPrototype.latLonObj = new glutil.SceneObject({
-			mode : gl.LINES,
-			indexes : new glutil.ElementArrayBuffer({
-				data : latLonIndexArray
-			}),
-			shader : latLonShader,
-			attrs : {
-				vertex : vertexBuffer
-			},
-			uniforms : {
-				color : [1,1,1,.2]
-			},
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-			pos : [0,0,0],
-			angle : [0,0,0,1],
-			parent : null
-		});
+		tideArray.length = planetSceneObj.attrs.vertex.count;
+		for (var i = 0; i < tideArray.length; ++i) tideArray[i] = 0;
+		
+		planetClassPrototype.sceneObj = planetSceneObj;
+		planetClassPrototype.latLonObj = planetLatLonObj;
+		planetClassPrototype.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
 	}
 	
 	if (!(planetClassPrototype.isComet || planetClassPrototype.isAsteroid) &&
@@ -3319,24 +3244,31 @@ void main() {
 		}
 	});
 
-	hsvShader = new ModifiedDepthShaderProgram({
+	planetHSVShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
-attribute vec2 texCoord;
+attribute vec2 vertex;		//lat/lon pairs
 attribute float tide;
-uniform vec3 pos;
-uniform vec4 angle;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform float equatorialRadius;		//or use planet radius
+uniform float inverseFlattening;	//default 1 if it does not exist
 varying float tidev;
 varying vec2 texCoordv;
+
 vec3 quatRotate(vec4 q, vec3 v){ 
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
+
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
 void main() {
+	//vertex is really the lat/lon in degrees
+	vec3 modelVertex = geodeticPosition(vertex);
+	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	tidev = tide;
-	texCoordv = texCoord;
-	vec3 vtx3 = quatRotate(angle, vertex) + pos;
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -3400,13 +3332,13 @@ void main() {
 		value : 100 * heatAlpha,
 		slide : function(event, ui) {
 			heatAlpha = ui.value / 100;
-			gl.useProgram(hsvShader.obj);
-			gl.uniform1f(hsvShader.uniforms.heatAlpha.loc, heatAlpha);
+			gl.useProgram(planetHSVShader.obj);
+			gl.uniform1f(planetHSVShader.uniforms.heatAlpha.loc, heatAlpha);
 			gl.useProgram(null);
 		}
 	});
-	gl.useProgram(hsvShader.obj);
-	gl.uniform1f(hsvShader.uniforms.heatAlpha.loc, heatAlpha);
+	gl.useProgram(planetHSVShader.obj);
+	gl.uniform1f(planetHSVShader.uniforms.heatAlpha.loc, heatAlpha);
 	gl.useProgram(null);
 
 	pointObj = new glutil.SceneObject({
@@ -3426,6 +3358,83 @@ void main() {
 
 	//init stars now that shaders are made 
 	initStars();
+
+	//init our planet shaders
+
+	(function(){
+		var triIndexArray = [];
+		var latLonIndexArray = [];
+		var vertexArray = [];
+
+		for (var loni=0; loni <= longitudeDivisions; ++loni) {
+			var lon = longitudeMin + loni * longitudeStep;
+			for (var lati=0; lati <= latitudeDivisions; ++lati) {
+				var lat = latitudeMin + lati * latitudeStep;
+
+				vertexArray.push(lat);
+				vertexArray.push(lon);
+
+				if (loni < longitudeDivisions && lati < latitudeDivisions) {
+					for (var j = 0; j < quad.length; ++j) {
+						var ofs = quad[j];
+						var index = (lati + ofs[0]) + (latitudeDivisions + 1) * (loni + ofs[1]);
+						triIndexArray.push(index);
+					}
+					//if we're using 5 div step then every 6 will be 30 degrees
+					if ((loni * longitudeStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latitudeDivisions+1) * loni);
+						latLonIndexArray.push(lati+1 + (latitudeDivisions+1) * loni);
+					}
+					if ((lati * latitudeStep) % 30 == 0) {
+						latLonIndexArray.push(lati + (latitudeDivisions+1) * loni);
+						latLonIndexArray.push(lati + (latitudeDivisions+1) * (loni+1));
+					}
+				}
+			}
+		}
+	
+		//these could be merged if you don't mind evaluating the cos() and sin() in-shader
+		var vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
+		
+		planetSceneObj = new glutil.SceneObject({
+			mode : gl.TRIANGLES,
+			indexes : new glutil.ElementArrayBuffer({data : triIndexArray}),
+			attrs : {
+				vertex : vertexBuffer
+			},
+			uniforms : {
+				color : [1,1,1,1],
+				pos : [0,0,0],
+				angle : [0,0,0,1],
+				sunPos : [0,0,0],
+				ambient : .3
+			},
+			texs : [
+				undefined,
+				hsvTex
+			],
+			parent : null,
+			static : true 
+		});
+
+		planetLatLonObj = new glutil.SceneObject({
+			mode : gl.LINES,
+			indexes : new glutil.ElementArrayBuffer({
+				data : latLonIndexArray
+			}),
+			shader : latLonShader,
+			attrs : {
+				vertex : vertexBuffer
+			},
+			uniforms : {
+				color : [1,1,1,.2]
+			},
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
+			angle : [0,0,0,1],
+			parent : null
+		});
+	})();
 
 	var planetsDone = 0;
 
