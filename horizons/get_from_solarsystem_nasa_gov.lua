@@ -12,7 +12,7 @@ require 'htmlparser.htmlparser'
 require 'htmlparser.common'
 require 'htmlparser.xpath'
 
-local planetsFilename = 'full-horizons-extra-data.json'
+local planetsFilename = 'static-vars.json'
 local planetsData = io.readfile(planetsFilename)
 -- strip off variable wrapper
 local planetsLines = planetsData:trim():split('\n')

@@ -3012,6 +3012,20 @@ void main() {
 	xhr.send();
 }
 
+function initExoplanets() {
+	//just over a meg, so I might as well ajax it
+	$.ajax({
+		url : '/solarsystem/exoplanet/openExoplanetCatalog.json',
+		dataType = 'json'
+	}).error(function() {
+		console.log('failed to get exoplanets, trying again...');
+		initExoplanets();
+	}).done(function(results) {
+		//process results
+	
+	});
+}
+
 function initPlanetColorSchRadiusAngle(planet) {
 	var planetClassPrototype = planet.init.prototype;
 	var colors = {
@@ -3361,9 +3375,6 @@ void main() {
 		parent : null
 	});
 
-	//init stars now that shaders are made 
-	initStars();
-
 	//init our planet shaders
 
 	(function(){
@@ -3437,6 +3448,11 @@ void main() {
 			parent : null
 		});
 	})();
+
+	//init stars now that shaders are made 
+	initStars();
+
+	initExoplanets();
 
 	var planetsDone = 0;
 
