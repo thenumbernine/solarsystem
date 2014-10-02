@@ -4086,7 +4086,7 @@ function downloadOrbitPaths() {
 				for (var k = 0; k < 3; ++k) {
 					vtx[k] = vsrc[j+k] + planet.pos[k];	//position .. offset it by the planet's position
 				}
-				lines.push('v ' + vtx[j+0] + ' ' + vtx[j+1] + ' ' + vtx[j+2]);
+				lines.push('v ' + vtx[0] + ' ' + vtx[1] + ' ' + vtx[2]);
 				alpha[j/4] = vsrc[j+3];	//alpha
 			}
 			for (var j = 0; j < alpha.length; ++j) {
@@ -4103,17 +4103,19 @@ function downloadOrbitPaths() {
 
 	console.log('size of orbit path data is '+s.length);
 
-	var l = Math.floor(s.length/2);
-
-	var p1 = s.substr(0,l);
-	var p2 = s.substr(l);
-	$.each([p1,p2], function(i,p) {
+	//TODO open in new tab?  can chrome handle opening each piece in a new tab at the same time?
+	//chrome can't handle the file, it's too big ...
+	var chopped = 3;
+	//for (var i = 0; i < chopped; ++i) {
+	for (var i = 2; i < 3; ++i) {
+		var start = Math.floor(i*s.length/chopped);
+		var end = Math.floor((i+1)*s.length/chopped);
+		var sub = s.substring(start, end);
 		var a = document.createElement('a');
-		a.href = "data:application/octet-stream;charset=utf-8;base64,"+btoa(p);
-		document.body.appendChild(a);
-		$(a).attr('id', 'part'+i);
-		$(a).trigger('click');
-	});
+		console.log('size of chopped piece is '+sub.length);
+		a.href = "data:text/plain,"+encodeURIComponent(sub);
+		a.click();
+	}
 }
 
 function initOrbitPaths() {

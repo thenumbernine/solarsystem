@@ -1,18 +1,20 @@
 data from ... well, let's see, there are a few places
 	
 	http://exoplanet.eu/catalog/
-		is large
 		produces exoplanet.eu_catalog.csv
+		is large
 	
 	http://exoplanetarchive.ipac.caltech.edu/
+		produces planets.csv
 		largest
 		seems most up to date
-		produces planets.csv
-	
-going with caltech for now.
+		turns out half the planets don't have distance data
 
-for the record there's only 1 star name in the HYG star database that is in the NASA database
-but there are only 87 named stars.  there are also 100,000 other unnamed stars.  chances are i'm going to have some overlaps ...
+	https://github.com/OpenExoplanetCatalogue/open_exoplanet_catalogue
+		produces systems.xml
+		has distance data for nearly all planets
+		also has structure data.  binary stars and the likes.
+
 
 getdata.lua <- parses the CSV database, generates files
 
