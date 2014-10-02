@@ -276,14 +276,14 @@ function processSystem(node)
 			local deg = assert(tonumber(parts[1]))
 			local min = assert(tonumber(parts[2]))
 			local sec = assert(tonumber(parts[3]))
-			setField(resultSystem, 'declination', deg + 1/60 * (min + 1/60 * sec))	--degrees
+			setField(resultSystem, 'declination', math.rad(deg + 1/60 * (min + 1/60 * sec)))	--degree minute second -> radians
 		elseif tag == 'rightascension' then
 			local parts = getText(child):split(' ')
 			assert(#parts == 3)
 			local hours = assert(tonumber(parts[1]))
 			local min = assert(tonumber(parts[2]))
 			local sec = assert(tonumber(parts[3]))
-			setField(resultSystem, 'rightAscension', 360/24 * (hours + 1/60 * (min + 1/60 * sec)))	--degrees
+			setField(resultSystem, 'rightAscension', math.rad(360/24 * (hours + 1/60 * (min + 1/60 * sec))))	-- hour minute second-> radians
 		elseif tag == 'distance' then
 			setField(resultSystem, 'distance', getNumber(child) * parsecsToMeters)
 		elseif tag == 'name' then

@@ -174,13 +174,61 @@ var Planet = makeClass({
 
 var StarSystem = makeClass({
 	init : function() {
+		this.pos = [0,0,0];
+		this.vel = [0,0,0];
+		this.angle = [0,0,0,1];
 		this.planets = [];
+	},
+
+	//builds solarSystem.indexes[planetName]
+	//and remaps solarSystem.planets[i].parent from a name to an index (why not a pointer?)
+	buildIndexes : function() {
+		this.indexes = {};
+		for (var i = 0; i < this.planets.length; ++i) {
+			this.planets[i].index = i;
+			var planet = this.planets[i];
+			this.indexes[planet.name] = i;
+			//while we're here...
+			planet.starSystem = this;
+		}
+	},
+
+	//map parent field from name to index (or should it be to object?)
+	mapParents : function() {
+		//convert parent from name to class (or undefined if no such name exists)
+		for (var i = 0; i < this.planets.length; ++i) {
+			var planet = this.planets[i];
+			if (planet.parent !== undefined) {
+				planet.parent = this.indexes[planet.parent];
+			}
+		}
+	},
+
+	//this is the old Planets behavior
+	// which I might recreate
+	// combination of Array and integration functions
+	clonePlanets : function() {
+		var planets = [];
+		for (var i = 0; i < this.planets.length; ++i) {
+			planets[i] = this.planets[i].clone();
+		}
+		return planets;
+	},
+
+	//static
+	copyPlanets : function(dest, src) {
+		assert(dest.length == src.length);
+		for (var i = 0; i < src.length; ++i) {
+			dest[i].copy(src[i]);
+		}
 	}
+
 });
 
 //our solar system
 var SolarSystem = makeClass({
 	super : StarSystem,
+	name : 'Solar System',
 	init : function() {
 		SolarSystem.super.apply(this, arguments);
 	
@@ -238,80 +286,58 @@ var SolarSystem = makeClass({
 				}
 			}
 		}
-	
-		//once we're done making planets, make a copy of the init	
-		this.initPlanets = this.clonePlanets();
-	},
 
-	//builds solarSystem.indexes[planetName]
-	//and remaps solarSystem.planets[i].parent from a name to an index (why not a pointer?)
-	buildIndexes : function() {
-		this.indexes = {};
+
+		//used for getting dynamic data, and for texture loading
 		this.planetForHorizonID = {};
 		for (var i = 0; i < this.planets.length; ++i) {
-			this.planets[i].index = i;
 			var planet = this.planets[i];	
-			this.indexes[planet.name] = i;
 			this.planetForHorizonID[planet.id] = planet;
 		}
-		//convert parent from name to class (or undefined if no such name exists)
-		for (var i = 0; i < this.planets.length; ++i) {
-			var planet = this.planets[i];
-			if (planet.parent !== undefined) {
-				planet.parent = this.indexes[planet.parent];
-			}
-		}
-	},
 
-	//this is the old Planets behavior
-	// which I might recreate
-	// combination of Array and integration functions
-	clonePlanets : function() {
-		var planets = [];
-		for (var i = 0; i < this.planets.length; ++i) {
-			planets[i] = this.planets[i].clone();
-		}
-		return planets;
-	},
 
-	//static
-	copyPlanets : function(dest, src) {
-		assert(dest.length == src.length);
-		for (var i = 0; i < src.length; ++i) {
-			dest[i].copy(src[i]);
+		//extra horizon data
+		//has to be telnetted out of jpl and that takes about 5 mins for everything
+		//some dude must have typed in every one of the 200 info cards by hand
+		// because there's nothing consistent about formatting or variable names
+		//so I'm thinking cron job to update and then integrate to extrapolate for later time.
+
+		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
+			var data = horizonsDynamicData.coords[i];
+			var planet = this.planetForHorizonID[data.id];
+			if (planet) {	//excluding the BCC and Ln points
+				for (var j = 0; j < 3; ++j) {
+					//convert km to m
+					planet.pos[j] = data.pos[j] * 1000;
+					planet.vel[j] = data.vel[j] * 1000;
+				}
+			}	
 		}
+
+		//once we're done making planets, make a copy of the init	
+		this.initPlanets = this.clonePlanets();
 	}
 });
 
 //default = our star system
 var solarSystem = new SolarSystem();
 solarSystem.buildIndexes();
+solarSystem.mapParents();
 
 var starSystems = [solarSystem];
 
+
+
+//TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
+// and remove StarInField ... make that just StarSystem (even for zero-planet systems)
+//
 //only instanciate these for the named stars.  87 in all.
 var StarInField = makeClass({
 	init : function(args) {
-		this.name = args.name;
-		this.index = args.index;	//index in the stars.buffer, stride of stars.buffer.dim
-		//note stars.buffer holds x y z abs-mag color-index
-		this.pos = [
-			StarField.prototype.buffer.data[0 + this.index * StarField.prototype.buffer.dim],
-			StarField.prototype.buffer.data[1 + this.index * StarField.prototype.buffer.dim],
-			StarField.prototype.buffer.data[2 + this.index * StarField.prototype.buffer.dim]
-		];
 	}
 });
 
-var StarField = makeClass({
-	init : function() {
-		//keep traack of named stars ...
-		this.length = namedStars.length;
-		for (var i = 0; i < this.length; ++i) {
-			this[i] = new StarInField(namedStars[i]);
-		}
-	}
-});
+var StarField = makeClass({});
 var starfield = undefined;
 
 
@@ -326,6 +352,7 @@ var dateTime = Date.now();
 
 // track ball motion variables
 var mouseOverTarget;
+var orbitStarSystem = solarSystem;	//only do surface calculations for what star system we are in
 var orbitTarget;
 var orbitGeodeticLocation;
 var orbitDistance;
@@ -368,9 +395,9 @@ var calcTidalForce;
 		n[1] = pos[1] - srcPlanet.pos[1];
 		n[2] = pos[2] - srcPlanet.pos[2];
 		
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = solarSystem.planets[planetIndex];
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 			
@@ -403,9 +430,9 @@ geodesic calculation:
 x''^u = -G^u_ab x'^a x'^b
 */
 function calcGravitationForce(accel, pos) {
-	for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
+	for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 		if (!planetInfluences[planetIndex]) continue;
-		var planet = solarSystem.planets[planetIndex];
+		var planet = orbitStarSystem.planets[planetIndex];
 		if (planet.mass === undefined) continue;
 		var x = pos[0] - planet.pos[0];
 		var y = pos[1] - planet.pos[1];
@@ -474,13 +501,6 @@ function vec3TransformQuat(dest, src, q) {
 function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
 	// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
 	vec3TransformQuat(destX, srcX, planet.angle);
-	
-	// now rotate by axial tilt
-	var tiltAngle = planet.tiltAngle;
-	if (tiltAngle !== undefined) {
-		vec3TransformQuat(destX, destX, tiltAngle);
-	}
-	
 	destX[0] += planet.pos[0];
 	destX[1] += planet.pos[1];
 	destX[2] += planet.pos[2];
@@ -521,7 +541,6 @@ function mouseRay() {
 function chooseNewOrbitObject(mouseDir,doChoose) {
 	var bestDot = Math.cos(Math.deg(10));
 	var bestTarget = undefined;
-
 	/*
 	list contains:
 	.length
@@ -532,9 +551,9 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 	var processList = function(list) {
 		for (var i = 0; i < list.length; ++i) {
 			var target = list[i];
-			
-			//very special case.  need to rework this all.  remove duplicate entries here, however I'm keeping them for the separate rendering systems.
-			if (list === starfield && target.index == 0) continue;
+
+			//no need to select in starfield the system we're already orbitting
+			if (list === starfield && target == orbitStarSystem) continue;
 			
 			if (target.hide) continue;
 			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
@@ -551,11 +570,12 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 			}
 		}
 	};
-	processList(solarSystem.planets);
 
-	if (starfield !== undefined) {
-		processList(starfield);
-	}
+	//only check the star system we're in for planet clicks
+	processList(orbitStarSystem.planets);
+
+	//for larger-scale clicks, use the starfield
+	processList(starSystems);
 	
 	mouseOverTarget = undefined;
 	if (bestTarget !== undefined) {
@@ -874,14 +894,14 @@ var planetPointVisRatio = .001;
 			}
 		}
 
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-			var planet = solarSystem.planets[planetIndex];
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 			if (orbitTarget.pos === undefined) continue;
 			if (planet.lineObj === undefined) continue;
 
-			if (showLinesToOtherPlanets) {
+			if (showLinesToOtherPlanets && orbitStarSystem == solarSystem) {
 				if (orbitTarget !== planet) {
 					//while here, update lines
 				
@@ -917,9 +937,7 @@ var planetPointVisRatio = .001;
 			if (showRotationAxis) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
 				var axis = [0,0,1];
-				if (planet.tiltAngle) {
-					vec3.quatZAxis(axis, planet.tiltAngle);
-				}
+				vec3.quatZAxis(axis, planet.angle);
 				planet.lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
 				planet.lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
 				planet.lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
@@ -944,8 +962,8 @@ var planetPointVisRatio = .001;
 	
 		}
 
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-			var planet = solarSystem.planets[planetIndex];
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 			
 			//update vis ratio
@@ -956,8 +974,8 @@ var planetPointVisRatio = .001;
 		}
 
 		//draw sphere planets
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-			var planet = solarSystem.planets[planetIndex];
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
@@ -966,11 +984,7 @@ var planetPointVisRatio = .001;
 				//update scene object
 				//don't forget one is shared among all planets
 				vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitTarget.pos);
-				if (planet.tiltAngle) {
-					quat.multiply(planet.sceneObj.uniforms.angle, planet.tiltAngle, planet.angle);
-				} else {
-					quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
-				}
+				quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
 				
 				//only allow ring obj if there's a radii and a sphere 
 				//... this way i can just copy over the pos and angle	
@@ -1009,8 +1023,8 @@ var planetPointVisRatio = .001;
 		//draw rings and transparent objects last
 		//disable depth writing so orbits are drawn in front and behind them
 		//do this last so (without depth writing) other planets in the background don't show up in front of the rings
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-			var planet = solarSystem.planets[planetIndex];
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 
 			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
@@ -1025,7 +1039,7 @@ var planetPointVisRatio = .001;
 					//TODO cache rotation axis -- for here and for showing axis (like we already do for orbit axis)
 					var axis = [];
 					var sunDir = [];
-					vec3.sub(sunDir, planet.pos, solarSystem.planets[solarSystem.indexes.Sun].pos);
+					vec3.sub(sunDir, planet.pos, orbitStarSystem.planets[orbitStarSystem.indexes.Sun].pos);
 					vec3.normalize(sunDir, sunDir);
 					vec3.quatZAxis(axis, planet.ringObj.angle);
 					var axisDotSun = vec3.dot(axis, sunDir);
@@ -1043,8 +1057,8 @@ var planetPointVisRatio = .001;
 		//draw point planets
 		// goes slow when comets are included
 		//TODO make a buffer with a vertex per-planet rather than changing a single vertex
-		for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-			var planet = solarSystem.planets[planetIndex];
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 			
 			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showPlanetsAsDistantPoints) {
@@ -1080,8 +1094,8 @@ var planetPointVisRatio = .001;
 
 		if (showOrbits) {
 			window.orbitPathsDrawn = 0;
-			for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-				var planet = solarSystem.planets[planetIndex];
+			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				var planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 				
 				if (planet.orbitPathObj) {
@@ -1091,7 +1105,7 @@ var planetPointVisRatio = .001;
 					var distPeriapsis = semiMajorAxis * (1 + eccentricity);	//largest distance from the parent planet
 				
 					//vector from view to parent planet
-					var parentPlanet = solarSystem.planets[planet.parent];
+					var parentPlanet = orbitStarSystem.planets[planet.parent];
 					vec3.sub(delta, parentPlanet.pos, orbitTarget.pos);
 					vec3.sub(delta, delta, glutil.view.pos);
 					var deltaLength = vec3.length(delta); 
@@ -1147,8 +1161,8 @@ var planetPointVisRatio = .001;
 			var orbitBasis = [];
 			var orbitBasisInv = [];
 			var mvMat = [];
-			for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-				var planet = solarSystem.planets[planetIndex];
+			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				var planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 				if (planet.radius === undefined) continue;	
 				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
@@ -1270,9 +1284,12 @@ function resize() {
 
 function invalidateForces() {
 	//invalidate all
-	for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-		var planet = solarSystem.planets[planetIndex];
-		planet.lastMeasureCalcDate = undefined;
+	for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
+		var starSystem = starSystems[starSystemIndex];
+		for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
+			var planet = starSystem.planets[planetIndex];
+			planet.lastMeasureCalcDate = undefined;
+		}
 	}
 }
 
@@ -1298,7 +1315,10 @@ function refreshOrbitTargetDistanceText() {
 }
 
 function refreshCurrentTimeText() {
+//local debugging
+if (astro) {
 	$('#currentTimeText').text(astro.julianToCalendar(julianDate));
+}
 }
 
 var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
@@ -1408,7 +1428,9 @@ function init1() {
 	$('#reset').click(function() {
 		integrationPaused = true;
 		integrateTimeStep = defaultIntegrateTimeStep; 
-		solarSystem.planets.copy(solarSystem.initPlanets);
+		for (var i = 0; i < starSystems.length; ++i) {
+			starSystems[i].planets.copy(starSystems[i].initPlanets);
+		}
 		julianDate = initJulianDate;
 		refreshCurrentTimeText();
 	});
@@ -1643,6 +1665,7 @@ function init1() {
 		}
 	});
 
+	//TODO add star systems
 	$.each(solarSystem.planets, function(planetIndex, planet) {
 		//if any other planet doesn't have recorded mass then skip it
 		if (planet.mass === undefined) return;
@@ -2063,25 +2086,6 @@ function init1() {
 
 	$(window).resize(resize);
 	resize();
-
-	//extra horizon data
-	//has to be telnetted out of jpl and that takes about 5 mins for everything
-	//some dude must have typed in every one of the 200 info cards by hand
-	// because there's nothing consistent about formatting or variable names
-	//so I'm thinking cron job to update and then integrate to extrapolate for later time.
-
-	for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
-		var data = horizonsDynamicData.coords[i];
-		var planet = solarSystem.planetForHorizonID[data.id];
-		if (planet) {	//excluding the BCC and Ln points
-			for (var j = 0; j < 3; ++j) {
-				//convert km to m
-				planet.pos[j] = data.pos[j] * 1000;
-				planet.vel[j] = data.vel[j] * 1000;
-			}
-		}	
-	}
-
 	
 	julianDate = horizonsDynamicData.julianDate;	//get most recent recorded date from planets
 	//TODO get current julian date from client
@@ -2366,24 +2370,157 @@ void main() {
 		starfield = new StarField();
 
 		initStarsControls();
+	
+		//now that we've built all our star system data ... add it to the star field
+		if (starSystems.length > 1) addStarSystemsToStarField();
+	
 	};
 	xhr.send();
 }
 
 function initExoplanets() {
-return;
-	//just over a meg, so I might as well ajax it
-	$.ajax({
-		url : '/solarsystem/exoplanet/openExoplanetCatalog.json',
-		dataType : 'json',
-		timeout : 5000
-	}).error(function() {
-		console.log('failed to get exoplanets, trying again...');
-		initExoplanets();
-	}).done(function(results) {
+	var processResults = function(results) {
 		//process results
+		$.each(results.systems, function(i,systemInfo) {
+			var systemName = assertExists(systemInfo, 'name');
+			
+			var starSystem = new StarSystem();
+			starSystem.name = systemName;
+			
+			var rightAscension = systemInfo.rightAscension;
+			var declination = systemInfo.declination;
+			var cosRA = Math.cos(rightAscension);
+			var sinRA = Math.sin(rightAscension);
+			var cosDec = Math.cos(declination);
+			var sinDec = Math.sin(declination);
+			//convert to coordinates
+			starSystem.pos[0] = cosRA * cosDec;
+			starSystem.pos[1] = sinRA * cosDec;
+			starSystem.pos[2] = sinDec;
+			//rotate for earth's tilt
+			var epsilon = Math.rad(23.4);
+			var cosEps = Math.cos(epsilon);
+			var sinEps = Math.sin(epsilon);
+			var yn = cosEps * starSystem.pos[1] + sinEps * starSystem.pos[2];
+			starSystem.pos[2] = -sinEps * starSystem.pos[1] + cosEps * starSystem.pos[2];
+			starSystem.pos[1] = yn;
+			//distance
+			var distance = systemInfo.distance;
+			if (distance === undefined) console.log('failed to find distance for system '+systemName);
+			starSystem.pos[0] *= distance;
+			starSystem.pos[1] *= distance;
+			starSystem.pos[2] *= distance;
+
+			//TODO visual magnitude, which is undocumented but some have
+
+
+			$.each(assertExists(systemInfo, 'bodies'), function(j,bodyInfo) {
+			
+				var name = assertExists(bodyInfo, 'name');
+				var radius = bodyInfo.radius;
+				if (radius === undefined) console.log('no radius for body '+name);
+
+				var mass = bodyInfo.mass;
+				if (mass === undefined) console.log('no mass for body '+name);
+				
+				var body = mergeInto(new Planet(), {
+					type : assertExists(bodyInfo, 'type'),
+					name : name,
+					mass : mass,
+					radius : radius,	//for planets/suns this is the radius of the planet.  does it exist for barycenters?
+					//visualMagnitude : bodyInfo.visualMagnitude,	// TODO convert to absolute magnitude for star shader?
+					//spectralType : bodyInfo.spectralType,			// or this one?
+					//temperature : bodyInfo.temperature,			// or this one?
+					inclination : bodyInfo.inclination,
+					eccentricity : bodyInfo.eccentricity,
+					semiMajorAxis : bodyInfo.semiMajorAxis,
+					orbitalPeriod : bodyInfo.orbitalPeriod,
+					parent : bodyInfo.parent,
+				});
+
+				//TODO relative coordinates of planets and lots more delta calculations?
+				// or just put everything in meters wrt ecliptical coordinate system?
+				vec3.add(body.pos, body.pos, starSystem.pos);
+
+				//TODO this is producing too many NaNs
+				//use the orbit code to give these orbits
+				body.pos[0] += body.semiMajorAxis;
+
+				initPlanetColorSchRadiusAngle(body);
+				initPlanetSceneLatLonLineObjs(body);
+
+				starSystem.planets.push(body);
+			});
+
+			//do this to new systems
+			starSystem.buildIndexes();
+			starSystem.mapParents();
+			
+			starSystems.push(starSystem);
+		});
+
+		//now that we've built all our star system data ... add it to the star field
+		if (starfield !== undefined) addStarSystemsToStarField();
+	};
+
+	//debgggin...just index.html it
+	if (exoplanetCatalogueResults) {
+		processResults(exoplanetCatalogueResults);
+	} else {
+		//won't the ajax request choke on the variable name? 
+
+		//just over a meg, so I might as well ajax it
+		$.ajax({
+			url : '/solarsystem/exoplanet/openExoplanetCatalog.json',
+			dataType : 'json',
+			timeout : 5000
+		}).error(function() {
+			console.log('failed to get exoplanets, trying again...');
+			initExoplanets();
+		}).done(processResults);
+	}
+}
+
+function addStarSystemsToStarField() {
+	assert(starfield !== undefined);
+	assert(starSystems.length > 1);
+
+	//add buffer points
+
+	var array = starfield.buffer.data;	//5 fields: x y z absmag colorIndex
+	array = Array.prototype.slice.call(array);	//to js array
+
+	for (var i = 1; i < starSystems.length; ++i) {
+		var starSystem = starSystems[i];
+		starSystem.starfieldIndex = array.length / 5;
+		array.push(starSystem.pos[0]);
+		array.push(starSystem.pos[1]);
+		array.push(starSystem.pos[2]);
+		array.push(5);	//abs mag
+		array.push(0);	//color index
+	}
+
+	starfield.buffer.setData(array, gl.STATIC_DRAW, true);
+
+	//then add named stars to the starSystem array 
+	// if they're not there ... and I'm pretty sure they're all not there ...
+
+	for (var i = 0; i < namedStars.length; ++i) {
+		var args = namedStars[i];
 	
-	});
+		this.name = args.name;
+		
+		//index in the stars.buffer, stride of stars.buffer.dim
+		//preserved since the original 1000 or however many from the HYG database are not moved
+		this.starfieldIndex = args.index;	
+		
+		//note stars.buffer holds x y z abs-mag color-index
+		this.pos = [
+			StarField.prototype.buffer.data[0 + this.starfieldIndex * StarField.prototype.buffer.dim],
+			StarField.prototype.buffer.data[1 + this.starfieldIndex * StarField.prototype.buffer.dim],
+			StarField.prototype.buffer.data[2 + this.starfieldIndex * StarField.prototype.buffer.dim]
+		];
+	}
 }
 
 function initPlanetColorSchRadiusAngle(planet) {
@@ -2412,6 +2549,7 @@ function initPlanetColorSchRadiusAngle(planet) {
 	planet.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
 }
 
+//TODO no more multiple copies of tide array per-planet
 function initPlanetSceneLatLonLineObjs(planet) {
 	if (planet.radius === undefined) {
 		//only/always use a point/basis/etc?
@@ -3544,10 +3682,9 @@ void main() {
 	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {
 		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
 		var moon = solarSystem.planets[solarSystem.indexes[moonName]];
-		assert(planet.tiltAngle === undefined);
-		planet.tiltAngle = [0,0,0,1];
-		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
-		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
+		planet.angle = [0,0,0,1];
+		quat.rotateZ(planet.angle, planet.angle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
+		quat.rotateX(planet.angle, planet.angle, moon.keplerianOrbitalElements.inclination);
 	};
 
 	//accepts degrees
@@ -3555,9 +3692,9 @@ void main() {
 	var setPlanetTiltAngleToFixedValue = function(planetName, inclination, tiltDirection) {
 		if (tiltDirection === undefined) tiltDirection = 0;
 		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
-		planet.tiltAngle = [0,0,0,1];
-		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
-		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
+		planet.angle = [0,0,0,1];
+		quat.rotateZ(planet.angle, planet.angle, Math.rad(tiltDirection));
+		quat.rotateX(planet.angle, planet.angle, Math.rad(inclination));
 	};
 
 	setPlanetTiltAngleToFixedValue('Mercury', 2.11/60);		//TODO tilt from mercury orbit plane.  until then it's off
@@ -3797,6 +3934,13 @@ void main() {
 }
 
 function setOrbitTarget(newTarget) {
+	if (newTarget.isa(StarSystem)) {
+		newTarget = newTarget.planets[0];
+	}
+	if (newTarget.isa(Planet)) {
+		orbitStarSystem = newTarget.starSystem;
+	}
+	
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
 	orbitTarget = newTarget
 	$('#orbitTargetText').text(orbitTarget.name);
@@ -3924,12 +4068,12 @@ function update() {
 	}*/
 	
 	// set the angle for the time
-	{
-		//Nowhere in any of this do I seem to be taking tiltAngle into account ...
+	/*{
 		var qdst = solarSystem.planets[solarSystem.indexes.Earth].angle;
-		quat.identity(qdst);
-		quat.rotateZ(qdst, qdst, (julianDate % 1) * 2 * Math.PI);
-	}
+		var zrot = [0,0,0,1];
+		quat.rotateZ(zrot, zrot, (julianDate % 1) * 2 * Math.PI);
+		quat.multiply(qdst, zrot, qdst);	//TODO correct the math for adjusting zrot into qdst's frame
+	}*/
 	
 	//if we are close enough to the planet then rotate with it
 	if (false &&

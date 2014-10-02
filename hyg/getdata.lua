@@ -31,6 +31,8 @@ for i=1,#lines do
 		if #part > 0 then columnCounts[columnName] = (columnCounts[columnName] or 0) + 1 end
 		return part, columnName
 	end)
+	
+	-- in parsecs
 	local x = assert(tonumber(data.X))
 	local y = assert(tonumber(data.Y))
 	local z = assert(tonumber(data.Z))
