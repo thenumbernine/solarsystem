@@ -171,5 +171,5 @@ entries = {
 	coords = entries,
 	julianDate = julianDate,
 }
-io.writefile('dynamic-vars.json', 'horizonsData = \n'..json.encode(entries, {indent=true})..'\n;')
+io.writefile('dynamic-vars.json', 'horizonsDynamicData = '..json.encode(entries, {indent=true})..';')
 

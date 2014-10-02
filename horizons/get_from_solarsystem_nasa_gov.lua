@@ -16,7 +16,7 @@ local planetsFilename = 'static-vars.json'
 local planetsData = io.readfile(planetsFilename)
 -- strip off variable wrapper
 local planetsLines = planetsData:trim():split('\n')
-planetsLines[1] = assert(planetsLines[1]:match('horizonsExtraData = (.*)'))
+planetsLines[1] = assert(planetsLines[1]:match('horizonsStaticData = (.*)'))
 print('last line',planetsLines[#planetsLines])
 planetsLines[#planetsLines] = assert(planetsLines[#planetsLines]:match('(.*);'))
 planetsData = planetsLines:concat('\n')
@@ -105,5 +105,5 @@ for _,planet in ipairs(planets) do
 	end
 end
 
-local planetsData = 'horizonsExtraData = '..json.encode(planets, {indent=true})..';'
+local planetsData = 'horizonsStaticData = '..json.encode(planets, {indent=true})..';'
 io.writefile(planetsFilename, planetsData)
