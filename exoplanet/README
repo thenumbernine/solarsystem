@@ -16,6 +16,10 @@ data from ... well, let's see, there are a few places
 		also has structure data.  binary stars and the likes.
 
 
-getdata.lua <- parses the CSV database, generates files
+parseCaltech.lua <- parses the CSV database, generates files
 
 	creates exoplanetResults.json
+
+parseOpenExoplanetCatalogue.lua
+
+	creates openExoplanetCatalog.json
