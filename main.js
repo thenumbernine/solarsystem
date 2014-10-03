@@ -3265,9 +3265,6 @@ function initPlanetOrbitPathObj(planet) {
 	var eccentricAnomaly;
 	var A, B;
 
-	//used by comets to adjust the path.  
-	//TODO fixme and get rid of this
-	var alphaAngleOffset = 0;	
 	//used by planets to offset reconstructed orbit coordinates to exact position of planet
 	var checkPosToPosX = 0;
 	var checkPosToPosY = 0;
@@ -3323,100 +3320,42 @@ function initPlanetOrbitPathObj(planet) {
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
 
-		var timeOfPeriapsisCrossing;
+		var meanAnomaly;
 		if (planet.isComet) {
-			
-			/*
-			we have:
-				eccentricity
-				parent.mass
-				semiMajorAxis
-				[timeOfPeriapsisCrossing] (named timeOfPerihelionPassage) unique to this condition
-			we compute:
-				gravitationalParameter (from parent.mass and maybe planet.mass)
-				pathEccentricAnomaly (from timeOfPeriapsisCrossing, orbitalPeriod)
-				pos (from eccentricity, pathEccentricAnomaly)
-				vel (from pathEccentricAnomaly, orbitalPeriod)
-				eccentricAnomaly (from pos, eccentricity, gravitationalParameter, semiMajorAxis)
-			*/
-			
-			//how long until it crosses the periapsis
-			// solve for eccentric anomaly...
 			timeOfPeriapsisCrossing = planet.sourceJPLSSDData.timeOfPerihelionPassage;	//julian day
-			var tau = (julianDate - timeOfPeriapsisCrossing) / orbitalPeriod;	//unitless
-			var pathEccentricAnomaly = 2 * Math.PI * tau;
-			var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-			var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
-			var posX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
-			var posY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
-			var posZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
-			var velX = (A[0] * -pathSinEccentricAnomaly + B[0] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
-			var velY = (A[1] * -pathSinEccentricAnomaly + B[1] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			var velZ = (A[2] * -pathSinEccentricAnomaly + B[2] * pathCosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			planet.pos[0] = posX + parentPlanet.pos[0];
-			planet.pos[1] = posY + parentPlanet.pos[1];
-			planet.pos[2] = posZ + parentPlanet.pos[2];
-			planet.vel[0] = velX + parentPlanet.vel[0];
-			planet.vel[1] = velY + parentPlanet.vel[1];
-			planet.vel[2] = velZ + parentPlanet.vel[2];
-			vec3.copy(solarSystem.initPlanets[planetIndex].pos, planet.pos);
-			vec3.copy(solarSystem.initPlanets[planetIndex].vel, planet.vel);
-			velX = velX / (60*60*24);	//m/s
-			velY = velY / (60*60*24);
-			velZ = velZ / (60*60*24);
-			var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
-
-			//rather than assume the comet is at its closest approach, calculate it using the 'timeOfPerihelionPassage' / 'epoch' info
-			var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);
-			var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-			var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-			eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+			meanAnomaly = (julianDate - timeOfPeriapsisCrossing) * 2 * Math.PI / orbitalPeriod;
 		} else if (planet.isAsteroid) {
-			/*	
-			we have:
-				eccentricity
-				semiMajorAxis
-				parent.mass
-				[meanAnomaly] unique to this condition
-			we compute:
-				eccentricAnomaly (from meanAnomaly)
-				gravitationalParameter (from parent.mass and optimistically our own mass, though in a Keplerian orbit this can be neglected)
-				orbitalPeriod (from semiMajorAxis and gravitationalParameter)
-				timeOfPeriapsisCrossing (from eccentricAnomaly, eccentricity, gravitationalParameter, semiMajorAxis)
-				pos (from eccentricity, eccentricAnomaly, parent.pos)
-				vel (from eccentricAnomaly, orbitalPeriod, parent.vel)
-			*/
-			
-			//solve Newton Rhapson
-			//f(E) = M - E + e sin E = 0
-			var meanAnomaly = planet.sourceJPLSSDData.meanAnomaly;
-			eccentricAnomaly = meanAnomaly;
-			for (var i = 0; i < 10; ++i) {
-				var func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
-				var deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
-				var delta = func / deriv;
-				if (Math.abs(delta) < 1e-15) break;
-				eccentricAnomaly -= delta;
-			}
-			var sinEccentricAnomaly = Math.sin(eccentricAnomaly);	
-			var cosEccentricAnomaly = Math.cos(eccentricAnomaly);
-			timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
-		
-			var posX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
-			var posY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
-			var posZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-			var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
-			var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-			planet.pos[0] = posX + parentPlanet.pos[0];
-			planet.pos[1] = posY + parentPlanet.pos[1];
-			planet.pos[2] = posZ + parentPlanet.pos[2];
-			planet.vel[0] = velX + parentPlanet.vel[0];
-			planet.vel[1] = velY + parentPlanet.vel[1];
-			planet.vel[2] = velZ + parentPlanet.vel[2];
-			vec3.copy(solarSystem.initPlanets[planetIndex].pos, planet.pos);
-			vec3.copy(solarSystem.initPlanets[planetIndex].vel, planet.vel);	
+			meanAnomaly = planet.sourceJPLSSDData.meanAnomaly;
 		}
+
+		//solve Newton Rhapson
+		//f(E) = M - E + e sin E = 0
+		eccentricAnomaly = meanAnomaly;
+		for (var i = 0; i < 10; ++i) {
+			var func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
+			var deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
+			var delta = func / deriv;
+			if (Math.abs(delta) < 1e-15) break;
+			eccentricAnomaly -= delta;
+		}
+		var sinEccentricAnomaly = Math.sin(eccentricAnomaly);	
+		var cosEccentricAnomaly = Math.cos(eccentricAnomaly);
+		timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
+	
+		var posX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
+		var posY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
+		var posZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
+		var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
+		var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+		var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+		planet.pos[0] = posX + parentPlanet.pos[0];
+		planet.pos[1] = posY + parentPlanet.pos[1];
+		planet.pos[2] = posZ + parentPlanet.pos[2];
+		planet.vel[0] = velX + parentPlanet.vel[0];
+		planet.vel[1] = velY + parentPlanet.vel[1];
+		planet.vel[2] = velZ + parentPlanet.vel[2];
+		vec3.copy(solarSystem.initPlanets[planetIndex].pos, planet.pos);
+		vec3.copy(solarSystem.initPlanets[planetIndex].vel, planet.vel);	
 
 		planet.keplerianOrbitalElements = {
 			semiMajorAxis : semiMajorAxis,
@@ -3428,10 +3367,6 @@ function initPlanetOrbitPathObj(planet) {
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			orbitalPeriod : orbitalPeriod
 		};
-		
-		//comets (and asteroids?) aren't evaluated perfectly, so I'm getting a bit of an offest ... TODO fixme
-		//alphaAngleOffset = 238/250;
-		
 	} else {	// planets and moons
 
 		//consider position relative to orbitting parent
@@ -3584,9 +3519,7 @@ function initPlanetOrbitPathObj(planet) {
 		vertexes.push(vtxPosZ);
 	
 		//pack transparency info into the vertex
-		var alpha = frac + alphaAngleOffset;
-		if (alpha > 1) alpha %= 1;
-		alpha = alpha * .75 + .25;
+		var alpha = frac * .75 + .25;
 		vertexes.push(alpha);
 	}
 
