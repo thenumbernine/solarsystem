@@ -1914,7 +1914,7 @@ function init1() {
 									name : name,
 									isComet : row.bodyType == 'comet',
 									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
-									sourceJPLSSDData : row,
+									sourceData : row,
 									parent : solarSystem.indexes.Sun,
 									starSystem : solarSystem,
 									index : index
@@ -2030,7 +2030,7 @@ function init1() {
 			var searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
 			for (var i = 0; i < solarSystem.planets.length; ++i) {
 				var planet = solarSystem.planets[i];
-				var row = planet.sourceJPLSSDData;
+				var row = planet.sourceData;
 				if (row) {
 					if ((row.bodyType == 'comet' && searchingComets) ||
 						(row.bodyType == 'numbered asteroid' && searchingNumbered) ||
@@ -3282,7 +3282,7 @@ function initPlanetOrbitPathObj(planet) {
 		we compute:
 		*/
 	
-		eccentricity = assertExists(planet.sourceJPLSSDData, 'eccentricity');
+		eccentricity = assertExists(planet.sourceData, 'eccentricity');
 		if (eccentricity >= 1) {
 			console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
 			return;
@@ -3290,10 +3290,10 @@ function initPlanetOrbitPathObj(planet) {
 
 		var pericenterDistance, semiMajorAxis;
 		if (planet.isComet) {
-			pericenterDistance = assert(planet.sourceJPLSSDData.perihelionDistance);
+			pericenterDistance = assert(planet.sourceData.perihelionDistance);
 			semiMajorAxis = pericenterDistance / (1 - eccentricity);
 		} else if (planet.isAsteroid) {
-			semiMajorAxis = assert(planet.sourceJPLSSDData.semiMajorAxis);
+			semiMajorAxis = assert(planet.sourceData.semiMajorAxis);
 			pericenterDistance = semiMajorAxis * (1 - eccentricity);
 		}
 
@@ -3301,15 +3301,15 @@ function initPlanetOrbitPathObj(planet) {
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
 		
-		var longitudeOfAscendingNode = assert(planet.sourceJPLSSDData.longitudeOfAscendingNode);
+		var longitudeOfAscendingNode = assert(planet.sourceData.longitudeOfAscendingNode);
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
 		var sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		var argumentOfPericenter = assert(planet.sourceJPLSSDData.argumentOfPerihelion);
+		var argumentOfPericenter = assert(planet.sourceData.argumentOfPerihelion);
 		var cosPericenter = Math.cos(argumentOfPericenter);
 		var sinPericenter = Math.sin(argumentOfPericenter);
 
-		var inclination = assert(planet.sourceJPLSSDData.inclination);
+		var inclination = assert(planet.sourceData.inclination);
 		var cosInclination = Math.cos(inclination);
 		var sinInclination = Math.sin(inclination);
 	
@@ -3322,10 +3322,10 @@ function initPlanetOrbitPathObj(planet) {
 
 		var meanAnomaly;
 		if (planet.isComet) {
-			timeOfPeriapsisCrossing = planet.sourceJPLSSDData.timeOfPerihelionPassage;	//julian day
+			timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
 			meanAnomaly = (julianDate - timeOfPeriapsisCrossing) * 2 * Math.PI / orbitalPeriod;
 		} else if (planet.isAsteroid) {
-			meanAnomaly = planet.sourceJPLSSDData.meanAnomaly;
+			meanAnomaly = planet.sourceData.meanAnomaly;
 		}
 
 		//solve Newton Rhapson
