@@ -3274,6 +3274,13 @@ function initPlanetOrbitPathObj(planet) {
 	//calculate pos and vel and mass by parameters ... ?
 	// or just put an orbit mesh there?
 	if (planet.isComet || planet.isAsteroid) {
+		/*
+		we have:
+			eccentricity
+			semiMajorAxis
+			pericenterDistance
+		we compute:
+		*/
 	
 		eccentricity = assertExists(planet.sourceJPLSSDData, 'eccentricity');
 		if (eccentricity >= 1) {
@@ -3315,6 +3322,21 @@ function initPlanetOrbitPathObj(planet) {
 
 		var timeOfPeriapsisCrossing;
 		if (planet.isComet) {
+			
+			/*
+			we have:
+				eccentricity
+				parent.mass
+				semiMajorAxis
+				[timeOfPeriapsisCrossing] (named timeOfPerihelionPassage) unique to this condition
+			we compute:
+				gravitationalParameter (from parent.mass and maybe planet.mass)
+				pathEccentricAnomaly (from timeOfPeriapsisCrossing, orbitalPeriod)
+				pos (from eccentricity, pathEccentricAnomaly)
+				vel (from pathEccentricAnomaly, orbitalPeriod)
+				eccentricAnomaly (from pos, eccentricity, gravitationalParameter, semiMajorAxis)
+			*/
+			
 			//how long until it crosses the periapsis
 			// solve for eccentric anomaly...
 			timeOfPeriapsisCrossing = planet.sourceJPLSSDData.timeOfPerihelionPassage;	//julian day
@@ -3342,11 +3364,26 @@ function initPlanetOrbitPathObj(planet) {
 			var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
 
 			//rather than assume the comet is at its closest approach, calculate it using the 'timeOfPerihelionPassage' / 'epoch' info
-			var distanceToParent = vec3.length(planet.pos);
+			var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);
 			var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
 			var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
 			eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
 		} else if (planet.isAsteroid) {
+			/*	
+			we have:
+				eccentricity
+				semiMajorAxis
+				parent.mass
+				[meanAnomaly] unique to this condition
+			we compute:
+				eccentricAnomaly (from meanAnomaly)
+				gravitationalParameter (from parent.mass and optimistically our own mass, though in a Keplerian orbit this can be neglected)
+				orbitalPeriod (from semiMajorAxis and gravitationalParameter)
+				timeOfPeriapsisCrossing (from eccentricAnomaly, eccentricity, gravitationalParameter, semiMajorAxis)
+				pos (from eccentricity, eccentricAnomaly, parent.pos)
+				vel (from eccentricAnomaly, orbitalPeriod, parent.vel)
+			*/
+			
 			//solve Newton Rhapson
 			//f(E) = M - E + e sin E = 0
 			var meanAnomaly = planet.sourceJPLSSDData.meanAnomaly;
@@ -3390,7 +3427,7 @@ function initPlanetOrbitPathObj(planet) {
 		};
 		
 		//comets (and asteroids?) aren't evaluated perfectly, so I'm getting a bit of an offest ... TODO fixme
-		alphaAngleOffset = 238/250;
+		//alphaAngleOffset = 238/250;
 		
 	} else {	// planets and moons
 
