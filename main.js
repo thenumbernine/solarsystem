@@ -2464,19 +2464,21 @@ function initExoplanets() {
 	};
 
 	//debgggin...just index.html it
-	if (exoplanetCatalogueResults) {
+	if (window.exoplanetCatalogueResults) {
 		processResults(exoplanetCatalogueResults);
 	} else {
 		//won't the ajax request choke on the variable name? 
 
 		//just over a meg, so I might as well ajax it
 		$.ajax({
-			url : '/solarsystem/exoplanet/openExoplanetCatalog.json',
+			url : 'exoplanet/openExoplanetCatalog.json',
 			dataType : 'json',
 			timeout : 5000
 		}).error(function() {
 			console.log('failed to get exoplanets, trying again...');
-			initExoplanets();
+			setTimeout(function() {
+				initExoplanets();
+			}, 5000);
 		}).done(processResults);
 	}
 }
