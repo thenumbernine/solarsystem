@@ -1916,10 +1916,11 @@ function init1() {
 									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
 									sourceJPLSSDData : row,
 									parent : solarSystem.indexes.Sun,
+									starSystem : solarSystem,
 									index : index
 								});
 								
-								solarSystem.planets.push(newPlanetClass);
+								solarSystem.planets.push(planet);
 								
 								//add copy to initPlanets for when we get reset() working
 								solarSystem.initPlanets[index] = planet.clone();
@@ -2950,7 +2951,7 @@ void main() {
 	//init stars now that shaders are made 
 	initStars();
 
-	initExoplanets();
+	//initExoplanets();
 
 	var planetsDone = 0;
 
