@@ -178,6 +178,7 @@ var StarSystem = makeClass({
 		this.vel = [0,0,0];
 		this.angle = [0,0,0,1];
 		this.planets = [];
+		this.stars = [];
 	},
 
 	//builds solarSystem.indexes[planetName]
@@ -235,18 +236,21 @@ var SolarSystem = makeClass({
 		SolarSystem.super.apply(this, arguments);
 	
 		//add our initial planets ...
-		this.planets.push(mergeInto(new Planet(), {id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8}));
-		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3}));
-		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3}));
-		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563}));
-		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6}));
-		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409}));
-		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487}));
-		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796}));
-		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293}));
-		this.planets.push(mergeInto(new Planet(), {id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171}));
-		this.planets.push(mergeInto(new Planet(), {id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1.151e+6}));
-		
+		this.planets.push(mergeInto(new Planet(), {id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8, type:'star'}));
+		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1.151e+6, type:'planet'}));
+	
+		//sun is our only star
+		this.stars.push(this.planets[0]);
+
 		//start out with the current planets
 		var currentIDs = {};
 		for (var i = 0; i < this.planets.length; ++i) {
@@ -321,13 +325,16 @@ var SolarSystem = makeClass({
 	}
 });
 
+var starSystems = [];
+var starSystemForNames = {};
+
 //default = our star system
 var solarSystem = new SolarSystem();
+starSystemForNames[solarSystem.name] = solarSystem;
+starSystems.push(solarSystem);
+
 solarSystem.buildIndexes();
 solarSystem.mapParents();
-
-var starSystems = [solarSystem];
-
 
 
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
@@ -996,8 +1003,25 @@ var planetPointVisRatio = .001;
 				}
 
 				//calculate sun position for lighting
-				var sun = solarSystem.planets[solarSystem.indexes.Sun];
-				vec3.sub(planet.sceneObj.uniforms.sunPos, sun.pos, planet.pos);
+				for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
+					var star = orbitStarSystem.stars[starIndex];
+					var tmp = [];
+					vec3.sub(tmp, star.pos, planet.pos);
+					planet.sceneObj.uniforms.sunPos[0+4*starIndex] = tmp[0];
+					planet.sceneObj.uniforms.sunPos[1+4*starIndex] = tmp[1];
+					planet.sceneObj.uniforms.sunPos[2+4*starIndex] = tmp[2];
+					planet.sceneObj.uniforms.sunPos[3+4*starIndex] = 1;
+				}
+				for (var starIndex = orbitStarSystem.stars.length; starIndex < 4; ++starIndex) {
+					planet.sceneObj.uniforms.sunPos[3+4*starIndex] = 0;
+				}
+
+				//webkit bug
+				planet.sceneObj.shader.use();
+				gl.uniform4fv(
+					gl.getUniformLocation(
+						planet.sceneObj.shader.obj, 'sunPos[0]'
+					), planet.sceneObj.uniforms.sunPos);
 
 				//update ellipsoid parameters
 				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
@@ -1008,7 +1032,7 @@ var planetPointVisRatio = .001;
 				
 				//TODO - ambient for each star
 				// TODO even more - absolute magnitude, radiance, HDR, etc
-				planet.sceneObj.uniforms.ambient = planet == sun ? 1 : .3;
+				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : .1;
 
 				planet.sceneObj.draw();
 			
@@ -2389,33 +2413,51 @@ function initExoplanets() {
 		//process results
 		$.each(results.systems, function(i,systemInfo) {
 			var systemName = assertExists(systemInfo, 'name');
-			
-			var starSystem = new StarSystem();
-			starSystem.name = systemName;
-			
+					
 			var rightAscension = systemInfo.rightAscension;
+			if (rightAscension === undefined) {
+				console.log('failed to find right ascension for system '+systemName);
+				return;
+			}
 			var declination = systemInfo.declination;
+			if (declination === undefined) {
+				console.log('failed to find declination for system '+systemName);
+				return;
+			}
 			var cosRA = Math.cos(rightAscension);
 			var sinRA = Math.sin(rightAscension);
 			var cosDec = Math.cos(declination);
 			var sinDec = Math.sin(declination);
 			//convert to coordinates
-			starSystem.pos[0] = cosRA * cosDec;
-			starSystem.pos[1] = sinRA * cosDec;
-			starSystem.pos[2] = sinDec;
+			var pos = [];
+			pos[0] = cosRA * cosDec;
+			pos[1] = sinRA * cosDec;
+			pos[2] = sinDec;
 			//rotate for earth's tilt
 			var epsilon = Math.rad(23.4);
 			var cosEps = Math.cos(epsilon);
 			var sinEps = Math.sin(epsilon);
-			var yn = cosEps * starSystem.pos[1] + sinEps * starSystem.pos[2];
-			starSystem.pos[2] = -sinEps * starSystem.pos[1] + cosEps * starSystem.pos[2];
-			starSystem.pos[1] = yn;
+			var yn = cosEps * pos[1] + sinEps * pos[2];
+			pos[2] = -sinEps * pos[1] + cosEps * pos[2];
+			pos[1] = yn;
 			//distance
 			var distance = systemInfo.distance;
-			if (distance === undefined) console.log('failed to find distance for system '+systemName);
-			starSystem.pos[0] *= distance;
-			starSystem.pos[1] *= distance;
-			starSystem.pos[2] *= distance;
+			if (distance === undefined) {
+				console.log('failed to find distance for system '+systemName);
+				return;
+			}
+			pos[0] *= distance;
+			pos[1] *= distance;
+			pos[2] *= distance;
+
+			
+			var starSystem = new StarSystem();
+			starSystem.name = systemName;
+			starSystem.sourceData = systemInfo;
+			vec3.copy(starSystem.pos, pos);
+			starSystemForNames[starSystem.name] = starSystem;
+			starSystems.push(starSystem);
+	
 
 			//TODO visual magnitude, which is undocumented but some have
 
@@ -2425,9 +2467,11 @@ function initExoplanets() {
 				var name = assertExists(bodyInfo, 'name');
 				var radius = bodyInfo.radius;
 				if (radius === undefined) {
-					console.log('no radius for body '+name);
-					//if planets don't have radii they can be estimated by the planet's mass or distance from sun or both? 
-					radius = 7e+7;	// use a jupiter radius
+					if (bodyInfo.type !== 'barycenter') {
+						//console.log('no radius for body '+name);
+						//if planets don't have radii they can be estimated by the planet's mass or distance from sun or both? 
+						radius = 7e+7;	// use a jupiter radius
+					}
 				}
 
 				var mass = bodyInfo.mass;
@@ -2438,7 +2482,7 @@ function initExoplanets() {
 				}
 				if (mass === undefined) {
 					//this prevents us from an orbit ..
-					console.log('no mass for body '+name);
+					//console.log('no mass for body '+name);
 					mass = 2e+27;	//use a jupiter mass
 				}
 				
@@ -2453,16 +2497,17 @@ function initExoplanets() {
 					sourceData : bodyInfo,
 					parent : bodyInfo.parent,
 					starSystem : starSystem,
+					hide : bodyInfo.type === 'barycenter',
 					isExoplanet : true
 				});
 
 				//hacks for orbit
 				bodyInfo.longitudeOfAscendingNode = bodyInfo.longitudeOfAscendingNode || 0;
-				bodyInfo.argumentOfPerihelion = bodyInfo.argumentOfPerihelion || 0;
 				bodyInfo.inclination = bodyInfo.inclination || 0;
 				bodyInfo.eccentricity = bodyInfo.eccentricity || 0;
 				
 				starSystem.planets.push(body);
+				if (body.type == 'star') starSystem.stars.push(body);
 			});
 			
 			starSystem.buildIndexes();
@@ -2471,14 +2516,34 @@ function initExoplanets() {
 			for (var i = 0; i < starSystem.planets.length; ++i) {
 				var body = starSystem.planets[i];
 
+				//further hacks for orbit, now that the parent pointer has been established
+				if (body.sourceData.semiMajorAxis === undefined) {
+					if (body.parent && 
+						body.parent.type === 'barycenter' && 
+						body.parent.sourceData.separation !== undefined)
+					{
+						body.sourceData.semiMajorAxis = body.parent.sourceData.separation;
+					}
+				}
+				//longitude of periapsis = longitude of ascending node + argument of periapsis
+				//argument of periapsis = longitude of periapsis - longitude of ascending node
+				if (body.sourceData.longitudeOfPeriapsis === undefined) {
+					body.sourceData.longitudeOfPeriapsis = 0;
+				}
+				body.sourceData.argumentOfPerihelion = body.sourceData.longitudeOfPeriapsis - body.sourceData.longitudeOfAscendingNode;
+				if (body.sourceData.argumentOfPerihelion == 0) {
+					body.sourceData.argumentOfPerihelion = Math.PI * 2 * i / starSystem.planets.length;
+				}
+
 				vec3.add(body.pos, body.pos, starSystem.pos);
 				
 				initPlanetColorSchRadiusAngle(body);
 				initPlanetSceneLatLonLineObjs(body);
 		
-				if (body.pos[0] !== body.pos[0])
-					console.log('building orbit path with origin position ', body.pos, 'and parent position ', body.parent ? body.parent.pos : '');
-				
+				if (body.pos[0] !== body.pos[0]) {
+					console.log('system '+starSystem.name+' planet '+body.name+' has bad pos'); 
+				}
+
 				initPlanetOrbitPathObj(body, false);
 			}
 			
@@ -2700,11 +2765,11 @@ uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
 uniform vec4 angle;			//planet angle
-uniform vec3 sunPos;		//sun pos, for lighting calculations
+uniform vec4 sunPos[4];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 //to fragment shader:
-varying vec3 lightDir;		//light position
+varying vec3 lightDir[4];		//light position
 varying vec3 normal;		//surface normal
 
 */}) + geodeticPositionCode + mlstr(function(){/*
@@ -2718,7 +2783,10 @@ void main() {
 	vec3 modelVertex = geodeticPosition(vertex);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-	lightDir = normalize(sunPos - vtx3);
+	lightDir[0] = sunPos[0].w * normalize(sunPos[0].xyz - vtx3);
+	lightDir[1] = sunPos[1].w * normalize(sunPos[1].xyz - vtx3);
+	lightDir[2] = sunPos[2].w * normalize(sunPos[2].xyz - vtx3);
+	lightDir[3] = sunPos[3].w * normalize(sunPos[3].xyz - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -2726,11 +2794,15 @@ void main() {
 */}),
 		fragmentCode : mlstr(function(){/*
 uniform vec4 color;
-varying vec3 lightDir;
+varying vec3 lightDir[4];
 varying vec3 normal;
 uniform float ambient;
 void main() {
-	gl_FragColor = color * max(ambient, dot(lightDir, normal));
+	float l0 = max(0., dot(lightDir[0], normal));
+	float l1 = max(0., dot(lightDir[1], normal));
+	float l2 = max(0., dot(lightDir[2], normal));
+	float l3 = max(0., dot(lightDir[3], normal));
+	gl_FragColor = color * max(ambient, l0 + l1 + l2 + l3);
 }
 */}),
 		uniforms : {
@@ -2746,12 +2818,12 @@ uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
 uniform vec4 angle;			//planet angle
-uniform vec3 sunPos;		//sun pos, for lighting calculations
+uniform vec4 sunPos[4];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 //to fragment shader:
 varying vec2 texCoordv;
-varying vec3 lightDir;
+varying vec3 lightDir[4];
 varying vec3 normal;
 
 */}) + geodeticPositionCode + mlstr(function(){/*
@@ -2766,7 +2838,10 @@ void main() {
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-	lightDir = normalize(sunPos - vtx3);
+	lightDir[0] = sunPos[0].w * normalize(sunPos[0].xyz - vtx3);
+	lightDir[1] = sunPos[1].w * normalize(sunPos[1].xyz - vtx3);
+	lightDir[2] = sunPos[2].w * normalize(sunPos[2].xyz - vtx3);
+	lightDir[3] = sunPos[3].w * normalize(sunPos[3].xyz - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -2774,12 +2849,16 @@ void main() {
 */}),
 		fragmentCode : mlstr(function(){/*
 varying vec2 texCoordv;
-varying vec3 lightDir;
+varying vec3 lightDir[4];
 varying vec3 normal;
 uniform sampler2D tex;
 uniform float ambient;
 void main() {
-	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, dot(lightDir, normal));
+	float l0 = max(0., dot(lightDir[0], normal));
+	float l1 = max(0., dot(lightDir[1], normal));
+	float l2 = max(0., dot(lightDir[2], normal));
+	float l3 = max(0., dot(lightDir[3], normal));
+	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, l0 + l1 + l2 + l3);
 }
 */}),
 		uniforms : {
@@ -2946,7 +3025,7 @@ void main() {
 				color : [1,1,1,1],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
-				sunPos : [0,0,0],
+				sunPos : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
 				ambient : .3
 			},
 			texs : [],
@@ -3263,7 +3342,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 
 	// based on planet position and velocity, find plane of orbit
 	if (planet.parent === undefined) {
-		console.log(planet.name+' has no orbit parent');
+		//console.log(planet.name+' has no orbit parent');
 		planet.orbitAxis = [0,0,1];
 		planet.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
 		return;
@@ -3938,7 +4017,15 @@ function setOrbitTarget(newTarget) {
 		newTarget = newTarget.planets[0];
 	}
 	if (newTarget.isa(Planet)) {
-		orbitStarSystem = newTarget.starSystem;
+		//if we're changing star systems...
+		if (newTarget.starSystem !== orbitStarSystem) {
+			orbitStarSystem = newTarget.starSystem;
+			orbitTargetDistance = 0;
+			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
+				var planet = orbitStarSystem.planets[i];
+				orbitTargetDistance = Math.max(orbitTargetDistance, (planet.sourceData || {}).semiMajorAxis || 0);
+			}
+		}
 	}
 	
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
