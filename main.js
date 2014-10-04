@@ -589,7 +589,9 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 	processList(orbitStarSystem.planets);
 
 	//for larger-scale clicks, use the starfield
-	processList(starSystems);
+	if (showStars) {
+		processList(starSystems);
+	}
 	
 	mouseOverTarget = undefined;
 	if (bestTarget !== undefined) {
