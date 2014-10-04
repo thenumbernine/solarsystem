@@ -2134,9 +2134,10 @@ function init1() {
 	$(window).resize(resize);
 	resize();
 	
-	julianDate = horizonsDynamicData.julianDate;	//get most recent recorded date from planets
+	//julianDate = horizonsDynamicData.julianDate;	//get most recent recorded date from planets
 	//TODO get current julian date from client
 	// integrate forward by the small timestep between the two
+	julianDate = calendarToJulian(new Date());
 	
 	
 	initJulianDate = julianDate;
