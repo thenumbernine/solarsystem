@@ -30,9 +30,6 @@ glMatrix.setMatrixArrayType(Array);	//use double rather than float precision wit
 		<script type='text/javascript' src='horizons/static-vars.json'></script>
 		<script type='text/javascript' src='hyg/namedStars.json'></script>
 
-<!-- debugging on local connection -->
-<!-- script type='text/javascript' src='exoplanet/openExoplanetCatalog.json'></script -->
-
 		<script type='text/javascript' src='main.js'></script>
 		
 		<script type='text/javascript'>
@@ -135,14 +132,17 @@ a:active {
 			<div style='padding-top:15px'></div>
 			<button class='mainSidePanelButton' id='mainButtonDisplayOptions'>Display Options</button><br>
 			<button class='mainSidePanelButton' id='mainButtonOverlay'>Calculations</button><br>
-			<button class='mainSidePanelButton' id='mainButtonCelestialBodies'>Celestial Bodies</button><br>
+			<button class='mainSidePanelButton' id='mainButtonSolarSystem'>Our Solar System</button><br>
+			<button class='mainSidePanelButton' id='mainButtonSmallBodies'>Comets &amp; Asteroids</button><br>
+			<button class='mainSidePanelButton' id='mainButtonStarSystems'>Exoplanet Systems</button><br>
 		</div>
 		
 		<div id='overlaySidePanel' class='sidePanel'>
 			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
 			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
 			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
-			<br>
+			<div id='overlaySidePanelContents'>
+			</div>
 			Transparency:<br>
 			<br>
 			<div id='overlay-slider'></div><br>
@@ -168,10 +168,13 @@ a:active {
 			</div>
 		</div>
 
-		<div id='celestialBodiesSidePanel' class='sidePanel'>
-			Planets &amp; Moons:<br>
+		<div id='solarSystemSidePanel' class='sidePanel'>
+			Our Solar System<br>
 			<div id='celestialBodiesVisiblePlanets'>
 			</div>
+		</div>
+
+		<div id='smallBodiesSidePanel' class='sidePanel'>
 			Comets &amp; Asteroids:<br>
 			<input id='celestialBodiesSearchText' type='text'/><button id='celestialBodiesSearch'>Search</button><br>
 			<span id='celestialBodiesSearchWarning'></span><!-- no newline-->
@@ -184,7 +187,10 @@ a:active {
 			<div id='celestialBodiesSearchResults'>
 			</div>
 			<br>
-			<div id='celestialBodiesVisibleStars'>
+		</div>
+
+		<div id='starSystemsSidePanel' class='sidePanel'>
+			<div id='starSystemContents'>
 			</div>
 		</div>
 

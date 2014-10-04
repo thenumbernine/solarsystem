@@ -1422,9 +1422,10 @@ function calendarToJulian(d) {
 function init1() {
 	allSidePanelIDs = [
 		'mainSidePanel',
-		'overlaySidePanel',
 		'displayOptionsSidePanel',
-		'celestialBodiesSidePanel'
+		'overlaySidePanel',
+		'smallBodiesSidePanel',
+		'starSystemsSidePanel'
 	];
 	mainSidePanel = $('#mainSidePanel');
 	
@@ -1444,7 +1445,9 @@ function init1() {
 	$.each([
 		{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
 		{buttonID:'mainButtonDisplayOptions', divID:'displayOptionsSidePanel'},
-		{buttonID:'mainButtonCelestialBodies', divID:'celestialBodiesSidePanel'},
+		{buttonID:'mainButtonSolarSystem', divID:'solarSystemSidePanel'},
+		{buttonID:'mainButtonSmallBodies', divID:'smallBodiesSidePanel'},
+		{buttonID:'mainButtonStarSystems', divID:'starSystemsSidePanel'},
 	], function(i, info) {
 		$('#'+info.buttonID).click(function() {
 			showSidePanel(info.divID);
@@ -1537,9 +1540,9 @@ function init1() {
 	// overlay side panel 
 
 
-	var overlaySidePanel = $('#overlaySidePanel');
-	$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanel);
-	$('<br>').appendTo(overlaySidePanel);
+	var overlaySidePanelContents = $('#overlaySidePanelContents');
+	$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanelContents);
+	$('<br>').appendTo(overlaySidePanelContents);
 	$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
 		var radio = $('<input>', {
 			type : 'radio',
@@ -1551,14 +1554,14 @@ function init1() {
 			}
 		})
 			.attr('name', 'display')
-			.appendTo(overlaySidePanel);
+			.appendTo(overlaySidePanelContents);
 		if (thisDisplayMethod == displayMethod) radio.attr('checked', 'checked');
-		$('<span>', {text:thisDisplayMethod}).appendTo(overlaySidePanel);
-		$('<br>').appendTo(overlaySidePanel);
+		$('<span>', {text:thisDisplayMethod}).appendTo(overlaySidePanelContents);
+		$('<br>').appendTo(overlaySidePanelContents);
 	});
-	$('<br>').appendTo(overlaySidePanel);
-	$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanel);
-	$('<br>').appendTo(overlaySidePanel);
+	$('<br>').appendTo(overlaySidePanelContents);
+	$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanelContents);
+	$('<br>').appendTo(overlaySidePanelContents);
 
 	//add radio buttons hierarchically ...
 	var overlayControlsForPlanets = {};
@@ -1716,7 +1719,7 @@ function init1() {
 
 		//add to parent or to the side panel
 		if (parentPlanet === undefined) {
-			controls.div.appendTo(overlaySidePanel);
+			controls.div.appendTo(overlaySidePanelContents);
 		} else {
 			overlayControlsForPlanets[parentPlanet.index].addChild(controls);
 		}
@@ -1746,7 +1749,7 @@ function init1() {
 		}
 	}
 	
-	$('<br>').appendTo(overlaySidePanel);
+	$('<br>').appendTo(overlaySidePanelContents);
 	
 	
 	// display options side panel
@@ -1794,7 +1797,7 @@ function init1() {
 	// celestial bodies side panel
 
 
-	var celestialBodiesSidePanel = $('#celestialBodiesSidePanel');
+	var solarSystemSidePanel = $('#solarSystemSidePanel');
 
 	//add radio buttons hierarchically ...
 	var celestialBodiesControlsForPlanets = {};
@@ -2132,11 +2135,11 @@ function init1() {
 
 //call this once we get back our star data
 function initStarsControls() {
-	$('<div>', {text:'Stars'}).appendTo($('#celestialBodiesVisibleStars'));
+	$('<div>', {text:'Stars'}).appendTo($('#starSystemContents'));
 	//TODO maybe some pages or something for this, like the asteroid/smallbody search?
-	for (var i = 0; i < starfield.length; ++i) {
+	for (var i = 0; i < starSystems.length; ++i) {
 		(function(){
-			var star = starfield[i];
+			var starSystem = starSystems[i];
 			$('<div>', {
 				css : {
 					textDecoration : 'underline',
@@ -2144,15 +2147,10 @@ function initStarsControls() {
 					paddingLeft : '10px'
 				},
 				click : function() {
-					//work around our duplicate star/sun...
-					if (star.index == 0) {
-						setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
-					} else {
-						setOrbitTarget(star);
-					}
+					setOrbitTarget(starSystem);
 				},
-				text : star.name
-			}).appendTo($('#celestialBodiesVisibleStars'));
+				text : starSystem.name
+			}).appendTo($('#starSystemContents'));
 		})();
 	}
 }
@@ -2399,8 +2397,6 @@ void main() {
 		//assign after all prototype buffer stuff is written, so StarField can call Star can use it during ctor
 		starfield = new StarField();
 
-		initStarsControls();
-	
 		//now that we've built all our star system data ... add it to the star field
 		if (starSystems.length > 1) addStarSystemsToStarField();
 	
@@ -2455,9 +2451,6 @@ function initExoplanets() {
 			starSystem.name = systemName;
 			starSystem.sourceData = systemInfo;
 			vec3.copy(starSystem.pos, pos);
-			starSystemForNames[starSystem.name] = starSystem;
-			starSystems.push(starSystem);
-	
 
 			//TODO visual magnitude, which is undocumented but some have
 
@@ -2554,6 +2547,7 @@ function initExoplanets() {
 				initPlanetOrbitPathObj(body, false);
 			}
 			
+			starSystemForNames[starSystem.name] = starSystem;
 			starSystems.push(starSystem);
 		});
 
@@ -2621,6 +2615,8 @@ function addStarSystemsToStarField() {
 			StarField.prototype.buffer.data[2 + this.starfieldIndex * StarField.prototype.buffer.dim]
 		];
 	}
+
+	initStarsControls();
 }
 
 function initPlanetColorSchRadiusAngle(planet) {
@@ -4020,27 +4016,39 @@ void main() {
 }
 
 function setOrbitTarget(newTarget) {
+	var selectingNewSystem = false;
 	if (newTarget.isa(StarSystem)) {
-		for (var i = 0; i < newTarget.planets.length; ++i) {
-			if (newTarget.planets[i].type !== 'barycenter') {
-				newTarget = newTarget.planets[i];
+		var targetSystem = newTarget;
+		var i = 0;
+		for (; i < targetSystem.planets.length; ++i) {
+			if (targetSystem.planets[i].type !== 'barycenter') {
+				newTarget = targetSystem.planets[i];
+				selectingNewSystem = true;
 				break;
 			}
 		}
-		//assume we get something?
+		if (i == targetSystem.planets.length) {
+			//assume we get something?
+			//will this get reached for the named planets? if so, give them a star! 
+			console.log("failed to find a planet in the system to select!");
+		}
 	}
 	if (newTarget.isa(Planet)) {
 		//if we're changing star systems...
 		if (newTarget.starSystem !== orbitStarSystem) {
+			selectingNewSystem = true;
 			orbitStarSystem = newTarget.starSystem;
-			orbitTargetDistance = 1;
-			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
-				var planet = orbitStarSystem.planets[i];
-				orbitTargetDistance = Math.max(orbitTargetDistance, 
-					(planet.sourceData || {}).semiMajorAxis ||
-					(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
-					0);
-			}
+		}
+	}
+
+	if (selectingNewSystem) {
+		orbitTargetDistance = 1;
+		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
+			var planet = orbitStarSystem.planets[i];
+			orbitTargetDistance = Math.max(orbitTargetDistance, 
+				(planet.sourceData || {}).semiMajorAxis ||
+				(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
+				0);
 		}
 	}
 	
