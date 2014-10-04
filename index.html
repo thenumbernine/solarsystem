@@ -136,18 +136,7 @@ a:active {
 			<button class='mainSidePanelButton' id='mainButtonSmallBodies'>Comets &amp; Asteroids</button><br>
 			<button class='mainSidePanelButton' id='mainButtonStarSystems'>Exoplanet Systems</button><br>
 		</div>
-		
-		<div id='overlaySidePanel' class='sidePanel'>
-			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
-			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
-			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
-			<div id='overlaySidePanelContents'>
-			</div>
-			Transparency:<br>
-			<br>
-			<div id='overlay-slider'></div><br>
-		</div>
-
+	
 		<div id='displayOptionsSidePanel' class='sidePanel'>
 			<input id='showLinesToOtherPlanets' type='checkbox'/>Show Lines to Other Planets<br>
 			<input id='showVelocityVectors' type='checkbox'/>Show Velocity Vectors<br>
@@ -166,6 +155,17 @@ a:active {
 			<div style='padding-left:10px'>
 				Magnitude Bias: <input id='starsVisibleMagnitudeBias'/><br>
 			</div>
+		</div>
+
+		<div id='overlaySidePanel' class='sidePanel'>
+			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
+			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
+			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
+			<div id='overlaySidePanelContents'>
+			</div>
+			Transparency:<br>
+			<br>
+			<div id='overlaySlider'></div><br>
 		</div>
 
 		<div id='solarSystemSidePanel' class='sidePanel'>
@@ -187,11 +187,16 @@ a:active {
 			<div id='celestialBodiesSearchResults'>
 			</div>
 			<br>
+			<br>
 		</div>
 
 		<div id='starSystemsSidePanel' class='sidePanel'>
+			Star Systems:<br>
+			<br>
 			<div id='starSystemContents'>
 			</div>
+			<br>
+			<br>
 		</div>
 
 		<div id='webglfail' style='display:none'>

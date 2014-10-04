@@ -1424,6 +1424,7 @@ function init1() {
 		'mainSidePanel',
 		'displayOptionsSidePanel',
 		'overlaySidePanel',
+		'solarSystemSidePanel',
 		'smallBodiesSidePanel',
 		'starSystemsSidePanel'
 	];
@@ -1443,8 +1444,8 @@ function init1() {
 	});
 
 	$.each([
-		{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
 		{buttonID:'mainButtonDisplayOptions', divID:'displayOptionsSidePanel'},
+		{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
 		{buttonID:'mainButtonSolarSystem', divID:'solarSystemSidePanel'},
 		{buttonID:'mainButtonSmallBodies', divID:'smallBodiesSidePanel'},
 		{buttonID:'mainButtonStarSystems', divID:'starSystemsSidePanel'},
@@ -2135,7 +2136,6 @@ function init1() {
 
 //call this once we get back our star data
 function initStarsControls() {
-	$('<div>', {text:'Stars'}).appendTo($('#starSystemContents'));
 	//TODO maybe some pages or something for this, like the asteroid/smallbody search?
 	for (var i = 0; i < starSystems.length; ++i) {
 		(function(){
@@ -2555,24 +2555,17 @@ function initExoplanets() {
 		if (starfield !== undefined) addStarSystemsToStarField();
 	};
 
-	//debgggin...just index.html it
-	if (window.exoplanetCatalogueResults) {
-		processResults(exoplanetCatalogueResults);
-	} else {
-		//won't the ajax request choke on the variable name? 
-
-		//just over a meg, so I might as well ajax it
-		$.ajax({
-			url : 'exoplanet/openExoplanetCatalog.json',
-			dataType : 'json',
-			timeout : 5000
-		}).error(function() {
-			console.log('failed to get exoplanets, trying again...');
-			setTimeout(function() {
-				initExoplanets();
-			}, 5000);
-		}).done(processResults);
-	}
+	//just over a meg, so I might as well ajax it
+	$.ajax({
+		url : 'exoplanet/openExoplanetCatalog.json',
+		dataType : 'json',
+		timeout : 5000
+	}).error(function() {
+		console.log('failed to get exoplanets, trying again...');
+		setTimeout(function() {
+			initExoplanets();
+		}, 5000);
+	}).done(processResults);
 }
 
 function addStarSystemsToStarField() {
@@ -2949,7 +2942,7 @@ void main() {
 }
 */
 
-	$('#overlay-slider').slider({
+	$('#overlaySlider').slider({
 		range : 'max',
 		width : '200px',
 		min : 0,

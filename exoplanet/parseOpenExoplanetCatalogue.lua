@@ -381,4 +381,4 @@ I feel like I should be doing the data pre-processing here in this file, to make
 --]]
 
 local results = {systems=resultSystems}
-io.writefile('openExoplanetCatalog.json', 'exoplanetCatalogueResults = \n' ..json.encode(results, {indent=true}) .. '\n;')
+io.writefile('openExoplanetCatalog.json', json.encode(results, {indent=true}))
