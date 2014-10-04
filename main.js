@@ -2812,7 +2812,7 @@ void main() {
 	float l1 = max(0., dot(lightDir[1], normal));
 	float l2 = max(0., dot(lightDir[2], normal));
 	float l3 = max(0., dot(lightDir[3], normal));
-	gl_FragColor = color * max(ambient, min(1., l0 + l1 + l2 + l3));
+	gl_FragColor = color * max(ambient, sqrt(min(1., l0 + l1 + l2 + l3)));
 }
 */}),
 		uniforms : {
@@ -2868,7 +2868,7 @@ void main() {
 	float l1 = max(0., dot(lightDir[1], normal));
 	float l2 = max(0., dot(lightDir[2], normal));
 	float l3 = max(0., dot(lightDir[3], normal));
-	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, min(1., l0 + l1 + l2 + l3));
+	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, sqrt(min(1., l0 + l1 + l2 + l3)));
 }
 */}),
 		uniforms : {
