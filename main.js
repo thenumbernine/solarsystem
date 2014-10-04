@@ -2520,9 +2520,16 @@ function initExoplanets() {
 				if (body.sourceData.semiMajorAxis === undefined) {
 					if (body.parent && 
 						body.parent.type === 'barycenter' && 
-						body.parent.sourceData.separation !== undefined)
+						//this is what I don't like about the open exoplanet database:
+						//sometimes 'separation' or 'semimajoraxis' is the distance to the parent
+						// sometimes it's the distance to the children
+						(body.parent.sourceData.separation !== undefined ||
+						body.parent.sourceData.semiMajorAxis !== undefined))
 					{
-						body.sourceData.semiMajorAxis = body.parent.sourceData.separation;
+						body.sourceData.semiMajorAxis = body.parent.sourceData.semiMajorAxis ||
+							body.parent.sourceData.separation || 0;
+						//TODO also remove semiMajorAxis from barycenter so it doesn't get offset from the planet's center?
+						// also -- do this all in exoplanet file preprocessing?
 					}
 				}
 				//longitude of periapsis = longitude of ascending node + argument of periapsis
@@ -2583,7 +2590,7 @@ function addStarSystemsToStarField() {
 	var array = starfield.buffer.data;	//5 fields: x y z absmag colorIndex
 	array = Array.prototype.slice.call(array);	//to js array
 
-	for (var i = 1; i < starSystems.length; ++i) {
+	for (var i = 0; i < starSystems.length; ++i) {
 		var starSystem = starSystems[i];
 		starSystem.starfieldIndex = array.length / 5;
 		array.push(starSystem.pos[0]);
@@ -4014,16 +4021,25 @@ void main() {
 
 function setOrbitTarget(newTarget) {
 	if (newTarget.isa(StarSystem)) {
-		newTarget = newTarget.planets[0];
+		for (var i = 0; i < newTarget.planets.length; ++i) {
+			if (newTarget.planets[i].type !== 'barycenter') {
+				newTarget = newTarget.planets[i];
+				break;
+			}
+		}
+		//assume we get something?
 	}
 	if (newTarget.isa(Planet)) {
 		//if we're changing star systems...
 		if (newTarget.starSystem !== orbitStarSystem) {
 			orbitStarSystem = newTarget.starSystem;
-			orbitTargetDistance = 0;
+			orbitTargetDistance = 1;
 			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 				var planet = orbitStarSystem.planets[i];
-				orbitTargetDistance = Math.max(orbitTargetDistance, (planet.sourceData || {}).semiMajorAxis || 0);
+				orbitTargetDistance = Math.max(orbitTargetDistance, 
+					(planet.sourceData || {}).semiMajorAxis ||
+					(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
+					0);
 			}
 		}
 	}

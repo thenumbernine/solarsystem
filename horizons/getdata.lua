@@ -1,3 +1,4 @@
+#! /usr/bin/env lua -lluarocks.require
 require 'ext'
 local socket = require 'socket'
 local json = require 'dkjson'
