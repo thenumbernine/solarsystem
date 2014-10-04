@@ -376,5 +376,9 @@ for _,system in ipairs(resultSystems) do
 	end
 end
 
+--[[
+I feel like I should be doing the data pre-processing here in this file, to make it more than just a conversion from xml's 2 forms of keys (attrs and children) to json's 1 form of keys (object fields)
+--]]
+
 local results = {systems=resultSystems}
 io.writefile('openExoplanetCatalog.json', 'exoplanetCatalogueResults = \n' ..json.encode(results, {indent=true}) .. '\n;')

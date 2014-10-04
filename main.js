@@ -199,7 +199,9 @@ var StarSystem = makeClass({
 		for (var i = 0; i < this.planets.length; ++i) {
 			var planet = this.planets[i];
 			if (planet.parent !== undefined) {
-				planet.parent = this.indexes[planet.parent];
+				assert(typeof(planet.parent) === 'string');
+				var index = assertExists(this.indexes, planet.parent);
+				planet.parent = assertExists(this.planets, index);
 			}
 		}
 	},
@@ -254,15 +256,15 @@ var SolarSystem = makeClass({
 		//I need to fix up my export script ...
 		if (horizonsDynamicData.coords.length != horizonsStaticData.length) throw 'static to dynamic data lengths differ: dynamic has '+horizonsDynamicData.coords.length+' while static has '+horizonsStaticData.length;
 		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
-			var data = horizonsDynamicData.coords[i];
-			var extra = horizonsStaticData[i];
-			assert(data.id == extra.id, "got some bad data");
-			if (data.name.match(/^L[1-5]/)) {
+			var dynamicData = horizonsDynamicData.coords[i];
+			var staticData = horizonsStaticData[i];
+			assert(dynamicData.id == staticData.id, "got some bad data");
+			if (dynamicData.name.match(/^L[1-5]/)) {
 				//391-395 are Lagrangian points - skip
-			} else if (data.name.match(/Barycenter$/)) {
+			} else if (dynamicData.name.match(/Barycenter$/)) {
 				//1-9 are Barycenter points - skip
 			} else {
-				if (currentIDs[data.id]) {
+				if (currentIDs[dynamicData.id]) {
 					//if the id already exists then skip it
 				} else {
 					//... finally, add the planet
@@ -274,15 +276,15 @@ var SolarSystem = makeClass({
 					inverseFlattening (all but sun, mercury, venus, moon, pluto)
 					*/				
 					this.planets.push(mergeInto(new Planet(), {
-						id:data.id,
-						name:data.name,
-						mass:extra.mass,
-						radius:extra.radius,
-						equatorialRadius:extra.equatorialRadius,
-						inverseFlattening:extra.inverseFlattening,
-						parent:extra.parent
+						id:dynamicData.id,
+						name:dynamicData.name,
+						mass:staticData.mass,
+						radius:staticData.radius,
+						equatorialRadius:staticData.equatorialRadius,
+						inverseFlattening:staticData.inverseFlattening,
+						parent:staticData.parent
 					}));
-					currentIDs[data.id] = true;
+					currentIDs[dynamicData.id] = true;
 				}
 			}
 		}
@@ -303,13 +305,13 @@ var SolarSystem = makeClass({
 		//so I'm thinking cron job to update and then integrate to extrapolate for later time.
 
 		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
-			var data = horizonsDynamicData.coords[i];
-			var planet = this.planetForHorizonID[data.id];
+			var dynamicData = horizonsDynamicData.coords[i];
+			var planet = this.planetForHorizonID[dynamicData.id];
 			if (planet) {	//excluding the BCC and Ln points
 				for (var j = 0; j < 3; ++j) {
 					//convert km to m
-					planet.pos[j] = data.pos[j] * 1000;
-					planet.vel[j] = data.vel[j] * 1000;
+					planet.pos[j] = dynamicData.pos[j] * 1000;
+					planet.vel[j] = dynamicData.vel[j] * 1000;
 				}
 			}	
 		}
@@ -697,7 +699,7 @@ var latLonShader;
 var planetColorShader;
 var planetTexShader;
 var planetHSVShader;
-var orbitShader;
+var orbitPathShader;
 
 var pointObj;
 var planetSceneObj;
@@ -1105,7 +1107,7 @@ var planetPointVisRatio = .001;
 					var distPeriapsis = semiMajorAxis * (1 + eccentricity);	//largest distance from the parent planet
 				
 					//vector from view to parent planet
-					var parentPlanet = orbitStarSystem.planets[planet.parent];
+					var parentPlanet = planet.parent;
 					vec3.sub(delta, parentPlanet.pos, orbitTarget.pos);
 					vec3.sub(delta, delta, glutil.view.pos);
 					var deltaLength = vec3.length(delta); 
@@ -1670,8 +1672,10 @@ function init1() {
 		//if any other planet doesn't have recorded mass then skip it
 		if (planet.mass === undefined) return;
 
-		var parentPlanetIndex = planet.parent;
-		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
+		var parentPlanet = planet.parent;
+		if (parentPlanet !== undefined) {
+			if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
+		}
 
 		var controls = new HierarchicalCheckboxControl({
 			title : planet.name,
@@ -1687,10 +1691,10 @@ function init1() {
 		});
 
 		//add to parent or to the side panel
-		if (parentPlanetIndex === undefined) {
+		if (parentPlanet === undefined) {
 			controls.div.appendTo(overlaySidePanel);
 		} else {
-			overlayControlsForPlanets[parentPlanetIndex].addChild(controls);
+			overlayControlsForPlanets[parentPlanet.index].addChild(controls);
 		}
 		
 		planetInfluences[planetIndex] = true;
@@ -1775,8 +1779,10 @@ function init1() {
 
 	$.each(solarSystem.planets, function(planetIndex,planet) {
 
-		var parentPlanetIndex = planet.parent;
-		if (parentPlanetIndex !== undefined && parentPlanetIndex >= planetIndex) throw "parent index should be < planet index or undefined";
+		var parentPlanet = planet.parent;
+		if (parentPlanet !== undefined) {
+			if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
+		}
 
 		var controls = new HierarchicalCheckboxControl({
 			title : planet.name,
@@ -1790,10 +1796,10 @@ function init1() {
 			planetIndex : planetIndex
 		});
 	
-		if (parentPlanetIndex === undefined) {
+		if (parentPlanet === undefined) {
 			controls.div.appendTo($('#celestialBodiesVisiblePlanets'));
 		} else {
-			celestialBodiesControlsForPlanets[parentPlanetIndex].addChild(controls);
+			celestialBodiesControlsForPlanets[parentPlanet.index].addChild(controls);
 		}
 
 		celestialBodiesControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
@@ -1915,7 +1921,7 @@ function init1() {
 									isComet : row.bodyType == 'comet',
 									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
 									sourceData : row,
-									parent : solarSystem.indexes.Sun,
+									parent : solarSystem.planets[solarSystem.indexes.Sun],
 									starSystem : solarSystem,
 									index : index
 								});
@@ -1929,8 +1935,7 @@ function init1() {
 
 								initPlanetColorSchRadiusAngle(planet);
 								initPlanetSceneLatLonLineObjs(planet);
-								initPlanetOrbitPathObj(planet);
-
+								initPlanetOrbitPathObj(planet, false);
 							}
 							
 							titleSpan.css({textDecoration:'underline', cursor:'pointer'});
@@ -2419,10 +2424,23 @@ function initExoplanets() {
 			
 				var name = assertExists(bodyInfo, 'name');
 				var radius = bodyInfo.radius;
-				if (radius === undefined) console.log('no radius for body '+name);
+				if (radius === undefined) {
+					console.log('no radius for body '+name);
+					//if planets don't have radii they can be estimated by the planet's mass or distance from sun or both? 
+					radius = 7e+7;	// use a jupiter radius
+				}
 
 				var mass = bodyInfo.mass;
-				if (mass === undefined) console.log('no mass for body '+name);
+				if (mass === undefined) {
+					if (bodyInfo.density && bodyInfo.radius) {
+						mass = 4/3 * Math.PI * bodyInfo.density * radius * radius * radius;
+					}
+				}
+				if (mass === undefined) {
+					//this prevents us from an orbit ..
+					console.log('no mass for body '+name);
+					mass = 2e+27;	//use a jupiter mass
+				}
 				
 				var body = mergeInto(new Planet(), {
 					type : assertExists(bodyInfo, 'type'),
@@ -2432,30 +2450,37 @@ function initExoplanets() {
 					//visualMagnitude : bodyInfo.visualMagnitude,	// TODO convert to absolute magnitude for star shader?
 					//spectralType : bodyInfo.spectralType,			// or this one?
 					//temperature : bodyInfo.temperature,			// or this one?
-					inclination : bodyInfo.inclination,
-					eccentricity : bodyInfo.eccentricity,
-					semiMajorAxis : bodyInfo.semiMajorAxis,
-					orbitalPeriod : bodyInfo.orbitalPeriod,
+					sourceData : bodyInfo,
 					parent : bodyInfo.parent,
+					starSystem : starSystem,
+					isExoplanet : true
 				});
 
-				//TODO relative coordinates of planets and lots more delta calculations?
-				// or just put everything in meters wrt ecliptical coordinate system?
-				vec3.add(body.pos, body.pos, starSystem.pos);
-
-				//TODO this is producing too many NaNs
-				//use the orbit code to give these orbits
-				body.pos[0] += body.semiMajorAxis;
-
-				initPlanetColorSchRadiusAngle(body);
-				initPlanetSceneLatLonLineObjs(body);
-
+				//hacks for orbit
+				bodyInfo.longitudeOfAscendingNode = bodyInfo.longitudeOfAscendingNode || 0;
+				bodyInfo.argumentOfPerihelion = bodyInfo.argumentOfPerihelion || 0;
+				bodyInfo.inclination = bodyInfo.inclination || 0;
+				bodyInfo.eccentricity = bodyInfo.eccentricity || 0;
+				
 				starSystem.planets.push(body);
 			});
-
-			//do this to new systems
+			
 			starSystem.buildIndexes();
 			starSystem.mapParents();
+
+			for (var i = 0; i < starSystem.planets.length; ++i) {
+				var body = starSystem.planets[i];
+
+				vec3.add(body.pos, body.pos, starSystem.pos);
+				
+				initPlanetColorSchRadiusAngle(body);
+				initPlanetSceneLatLonLineObjs(body);
+		
+				if (body.pos[0] !== body.pos[0])
+					console.log('building orbit path with origin position ', body.pos, 'and parent position ', body.parent ? body.parent.pos : '');
+				
+				initPlanetOrbitPathObj(body, false);
+			}
 			
 			starSystems.push(starSystem);
 		});
@@ -2569,7 +2594,7 @@ function initPlanetSceneLatLonLineObjs(planet) {
 	//TODO instead of creating these per-planet if the planet is special (9 planets of Sun .. plus the moon)
 	// how about we build it for all planets of each star system (with the Moon as an exception of course)
 	if (!(planet.isComet || planet.isAsteroid) &&
-		(planet.parent === solarSystem.indexes.Sun ||
+		(planet.parent === solarSystem.planets[solarSystem.indexes.Sun] ||
 		planet === solarSystem.planets[solarSystem.indexes.Sun] ||
 		planet === solarSystem.planets[solarSystem.indexes.Moon]))
 	{
@@ -2951,8 +2976,6 @@ void main() {
 	//init stars now that shaders are made 
 	initStars();
 
-	//initExoplanets();
-
 	var planetsDone = 0;
 
 	for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { (function(){
@@ -3235,13 +3258,7 @@ void main() {
 	})();
 }
 
-function initAllPlanetsOrbitPathObjs() {
-	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		initPlanetOrbitPathObj(solarSystem.planets[i]);
-	}
-}
-
-function initPlanetOrbitPathObj(planet) {
+function initPlanetOrbitPathObj(planet, useVectorState) {
 	var planetIndex = planet.index;
 
 	// based on planet position and velocity, find plane of orbit
@@ -3252,7 +3269,7 @@ function initPlanetOrbitPathObj(planet) {
 		return;
 	}
 
-	var parentPlanet = solarSystem.planets[planet.parent];
+	var parentPlanet = planet.parent;
 	if (parentPlanet === undefined) {
 		console.log(planet.name+' has an invalid orbit planet');
 		planet.orbitAxis = [0,0,1];
@@ -3270,10 +3287,8 @@ function initPlanetOrbitPathObj(planet) {
 	var checkPosToPosY = 0;
 	var checkPosToPosZ = 0;
 
-	//if it's a comet then 
-	//calculate pos and vel and mass by parameters ... ?
-	// or just put an orbit mesh there?
-	if (planet.isComet || planet.isAsteroid) {
+	//if we're not using vector state then we're using keplerian orbital elements
+	if (!useVectorState) {
 		/*
 		we have:
 			eccentricity
@@ -3295,21 +3310,23 @@ function initPlanetOrbitPathObj(planet) {
 		} else if (planet.isAsteroid) {
 			semiMajorAxis = assert(planet.sourceData.semiMajorAxis);
 			pericenterDistance = semiMajorAxis * (1 - eccentricity);
+		} else if (planet.isExoplanet) {
+			semiMajorAxis = planet.sourceData.semiMajorAxis || 0;
 		}
 
 		var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
 		
-		var longitudeOfAscendingNode = assert(planet.sourceData.longitudeOfAscendingNode);
+		var longitudeOfAscendingNode = assertExists(planet.sourceData, 'longitudeOfAscendingNode');
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
 		var sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		var argumentOfPericenter = assert(planet.sourceData.argumentOfPerihelion);
+		var argumentOfPericenter = assertExists(planet.sourceData, 'argumentOfPerihelion');
 		var cosPericenter = Math.cos(argumentOfPericenter);
 		var sinPericenter = Math.sin(argumentOfPericenter);
 
-		var inclination = assert(planet.sourceData.inclination);
+		var inclination = assertExists(planet.sourceData, 'inclination');
 		var cosInclination = Math.cos(inclination);
 		var sinInclination = Math.sin(inclination);
 	
@@ -3326,6 +3343,8 @@ function initPlanetOrbitPathObj(planet) {
 			meanAnomaly = (julianDate - timeOfPeriapsisCrossing) * 2 * Math.PI / orbitalPeriod;
 		} else if (planet.isAsteroid) {
 			meanAnomaly = planet.sourceData.meanAnomaly;
+		} else {
+			meanAnomaly = 0;
 		}
 
 		//solve Newton Rhapson
@@ -3367,7 +3386,9 @@ function initPlanetOrbitPathObj(planet) {
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			orbitalPeriod : orbitalPeriod
 		};
-	} else {	// planets and moons
+	
+	//using vector state (pos & vel) as provided by Horizons
+	} else {
 
 		//consider position relative to orbitting parent
 		// should I be doing the same thing with the velocity?  probably...
@@ -3525,7 +3546,7 @@ function initPlanetOrbitPathObj(planet) {
 
 	planet.orbitPathObj = new glutil.SceneObject({
 		mode : gl.LINE_STRIP,
-		shader : orbitShader,
+		shader : assert(orbitPathShader, "failed to find orbitPathShader for planet "+planet.name),
 		attrs : {
 			vertex : new glutil.ArrayBuffer({
 				dim : 4,
@@ -3554,7 +3575,7 @@ function downloadOrbitPaths() {
 			var name = '';
 			if (planet.id) name += planet.id + ' ';
 			name += planet.name;
-			if (planet.parent) name += ', moon of ' + solarSystem.planets[planet.parent].name;
+			if (planet.parent) name += ', moon of ' + planet.parent.name;
 		
 			lines.push('#####');
 			lines.push('# ' + name);
@@ -3625,7 +3646,7 @@ void main() {
 	});
 
 
-	orbitShader = new ModifiedDepthShaderProgram({
+	orbitPathShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
@@ -3649,7 +3670,10 @@ void main() {
 
 	//TODO update these when we integrate!
 	var calcOrbitPathStartTime = Date.now();
-	initAllPlanetsOrbitPathObjs();
+	//init solar system planets based on Horizons data
+	for (var i = 0; i < solarSystem.planets.length; ++i) {
+		initPlanetOrbitPathObj(solarSystem.planets[i], true);
+	}
 	var calcOrbitPathEndTime = Date.now();
 
 	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {
@@ -3815,6 +3839,9 @@ void main() {
 		}
 	});
 
+	//only do this after the orbit shader is made	
+	initExoplanets();
+	
 	initScene();
 }
 
@@ -4022,7 +4049,7 @@ function update() {
 	}
 	var viewAngleZAxis = vec3.create();
 	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
-	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance);
+	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
 	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
 	var orbitConvergeCoeff = .9;
 	vec3.scale(orbitOffset, orbitOffset, orbitConvergeCoeff);
