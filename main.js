@@ -71,6 +71,9 @@ var Planet = makeClass({
 			if (args.vel !== undefined) {
 				this.vel = [args.vel[0], args.vel[1], args.vel[2]];
 			}
+			if (args.angle !== undefined) {
+				this.angle = [args.angle[0], args.angle[1], args.angle[2], args.angle[3]];
+			}
 		}
 		if (this.pos === undefined) {
 			this.pos = [0,0,0];
@@ -78,16 +81,18 @@ var Planet = makeClass({
 		if (this.vel === undefined) {
 			this.vel = [0,0,0];
 		}
+		if (this.angle === undefined) {
+			this.angle = [0,0,0,1];
+		}
+		this.tiltAngle = [0,0,0,1];
 	},
 
 	clone : function() {
 		var p = new this.init();
-		p.pos[0] = this.pos[0];
-		p.pos[1] = this.pos[1];
-		p.pos[2] = this.pos[2];
-		p.vel[0] = this.vel[0];
-		p.vel[1] = this.vel[1];
-		p.vel[2] = this.vel[2];
+		vec3.copy(p.pos, this.pos);
+		vec3.copy(p.vel, this.vel);
+		quat.copy(p.angle, this.angle);
+		quat.copy(p.tiltAngle, this.tiltAngle);
 		return p;
 	},
 
@@ -237,11 +242,11 @@ var SolarSystem = makeClass({
 	
 		//add our initial planets ...
 		this.planets.push(mergeInto(new Planet(), {id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8, type:'star'}));
-		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, rotationPeriod:58.6462, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, rotationPeriod:-243.0185, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, rotationPeriod:1, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, rotationPeriod:30.25, rotationOffset:2.3247785636564, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293, type:'planet'}));
@@ -350,7 +355,7 @@ var StarField = makeClass({});
 var starfield = undefined;
 
 
-var orbitPathResolution = 250;
+var orbitPathResolution = 500;
 var ringResolution = 200;
 
 var julianDate = 0;
@@ -508,8 +513,8 @@ function vec3TransformQuat(dest, src, q) {
 }
 
 function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
-	// right now planet angles aren't stored in the planet state (for adaptive integration's sake -- how to weight and combine time + space measurements)
-	vec3TransformQuat(destX, srcX, planet.angle);
+	var angle = [];
+	vec3TransformQuat(destX, srcX, angle);
 	destX[0] += planet.pos[0];
 	destX[1] += planet.pos[1];
 	destX[2] += planet.pos[2];
@@ -749,6 +754,9 @@ var colorBarHSVRange = 2/3;	// how much of the rainbow to use
 
 var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
 
+var integrationPaused = true;
+var defaultIntegrateTimeStep = 1/(24*60);
+var integrateTimeStep = defaultIntegrateTimeStep;
 
 var updatePlanetClassSceneObj;
 (function(){
@@ -999,7 +1007,7 @@ var planetPointVisRatio = .001;
 				//... this way i can just copy over the pos and angle	
 				if (planet.ringObj !== undefined) {
 					vec3.sub(planet.ringObj.pos, planet.pos, orbitTarget.pos);
-					quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);	
+					quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);
 				}
 
 				//calculate sun position for lighting
@@ -1158,11 +1166,7 @@ var planetPointVisRatio = .001;
 							//	cosAngle > 0)
 							{
 								//recenter around orbitting planet
-								vec3.sub(planet.orbitPathObj.pos, planet.pos, orbitTarget.pos);
-								//global positions
-								//less accurate, but can store all as one buffer
-								//you see the orbit paths break down as far out as Saturn 
-								//vec3.scale(planet.orbitPathObj.pos, orbitTarget.pos, -1);
+								vec3.sub(planet.orbitPathObj.pos, planet.parent.pos, orbitTarget.pos);
 								planet.orbitPathObj.draw();
 								++orbitPathsDrawn;
 							}
@@ -1459,7 +1463,14 @@ function init1() {
 		integrationPaused = true;
 		integrateTimeStep = defaultIntegrateTimeStep; 
 		for (var i = 0; i < starSystems.length; ++i) {
-			starSystems[i].planets.copy(starSystems[i].initPlanets);
+			var starSystem = starSystems[i];
+			for (var j = 0; j < 1/*starSystem.planets.length*/; ++j) {
+				var planet = starSystem.planets[j];
+				var initPlanet = starSystem.initPlanets[j];
+				vec3.copy(planet.pos, initPlanet.pos);
+				vec3.copy(planet.vel, initPlanet.vel);
+				quat.copy(planet.angle, initPlanet.angle);
+			}
 		}
 		julianDate = initJulianDate;
 		refreshCurrentTimeText();
@@ -2430,7 +2441,7 @@ function initExoplanets() {
 			pos[1] = sinRA * cosDec;
 			pos[2] = sinDec;
 			//rotate for earth's tilt
-			var epsilon = Math.rad(23.4);
+			var epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
 			var cosEps = Math.cos(epsilon);
 			var sinEps = Math.sin(epsilon);
 			var yn = cosEps * pos[1] + sinEps * pos[2];
@@ -2547,6 +2558,7 @@ function initExoplanets() {
 				initPlanetOrbitPathObj(body, false);
 			}
 			
+			starSystem.initPlanets = starSystem.clonePlanets();
 			starSystemForNames[starSystem.name] = starSystem;
 			starSystems.push(starSystem);
 		});
@@ -2635,7 +2647,6 @@ function initPlanetColorSchRadiusAngle(planet) {
 		planet.color = [color[0], color[1], color[2], 1];
 	}
 	planet.schwarzschildRadius = 2 * planet.mass * kilogramsPerMeter; 
-	planet.angle = [0,0,0,1];			// rotation ... only used for earth at the moment
 }
 
 //TODO no more multiple copies of tide array per-planet
@@ -3459,7 +3470,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			argumentOfPericenter : argumentOfPericenter,
 			inclination : inclination,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			orbitalPeriod : orbitalPeriod
+			orbitalPeriod : orbitalPeriod,
+			A : A,
+			B : B
 		};
 	
 	//using vector state (pos & vel) as provided by Horizons
@@ -3584,7 +3597,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			argumentOfPericenter : argumentOfPericenter,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			orbitalPeriod : orbitalPeriod
+			orbitalPeriod : orbitalPeriod,
+			A : A,
+			B : B
 		};	
 
 		//not NaN, we successfully reconstructed the position
@@ -3604,18 +3619,13 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
 		var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
 
-		//offset by center (parent planet), calculated error (which is pretty small), and then from our own position (for subsequent offsetting/rendering)
-		vtxPosX += parentPlanet.pos[0] - checkPosToPosX - planet.pos[0];
-		vtxPosY += parentPlanet.pos[1] - checkPosToPosY - planet.pos[1];
-		vtxPosZ += parentPlanet.pos[2] - checkPosToPosZ - planet.pos[2];
-
 		//add to buffer
 		vertexes.push(vtxPosX);
 		vertexes.push(vtxPosY);
 		vertexes.push(vtxPosZ);
 	
 		//pack transparency info into the vertex
-		var alpha = frac * .75 + .25;
+		var alpha = frac;
 		vertexes.push(alpha);
 	}
 
@@ -3629,17 +3639,55 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			})
 		},
 		uniforms : {
-			color : planet.color
+			color : planet.color,
+			fractionOffset : 0,
 		},
 		blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 		pos : [0,0,0],
 		angle : [0,0,0,1],
 		parent : null
 	});
-
+	
+	/*
+	integration can be simulated along Keplerian orbits using the A and B vectors ...
+		time advanced = simulated date - data snapshot date
+		orbit fraction advanced = time advanced / orbital period
+		planet position and velocity can then be computed using A and B's evaluation and derivatives 
+		then the alpha of the orbit needs to be updated ... 
+	*/
 }
 
-//exteporaneous function
+function recomputePlanetsAlongOrbit() {
+	var timeAdvanced = julianDate - initJulianDate;
+	var starSystem = orbitStarSystem;
+	for (var i = 0; i < starSystem.planets.length; ++i) {	//or do it for all systems?
+		var planet = starSystem.planets[i];
+		if (planet.parent) {
+			var ke = planet.keplerianOrbitalElements;
+			var fractionOffset = timeAdvanced / ke.orbitalPeriod;
+			var theta = fractionOffset * 2 * Math.PI;
+			var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
+			var cosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
+			var sinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
+			var A = ke.A;
+			var B = ke.B;
+			var posX = A[0] * (cosEccentricAnomaly - ke.eccentricity) + B[0] * sinEccentricAnomaly;
+			var posY = A[1] * (cosEccentricAnomaly - ke.eccentricity) + B[1] * sinEccentricAnomaly;
+			var posZ = A[2] * (cosEccentricAnomaly - ke.eccentricity) + B[2] * sinEccentricAnomaly;
+			var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;	//m/day
+			var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;
+			var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;
+			planet.pos[0] = posX + planet.parent.pos[0];
+			planet.pos[1] = posY + planet.parent.pos[1];
+			planet.pos[2] = posZ + planet.parent.pos[2];
+			planet.vel[0] = velX + planet.parent.vel[0];
+			planet.vel[1] = velY + planet.parent.vel[1];
+			planet.vel[2] = velZ + planet.parent.vel[2];
+			planet.orbitPathObj.uniforms.fractionOffset = fractionOffset;
+		}
+	}
+}
+
 function downloadOrbitPaths() {
 	var s = '';	
 	for (var i = 0; i < solarSystem.planets.length; ++i) {
@@ -3736,9 +3784,13 @@ void main() {
 */}),
 		fragmentCode : mlstr(function(){/*
 uniform vec4 color;
+uniform float fractionOffset;
 varying float alpha;
 void main() {
-	gl_FragColor = vec4(color.xyz, color.w * alpha);
+	float a = mod(alpha - fractionOffset, 1.);
+	a = fract(a + 1.);
+	a = a * .75 + .25;
+	gl_FragColor = vec4(color.xyz, color.w * a);
 }
 */})
 	});
@@ -3754,9 +3806,9 @@ void main() {
 	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {
 		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
 		var moon = solarSystem.planets[solarSystem.indexes[moonName]];
-		planet.angle = [0,0,0,1];
-		quat.rotateZ(planet.angle, planet.angle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
-		quat.rotateX(planet.angle, planet.angle, moon.keplerianOrbitalElements.inclination);
+		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
+		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
+		quat.copy(solarSystem.initPlanets[solarSystem.indexes[planetName]].tiltAngle, planet.tiltAngle);
 	};
 
 	//accepts degrees
@@ -3764,14 +3816,14 @@ void main() {
 	var setPlanetTiltAngleToFixedValue = function(planetName, inclination, tiltDirection) {
 		if (tiltDirection === undefined) tiltDirection = 0;
 		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
-		planet.angle = [0,0,0,1];
-		quat.rotateZ(planet.angle, planet.angle, Math.rad(tiltDirection));
-		quat.rotateX(planet.angle, planet.angle, Math.rad(inclination));
+		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
+		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
+		quat.copy(solarSystem.initPlanets[solarSystem.indexes[planetName]].tiltAngle, planet.tiltAngle);
 	};
 
 	setPlanetTiltAngleToFixedValue('Mercury', 2.11/60);		//TODO tilt from mercury orbit plane.  until then it's off
 	setPlanetTiltAngleToFixedValue('Venus', 177.3);			//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
-	setPlanetTiltAngleToFixedValue('Earth', 23.44, 180);
+	setPlanetTiltAngleToFixedValue('Earth', 23 + 1/60*(26 + 1/60*(21.4119)), 180);
 	setPlanetTiltAngleToMoonOrbitPlane('Mars', 'Phobos');		//ours: 25.79, exact: 25.19
 	setPlanetTiltAngleToMoonOrbitPlane('Jupiter', 'Metis');		//ours: 3.12, exact: 3.13
 	setPlanetTiltAngleToMoonOrbitPlane('Saturn', 'Atlas');		//ours: 26.75, exact: 26.73
@@ -4043,6 +4095,7 @@ function setOrbitTarget(newTarget) {
 				(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
 				0);
 		}
+		recomputePlanetsAlongOrbit();
 	}
 	
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
@@ -4165,23 +4218,29 @@ function update() {
 		orbitDistance = Math.exp(newLogDist);
 	}
 
-	/*if (!integrationPaused) {
-		//TODO integrate planets *here*
+	if (!integrationPaused) {
 		julianDate += integrateTimeStep;
 		refreshCurrentTimeText();
-	}*/
-	
-	// set the angle for the time
-	/*{
-		var qdst = solarSystem.planets[solarSystem.indexes.Earth].angle;
-		var zrot = [0,0,0,1];
-		quat.rotateZ(zrot, zrot, (julianDate % 1) * 2 * Math.PI);
-		quat.multiply(qdst, zrot, qdst);	//TODO correct the math for adjusting zrot into qdst's frame
-	}*/
+	}
+	if (julianDate !== lastJulianDate) {
+		//recompute position by delta since init planets
+		recomputePlanetsAlongOrbit();
+		
+		//recompute angle based on sidereal rotation period
+		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
+			var planet = orbitStarSystem.planets[i];
+			if (planet.rotationPeriod) {
+				var zrot = [0,0,0,1];
+				quat.rotateZ(zrot, zrot, ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI + (planet.rotationOffset || 0));
+				quat.multiply(planet.angle, planet.tiltAngle, zrot);
+			} else {
+				quat.copy(planet.angle, planet.tiltAngle);
+			}
+		}
+	}
 	
 	//if we are close enough to the planet then rotate with it
-	if (false &&
-		lastJulianDate !== julianDate && 
+	/*if (lastJulianDate !== julianDate && 
 		orbitTarget == solarSystem.planets[solarSystem.indexes.Earth] &&	//only for earth at the moment ...
 		orbitDistance < orbitTarget.radius * 10) 
 	{
@@ -4190,7 +4249,8 @@ function update() {
 		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
 		vec3TransformQuat(glutil.view.pos, glutil.view.pos, deltaAngle);
 		quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
-	}
+	}*/
+
 	lastJulianDate = julianDate;
 
 	glutil.scene.setupMatrices();

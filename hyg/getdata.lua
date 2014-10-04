@@ -39,7 +39,7 @@ for i=1,#lines do
 
 	-- HYG is in equatorial coordinates
 	-- rotate equatorial xyz to ecliptic xyz
-	local epsilon = math.rad(23.4)	-- earth tilt
+	local epsilon = math.rad(23 + 1/60*(26 + 1/60*(21.4119)))	-- earth tilt
 	local cosEps = math.cos(epsilon)
 	local sinEps = math.sin(epsilon)
 	y, z = cosEps * y + sinEps * z, -sinEps * y + cosEps * z

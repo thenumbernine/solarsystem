@@ -80,7 +80,7 @@ for _,row in ipairs(data.rows) do
 			--]]
 		--print('galacticCartesian', galacticCartesian, 'length', galacticCartesian:length())
 
-		local epsilon = math.rad(23.4)
+		local epsilon = math.rad(23 + 1/60*(26 + 1/60*(21.4119)))
 		local cosEps = math.cos(epsilon)
 		local sinEps = math.sin(epsilon)
 		local equatorialCartesian = vec3(
