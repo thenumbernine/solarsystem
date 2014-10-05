@@ -35,42 +35,37 @@ See lua/eph.lua for gathering data from NASA Horizons Ephemeris 406
 TODO
 
 - planets:
-	- unify all planet meshes into one whose eccentricity is generated in-shader via uniforms
 	- put ephemeris data online, and re-enable the ffwd/rewind system
 	- get keplerian parameters merged with integrator / with ephemeris data
 		- then only integrate the main 11 bodies and update all other planets accordingly
+		- option to use rk45 integrator?
 - all objects: hierarchy of rendering for each planet and orbital children
 	- give it a smaller bounding sphere for the planet mesh
 	- give it a larger bounding sphere for children
 	- occlusion test, traverse if passes 
-	- give each node separate scale factor and coordinate system units, so we don't lose precision as we go from solar system to galaxy to  supercluster 
+	- give each node separate scale factor and coordinate system units, so we don't lose precision as we go from solar system to galaxy to supercluster 
 	- when mouseover from a distance, if a planet and its moons are compressed to a single point in view, have the planet name show up first (related to hierarchical representation of planets)
-- correct orientation of skybox so universe lines up with star horizon (set stars.sceneObj.blend = undefined to see this) 
 - add a atmosphere shader to the Earth (and other planets) so it doesn't look so dull
-- get planet apparent magnitude for accurate distant rendering of planets as point sources
 - render screen to a float buffer and use HDR / post-processing / point spread function
-- make overlays computed by GPU so they can recompute realtime during integration (like they run in realtime for the LuaJIT version.  what's up V8?)
-- cron task for updating positions from NASA
-	- or use ephemeris data - for major planets it exists, but what about for moons?
-- forward integrate from the last datapoint to the current julian date (assuming it's recent) for accurate planet locations 
-	- do this once you get keplerian parameter updates merged with integration / ephemeris updates
+- gravity / tidal force calculations:
+	- make overlays computed by GPU so they can recompute realtime during integration.  will accuracy be good enough?
+	- redo as Schwarzschild or Kerr calculations rather than newtonian limit calculations
+- cron task for updating positions from NASA? fix bug in dynamic data program stalling after pluto?
 - merge with larger star catalog
-- merge with exoplanet data (?)
 - merge with universe data
 - small bodies:
-	- fix error on comet/asteroid position calculation
 	- add support for hyperbolas (Vinti-6)
 	- make a million-point static buffer for rendering comets?
 		- calculate via orbital elements 
 		- download the current locations from NASA?  180 objects is slow, I'd imagine a million would take a while.
 		- maybe make a script for calculating position and velocity from keplerian elements / GPU program / think about this one ...
-- stars
-	- ui: listing of stars, click-to-zoom
-	- close-up render of correct size
-	- extra feature: show proportional to our own sun
-- ui overall: merge planet toggle with asteroid/comet search/toggle with star search/select/toggle
-- exoplanets, and from that, hierarchy
-
+- point source rendering
+	- close-up render of correct sizes for stars in the HYG database (I don't have their radius data on file)
+	- distance render of correct sizes / intensities / colors for both (a) extrasolar stars and (b) planets, when within the solar system
+- extra feature: show stars proportional to our own sun
+- merge planet toggle with asteroid/comet search/toggle with star search/select/toggle?
+- hierarchy of exoplanets
+- fix bugs in phone touch movement.  it gets a jump at the beginning or end of a rotation or pinch zoom.
 
 Hierarchical structure:
 

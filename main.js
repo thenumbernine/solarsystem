@@ -1079,7 +1079,9 @@ var planetPointVisRatio = .001;
 					vec3.normalize(sunDir, sunDir);
 					vec3.quatZAxis(axis, planet.ringObj.angle);
 					var axisDotSun = vec3.dot(axis, sunDir);
-					planet.ringObj.uniforms.lookingAtLitSide = (vec3.dot(viewfwd, axis) > 0) == (axisDotSun > 0);
+					var lookingAtLitSide = vec3.dot(viewfwd, axis) * axisDotSun;
+					lookingAtLitSide = (lookingAtLitSide < 0 ? -1 : 1) * Math.pow(Math.abs(lookingAtLitSide), 1/4);	//preserve sign, so raise to odd power
+					planet.ringObj.uniforms.lookingAtLitSide = Math.clamp(.5 + .5 * lookingAtLitSide, 0, 1);
 					var viewDotSun = vec3.dot(viewfwd, sunDir);
 					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;
 					planet.ringObj.draw();
@@ -3251,19 +3253,20 @@ uniform sampler2D backScatteredTex;	//from the sun looking at the rings
 uniform sampler2D forwardScatteredTex;	//looking at the rings towards the sun
 uniform sampler2D transparencyTex;
 uniform sampler2D unlitSideTex;
-uniform bool lookingAtLitSide;
+uniform float lookingAtLitSide;
 uniform float backToFrontLitBlend;
 void main() {
 	vec3 color = texture2D(colorTex, texCoordv).rgb;
 	gl_FragColor.rgb = color;
-	if (lookingAtLitSide) {
-		float backScattered = texture2D(backScatteredTex, texCoordv).r;
-		float forwardScattered = texture2D(forwardScatteredTex, texCoordv).r;
-		gl_FragColor.rgb *= mix(backScattered, forwardScattered, backToFrontLitBlend);
-	} else {
-		float unlitSide = texture2D(unlitSideTex, texCoordv).r;
-		gl_FragColor.rgb *= unlitSide;
-	}
+		
+	float backScattered = texture2D(backScatteredTex, texCoordv).r;
+	float forwardScattered = texture2D(forwardScatteredTex, texCoordv).r;
+	float litSide = mix(backScattered, forwardScattered, backToFrontLitBlend);
+
+	float unlitSide = texture2D(unlitSideTex, texCoordv).r;
+
+	gl_FragColor.rgb *= mix(unlitSide, litSide, lookingAtLitSide);
+
 	float transparency = texture2D(transparencyTex, texCoordv).r;
 	gl_FragColor.a = transparency;
 }
@@ -3319,7 +3322,7 @@ void main() {
 					minRadius : 74510000,
 					maxRadius : 140390000,
 					planetRadius : planet.radius,
-					lookingAtLitSide : true,
+					lookingAtLitSide : 1,
 					backToFrontLitBlend : 0
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
@@ -4113,7 +4116,12 @@ function initScene() {
 	gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
-	var trackPlanet = solarSystem.planets[solarSystem.indexes.Earth];
+	var trackPlanetName = 'Earth';
+	if ($.url().param('target') !== undefined) {
+		trackPlanetName = $.url().param('target');
+	}
+
+	var trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
 	setOrbitTarget(trackPlanet);
 	orbitTargetDistance = 2. * trackPlanet.radius;
 	refreshOrbitTargetDistanceText();
