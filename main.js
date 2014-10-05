@@ -1017,21 +1017,21 @@ var planetPointVisRatio = .001;
 					var star = orbitStarSystem.stars[starIndex];
 					var tmp = [];
 					vec3.sub(tmp, star.pos, planet.pos);
-					planet.sceneObj.uniforms.sunPos[0+4*starIndex] = tmp[0];
-					planet.sceneObj.uniforms.sunPos[1+4*starIndex] = tmp[1];
-					planet.sceneObj.uniforms.sunPos[2+4*starIndex] = tmp[2];
-					planet.sceneObj.uniforms.sunPos[3+4*starIndex] = 1;
+					planet.sceneObj.uniforms.sunDir[0+4*starIndex] = tmp[0];
+					planet.sceneObj.uniforms.sunDir[1+4*starIndex] = tmp[1];
+					planet.sceneObj.uniforms.sunDir[2+4*starIndex] = tmp[2];
+					planet.sceneObj.uniforms.sunDir[3+4*starIndex] = 1;
 				}
 				for (var starIndex = orbitStarSystem.stars.length; starIndex < 4; ++starIndex) {
-					planet.sceneObj.uniforms.sunPos[3+4*starIndex] = 0;
+					planet.sceneObj.uniforms.sunDir[3+4*starIndex] = 0;
 				}
 
 				//webkit bug
 				planet.sceneObj.shader.use();
 				gl.uniform4fv(
 					gl.getUniformLocation(
-						planet.sceneObj.shader.obj, 'sunPos[0]'
-					), planet.sceneObj.uniforms.sunPos);
+						planet.sceneObj.shader.obj, 'sunDir[0]'
+					), planet.sceneObj.uniforms.sunDir);
 
 				//update ellipsoid parameters
 				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
@@ -1083,7 +1083,36 @@ var planetPointVisRatio = .001;
 					lookingAtLitSide = (lookingAtLitSide < 0 ? -1 : 1) * Math.pow(Math.abs(lookingAtLitSide), 1/4);	//preserve sign, so raise to odd power
 					planet.ringObj.uniforms.lookingAtLitSide = Math.clamp(.5 + .5 * lookingAtLitSide, 0, 1);
 					var viewDotSun = vec3.dot(viewfwd, sunDir);
-					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;
+					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;	//clamp(sqrt(sqrt(dot( normalize(sun.pos - planet.pos), axis ) * dot( viewfwd, axis ))), 0., 1.) * -.5 + .5
+				
+
+					//have to recalculate these because the uniforms are shared, so they've been overwritten
+					//...and the ring objs have to be drawn last for transparency reasons...
+
+					//calculate sun position for lighting
+					for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
+						var star = orbitStarSystem.stars[starIndex];
+						var tmp = [];
+						vec3.sub(tmp, star.pos, planet.pos);
+						planet.ringObj.uniforms.sunDir[0+4*starIndex] = tmp[0];
+						planet.ringObj.uniforms.sunDir[1+4*starIndex] = tmp[1];
+						planet.ringObj.uniforms.sunDir[2+4*starIndex] = tmp[2];
+						planet.ringObj.uniforms.sunDir[3+4*starIndex] = 1;
+					}
+					for (var starIndex = orbitStarSystem.stars.length; starIndex < 4; ++starIndex) {
+						planet.ringObj.uniforms.sunDir[3+4*starIndex] = 0;
+					}
+					vec3.sub(planet.ringObj.uniforms.pos, planet.pos, orbitTarget.pos);
+					quat.copy(planet.ringObj.uniforms.angle, planet.angle);
+					
+					//webkit bug
+					planet.ringObj.shader.use();
+					gl.uniform4fv(
+						gl.getUniformLocation(
+							planet.ringObj.shader.obj, 'sunDir[0]'
+						), planet.ringObj.uniforms.sunDir);
+
+				
 					planet.ringObj.draw();
 					
 					gl.depthMask(true);
@@ -2777,7 +2806,7 @@ uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
 uniform vec4 angle;			//planet angle
-uniform vec4 sunPos[4];		//sun pos, for lighting calculations
+uniform vec4 sunDir[4];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 //to fragment shader:
@@ -2795,10 +2824,10 @@ void main() {
 	vec3 modelVertex = geodeticPosition(vertex);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-	lightDir[0] = sunPos[0].w * normalize(sunPos[0].xyz - vtx3);
-	lightDir[1] = sunPos[1].w * normalize(sunPos[1].xyz - vtx3);
-	lightDir[2] = sunPos[2].w * normalize(sunPos[2].xyz - vtx3);
-	lightDir[3] = sunPos[3].w * normalize(sunPos[3].xyz - vtx3);
+	lightDir[0] = sunDir[0].w * normalize(sunDir[0].xyz - vtx3);
+	lightDir[1] = sunDir[1].w * normalize(sunDir[1].xyz - vtx3);
+	lightDir[2] = sunDir[2].w * normalize(sunDir[2].xyz - vtx3);
+	lightDir[3] = sunDir[3].w * normalize(sunDir[3].xyz - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -2830,7 +2859,7 @@ uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
 uniform vec4 angle;			//planet angle
-uniform vec4 sunPos[4];		//sun pos, for lighting calculations
+uniform vec4 sunDir[4];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 //to fragment shader:
@@ -2850,10 +2879,10 @@ void main() {
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-	lightDir[0] = sunPos[0].w * normalize(sunPos[0].xyz - vtx3);
-	lightDir[1] = sunPos[1].w * normalize(sunPos[1].xyz - vtx3);
-	lightDir[2] = sunPos[2].w * normalize(sunPos[2].xyz - vtx3);
-	lightDir[3] = sunPos[3].w * normalize(sunPos[3].xyz - vtx3);
+	lightDir[0] = sunDir[0].w * normalize(sunDir[0].xyz - vtx3);
+	lightDir[1] = sunDir[1].w * normalize(sunDir[1].xyz - vtx3);
+	lightDir[2] = sunDir[2].w * normalize(sunDir[2].xyz - vtx3);
+	lightDir[3] = sunDir[3].w * normalize(sunDir[3].xyz - vtx3);
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
@@ -3037,7 +3066,7 @@ void main() {
 				color : [1,1,1,1],
 				pos : [0,0,0],
 				angle : [0,0,0,1],
-				sunPos : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+				sunDir : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
 				ambient : .3
 			},
 			texs : [],
@@ -3122,7 +3151,17 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float minRadius;
 uniform float maxRadius;
+
+uniform vec3 pos;
+uniform vec4 angle;
+
 varying vec2 texCoordv;
+varying vec3 worldPosv;	//varying in world coordinates 
+
+vec3 quatRotate( vec4 q, vec3 v ){ 
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
 void main() {
 	texCoordv = vertex;
 	
@@ -3134,17 +3173,53 @@ void main() {
 	float sinTheta = sin(theta);
 	
 	//rotate the planet-local-frame vector into modelview space
-	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+	vec4 modelPos = vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
 
-	gl_Position = projMat * vtx4;
+	//rotate the planet-local-frame vector into modelview space
+	vec4 eyePos = mvMat * modelPos; 
+	worldPosv = quatRotate(angle, modelPos.xyz) + pos;
+
+	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 			fragmentCode : mlstr(function(){/*
 varying vec2 texCoordv;
+varying vec3 worldPosv;
+
 uniform sampler2D colorTex;
+
+//vector from planet to sun
+uniform vec4 sunDir[4];
+uniform vec3 pos;
+
+uniform float planetRadius;
+
+float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadius) {
+	vec3 sphereToStart = startPos - spherePos;
+	float a = dot(dir, dir);
+	float b = 2. * dot(sphereToStart, dir);
+	float c = dot(sphereToStart, sphereToStart) - sphereRadius * sphereRadius;
+	float discr = b*b - 4.*a*c;
+	if (discr < 0.) return 1.;	//full trace, no intersection
+	float sqrtDiscr = sqrt(discr);
+	float invDenom = .5 / a;
+	float t1 = (-b - sqrtDiscr) * invDenom;
+	float t2 = (-b + sqrtDiscr) * invDenom;
+	if (t1 >= 0. && t1 <= 1.) return t1;
+	if (t2 >= 0. && t2 <= 1.) return t2;
+	return 1.;
+}
+
 void main() {
-	gl_FragColor = texture2D(colorTex, texCoordv);
+	float illuminance = 1.;
+	//notice that I have to scale down the meters here for shader accuracy to work
+	if (sunDir[0].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[1].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[2].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[3].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
+
+	gl_FragColor = illuminance * texture2D(colorTex, texCoordv);
 }
 */})
 		});
@@ -3189,7 +3264,10 @@ void main() {
 					colorTex : 0,
 					minRadius : 102200000,
 					maxRadius : 227000000,
-					planetRadius : planet.radius
+					planetRadius : planet.radius,
+					sunDir : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+					pos : [0,0,0],
+					angle : [0,0,0,1]
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				texs : texs,
@@ -3218,7 +3296,7 @@ void main() {
 
 	//Saturn's rings
 	(function(){
-		var ringShader = new ModifiedDepthShaderProgram({
+		var saturnRingShader = new ModifiedDepthShaderProgram({
 			vertexCode : mlstr(function(){/*
 #define M_PI 3.1415926535897931 
 attribute vec2 vertex;
@@ -3226,7 +3304,20 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float minRadius;
 uniform float maxRadius;
+
+//these are actually baked into the mvMat, but I need them separate for converting coordinates to world coordinates (rather than eye coordinates) 
+//pos is in the scene, which is offset by the oribitting planet
+//techinically the offset doesn't matter since i'm using it to offset vertices from the planet, then sphere-intersect-testing rays from those vertices against the planet
+uniform vec3 pos;
+uniform vec4 angle;
+
 varying vec2 texCoordv;
+varying vec3 worldPosv;	//varying in world coordinates 
+
+vec3 quatRotate( vec4 q, vec3 v ){ 
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
 void main() {
 	texCoordv = vertex;
 	
@@ -3236,36 +3327,78 @@ void main() {
 	float theta = 2. * M_PI * vertex.y;
 	float cosTheta = cos(theta);
 	float sinTheta = sin(theta);
-	
-	//rotate the planet-local-frame vector into modelview space
-	vec4 vtx4 = mvMat * vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
 
-	gl_Position = projMat * vtx4;
+	vec4 modelPos = vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
+
+	//rotate the planet-local-frame vector into modelview space
+	vec4 eyePos = mvMat * modelPos; 
+	worldPosv = quatRotate(angle, modelPos.xyz) + pos;
+
+	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 			fragmentCode : mlstr(function(){/*
-varying vec2 texCoordv;
 //described here:
 //http://www.mmedia.is/~bjj/data/s_rings/index.html
+
+varying vec2 texCoordv;
+varying vec3 worldPosv;
+
 uniform sampler2D colorTex;
 uniform sampler2D backScatteredTex;	//from the sun looking at the rings
 uniform sampler2D forwardScatteredTex;	//looking at the rings towards the sun
 uniform sampler2D transparencyTex;
 uniform sampler2D unlitSideTex;
+
 uniform float lookingAtLitSide;
 uniform float backToFrontLitBlend;
+
+//vector from planet to sun
+uniform vec4 sunDir[4];
+uniform vec3 pos;
+
+uniform float planetRadius;
+
+float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadius) {
+	vec3 sphereToStart = startPos - spherePos;
+	float a = dot(dir, dir);
+	float b = 2. * dot(sphereToStart, dir);
+	float c = dot(sphereToStart, sphereToStart) - sphereRadius * sphereRadius;
+	float discr = b*b - 4.*a*c;
+	if (discr < 0.) return 1.;	//full trace, no intersection
+	float sqrtDiscr = sqrt(discr);
+	float invDenom = .5 / a;
+	float t1 = (-b - sqrtDiscr) * invDenom;
+	float t2 = (-b + sqrtDiscr) * invDenom;
+	if (t1 >= 0. && t1 <= 1.) return t1;
+	if (t2 >= 0. && t2 <= 1.) return t2;
+	return 1.;
+}
+
 void main() {
 	vec3 color = texture2D(colorTex, texCoordv).rgb;
 	gl_FragColor.rgb = color;
-		
+	
 	float backScattered = texture2D(backScatteredTex, texCoordv).r;
 	float forwardScattered = texture2D(forwardScatteredTex, texCoordv).r;
 	float litSide = mix(backScattered, forwardScattered, backToFrontLitBlend);
-
+	
 	float unlitSide = texture2D(unlitSideTex, texCoordv).r;
 
-	gl_FragColor.rgb *= mix(unlitSide, litSide, lookingAtLitSide);
+	//shadow from the sun
+	//raytrace from worldPosv along sunDir (non-normalized)
+	//if it intersects with a sphere at pos with radius planetRadius then we're in shadow
+	//if you want to do a soft shadow based on the sun's radius and distance (length of sunDir) then you can
+
+	float illuminance = 1.;
+	//notice that I have to scale down the meters here for shader accuracy to work
+	if (sunDir[0].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[1].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[2].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[3].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
+
+	gl_FragColor.rgb *= illuminance * mix(unlitSide, litSide, lookingAtLitSide);
 
 	float transparency = texture2D(transparencyTex, texCoordv).r;
 	gl_FragColor.a = transparency;
@@ -3306,7 +3439,7 @@ void main() {
 			//and a ring object
 			planet.ringObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
-				shader : ringShader,
+				shader : saturnRingShader,
 				attrs : {
 					vertex : new glutil.ArrayBuffer({
 						dim : 2,
@@ -3323,7 +3456,10 @@ void main() {
 					maxRadius : 140390000,
 					planetRadius : planet.radius,
 					lookingAtLitSide : 1,
-					backToFrontLitBlend : 0
+					backToFrontLitBlend : 0,
+					sunDir : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+					pos : [0,0,0],
+					angle : [0,0,0,1]
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 				texs : texs,
