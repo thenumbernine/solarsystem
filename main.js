@@ -398,13 +398,49 @@ var secondsPerMeter = speedOfLight;
 //1 = G m^3 / (kg s^2) <=> G m^3 / (c m)^2 = kg <=> G/c^2 = kg/m
 var kilogramsPerMeter = gravitationalConstant / (speedOfLight * speedOfLight);
 
-//this does not zero accel beforehand!
-var calcTidalForce;
-(function(){
-	x = [];
-	n = [];
+var Metric = makeClass();
 
-	calcTidalForce = function(accel, pos, srcPlanet) {
+//low gravity newtonian approximation
+var NewtonApproximateMetric = makeClass({
+	super : Metric,
+
+	/*
+	geodesic calculation:
+	x''^u = -Conn^u_ab x'^a x'^b
+	
+	Newtonian approximation:
+	Conn^j_tt = dPhi/dx^j = G M x^j / |x|^3
+	so x''^j = G M x^j / |x|^3
+	*/
+	calcGravity : function(accel, pos) {
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			if (!planetInfluences[planetIndex]) continue;
+			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.mass === undefined) continue;
+			var x = pos[0] - planet.pos[0];
+			var y = pos[1] - planet.pos[1];
+			var z = pos[2] - planet.pos[2];
+			r = Math.sqrt(x * x + y * y + z * z);
+			var r2 = r * r;
+			var r3 = r * r2;
+			accel[0] -= x * (gravitationalConstant * planet.mass / r3);
+			accel[1] -= y * (gravitationalConstant * planet.mass / r3);
+			accel[2] -= z * (gravitationalConstant * planet.mass / r3);
+		}
+	},
+
+	/*
+	geodesic deviation:
+	x''^i = R^i_jkl n^j dx^k n^l
+	
+	Newtonian approximation:
+	R^i_tjt = R^i_ttj = phi_,ij
+	But what if phi changes wrt time? then phi_,tt is nonzero, right? How does our Riemann metric change?
+	*/
+	calcTidal : function(accel, pos, srcPlanet) {
+		var x = [];
+		var n = [];
+
 		n[0] = pos[0] - srcPlanet.pos[0];
 		n[1] = pos[1] - srcPlanet.pos[1];
 		n[2] = pos[2] - srcPlanet.pos[2];
@@ -418,73 +454,116 @@ var calcTidalForce;
 			x[0] = pos[0] - planet.pos[0];
 			x[1] = pos[1] - planet.pos[1];
 			x[2] = pos[2] - planet.pos[2];
-			var xLength = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-			var xToTheSecond = xLength * xLength;
-			var xToTheThird = xLength * xToTheSecond;
-			var xToTheFourth = xLength * xToTheThird;
-			var xToTheFifth = xLength * xToTheFourth;
+			var r = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+			var r2 = r * r;
+			var r3 = r * r2;
+			var r4 = r * r3;
+			var r5 = r * r4;
 
 			var xDotN = x[0] * n[0] + x[1] * n[1] + x[2] * n[2];
 			
-			// a^i = R^i_jkl n^j dx^k n^l
-			// R^i_tjt = R^i_ttj = phi_,ij
-			// but what if phi changes wrt time? then phi_,tt is nonzero, and how does our Riemann metric change?
 			for (i = 0; i < 3; ++i) {
-				accel[i] += gravitationalConstant * planet.mass * (3 * xDotN * x[i] / xToTheFifth - n[i] / xToTheThird);
+				accel[i] += gravitationalConstant * planet.mass * (3 * xDotN * x[i] / r5 - n[i] / r3);
 			}
 		}
-	};
-})();
-
-/*
-this does not zero accel beforehand!
-
-geodesic calculation:
-
-x''^u = -G^u_ab x'^a x'^b
-*/
-function calcGravitationForce(accel, pos) {
-	for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-		if (!planetInfluences[planetIndex]) continue;
-		var planet = orbitStarSystem.planets[planetIndex];
-		if (planet.mass === undefined) continue;
-		var x = pos[0] - planet.pos[0];
-		var y = pos[1] - planet.pos[1];
-		var z = pos[2] - planet.pos[2];
-		xLength = Math.sqrt(x * x + y * y + z * z);
-		var xToTheSecond = xLength * xLength;
-		var xToTheThird = xLength * xToTheSecond;
-		accel[0] -= x * (gravitationalConstant * planet.mass / xToTheThird);
-		accel[1] -= y * (gravitationalConstant * planet.mass / xToTheThird);
-		accel[2] -= z * (gravitationalConstant * planet.mass / xToTheThird);
-	
-/*
- 		//this code is in natural units
-		//so either convert xyz into natural units
-		//or insert c's into here where they belong ...
-		//also don't forget that G is in m^3 / (kg s^2) whereas our velocity is in m/day	
-		
-		x''^u = -conn^u_ab x'^a x'^b
-
-		t'' = -rs / (r(r-rs)) t' r'
-		r'' = -[c^2 rs (r - rs) / (2r^3) t'^2 - rs/(2r(r-rs)) r'^2 - (r-rs) (theta'^2 + sin^2theta phi'^2)]
-	...and so on ...
-		
-		var r = Math.sqrt(x*x + y*y + z*z);
-		var oneMinus2MOverR = 1 - 2*planet.mass/r;
-		var posDotVel = x * oldVx + y * oldVy + z * oldVz;
-		var velDotVel = oldVx * oldVx + oldVy * oldVy + oldVz * oldVz;
-		var r2 = r * r;
-		var invR2M = 1 / (r * oneMinus2MOverR);
-		var rMinus2MOverR2 = oneMinus2MOverR / r;
-		var MOverR2 = planet.mass / r2;
-		accel[0] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * x * oldVt * oldVt + invR2M * (x * velDotVel - 2 * oldVx * posDotVel));
-		accel[1] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * y * oldVt * oldVt + invR2M * (y * velDotVel - 2 * oldVy * posDotVel));
-		accel[2] = -deltaLambda * MOverR2 * (rMinus2MOverR2 * z * oldVt * oldVt + invR2M * (z * velDotVel - 2 * oldVz * posDotVel));
-		//accel[3] = deltaLambda * 2 * MOverR2 * invR2M * posDotVel * oldVt;
-*/
 	}
-}
+});
+
+//rotation-less spherical body
+var SchwarzschildMetric = makeClass({
+	super : Metric,
+
+	/*
+	geodesic calculation:
+	x''^u = -Conn^u_ab x'^a x'^b
+	*/
+	calcGravity : function(accel, pos) {
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			if (!planetInfluences[planetIndex]) continue;
+			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.mass === undefined) continue;
+			var M = planet.mass;
+			var x = pos[0] - planet.pos[0];
+			var y = pos[1] - planet.pos[1];
+			var z = pos[2] - planet.pos[2];
+			var r = Math.sqrt(x*x + y*y + z*z);
+
+			var M2 = M * M;
+			var M3 = M2 * M;
+			var x2 = x * x;
+			var y2 = y * y;
+			var z2 = z * z;
+			var x3 = x2 * x;
+			var y3 = y2 * y;
+			var z3 = z2 * z;
+			var r2 = r * r;
+			var r3 = r * r2;
+			var r5 = r3 * r2;
+			var r6 = r5 * r;
+			var r9 = r6 * r3;
+
+			gUU = [
+				[r/(2*M-r),0,0,0],
+				[0,-(12*r3*y2*z2*M2+(-2*r6*z2-2*r6*y2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x*y*z2*M2-4*r6*x*y*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x*y2*z*M2-4*r6*x*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)],
+				[0,(8*r3*x*y*z2*M2-4*r6*x*y*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),-(12*r3*x2*z2*M2+(-2*r6*z2-2*r6*x2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x2*y*z*M2-4*r6*y*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)],
+				[0,(8*r3*x*y2*z*M2-4*r6*x*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x2*y*z*M2-4*r6*y*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),-(12*r3*x2*y2*M2+(-2*r6*y2-2*r6*x2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)]
+			];
+
+			/*
+			var gLL_x = [
+				[-(2*x*M)/r3,0,0,0],
+				[0,-((6*x3-4*r2*x)*M)/r5,-((12*x2-4*r2)*y*M)/r5,-((12*x2-4*r2)*z*M)/r5],
+				[0,-((12*x2-4*r2)*y*M)/r5,-(6*x*y2*M)/r5,-(12*x*y*z*M)/r5],
+				[0,-((12*x2-4*r2)*z*M)/r5,-(12*x*y*z*M)/r5,-(6*x*z2*M)/r5]
+			];
+			var gLL_y = [
+				[-(2*y*M)/r^3,0,0,0],
+				[0,-(6*x^2*y*M)/r^5,-((12*x*y^2-4*r^2*x)*M)/r^5,-(12*x*y*z*M)/r^5],
+				[0,-((12*x*y^2-4*r^2*x)*M)/r^5,-((6*y^3-4*r^2*y)*M)/r^5,-((12*y^2-4*r^2)*z*M)/r^5],
+				[0,-(12*x*y*z*M)/r^5,-((12*y^2-4*r^2)*z*M)/r^5,-(6*y*z^2*M)/r^5]
+			];
+			var gLL_z = [
+				[-(2*z*M)/r3,0,0,0],
+				[0,-(6*x2*z*M)/r5,-(12*x*y*z*M)/r5,-((12*x*z2-4*r2*x)*M)/r5],
+				[0,-(12*x*y*z*M)/r5,-(6*y2*z*M)/r5,-((12*y*z2-4*r2*y)*M)/r5],
+				[0,-((12*x*z2-4*r2*x)*M)/r5,-((12*y*z2-4*r2*y)*M)/r5,-((6*z3-4*r2*z)*M)/r5]
+			];
+
+			//for resting observers we only get timelike changes
+			//if you want to consider time dilation due to differences in velocity (considering the planet's orbit) then feel free
+			accel[0] -= conn^x_tt = g^xt conn_ttt + g^xx conn_xtt + g^xy conn_ytt + g^xz conn_ztt
+			accel[1] -= conn^y_tt = g^yt conn_ttt + g^yx conn_xtt + g^yy conn_ytt + g^yz conn_ztt
+			accel[2] -= conn^z_tt = g^zt conn_ttt + g^zx conn_xtt + g^zy conn_ytt + g^zz conn_ztt
+			
+			accel[0] -= g^xt 1/2 g_tt,t + g^xx (g_xt,t - 1/2 g_tt,x) + g^xy (g_yt,t - 1/2 g_tt,y) + g^xz (g_zt,t - 1/2 g_tt,z)
+			accel[1] -= g^yt 1/2 g_tt,t + g^yx (g_xt,t - 1/2 g_tt,x) + g^yy (g_yt,t - 1/2 g_tt,y) + g^yz (g_zt,t - 1/2 g_tt,z)
+			accel[2] -= g^zt 1/2 g_tt,t + g^zx (g_xt,t - 1/2 g_tt,x) + g^zy (g_yt,t - 1/2 g_tt,y) + g^zz (g_zt,t - 1/2 g_tt,z)
+				
+				remove zeroes
+			
+			*/
+			console.log('accel before',accel);
+			accel[0] -= M/r3 * (gUU[1][1] * x + gUU[1][2] * y + gUU[1][3] * z);
+			accel[1] -= M/r3 * (gUU[2][1] * x + gUU[2][2] * y + gUU[2][3] * z);
+			accel[2] -= M/r3 * (gUU[3][1] * x + gUU[3][2] * y + gUU[3][3] * z);
+			console.log('xyz',x,y,z);
+			console.log('M',M);
+			console.log('r3',r3);
+			console.log('g^uv '+gUU.map(function(row) { return '['+row.join(',')+']' }).join(', '));
+			console.log(accel);
+			throw 'here';
+		}
+	}
+});
+
+//uncharged, rotating spherical body
+var KerrMetric = makeClass({
+	super : Metric
+});
+
+var metric = new NewtonApproximateMetric();
+//var metric = new SchwarzschildMetric();
+
 
 function vec3TransformQuat(dest, src, q) {
 	var vx = src[0];
@@ -513,8 +592,7 @@ function vec3TransformQuat(dest, src, q) {
 }
 
 function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
-	var angle = [];
-	vec3TransformQuat(destX, srcX, angle);
+	vec3TransformQuat(destX, srcX, planet.angle);
 	destX[0] += planet.pos[0];
 	destX[1] += planet.pos[1];
 	destX[2] += planet.pos[2];
@@ -793,24 +871,24 @@ var updatePlanetClassSceneObj;
 					var lat = planet.sceneObj.attrs.vertex.data[vertexIndex++];
 					var lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
 					planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
-				
+
 					accel[0] = accel[1] = accel[2] = 0;
 					switch (displayMethod) {
 					case 'Tangent Tidal':
 					case 'Normal Tidal':
 					case 'Total Tidal':
-						calcTidalForce(accel, x, planet);
+						metric.calcTidal(accel, x, planet);
 						break;
 					case 'Tangent Gravitational':
 					case 'Normal Gravitational':
 					case 'Total Gravitational':
-						calcGravitationForce(accel, x);
+						metric.calcGravity(accel, x);
 						break;	
 					case 'Tangent Total':
 					case 'Normal Total':
 					case 'Total':
-						calcTidalForce(accel, x, planet);
-						calcGravitationForce(accel, x);
+						metric.calcTidal(accel, x, planet);
+						metric.calcGravity(accel, x);
 						break;
 					}
 					
@@ -3873,15 +3951,15 @@ function downloadOrbitPaths() {
 
 	//TODO open in new tab?  can chrome handle opening each piece in a new tab at the same time?
 	//chrome can't handle the file, it's too big ...
-	var chopped = 3;
-	//for (var i = 0; i < chopped; ++i) {
-	for (var i = 2; i < 3; ++i) {
+	var chopped = 3;	//TODO calculate by data size and by browser max download size ... which varies on the browser
+	var i = 2;{//for (var i = 0; i < chopped; ++i) {	//too many of these at once, even chopped down correctly, will crash Chrome
 		var start = Math.floor(i*s.length/chopped);
 		var end = Math.floor((i+1)*s.length/chopped);
 		var sub = s.substring(start, end);
 		var a = document.createElement('a');
 		console.log('size of chopped piece is '+sub.length);
 		a.href = "data:text/plain,"+encodeURIComponent(sub);
+		a.target = '_blank';
 		a.click();
 	}
 }
