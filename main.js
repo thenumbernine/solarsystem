@@ -1622,7 +1622,7 @@ function init1() {
 	glutil.view.angle[1] = 0.7157221264895661;
 	glutil.view.angle[2] = -0.4298784661116332;
 	glutil.view.angle[3] = 0.28753844912098436;*/
-	glutil.view.zNear = 1e+3;
+	glutil.view.zNear = 1e+4;
 	glutil.view.zFar = 1e+25;
 	
 	
