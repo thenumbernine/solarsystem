@@ -247,8 +247,8 @@ var SolarSystem = makeClass({
 		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, rotationPeriod:1, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, rotationPeriod:30.25, rotationOffset:2.3247785636564, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, ringRadiusRange:[102200000,227000000], type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, ringRadiusRange:[74510000,140390000], type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1.151e+6, type:'planet'}));
@@ -500,58 +500,14 @@ var SchwarzschildMetric = makeClass({
 			var r3 = r * r2;
 			var r5 = r3 * r2;
 			var r6 = r5 * r;
+			var r8 = r6 * r2;
 			var r9 = r6 * r3;
-
-			gUU = [
-				[r/(2*M-r),0,0,0],
-				[0,-(12*r3*y2*z2*M2+(-2*r6*z2-2*r6*y2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x*y*z2*M2-4*r6*x*y*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x*y2*z*M2-4*r6*x*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)],
-				[0,(8*r3*x*y*z2*M2-4*r6*x*y*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),-(12*r3*x2*z2*M2+(-2*r6*z2-2*r6*x2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x2*y*z*M2-4*r6*y*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)],
-				[0,(8*r3*x*y2*z*M2-4*r6*x*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),(8*r3*x2*y*z*M2-4*r6*y*z*M)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9),-(12*r3*x2*y2*M2+(-2*r6*y2-2*r6*x2)*M-r9)/(40*x2*y2*z2*M3+((-12*r3*y2-12*r3*x2)*z2-12*r3*x2*y2)*M2+(2*r6*z2+2*r6*y2+2*r6*x2)*M+r9)]
-			];
-
-			/*
-			var gLL_x = [
-				[-(2*x*M)/r3,0,0,0],
-				[0,-((6*x3-4*r2*x)*M)/r5,-((12*x2-4*r2)*y*M)/r5,-((12*x2-4*r2)*z*M)/r5],
-				[0,-((12*x2-4*r2)*y*M)/r5,-(6*x*y2*M)/r5,-(12*x*y*z*M)/r5],
-				[0,-((12*x2-4*r2)*z*M)/r5,-(12*x*y*z*M)/r5,-(6*x*z2*M)/r5]
-			];
-			var gLL_y = [
-				[-(2*y*M)/r^3,0,0,0],
-				[0,-(6*x^2*y*M)/r^5,-((12*x*y^2-4*r^2*x)*M)/r^5,-(12*x*y*z*M)/r^5],
-				[0,-((12*x*y^2-4*r^2*x)*M)/r^5,-((6*y^3-4*r^2*y)*M)/r^5,-((12*y^2-4*r^2)*z*M)/r^5],
-				[0,-(12*x*y*z*M)/r^5,-((12*y^2-4*r^2)*z*M)/r^5,-(6*y*z^2*M)/r^5]
-			];
-			var gLL_z = [
-				[-(2*z*M)/r3,0,0,0],
-				[0,-(6*x2*z*M)/r5,-(12*x*y*z*M)/r5,-((12*x*z2-4*r2*x)*M)/r5],
-				[0,-(12*x*y*z*M)/r5,-(6*y2*z*M)/r5,-((12*y*z2-4*r2*y)*M)/r5],
-				[0,-((12*x*z2-4*r2*x)*M)/r5,-((12*y*z2-4*r2*y)*M)/r5,-((6*z3-4*r2*z)*M)/r5]
-			];
-
-			//for resting observers we only get timelike changes
-			//if you want to consider time dilation due to differences in velocity (considering the planet's orbit) then feel free
-			accel[0] -= conn^x_tt = g^xt conn_ttt + g^xx conn_xtt + g^xy conn_ytt + g^xz conn_ztt
-			accel[1] -= conn^y_tt = g^yt conn_ttt + g^yx conn_xtt + g^yy conn_ytt + g^yz conn_ztt
-			accel[2] -= conn^z_tt = g^zt conn_ttt + g^zx conn_xtt + g^zy conn_ytt + g^zz conn_ztt
-			
-			accel[0] -= g^xt 1/2 g_tt,t + g^xx (g_xt,t - 1/2 g_tt,x) + g^xy (g_yt,t - 1/2 g_tt,y) + g^xz (g_zt,t - 1/2 g_tt,z)
-			accel[1] -= g^yt 1/2 g_tt,t + g^yx (g_xt,t - 1/2 g_tt,x) + g^yy (g_yt,t - 1/2 g_tt,y) + g^yz (g_zt,t - 1/2 g_tt,z)
-			accel[2] -= g^zt 1/2 g_tt,t + g^zx (g_xt,t - 1/2 g_tt,x) + g^zy (g_yt,t - 1/2 g_tt,y) + g^zz (g_zt,t - 1/2 g_tt,z)
-				
-				remove zeroes
-			
-			*/
-			console.log('accel before',accel);
-			accel[0] -= M/r3 * (gUU[1][1] * x + gUU[1][2] * y + gUU[1][3] * z);
-			accel[1] -= M/r3 * (gUU[2][1] * x + gUU[2][2] * y + gUU[2][3] * z);
-			accel[2] -= M/r3 * (gUU[3][1] * x + gUU[3][2] * y + gUU[3][3] * z);
-			console.log('xyz',x,y,z);
-			console.log('M',M);
-			console.log('r3',r3);
-			console.log('g^uv '+gUU.map(function(row) { return '['+row.join(',')+']' }).join(', '));
-			console.log(accel);
-			throw 'here';
+	
+			//TODO simplify more!
+			//something needs to factor out, and until it does you'll get spikes in the evaluation where x^2 = y^2 = z^2
+			accel[0] -= speedOfLight * (4 * x * y2 * z2 * M3 + (-2 * r3 * x * z2-2 * r3 * x * y2) * M2 + r6 * x * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
+			accel[1] -= speedOfLight * (4 * x2 * y * z2 * M3 + (-2 * r3 * y * z2-2 * r3 * x2 * y) * M2 + r6 * y * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
+			accel[2] -= speedOfLight * (4 * x2 * y2 * z * M3 + (-2 * r3 * z * y2-2 * r3 * z * x2) * M2 + r6 * z * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
 		}
 	}
 });
@@ -790,6 +746,7 @@ var colorShader;
 var latLonShader;
 var planetColorShader;
 var planetTexShader;
+var planetRingShadowShader;
 var planetHSVShader;
 var orbitPathShader;
 
@@ -852,8 +809,21 @@ var updatePlanetClassSceneObj;
 				planet.sceneObj.shader = planetColorShader;
 				planet.sceneObj.texs.length = 0;
 			} else {
-				planet.sceneObj.shader = planetTexShader;
-				planet.sceneObj.texs.length = 1;
+				if (planet.ringObj) {
+					planet.sceneObj.shader = planetRingShadowShader;
+					planet.sceneObj.texs.length = 2;
+					if (planet.ringTransparencyTex !== undefined) {
+						planet.sceneObj.texs[1] = planet.ringTransparencyTex;
+					} else if (planet.ringColorTex !== undefined) {
+						planet.sceneObj.texs[1] = planet.ringColorTex;
+					} else {
+						//...or instead of throwing, should I just assume full-alpha?
+						throw 'planet has a ringObj but no ring texture';
+					}
+				} else {
+					planet.sceneObj.shader = planetTexShader;
+					planet.sceneObj.texs.length = 1;
+				}
 				planet.sceneObj.texs[0] = planet.tex;
 			}
 		} else {
@@ -1114,6 +1084,10 @@ var planetPointVisRatio = .001;
 				//update ellipsoid parameters
 				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
 				planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
+				if (planet.ringObj !== undefined) {
+					planet.sceneObj.uniforms.ringMinRadius = planet.ringRadiusRange[0];
+					planet.sceneObj.uniforms.ringMaxRadius = planet.ringRadiusRange[1];
+				}
 				planet.sceneObj.uniforms.color = planet.color;
 				
 				planet.sceneObj.attrs.tide = planet.tideBuffer;
@@ -2985,6 +2959,99 @@ void main() {
 		}
 	});
 
+	planetRingShadowShader = new ModifiedDepthShaderProgram({
+		vertexCode : mlstr(function(){/*
+attribute vec2 vertex;		//lat/lon pairs
+uniform mat4 mvMat;			//modelview matrix
+uniform mat4 projMat;		//projection matrix
+uniform vec3 pos;			//offset to planet position
+uniform vec4 angle;			//planet angle
+uniform vec4 sunDir[4];		//sun pos, for lighting calculations
+uniform float equatorialRadius;		//or use planet radius
+uniform float inverseFlattening;	//default 1 if it does not exist
+//to fragment shader:
+varying vec3 modelVertexv;
+varying vec3 normal;
+varying vec2 texCoordv;
+varying vec3 lightDir[4];
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
+void main() {
+	//vertex is really the lat/lon in degrees
+	modelVertexv = geodeticPosition(vertex);
+	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
+	vec3 worldVertex = quatRotate(angle, modelVertexv) + pos;
+	normal = quatRotate(angle, normalize(modelVertexv));
+	lightDir[0] = sunDir[0].w * normalize(sunDir[0].xyz - worldVertex);
+	//ring shaders only used in solar system, so assume one light source
+	//lightDir[1] = sunDir[1].w * normalize(sunDir[1].xyz - worldVertex);
+	//lightDir[2] = sunDir[2].w * normalize(sunDir[2].xyz - worldVertex);
+	//lightDir[3] = sunDir[3].w * normalize(sunDir[3].xyz - worldVertex);
+	vec4 vtx4 = mvMat * vec4(worldVertex, 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+varying vec2 texCoordv;
+varying vec3 lightDir[4];
+varying vec3 normal;
+varying vec3 modelVertexv;
+uniform sampler2D tex;
+uniform sampler2D ringTransparencyTex;
+uniform float ambient;
+uniform float ringMinRadius;
+uniform float ringMaxRadius;
+uniform vec4 angle;
+
+vec3 quatRotate(vec4 q, vec3 v){ 
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
+float ringIntersect(vec3 startPos, vec3 dir) {
+	if (dot(startPos, dir) < 0.) return -1.;	//occluded by planet
+	float t = -startPos.z / dir.z;
+	if (t < 0.) return -1.;	//trace intersects backwards
+	vec2 intersect = startPos.xy + t * dir.xy;
+	float r = length(intersect);
+	return (r - ringMinRadius) / (ringMaxRadius - ringMinRadius);
+}
+
+void main() {
+	float luminance = 1.;
+	
+	//inverse rotate lightDir[0]
+	//ray trace from modelVertexv along lightDir
+	//see if it intersects with a disc from ringMinRadius to ringMaxRadius
+	//lookup appropriate distance in ringTransparencyTex;
+	vec3 lightDirInModelSpace = quatRotate(vec4(-angle.xyz, angle.w), lightDir[0]);
+	float intersectPos = ringIntersect(modelVertexv, lightDirInModelSpace);
+	if (intersectPos >= 0. && intersectPos <= 1.) {
+		luminance *= texture2D(ringTransparencyTex, vec2(intersectPos, .5)).r;
+	}
+
+	float litLum = 0.;
+	litLum += max(0., dot(lightDir[0], normal));
+	//litLum += max(0., dot(lightDir[1], normal));
+	//litLum += max(0., dot(lightDir[2], normal));
+	//litLum += max(0., dot(lightDir[3], normal));
+	luminance *= min(1., litLum);
+	
+	gl_FragColor.rgb = texture2D(tex, texCoordv).rgb * max(ambient, sqrt(luminance));
+	gl_FragColor.a = 1.;
+}
+*/}),
+		uniforms : {
+			tex : 0,
+			ringTransparencyTex : 1
+		}
+	});
+
+
 	planetHSVShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec2 vertex;		//lat/lon pairs
@@ -3220,15 +3287,15 @@ void main() {
 	//ring texture for Jupiter
 	//http://www.celestiamotherlode.net/catalog/jupiter.php
 	(function(){
-		var ringShader = new ModifiedDepthShaderProgram({
+		var jupiterRingShader = new ModifiedDepthShaderProgram({
 			//vertex code matches Saturn
 			vertexCode : mlstr(function(){/*
 #define M_PI 3.1415926535897931 
 attribute vec2 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-uniform float minRadius;
-uniform float maxRadius;
+uniform float ringMinRadius;
+uniform float ringMaxRadius;
 
 uniform vec3 pos;
 uniform vec4 angle;
@@ -3245,7 +3312,7 @@ void main() {
 	
 	//vertex is the uv of the texcoord wrapped around the annulus 
 	//u coord is radial, v coord is angular 
-	float rad = mix(minRadius, maxRadius, vertex.x);
+	float rad = mix(ringMinRadius, ringMaxRadius, vertex.x);
 	float theta = 2. * M_PI * vertex.y;
 	float cosTheta = cos(theta);
 	float sinTheta = sin(theta);
@@ -3290,14 +3357,15 @@ float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadiu
 }
 
 void main() {
-	float illuminance = 1.;
+	float luminance = 1.;
 	//notice that I have to scale down the meters here for shader accuracy to work
-	if (sunDir[0].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[1].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[2].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[3].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
-
-	gl_FragColor = illuminance * texture2D(colorTex, texCoordv);
+	if (sunDir[0].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[1].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[2].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[3].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	
+	gl_FragColor = texture2D(colorTex, texCoordv);
+	gl_FragColor.rgb *= sqrt(luminance);
 }
 */})
 		});
@@ -3331,7 +3399,7 @@ void main() {
 			//and a ring object
 			planet.ringObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
-				shader : ringShader,
+				shader : jupiterRingShader,
 				attrs : {
 					vertex : new glutil.ArrayBuffer({
 						dim : 2,
@@ -3340,8 +3408,8 @@ void main() {
 				},
 				uniforms : {
 					colorTex : 0,
-					minRadius : 102200000,
-					maxRadius : 227000000,
+					ringMinRadius : planet.ringRadiusRange[0],
+					ringMaxRadius : planet.ringRadiusRange[1],
 					planetRadius : planet.radius,
 					sunDir : [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
 					pos : [0,0,0],
@@ -3380,8 +3448,8 @@ void main() {
 attribute vec2 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-uniform float minRadius;
-uniform float maxRadius;
+uniform float ringMinRadius;
+uniform float ringMaxRadius;
 
 //these are actually baked into the mvMat, but I need them separate for converting coordinates to world coordinates (rather than eye coordinates) 
 //pos is in the scene, which is offset by the oribitting planet
@@ -3401,7 +3469,7 @@ void main() {
 	
 	//vertex is the uv of the texcoord wrapped around the annulus 
 	//u coord is radial, v coord is angular 
-	float rad = mix(minRadius, maxRadius, vertex.x);
+	float rad = mix(ringMinRadius, ringMaxRadius, vertex.x);
 	float theta = 2. * M_PI * vertex.y;
 	float cosTheta = cos(theta);
 	float sinTheta = sin(theta);
@@ -3469,14 +3537,15 @@ void main() {
 	//if it intersects with a sphere at pos with radius planetRadius then we're in shadow
 	//if you want to do a soft shadow based on the sun's radius and distance (length of sunDir) then you can
 
-	float illuminance = 1.;
+	float luminance = 1.;
 	//notice that I have to scale down the meters here for shader accuracy to work
-	if (sunDir[0].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[1].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[2].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
-	if (sunDir[3].w > .5) illuminance = min(illuminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
-
-	gl_FragColor.rgb *= illuminance * mix(unlitSide, litSide, lookingAtLitSide);
+	if (sunDir[0].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[1].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[1].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[2].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[2].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	if (sunDir[3].w > .5) luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[3].xyz * 1e-8, pos, planetRadius * 1e-8)));
+	luminance *= mix(unlitSide, litSide, lookingAtLitSide);
+	
+	gl_FragColor.rgb *= sqrt(luminance);
 
 	float transparency = texture2D(transparencyTex, texCoordv).r;
 	gl_FragColor.a = transparency;
@@ -3530,8 +3599,8 @@ void main() {
 					forwardScatteredTex : 2,
 					transparencyTex : 3,
 					unlitSideTex : 4,
-					minRadius : 74510000,
-					maxRadius : 140390000,
+					ringMinRadius : planet.ringRadiusRange[0],
+					ringMaxRadius : planet.ringRadiusRange[1],
 					planetRadius : planet.radius,
 					lookingAtLitSide : 1,
 					backToFrontLitBlend : 0,
@@ -4282,6 +4351,9 @@ void main() {
 
 function setOrbitTarget(newTarget) {
 	var selectingNewSystem = false;
+	if (newTarget === undefined) {
+		newTarget = orbitStarSystem.stars[0];	
+	}
 	if (newTarget.isa(StarSystem)) {
 		var targetSystem = newTarget;
 		var i = 0;
@@ -4337,10 +4409,10 @@ function initScene() {
 
 	var trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
 	setOrbitTarget(trackPlanet);
-	orbitTargetDistance = 2. * trackPlanet.radius;
+	orbitTargetDistance = 2. * orbitTarget.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
-	$('#hoverTargetText').text(trackPlanet.name);
+	$('#hoverTargetText').text(orbitTarget.name);
 
 	var dragging = false;
 	var tmpQ = quat.create();	
