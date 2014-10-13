@@ -1380,9 +1380,17 @@ var longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
 function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
+	
+	//fix side panel heights
 	$.each(allSidePanelIDs, function(i,sidePanelID) {
 		$('#'+sidePanelID).css('height', window.innerHeight);
 	});
+
+	//fix info panel height
+	if (showBodyInfo) {
+		var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+		$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
+	}
 	
 	glutil.resize();
 
@@ -2324,14 +2332,14 @@ function init2() {
 	});
 
 	setCSSRotation($('#toggleBodyInfo'), -90);
-	$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
-	$('#infoPanel').css('bottom', -15);
+	//$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+	//$('#infoPanel').css('bottom', -15);
 	$('#toggleBodyInfo').click(function() {
 		if (!showBodyInfo) {
 			showBodyInfo = true;
 			var infoDivTop = $('#infoPanel').offset().top;
 			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
-			$('#infoPanel').css('height', '');
+			$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
 			console.log('fixing body info top at', infoDivTop);
 			console.log('interpolating to dest top', infoDivDestTop);
 			
@@ -2339,6 +2347,7 @@ function init2() {
 				//go from bottom-aligned to top-algined
 				.css('bottom', 'auto')
 				.css('top', infoDivTop)
+				.css('overflow', 'scroll')
 				//interpolate up to the time controls ... or some fixed distance to it
 				.stop(true)
 				.animate(
@@ -2366,6 +2375,7 @@ function init2() {
 				//go from bottom-aligned to top-algined
 				.css('top', 'auto')
 				.css('bottom', infoDivBottom)
+				.css('overflow', 'visible')
 				//interpolate up to the time controls ... or some fixed distance to it
 				.stop(true)
 				.animate(
@@ -2387,7 +2397,7 @@ function init2() {
 
 	$('#menu').show();
 	$('#timeDiv').show();
-	$('#infoPanel').show();
+	//$('#infoPanel').show();	//don't show here -- instead show upon first setOrbitTarget, when the css positioning gets fixed
 
 	init3();
 }
@@ -4567,11 +4577,16 @@ function setOrbitTarget(newTarget) {
 			$('#infoDiv').append($('<div>', {text:'Orbital Period: '+orbitTarget.keplerianOrbitalElements.orbitalPeriod+' days'}));
 		}
 	}
-	//refresh offset if the infoPanel is hidden
-	if (!showBodyInfo) {
-		$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+	setTimeout(function() {
+		//refresh offset if the infoPanel is hidden
+		$('#infoPanel').show();
 		$('#infoPanel').css('bottom', -15);
-	}
+		if (!showBodyInfo) {
+			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+		} else {
+			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+		}
+	}, 1);
 }
 
 function initScene() {
