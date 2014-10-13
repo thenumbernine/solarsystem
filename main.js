@@ -2365,7 +2365,7 @@ function init2() {
 				);
 		} else {
 			showBodyInfo = false;
-			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+			$('#infoPanel').css('height', '104px');
 			var infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
 			var infoDivDestBottom = -15;
 			console.log('fixing body info bottom at', infoDivBottom);
@@ -4579,13 +4579,15 @@ function setOrbitTarget(newTarget) {
 	}
 	setTimeout(function() {
 		//refresh offset if the infoPanel is hidden
-		$('#infoPanel').show();
 		$('#infoPanel').css('bottom', -15);
 		if (!showBodyInfo) {
-			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+			$('#infoPanel').css('height', '104px');
 		} else {
 			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
 		}
+		setTimeout(function() {
+			$('#infoPanel').show();
+		}, 1);
 	}, 1);
 }
 
