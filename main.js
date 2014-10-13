@@ -1,3 +1,14 @@
+var toGLSLFloat = function(x) {
+	x = ''+x;
+	if (x.indexOf('.') == -1) x = x + '.';
+	return x;
+};
+
+function setCSSRotation(obj, degrees) {
+	obj.css('-webkit-transform','rotate('+degrees+'deg)'); 
+	obj.css('-moz-transform','rotate('+degrees+'deg)');
+	obj.css('transform','rotate('+degrees+'deg)');
+}
 
 //provided z, calculate x and y such that x,y,z form a basis
 var calcBasis = function(x,y,z) {
@@ -752,6 +763,11 @@ var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
 
+var colorIndexMin = 2.;
+var colorIndexMax = -.4;
+var colorIndexTex;
+var colorIndexShader;	//used for rendering point stars
+
 var displayMethods = [
 	'None',
 	'Tangent Tidal',
@@ -1172,15 +1188,34 @@ var planetPointVisRatio = .001;
 			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 			
-			if ((!planet.sceneObj || planet.visRatio < planetPointVisRatio) && showPlanetsAsDistantPoints) {
-				vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
-				pointObj.attrs.vertex.updateData();
-				pointObj.draw({
-					uniforms : {
-						color : planet.color,
-						pointSize : 4
-					}
-				});
+			if (!planet.sceneObj || planet.visRatio < planetPointVisRatio) {
+				if (showPlanetsAsDistantPoints) {
+					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
+					pointObj.attrs.vertex.updateData();
+					pointObj.draw({
+						uniforms : {
+							color : planet.color,
+							pointSize : 4
+						}
+					});
+				} else {	//if (showStars) {
+					//draw as a pixel with apparent magnitude
+					//use the starfield shader
+					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
+					pointObj.attrs.vertex.data[3] = planet.absoluteMagnitude || 10;
+					pointObj.attrs.vertex.updateData();
+					pointObj.attrs.colorIndex.data[0] = planet.colorIndex || 0;
+					pointObj.attrs.colorIndex.updateData();
+					pointObj.draw({
+						shader : colorIndexShader,
+						//disable depth test too?
+						blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+						uniforms : {
+							pointSize : 1
+						},
+						texs : [colorIndexTex]
+					});				
+				}
 			}
 		}
 
@@ -1437,6 +1472,7 @@ $(document).ready(init1);
 var slideDuration = 500;
 var slideWidth = 300;
 var currentOpenSidePanelID = undefined;
+var showBodyInfo = false;
 var allSidePanelIDs = [];
 
 function showSidePanel(sidePanelID) {
@@ -1449,9 +1485,17 @@ function showSidePanel(sidePanelID) {
 	var sidePanel = $('#'+sidePanelID);
 	sidePanel.css('z-index', 2);
 	sidePanel.show();
-	$('#menu')
-	.animate({left:slideWidth}, {duration:slideDuration})
-	.attr('src', 'reverse.png');
+	$('#menu').animate(
+		{
+			left : slideWidth
+		}, {
+			duration : slideDuration,
+			step : function(now, fx) {
+				var degrees = now / slideWidth * 180;
+				setCSSRotation($(this), degrees);
+			}
+		}
+	);
 	sidePanel.animate({left:0}, {duration:slideDuration});
 	currentOpenSidePanelID = sidePanelID;
 }
@@ -1460,9 +1504,18 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	if (sidePanelID === currentOpenSidePanelID) currentOpenSidePanelID = undefined;
 	var sidePanel = $('#'+sidePanelID);
 	if (!dontMoveOpenButton) {
-		$('#menu')
-		.animate({left:0}, {duration:slideDuration})
-		.attr('src', 'play.png');
+		$('#menu').animate(
+			{
+				left : 0
+			},
+			{
+				duration : slideDuration,
+				step : function(now, fx) {
+					var degrees = (now / slideWidth) * 180;
+					setCSSRotation($(this), degrees);
+				}
+			}
+		);
 	}
 	sidePanel.animate({left:-slideWidth}, {
 		duration:slideDuration,
@@ -1507,7 +1560,8 @@ function init1() {
 		'overlaySidePanel',
 		'solarSystemSidePanel',
 		'smallBodiesSidePanel',
-		'starSystemsSidePanel'
+		'starSystemsSidePanel',
+		'controlsSidePanel'
 	];
 	mainSidePanel = $('#mainSidePanel');
 	
@@ -1530,6 +1584,7 @@ function init1() {
 		{buttonID:'mainButtonSolarSystem', divID:'solarSystemSidePanel'},
 		{buttonID:'mainButtonSmallBodies', divID:'smallBodiesSidePanel'},
 		{buttonID:'mainButtonStarSystems', divID:'starSystemsSidePanel'},
+		{buttonID:'mainButtonControls', divID:'controlsSidePanel'},
 	], function(i, info) {
 		$('#'+info.buttonID).click(function() {
 			showSidePanel(info.divID);
@@ -2267,10 +2322,72 @@ function init2() {
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
 	});
-	
+
+	setCSSRotation($('#toggleBodyInfo'), -90);
+	$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+	$('#infoPanel').css('bottom', -15);
+	$('#toggleBodyInfo').click(function() {
+		if (!showBodyInfo) {
+			showBodyInfo = true;
+			var infoDivTop = $('#infoPanel').offset().top;
+			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+			$('#infoPanel').css('height', '');
+			console.log('fixing body info top at', infoDivTop);
+			console.log('interpolating to dest top', infoDivDestTop);
+			
+			$('#infoPanel')
+				//go from bottom-aligned to top-algined
+				.css('bottom', 'auto')
+				.css('top', infoDivTop)
+				//interpolate up to the time controls ... or some fixed distance to it
+				.stop(true)
+				.animate(
+					{
+						top : infoDivDestTop+'px'
+					},
+					{
+						duration : slideDuration,
+						step : function(now, fx) {
+							var frac = 1 - (now - infoDivDestTop) / (infoDivTop - infoDivDestTop);
+							var degrees = 180 * frac - 90;
+							setCSSRotation($('#toggleBodyInfo'), degrees);
+						}
+					}
+				);
+		} else {
+			showBodyInfo = false;
+			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+			var infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
+			var infoDivDestBottom = -15;
+			console.log('fixing body info bottom at', infoDivBottom);
+			console.log('interpolating to dest bottom ', infoDivDestBottom);
+			
+			$('#infoPanel')
+				//go from bottom-aligned to top-algined
+				.css('top', 'auto')
+				.css('bottom', infoDivBottom)
+				//interpolate up to the time controls ... or some fixed distance to it
+				.stop(true)
+				.animate(
+					{
+						bottom : infoDivDestBottom+'px'
+					},
+					{
+						duration : slideDuration,
+						step : function(now, fx) {
+							var frac = (now - infoDivDestBottom) / (infoDivBottom - infoDivDestBottom);
+							var degrees = 180 * frac - 90;
+							setCSSRotation($('#toggleBodyInfo'), degrees);
+						}
+					}
+				);	
+		
+		}
+	});
+
 	$('#menu').show();
 	$('#timeDiv').show();
-	$('#infoDiv').show();
+	$('#infoPanel').show();
 
 	init3();
 }
@@ -2307,168 +2424,12 @@ function initStars() {
 			floatBuffer[j] = x;
 		}
 
-		//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
-		//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
-		var colorIndexMin = 2.;
-		var colorIndexMax = -.4;
-		var colorIndexTexWidth = 1024;
-		StarField.prototype.colorIndexTex = new glutil.Texture2D({
-			width : colorIndexTexWidth,
-			height : 1,
-			internalFormat : gl.RGBA,
-			format : gl.RGBA,	//TODO function callback support for format == gl.RGB
-			type : gl.UNSIGNED_BYTE,
-			magFilter : gl.LINEAR,
-			minFilter : gl.NEAREST,
-			wrap : gl.CLAMP_TO_EDGE,
-			data : function(texX, texY) {
-//console.log('texX',texX);
-				var frac = (texX + .5) / colorIndexTexWidth;
-//console.log('frac',frac);
-				var bv = frac * (colorIndexMax - colorIndexMin) + colorIndexMin;
-//console.log('bv',bv);
-				
-//from here on out is the OP of the above article	
-if (false) {
-				
-				var t = 4600 * ((1 / ((.92 * bv) + 1.7)) + (1 / ((.92 * bv) + .62)));
-//console.log('t',t);
-			
-				var x, y = 0;
-
-				if (t>=1667 && t<=4000) {
-					x = ((-0.2661239 * Math.pow(10,9)) / Math.pow(t,3)) + ((-0.2343580 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.8776956 * Math.pow(10,3)) / t) + 0.179910;
-				} else if (t > 4000 && t <= 25000) {
-					x = ((-3.0258469 * Math.pow(10,9)) / Math.pow(t,3)) + ((2.1070379 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.2226347 * Math.pow(10,3)) / t) + 0.240390;
-				}
-//console.log('x',x);
-
-				if (t >= 1667 && t <= 2222) {
-					y = -1.1063814 * Math.pow(x,3) - 1.34811020 * Math.pow(x,2) + 2.18555832 * x - 0.20219683;
-				} else if (t > 2222 && t <= 4000) {
-					y = -0.9549476 * Math.pow(x,3) - 1.37418593 * Math.pow(x,2) + 2.09137015 * x - 0.16748867;
-				} else if (t > 4000 && t <= 25000) {
-					y = 3.0817580 * Math.pow(x,3) - 5.87338670 * Math.pow(x,2) + 3.75112997 * x - 0.37001483;
-				}
-//console.log('y',y);
-				
-				//the rest is found at http://en.wikipedia.org/wiki/SRGB
-
-				// xyY to XYZ, Y = 1
-				var Y = (y == 0)? 0 : 1;
-				var X = (y == 0)? 0 : (x * Y) / y;
-				var Z = (y == 0)? 0 : ((1 - x - y) * Y) / y;
-//console.log('X',X);
-//console.log('Y',Y);
-//console.log('Z',Z);
-
-				var R_linear = 3.2406 * X - 1.5372 * Y - .4986 * Z;
-				var G_linear = -.9689 * X + 1.8758 * Y + .0415 * Z;
-				var B_linear = .0557 * X - .2040 * Y + 1.0570 * Z;
-//console.log('R_linear',R_linear);
-//console.log('G_linear',G_linear);
-//console.log('B_linear',B_linear);
-
-				var srgbGammaAdjust = function(C_linear) {
-					var a = .055;
-					if (C_linear <= .0031308) return 12.92 * C_linear;
-					return (1 + a) * Math.pow(C_linear, 1/0.5) - a;
-				};
-				
-				var R_srgb = srgbGammaAdjust(R_linear);
-				var G_srgb = srgbGammaAdjust(G_linear);
-				var B_srgb = srgbGammaAdjust(B_linear);
-//console.log('R_srgb',R_srgb);
-//console.log('G_srgb',G_srgb);
-//console.log('B_srgb',B_srgb);
-				
-				var result = [
-					Math.clamp(R_srgb, 0, 1),
-					Math.clamp(G_srgb, 0, 1),
-					Math.clamp(B_srgb, 0, 1),
-					1];
-
-				return result;
-
-}	//...and this is the reply ...
-if (true) {
-
-				var t;  r=0.0; g=0.0; b=0.0; if (t<-0.4) t=-0.4; if (t> 2.0) t= 2.0;
-				if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); r=0.61+(0.11*t)+(0.1*t*t); }
-				else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); r=0.83+(0.17*t)          ; }
-				else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); r=1.00                   ; }
-				if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); g=0.70+(0.07*t)+(0.1*t*t); }
-				else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); g=0.87+(0.11*t)          ; }
-				else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); g=0.98-(0.16*t)          ; }
-				else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); g=0.82         -(0.5*t*t); }
-				if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); b=1.00                   ; }
-				else if ((bv>= 0.40)&&(bv<1.50)) { t=(bv-0.40)/(1.50-0.40); b=1.00-(0.47*t)+(0.1*t*t); }
-				else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); b=0.63         -(0.6*t*t); }
-
-				return [r,g,b,1];
-}
-			}
-		});
-
-		var toGLSLFloat = function(x) {
-			x = ''+x;
-			if (x.indexOf('.') == -1) x = x + '.';
-			return x;
-		};
-
-		StarField.prototype.sceneShader = new ModifiedDepthShaderProgram({
-			vertexCode : 
-'#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
-'#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
-			mlstr(function(){/*
-attribute vec4 vertex;
-attribute float colorIndex;
-varying float alpha;
-varying vec3 color;
-uniform mat4 mvMat;
-uniform mat4 projMat;
-uniform float visibleMagnitudeBias;
-uniform sampler2D colorIndexTex;
-#define M_LOG_10			2.3025850929940459010936137929093092679977416992188
-#define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
-void main() {
-	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
-	
-	//calculate apparent magnitude, convert to alpha
-	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
-	float absoluteMagnitude = vertex.w;
-	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
-	
-	//something to note: these power functions give us a sudden falloff,
-	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
-	// one last fix would be to never scale the vertices and render different scaled objects at separate coordinate systems
-	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
-	
-	//calculate color
-	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
-
-	//TODO point sprite / point spread function?
-	gl_PointSize = 1.;
-	
-	gl_Position = projMat * vtx4;
-	gl_Position.z = depthfunction(gl_Position);
-}
-*/}),
-		fragmentCode : mlstr(function(){/*
-varying vec3 color;
-varying float alpha;
-void main() {
-	gl_FragColor = vec4(color, alpha);
-}
-*/})
-		});
-
 		//now that we have the float buffer ...
 		StarField.prototype.buffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
 		StarField.prototype.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
-			shader : StarField.prototype.sceneShader,
-			texs : [StarField.prototype.colorIndexTex],
+			shader : colorIndexShader,
+			texs : [colorIndexTex],
 			attrs : {
 				vertex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 4, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
 				colorIndex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 4 * Float32Array.BYTES_PER_ELEMENT})	//color-index
@@ -3147,6 +3108,157 @@ void main() {
 }
 */
 
+
+	//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
+	//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
+	var colorIndexTexWidth = 1024;
+	colorIndexTex = new glutil.Texture2D({
+		width : colorIndexTexWidth,
+		height : 1,
+		internalFormat : gl.RGBA,
+		format : gl.RGBA,	//TODO function callback support for format == gl.RGB
+		type : gl.UNSIGNED_BYTE,
+		magFilter : gl.LINEAR,
+		minFilter : gl.NEAREST,
+		wrap : gl.CLAMP_TO_EDGE,
+		data : function(texX, texY) {
+//console.log('texX',texX);
+			var frac = (texX + .5) / colorIndexTexWidth;
+//console.log('frac',frac);
+			var bv = frac * (colorIndexMax - colorIndexMin) + colorIndexMin;
+//console.log('bv',bv);
+			
+//from here on out is the OP of the above article	
+if (false) {
+			
+			var t = 4600 * ((1 / ((.92 * bv) + 1.7)) + (1 / ((.92 * bv) + .62)));
+//console.log('t',t);
+		
+			var x, y = 0;
+
+			if (t>=1667 && t<=4000) {
+				x = ((-0.2661239 * Math.pow(10,9)) / Math.pow(t,3)) + ((-0.2343580 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.8776956 * Math.pow(10,3)) / t) + 0.179910;
+			} else if (t > 4000 && t <= 25000) {
+				x = ((-3.0258469 * Math.pow(10,9)) / Math.pow(t,3)) + ((2.1070379 * Math.pow(10,6)) / Math.pow(t,2)) + ((0.2226347 * Math.pow(10,3)) / t) + 0.240390;
+			}
+//console.log('x',x);
+
+			if (t >= 1667 && t <= 2222) {
+				y = -1.1063814 * Math.pow(x,3) - 1.34811020 * Math.pow(x,2) + 2.18555832 * x - 0.20219683;
+			} else if (t > 2222 && t <= 4000) {
+				y = -0.9549476 * Math.pow(x,3) - 1.37418593 * Math.pow(x,2) + 2.09137015 * x - 0.16748867;
+			} else if (t > 4000 && t <= 25000) {
+				y = 3.0817580 * Math.pow(x,3) - 5.87338670 * Math.pow(x,2) + 3.75112997 * x - 0.37001483;
+			}
+//console.log('y',y);
+			
+			//the rest is found at http://en.wikipedia.org/wiki/SRGB
+
+			// xyY to XYZ, Y = 1
+			var Y = (y == 0)? 0 : 1;
+			var X = (y == 0)? 0 : (x * Y) / y;
+			var Z = (y == 0)? 0 : ((1 - x - y) * Y) / y;
+//console.log('X',X);
+//console.log('Y',Y);
+//console.log('Z',Z);
+
+			var R_linear = 3.2406 * X - 1.5372 * Y - .4986 * Z;
+			var G_linear = -.9689 * X + 1.8758 * Y + .0415 * Z;
+			var B_linear = .0557 * X - .2040 * Y + 1.0570 * Z;
+//console.log('R_linear',R_linear);
+//console.log('G_linear',G_linear);
+//console.log('B_linear',B_linear);
+
+			var srgbGammaAdjust = function(C_linear) {
+				var a = .055;
+				if (C_linear <= .0031308) return 12.92 * C_linear;
+				return (1 + a) * Math.pow(C_linear, 1/0.5) - a;
+			};
+			
+			var R_srgb = srgbGammaAdjust(R_linear);
+			var G_srgb = srgbGammaAdjust(G_linear);
+			var B_srgb = srgbGammaAdjust(B_linear);
+//console.log('R_srgb',R_srgb);
+//console.log('G_srgb',G_srgb);
+//console.log('B_srgb',B_srgb);
+			
+			var result = [
+				Math.clamp(R_srgb, 0, 1),
+				Math.clamp(G_srgb, 0, 1),
+				Math.clamp(B_srgb, 0, 1),
+				1];
+
+			return result;
+
+}	//...and this is the reply ...
+if (true) {
+
+			var t;  r=0.0; g=0.0; b=0.0; if (t<-0.4) t=-0.4; if (t> 2.0) t= 2.0;
+			if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); r=0.61+(0.11*t)+(0.1*t*t); }
+			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); r=0.83+(0.17*t)          ; }
+			else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); r=1.00                   ; }
+			if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); g=0.70+(0.07*t)+(0.1*t*t); }
+			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); g=0.87+(0.11*t)          ; }
+			else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); g=0.98-(0.16*t)          ; }
+			else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); g=0.82         -(0.5*t*t); }
+			if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); b=1.00                   ; }
+			else if ((bv>= 0.40)&&(bv<1.50)) { t=(bv-0.40)/(1.50-0.40); b=1.00-(0.47*t)+(0.1*t*t); }
+			else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); b=0.63         -(0.6*t*t); }
+
+			return [r,g,b,1];
+}
+		}
+	});
+
+	colorIndexShader = new ModifiedDepthShaderProgram({
+		vertexCode : 
+'#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
+'#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
+		mlstr(function(){/*
+attribute vec4 vertex;
+attribute float colorIndex;
+varying float alpha;
+varying vec3 color;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float visibleMagnitudeBias;
+uniform sampler2D colorIndexTex;
+#define M_LOG_10			2.3025850929940459010936137929093092679977416992188
+#define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
+void main() {
+	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	
+	//calculate apparent magnitude, convert to alpha
+	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
+	float absoluteMagnitude = vertex.w;
+	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
+	
+	//something to note: these power functions give us a sudden falloff,
+	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
+	// one last fix would be to never scale the vertices and render different scaled objects at separate coordinate systems
+	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+	
+	//calculate color
+	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
+
+	//TODO point sprite / point spread function?
+	gl_PointSize = 1.;
+	
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+	fragmentCode : mlstr(function(){/*
+varying vec3 color;
+varying float alpha;
+void main() {
+	gl_FragColor = vec4(color, alpha);
+}
+*/})
+	});
+
+
+
 	$('#overlaySlider').slider({
 		range : 'max',
 		width : '200px',
@@ -3169,9 +3281,15 @@ void main() {
 		shader : colorShader,
 		attrs : {
 			vertex : new glutil.ArrayBuffer({
+				dim : 4,
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
+			colorIndex : new glutil.ArrayBuffer({
+				dim : 1,
+				count : 1,
+				usage : gl.DYNAMIC_DRAW
+			})
 		},
 		uniforms : {
 			pointSize : 4
@@ -4404,6 +4522,56 @@ function setOrbitTarget(newTarget) {
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
 	orbitTarget = newTarget
 	$('#orbitTargetText').text(orbitTarget.name);
+	$('#infoDiv').append($('<div>', {text:'Type: '+orbitTarget.type}));
+	if (orbitTarget.mass !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Mass: '+orbitTarget.mass+' kg'}));
+	}
+	if (orbitTarget.equatorialRadius !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Equatorial Radius: '+orbitTarget.equatorialRadius+' m'}));
+	} else if (orbitTarget.radius !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Radius: '+orbitTarget.radius+' m'}));
+	}
+	if (orbitTarget.inverseFlattening !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Inverse Flattening: '+orbitTarget.inverseFlattening}));
+	}
+	if (orbitTarget.rotationPeriod !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Rotation Period: '+orbitTarget.rotationPeriod+' days'}));
+	}
+	if (orbitTarget.ringRadiusRange !== undefined) {
+		$('#infoDiv').append($('<div>', {text:'Ring Min Radius: '+orbitTarget.ringRadiusRange[0]+' m'}));
+		$('#infoDiv').append($('<div>', {text:'Ring Max Radius: '+orbitTarget.ringRadiusRange[1]+' m'}));
+	}
+	if (orbitTarget.keplerianOrbitalElements) {
+		if (orbitTarget.keplerianOrbitalElements.semiMajorAxis) {
+			$('#infoDiv').append($('<div>', {text:'Semi-Major Axis: '+orbitTarget.keplerianOrbitalElements.semiMajorAxis+' m'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.eccentricity) {
+			$('#infoDiv').append($('<div>', {text:'Eccentricity: '+orbitTarget.keplerianOrbitalElements.eccentricity}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.eccentricAnomaly) {
+			$('#infoDiv').append($('<div>', {html:'Eccentric Anomaly: '+Math.deg(orbitTarget.keplerianOrbitalElements.eccentricAnomaly)+'&deg;'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode) {
+			$('#infoDiv').append($('<div>', {html:'Longitude of Ascending Node: '+Math.deg(orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.argumentOfPericenter) {
+			$('#infoDiv').append($('<div>', {html:'Argument of Pericenter: '+Math.deg(orbitTarget.keplerianOrbitalElements.argumentOfPericenter)+'&deg;'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.inclination) {
+			$('#infoDiv').append($('<div>', {html:'Inclination: '+Math.deg(orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing) {
+			$('#infoDiv').append($('<div>', {html:'Time of Periapsis Crossing: '+orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing+' days'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.orbitalPeriod) {
+			$('#infoDiv').append($('<div>', {text:'Orbital Period: '+orbitTarget.keplerianOrbitalElements.orbitalPeriod+' days'}));
+		}
+	}
+	//refresh offset if the infoPanel is hidden
+	if (!showBodyInfo) {
+		$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+		$('#infoPanel').css('bottom', -15);
+	}
 }
 
 function initScene() {
