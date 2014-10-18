@@ -1042,7 +1042,6 @@ var planetPointVisRatio = .001;
 				planet.lineObj.attrs.vertex.updateData();
 				planet.lineObj.draw();
 			}
-	
 		}
 
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
@@ -3493,7 +3492,7 @@ float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadiu
 void main() {
 	float luminance = 1.;
 	//notice that I have to scale down the meters here for shader accuracy to work
-	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos, planetRadius * 1e-8)));
+	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos * 1e-8, planetRadius * 1e-8)));
 	
 	gl_FragColor = texture2D(colorTex, texCoordv);
 	gl_FragColor.rgb *= sqrt(luminance);
@@ -3671,7 +3670,7 @@ void main() {
 
 	float luminance = 1.;
 	//notice that I have to scale down the meters here for shader accuracy to work
-	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos, planetRadius * 1e-8)));
+	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos * 1e-8, planetRadius * 1e-8)));
 	luminance *= mix(unlitSide, litSide, lookingAtLitSide);
 	
 	gl_FragColor.rgb *= sqrt(luminance);
