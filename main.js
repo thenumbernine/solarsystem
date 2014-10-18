@@ -4530,7 +4530,10 @@ function setOrbitTarget(newTarget) {
 	
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
 	orbitTarget = newTarget
+	
 	$('#orbitTargetText').text(orbitTarget.name);
+	$('#infoDiv').empty();
+	$('#infoDiv').append($('<hr>'));
 	$('#infoDiv').append($('<div>', {text:'Type: '+orbitTarget.type}));
 	if (orbitTarget.mass !== undefined) {
 		$('#infoDiv').append($('<div>', {text:'Mass: '+orbitTarget.mass+' kg'}));
@@ -4576,13 +4579,17 @@ function setOrbitTarget(newTarget) {
 			$('#infoDiv').append($('<div>', {text:'Orbital Period: '+orbitTarget.keplerianOrbitalElements.orbitalPeriod+' days'}));
 		}
 	}
+	$('#infoDiv').append($('<br>'));
+	$('#infoDiv').append($('<br>'));
+	
 	setTimeout(function() {
 		//refresh offset if the infoPanel is hidden
 		$('#infoPanel').css('bottom', -15);
 		if (!showBodyInfo) {
 			$('#infoPanel').css('height', '104px');
 		} else {
-			$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
+			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+			$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
 		}
 		setTimeout(function() {
 			$('#infoPanel').show();
