@@ -2330,6 +2330,16 @@ function init2() {
 		$('#loading').attr('value', parseInt(100*percent));
 	});
 
+	$('#infoPanel').bind('touchmove', function(e) {
+		if (!showBodyInfo) {
+			if (!e.target.classList.contains('scrollable')) {
+				//only touch devices will scroll the div even when browsers know not to
+				//so for touch scroll, explicitly tell it not to scroll
+				e.preventDefault();
+			}
+		}
+	});
+
 	setCSSRotation($('#toggleBodyInfo'), -90);
 	//$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
 	//$('#infoPanel').css('bottom', -15);
