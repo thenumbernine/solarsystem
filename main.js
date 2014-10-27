@@ -2223,6 +2223,40 @@ function init1() {
 					}
 				}
 			}
+			
+//hack for debugging
+rows = [
+       //test case for hyperbolic
+       {
+               "perihelionDistance":209257386344.8,
+               "inclination":2.2519520826231,
+               "timeOfPerihelionPassage":2456957.25767,
+               "argumentOfPerihelion":0.042599298250977,
+               "bodyType":"comet",
+               "orbitSolutionReference":"JPL 56",
+               "epoch":56573,
+               "eccentricity":1.00064344,
+               "idNumber":"C",
+               "name":"2013 A1 (Siding Spring)",
+               "longitudeOfAscendingNode":5.2530270564044
+       },
+       //test case for elliptical
+       {
+               "perihelionDistance":87661077532.81,
+               "inclination":2.8320181936429,
+               "timeOfPerihelionPassage":2446467.50782,
+               "argumentOfPerihelion":1.9431185149437,
+               "bodyType":"comet",
+               "orbitSolutionReference":"JPL J863/77",
+               "epoch":49400,
+               "eccentricity":0.96714291,
+               "idNumber":"1P",
+               "name":"Halley",
+               "longitudeOfAscendingNode":1.0196227452785
+       }
+];
+			
+			
 			processResults({rows:rows, count:rows.length});
 		} else {
 			throw "got an unknown data source request " + dataSource;
@@ -3842,8 +3876,11 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 	}
 
 	//calculated variables:
-	var eccentricity;
-	var eccentricAnomaly;
+	var eccentricity = undefined;
+	var eccentricAnomaly = undefined;
+	var orbitType = undefined;
+	var meanAnomaly = undefined;
+	var meanMotion = undefined;
 	var A, B;
 
 	//used by planets to offset reconstructed orbit coordinates to exact position of planet
@@ -3862,15 +3899,23 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		*/
 
 		eccentricity = assertExists(planet.sourceData, 'eccentricity');
-		if (eccentricity >= 1) {
-			console.log("WARNING: omitting hyperbolic orbit of comet "+planet.name);
-			return;
+
+		var parabolicEccentricityEpsilon = 1e-7;
+		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
+			orbitType = 'parabolic';
+		} else if (eccentricity > 1) {
+			orbitType = 'hyperbolic';
+		} else {
+			orbitType = 'elliptic';
 		}
 
-		var pericenterDistance, semiMajorAxis;
+		var pericenterDistance;
+		var semiMajorAxis;
 		if (planet.isComet) {
 			pericenterDistance = assert(planet.sourceData.perihelionDistance);
-			semiMajorAxis = pericenterDistance / (1 - eccentricity);
+			if (orbitType !== 'parabolic') {
+				semiMajorAxis = pericenterDistance / (1 - eccentricity);
+			}	//otherwise, if it is parabolic, we don't get the semi-major axis ...
 		} else if (planet.isAsteroid) {
 			semiMajorAxis = assert(planet.sourceData.semiMajorAxis);
 			pericenterDistance = semiMajorAxis * (1 - eccentricity);
@@ -3880,7 +3925,12 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 
 		var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
-		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+		
+		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
+		var orbitalPeriod = undefined;
+		if (orbitType === 'elliptic') {
+			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+		}
 
 		var longitudeOfAscendingNode = assertExists(planet.sourceData, 'longitudeOfAscendingNode');
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
@@ -3895,42 +3945,91 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		var sinInclination = Math.sin(inclination);
 
 		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * sinPericenter * sinInclination];
-		B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
+			 semiMajorAxis * sinPericenter * sinInclination];
+		B = [-semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * cosPericenter * sinInclination];
 
-		var meanAnomaly;
+
+		var timeOfPeriapsisCrossing;
 		if (planet.isComet) {
 			timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
-			meanAnomaly = (julianDate - timeOfPeriapsisCrossing) * 2 * Math.PI / orbitalPeriod;
-		} else if (planet.isAsteroid) {
-			meanAnomaly = planet.sourceData.meanAnomaly;
-		} else {
-			meanAnomaly = 0;
 		}
 
+		if (orbitType === 'parabolic') {
+			eccentricAnomaly = Math.tan(argumentOfPericenter / 2);
+			meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
+			meanMotion = meanAnomaly / (julianDate - timeOfPeriapsisCrossing);
+		} else if (orbitType === 'hyperbolic') {
+			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
+			meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
+			meanMotion = meanAnomaly / (julianDate - timeOfPeriapsisCrossing);
+		} else if (orbitType === 'elliptic') {
+			//in theory I can say 
+			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPericenter)) / (1 + eccentricity * Math.cos(argumentOfPericenter)));
+			// ... but Math.acos has a limited range ...
+
+			if (planet.isComet) {
+				timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
+				var timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
+				meanMotion = 2 * Math.PI / orbitalPeriod;
+				meanAnomaly = timeSinceLastPeriapsisCrossing * meanMotion;
+			} else if (planet.isAsteroid) {
+				meanAnomaly = planet.sourceData.meanAnomaly;
+			//} else {
+			//	throw 'here';
+			}
+		} else {
+			throw 'here';
+		}
+		
 		//solve Newton Rhapson
-		//f(E) = M - E + e sin E = 0
+		//for elliptical orbits:
+		//	f(E) = M - E + e sin E = 0
+		//	f'(E) = -1 + e cos E
+		//for parabolic oribts:
+		//	f(E) = M - E - E^3 / 3
+		//	f'(E) = -1 - E^2
+		//for hyperbolic orbits:
+		//	f(E) = M - e sinh(E) - E
+		//	f'(E) = -1 - e cosh(E)
 		eccentricAnomaly = meanAnomaly;
 		for (var i = 0; i < 10; ++i) {
-			var func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
-			var deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
+			var func, deriv;
+			if (orbitType === 'parabolic') {	//parabolic
+				func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
+				deriv = -1 - eccentricAnomaly * eccentricAnomaly;
+			} else if (orbitType === 'elliptic') { 	//elliptical
+				func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
+				deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
+			} else if (orbitType === 'hyperbolic') {	//hyperbolic
+				func = meanAnomaly - eccentricity  * Math.sinh(eccentricAnomaly) - eccentricAnomaly;
+				deriv = -1 - eccentricity * Math.cosh(eccentricAnomaly);
+			} else {
+				throw 'here';
+			}
+
 			var delta = func / deriv;
 			if (Math.abs(delta) < 1e-15) break;
 			eccentricAnomaly -= delta;
 		}
+	
 		var sinEccentricAnomaly = Math.sin(eccentricAnomaly);
 		var cosEccentricAnomaly = Math.cos(eccentricAnomaly);
-		timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
+		
+		//parabolas and hyperbolas don't define orbitalPeriod
+		// so no need to recalculate it
+		if (orbitalPeriod !== undefined && meanMotion !== undefined) {
+			timeOfPeriapsisCrossing = meanAnomaly / meanMotion; //if it is a comet then we're just reversing the calculation above ...
+		}
 
 		var posX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
 		var posY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
 		var posZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-		var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;	//m/day
-		var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
-		var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * 2 * Math.PI / orbitalPeriod;
+		var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * meanMotion;	//m/day
+		var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * meanMotion;
+		var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * meanMotion;
 		planet.pos[0] = posX + parentPlanet.pos[0];
 		planet.pos[1] = posY + parentPlanet.pos[1];
 		planet.pos[2] = posZ + parentPlanet.pos[2];
@@ -3948,13 +4047,18 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			argumentOfPericenter : argumentOfPericenter,
 			inclination : inclination,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			orbitalPeriod : orbitalPeriod,
+			meanAnomaly : meanAnomaly,
+			meanMotion : meanMotion,
+			orbitType : orbitType,
+			orbitalPeriod : orbitalPeriod,	//only exists for elliptical orbits
 			A : A,
 			B : B
 		};
 
 	//using vector state (pos & vel) as provided by Horizons
 	} else {
+
+		orbitType = 'elliptic';	//better be ...
 
 		//consider position relative to orbitting parent
 		// should I be doing the same thing with the velocity?  probably...
@@ -4061,6 +4165,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		*/
 			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
 		}
+				
+		meanMotion = 2 * Math.PI / orbitalPeriod;
+		//meanAnomaly = timeSinceLastPeriapsisCrossing * meanMotion;
 
 		planet.keplerianOrbitalElements = {
 			relVelSq : velSq,
@@ -4075,6 +4182,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			argumentOfPericenter : argumentOfPericenter,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
+			//meanAnomaly : meanAnomaly,
+			meanMotion : meanMotion,
+			orbitType : orbitType,
 			orbitalPeriod : orbitalPeriod,
 			A : A,
 			B : B
@@ -4142,8 +4252,16 @@ function recomputePlanetsAlongOrbit() {
 		var planet = starSystem.planets[i];
 		if (planet.parent) {
 			var ke = planet.keplerianOrbitalElements;
-			var fractionOffset = timeAdvanced / ke.orbitalPeriod;
-			var theta = fractionOffset * 2 * Math.PI;
+			var meanMotion = undefined;
+			if (ke.orbitalPeriod !== undefined) {
+				meanMotion = 2 * Math.PI / ke.orbitalPeriod;
+			} else if (ke.timeOfPeriapsisCrossing !== undefined) {
+				meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
+			} else {
+				throw 'here';
+			}
+			var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
+			var theta = timeAdvanced * meanMotion;
 			var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
 			var cosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
 			var sinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
@@ -4152,9 +4270,9 @@ function recomputePlanetsAlongOrbit() {
 			var posX = A[0] * (cosEccentricAnomaly - ke.eccentricity) + B[0] * sinEccentricAnomaly;
 			var posY = A[1] * (cosEccentricAnomaly - ke.eccentricity) + B[1] * sinEccentricAnomaly;
 			var posZ = A[2] * (cosEccentricAnomaly - ke.eccentricity) + B[2] * sinEccentricAnomaly;
-			var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;	//m/day
-			var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;
-			var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * 2 * Math.PI / ke.orbitalPeriod;
+			var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * meanMotion;
+			var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * meanMotion;
+			var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * meanMotion;
 			planet.pos[0] = posX + planet.parent.pos[0];
 			planet.pos[1] = posY + planet.parent.pos[1];
 			planet.pos[2] = posZ + planet.parent.pos[2];
@@ -4610,6 +4728,9 @@ function setOrbitTarget(newTarget) {
 	if (orbitTarget.keplerianOrbitalElements) {
 		if (orbitTarget.keplerianOrbitalElements.semiMajorAxis) {
 			$('#infoDiv').append($('<div>', {text:'Semi-Major Axis: '+orbitTarget.keplerianOrbitalElements.semiMajorAxis+' m'}));
+		}
+		if (orbitTarget.keplerianOrbitalElements.orbitType) {
+			$('#infoDiv').append($('<div>', {text:'Orbit Type: '+orbitTarget.keplerianOrbitalElements.orbitType}));
 		}
 		if (orbitTarget.keplerianOrbitalElements.eccentricity) {
 			$('#infoDiv').append($('<div>', {text:'Eccentricity: '+orbitTarget.keplerianOrbitalElements.eccentricity}));
