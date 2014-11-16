@@ -170,10 +170,9 @@ processToFile{
 		-- time of perihelion passage
 		do
 			local str = row.Tp
-			local year = assert(tostring(str:sub(1,4)))
-			local month = assert(tostring(str:sub(5,6)))
-			local day = assert(tostring(str:sub(7)))
-			
+			local year = assert(tonumber(str:sub(1,4)))
+			local month = assert(tonumber(str:sub(5,6)))
+			local day = assert(tonumber(str:sub(7)))
 			-- TODO calendarToJulian() function.  this is a rough rough guess.
 			body.timeOfPerihelionPassage = julian.fromCalendar{year=year, month=month, day=day}
 		end

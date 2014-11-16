@@ -337,5 +337,6 @@ planetInfoForName.Pasiphae.mass = 299733686619439000
 planetInfoForName.Sinope.mass = 74933421654859700
 planetInfoForName.Lysithea.mass = 62944074190082100
 
+print('parsed '..#planetInfos..' planets')
 io.writefile('static-vars.json', 'horizonsStaticData = '..json.encode(planetInfos, {indent=true})..';')
 

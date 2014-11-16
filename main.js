@@ -10,6 +10,8 @@ function setCSSRotation(obj, degrees) {
 	obj.css('transform','rotate('+degrees+'deg)');
 }
 
+var glutil;
+
 //provided z, calculate x and y such that x,y,z form a basis
 var calcBasis = function(x,y,z) {
 	var cxx = 0;
@@ -197,6 +199,46 @@ var StarSystem = makeClass({
 		this.stars = [];
 	},
 
+	//this calls 'createPlanetsFBOTex' which shouldn't be called until after WebGL init
+	doneBuildingPlanets : function() {
+		this.buildIndexes();
+		this.mapParents();
+		this.createPlanetsFBOTex();
+	},
+
+	/*
+	need the following texture per-planet:
+		position (and maybe velocity) x2 for front and back buffers
+		mass
+		keplerian orbital elements
+			A
+			B
+			eccentricity
+			eccentricAnomaly
+	
+		for now just do position and mass 
+		-- and manually update them
+		-- and use them for the planetSurfaceCalcuationShader
+	
+	TODO what to do about comets ...
+	for now just don't add them.
+	they don't get any tidal/gravitational force calculations anywyas.
+	*/
+	createPlanetsFBOTex : function() {
+		this.planetStateTex = new glutil.Texture2D({
+			internalFormat : gl.RGBA,		//xyz = pos, w = mass.  double this up if you need more precision
+			type : gl.FLOAT,
+			width : 1,	//might double this if we need more accuracy
+			height : this.planets.length,	//npo2 ...
+			magFilter : gl.NEAREST,
+			minFilter : gl.NEAREST,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			}
+		});
+	},
+
 	//builds solarSystem.indexes[planetName]
 	//and remaps solarSystem.planets[i].parent from a name to an index (why not a pointer?)
 	buildIndexes : function() {
@@ -343,15 +385,7 @@ var SolarSystem = makeClass({
 
 var starSystems = [];
 var starSystemForNames = {};
-
-//default = our star system
-var solarSystem = new SolarSystem();
-starSystemForNames[solarSystem.name] = solarSystem;
-solarSystem.index = starSystems.length;
-starSystems.push(solarSystem);
-
-solarSystem.buildIndexes();
-solarSystem.mapParents();
+var solarSystem;	//the one and only.  don't construct until after WebGL init so we can populate our float tex for the planets
 
 
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
@@ -378,7 +412,7 @@ var dateTime = Date.now();
 
 // track ball motion variables
 var mouseOverTarget;
-var orbitStarSystem = solarSystem;	//only do surface calculations for what star system we are in
+var orbitStarSystem;	//only do surface calculations for what star system we are in
 var orbitTarget;
 var orbitGeodeticLocation;
 var orbitDistance;
@@ -570,8 +604,6 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 	planet.geodeticPosition(destX, lat, lon, height);		// position relative to the planet center
 	planetCartesianToSolarSystemBarycentric(destX, destX, planet);
 }
-
-var glutil;
 
 //TODO use glutil.mouseDir?
 function mouseRay() {
@@ -819,8 +851,8 @@ var updatePlanetClassSceneObj;
 		var planetShaders = getPlanetShadersForNumberOfStars(planet.starSystem.stars.length);
 
 		//update tide attributes
-		var showTide = displayMethod != 'None';
-		if (!showTide) {
+		var useOverlay = displayMethod != 'None';
+		if (!useOverlay) {
 			if (planet.tex === undefined) {
 				planet.sceneObj.shader = planetShaders.colorShader;
 				planet.sceneObj.texs.length = 0;
@@ -850,6 +882,10 @@ var updatePlanetClassSceneObj;
 			//and update calculated variable if it is out of date ...
 			if (planet.lastMeasureCalcDate !== julianDate) {
 				planet.lastMeasureCalcDate = julianDate;
+				
+				// old way -- calculate on CPU, upload to vertex buffer 
+if (true) {
+				
 				var measureMin = undefined;
 				var measureMax = undefined;
 				var vertexIndex = 0;
@@ -931,6 +967,27 @@ var updatePlanetClassSceneObj;
 				if (planet == orbitTarget) {
 					refreshMeasureText();
 				}
+
+}
+
+if (false) {	//new way -- update planet state buffer to reflect position & mass
+				// (could store tide values in a texture then reduce to find min/max, but this means a texture per planet ... that's lots of textures ...)
+				// (could compute this on the fly, but then there's no easy way to find the min/max ... )
+				// (could store as texture, and just keep the texture small ... around the size that the tideBuffer already is ... 36x72  ... but that means singularity at the poles ... )
+
+				//fbo render to the tide tex to calcuate the float values 
+			
+
+			
+				fbo.drawToCallback({
+					shader : calcTideShader,
+				});
+
+				//...then min/max reduce
+
+				//...then use the float buffer, min, and max, to do the hsv overlay rendering
+}
+
 			}
 		}
 	};
@@ -947,7 +1004,50 @@ var planetPointVisRatio = .001;
 	var viewPosInv = vec3.create();
 	var viewfwd = vec3.create();
 
+	//used for new gpu update of tide tex
+	var updatePlanetStateBuffer = new Float32Array(1);
+
 	drawScene = function() {
+
+		//update the planet state texture
+		// right now it's only used for tide calcs so
+		//1) only update it if tide calcs are on
+		//2) only include planets that are enabled for tide calcs
+		// more discernment later when i make it general purpose
+		if (displayMethod != 'None') {
+		
+			var targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
+			if (updatePlanetStateBuffer.length != targetSize) {
+				updatePlanetStateBuffer = new Float32Array(targetSize);
+			}
+
+			//gather pos and mass
+			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				if (!planetInfluences[planetIndex]) continue;
+				var planet = orbitStarSystem.planets[planetIndex];
+			
+				updatePlanetStateBuffer[0 + 4 * planetIndex] = planet.pos[0];
+				updatePlanetStateBuffer[1 + 4 * planetIndex] = planet.pos[1];
+				updatePlanetStateBuffer[2 + 4 * planetIndex] = planet.pos[2];
+				updatePlanetStateBuffer[3 + 4 * planetIndex] = planet.mass === undefined ? 0 : planet.mass;
+			}
+
+			//update orbit star system's planet state tex
+			orbitStarSystem.planetStateTex.bind();
+			gl.texSubImage2D(
+				gl.TEXTURE_2D,
+				0,
+				0,
+				0,
+				orbitStarSystem.planetStateTex.width,
+				orbitStarSystem.planetStateTex.height,
+				gl.RGBA,
+				gl.FLOAT,
+				updatePlanetStateBuffer);
+			orbitStarSystem.planetStateTex.unbind();
+
+		}
+		
 		mat4.identity(glutil.scene.mvMat);
 
 		quat.conjugate(viewAngleInv, glutil.view.angle);
@@ -982,7 +1082,14 @@ var planetPointVisRatio = .001;
 			if (planet.hide) continue;
 			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 			if (orbitTarget.pos === undefined) continue;
-			if (planet.lineObj === undefined) continue;
+		
+			/*
+			if (planet.isComet) continue;
+			if (planet.isAsteroid) continue;
+			if (planet.parent !== solarSystem.planets[solarSystem.indexes.Sun] &&
+				planet !== solarSystem.planets[solarSystem.indexes.Sun] &&
+				planet !== solarSystem.planets[solarSystem.indexes.Moon]) continue;
+			*/
 
 			if (showLinesToOtherPlanets && orbitStarSystem == solarSystem) {
 				if (orbitTarget !== planet) {
@@ -993,54 +1100,54 @@ var planetPointVisRatio = .001;
 					var dist = vec3.length(delta);
 					vec3.scale(delta, delta, 1/dist);
 
-					planet.lineObj.attrs.vertex.data[0] = delta[0] * orbitTarget.radius;
-					planet.lineObj.attrs.vertex.data[1] = delta[1] * orbitTarget.radius;
-					planet.lineObj.attrs.vertex.data[2] = delta[2] * orbitTarget.radius;
-					planet.lineObj.attrs.vertex.data[3] = delta[0] * orbitDistance;
-					planet.lineObj.attrs.vertex.data[4] = delta[1] * orbitDistance;
-					planet.lineObj.attrs.vertex.data[5] = delta[2] * orbitDistance;
+					lineObj.attrs.vertex.data[0] = delta[0] * orbitTarget.radius;
+					lineObj.attrs.vertex.data[1] = delta[1] * orbitTarget.radius;
+					lineObj.attrs.vertex.data[2] = delta[2] * orbitTarget.radius;
+					lineObj.attrs.vertex.data[3] = delta[0] * orbitDistance;
+					lineObj.attrs.vertex.data[4] = delta[1] * orbitDistance;
+					lineObj.attrs.vertex.data[5] = delta[2] * orbitDistance;
 
-					planet.lineObj.attrs.vertex.updateData();
-					planet.lineObj.draw();
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : { color : planet.color }});
 				}
 			}
 
 			if (showVelocityVectors) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
-				planet.lineObj.attrs.vertex.data[0] = delta[0];
-				planet.lineObj.attrs.vertex.data[1] = delta[1];
-				planet.lineObj.attrs.vertex.data[2] = delta[2];
-				planet.lineObj.attrs.vertex.data[3] = delta[0] + planet.vel[0] * velocityVectorScale;
-				planet.lineObj.attrs.vertex.data[4] = delta[1] + planet.vel[1] * velocityVectorScale;
-				planet.lineObj.attrs.vertex.data[5] = delta[2] + planet.vel[2] * velocityVectorScale;
-				planet.lineObj.attrs.vertex.updateData();
-				planet.lineObj.draw();
+				lineObj.attrs.vertex.data[0] = delta[0];
+				lineObj.attrs.vertex.data[1] = delta[1];
+				lineObj.attrs.vertex.data[2] = delta[2];
+				lineObj.attrs.vertex.data[3] = delta[0] + planet.vel[0] * velocityVectorScale;
+				lineObj.attrs.vertex.data[4] = delta[1] + planet.vel[1] * velocityVectorScale;
+				lineObj.attrs.vertex.data[5] = delta[2] + planet.vel[2] * velocityVectorScale;
+				lineObj.attrs.vertex.updateData();
+				lineObj.draw({uniforms : { color : planet.color }});
 			}
 
 			if (showRotationAxis) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
 				var axis = [0,0,1];
 				vec3.quatZAxis(axis, planet.angle);
-				planet.lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[3] = delta[0] + axis[0] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[4] = delta[1] + axis[1] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[5] = delta[2] + axis[2] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.updateData();
-				planet.lineObj.draw();
+				lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[3] = delta[0] + axis[0] * -2 * planet.radius;
+				lineObj.attrs.vertex.data[4] = delta[1] + axis[1] * -2 * planet.radius;
+				lineObj.attrs.vertex.data[5] = delta[2] + axis[2] * -2 * planet.radius;
+				lineObj.attrs.vertex.updateData();
+				lineObj.draw({uniforms : { color : planet.color }});
 			}
 
 			if (showOrbitAxis) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
-				planet.lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[2] = delta[2] + planet.orbitAxis[2] * 2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[3] = delta[0] + planet.orbitAxis[0] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[4] = delta[1] + planet.orbitAxis[1] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
-				planet.lineObj.attrs.vertex.updateData();
-				planet.lineObj.draw();
+				lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[2] = delta[2] + planet.orbitAxis[2] * 2 * planet.radius;
+				lineObj.attrs.vertex.data[3] = delta[0] + planet.orbitAxis[0] * -2 * planet.radius;
+				lineObj.attrs.vertex.data[4] = delta[1] + planet.orbitAxis[1] * -2 * planet.radius;
+				lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
+				lineObj.attrs.vertex.updateData();
+				lineObj.draw({uniforms : { color : planet.color }});
 			}
 		}
 
@@ -1654,6 +1761,7 @@ function init1() {
 		throw e;
 	}
 
+
 	ModifiedDepthShaderProgram = makeClass({
 		super : glutil.ShaderProgram,
 		init : function(args) {
@@ -1686,6 +1794,16 @@ function init1() {
 	glutil.view.angle[3] = 0.28753844912098436;*/
 	glutil.view.zNear = 1e+4;
 	glutil.view.zFar = 1e+25;
+
+
+	//now that GL is initialized, and before we are referencing planets, 
+	// build the solar sytsem
+
+	solarSystem = new SolarSystem();
+	starSystemForNames[solarSystem.name] = solarSystem;
+	solarSystem.index = starSystems.length;
+	starSystems.push(solarSystem);
+	solarSystem.doneBuildingPlanets();
 
 
 	// overlay side panel
@@ -2224,38 +2342,38 @@ function init1() {
 				}
 			}
 			
-//hack for debugging
+/*hack for debugging*/
 rows = [
        //test case for hyperbolic
-       {
-               "perihelionDistance":209257386344.8,
-               "inclination":2.2519520826231,
-               "timeOfPerihelionPassage":2456957.25767,
-               "argumentOfPerihelion":0.042599298250977,
-               "bodyType":"comet",
-               "orbitSolutionReference":"JPL 56",
-               "epoch":56573,
-               "eccentricity":1.00064344,
-               "idNumber":"C",
-               "name":"2013 A1 (Siding Spring)",
-               "longitudeOfAscendingNode":5.2530270564044
-       },
-       //test case for elliptical
-       {
-               "perihelionDistance":87661077532.81,
-               "inclination":2.8320181936429,
-               "timeOfPerihelionPassage":2446467.50782,
-               "argumentOfPerihelion":1.9431185149437,
-               "bodyType":"comet",
-               "orbitSolutionReference":"JPL J863/77",
-               "epoch":49400,
-               "eccentricity":0.96714291,
-               "idNumber":"1P",
-               "name":"Halley",
-               "longitudeOfAscendingNode":1.0196227452785
-       }
+		{
+			"perihelionDistance" : 209232954020.56,
+			"inclination" : 2.2519519080902,
+			"timeOfPerihelionPassage" : 2456955.82823,
+			"argumentOfPerihelion" : 0.042602963442406,
+			"bodyType" : "comet",
+			"orbitSolutionReference" : "JPL 101",
+			"epoch" : 56691,
+			"eccentricity" : 1.00074241,
+			"idNumber" : "C",
+			"name" : "2013 A1 (Siding Spring)",
+			"longitudeOfAscendingNode" : 5.2530270564044
+		},
+		//test case for elliptical
+		{
+			"perihelionDistance" : 87661077532.81,
+			"inclination" : 2.8320181936429,
+			"timeOfPerihelionPassage" : 2446467.39532,
+			"argumentOfPerihelion" : 1.9431185149437,
+			"bodyType" : "comet",
+			"orbitSolutionReference" : "JPL J863/77",
+			"epoch" : 49400,
+			"eccentricity" : 0.96714291,
+			"idNumber" : "1P",
+			"name" : "Halley",
+			"longitudeOfAscendingNode" : 1.0196227452785
+		}
 ];
-			
+/**/
 			
 			processResults({rows:rows, count:rows.length});
 		} else {
@@ -2296,7 +2414,6 @@ rows = [
 		);
 	});
 	$('#celestialBodiesSearch').trigger('click');	//fire one off
-
 
 
 	// rest of the init
@@ -2606,8 +2723,7 @@ function initExoplanets() {
 				if (body.type == 'star') starSystem.stars.push(body);
 			});
 
-			starSystem.buildIndexes();
-			starSystem.mapParents();
+			starSystem.doneBuildingPlanets();
 
 			for (var i = 0; i < starSystem.planets.length; ++i) {
 				var body = starSystem.planets[i];
@@ -2745,8 +2861,8 @@ console.log('adding star systems to star fields and vice versa');
 		
 		starSystem.planets.push(body);
 		starSystem.stars.push(body);
-		starSystem.buildIndexes();
-		starSystem.mapParents();
+		
+		starSystem.doneBuildingPlanets();
 	
 		starSystem.initPlanets = starSystem.clonePlanets();
 		starSystemForNames[starSystem.name] = starSystem;
@@ -2794,30 +2910,23 @@ function initPlanetSceneLatLonLineObjs(planet) {
 
 		planet.sceneObj = planetSceneObj;
 		planet.latLonObj = planetLatLonObj;
-		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
-	}
 
-	//TODO instead of creating these per-planet if the planet is special (9 planets of Sun .. plus the moon)
-	// how about we build it for all planets of each star system (with the Moon as an exception of course)
-	if (!(planet.isComet || planet.isAsteroid) &&
-		(planet.parent === solarSystem.planets[solarSystem.indexes.Sun] ||
-		planet === solarSystem.planets[solarSystem.indexes.Sun] ||
-		planet === solarSystem.planets[solarSystem.indexes.Moon]))
-	{
-		planet.lineObj = new glutil.SceneObject({
-			mode : gl.LINES,
-			shader : colorShader,
-			attrs : {
-				vertex : new glutil.ArrayBuffer({
-					count : 2,
-					usage : gl.DYNAMIC_DRAW
-				})
-			},
-			uniforms : {
-				color : planet.color
-			},
-			parent : null,
-			static : true
+		//old way, per-vertex storage, updated by CPU
+		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
+
+		//new way, per-texel storage, updated by GPU FBO kernel
+		//TODO pull these by request rather than allocating them per-planet (since we only ever see one or two or maybe 10 or 20 at a time .. never all 180+ local and even more)
+		planet.tideTex = new glutil.Texture2D({
+			internalFormat : gl.RGBA,
+			type : gl.FLOAT,
+			width : longitudeDivisions,
+			height : latitudeDivisions,
+			magFilter : gl.NEAREST,
+			minFilter : gl.NEAREST,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			}
 		});
 	}
 }
@@ -2835,6 +2944,9 @@ function unravelForLoop(varname, start, end, code) {
 };
 
 var geodeticPositionCode = mlstr(function(){/*
+
+//takes in a vec2 of lat/lon
+//returns the ellipsoid coordinates in the planet's frame of reference
 //I could move the uniforms here, but then the function would be imposing on the shader
 #define M_PI 3.141592653589793115997963468544185161590576171875
 vec3 geodeticPosition(vec2 latLon) {
@@ -3170,37 +3282,63 @@ void main() {
 		}
 	});
 
-/*
-per-pixel heat shader:
-//will be used by all per-pixel shaders
-attribute vec3 vertex;
-attribute vec2 texCoord;
-uniform mat4 mvMat;
-uniform mat4 objMat;
-uniform mat4 projMat;
-varying vec2 texCoordv;
-varying vec4 worldv;
-void main() {
-	tidev = tide;
-	texCoordv = texCoord;
-	worldv = objMat * vec4(vertex, 1.);
-	gl_Position = projMat * mvMat * worldv;
-	gl_Position.z = depthfunction(gl_Position);
+if (false) {
+	//currently tidal and gravitational calculations are done by cpu and mapped to hsv tex
+	// next step would be to calculate them on GPU according to world position
+	// (possibly need double precision in GLSL ... )
+	// ( use https://thasler.com/blog/?p=93 for emulated double precision in GLSL code)
+
+	planetSurfaceCalculationShader = new glutil.KernelShader({
+		varying : 'texCoord',
+		code : mlstr(function(){/*
+uniform vec3 pos;		//planet position, relative to the orbit planet
+uniform vec3 angle;		//planet angle
+uniform float equatorialRadius;
+uniform float inverseFlattening;
+uniform sampler2D tex;		//surface colormap texture
+uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z mass]
+
+uniform float heatAlpha;	//how much to blend the heatmap with the surface texture
+
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 
-tangent tidal shader:
-varying vec2 texCoordv;
-varying vec4 worldv;
-uniform float heatAlpha;
-uniform sampler2D tex;
-uniform sampler2D hsvTex;
-void main() {
-	float tidev = something(worldv);	//do calculations with this.  fix it if the precision isn't good enough.
-	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
-	vec4 planetColor = texture2D(tex, texCoordv);
-	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+*/}) + geodeticPositionCode + mlstr(function(){/*
+
+float calculateTidalValue() {
+	//here's where we have to cycle through every planet and perform our calculation on each of them
+	//then sum the results ...
+	// I can guarantee already that the # of planets will exceed the GLSL max uniforms ...
+	//that means we'll have to upload the positions and masses via textures ...
+	//this would fit well with my plans to eventually do the keplerian orbital element pos calcs on the GPU
+
+	//now we get to for-loop across the planetStateTex ...
 }
-*/
+
+void main() {
+	//pos is vec2 from [0,1] to [0,1]
+	//transform it to [360,180] to get lat/lon
+	vec2 latlon = ((texCoord - vec2(.5, .5)) * vec2(360., 180.)).yx;
+	vec3 modelVertex = geodeticPosition(latlon);				//get global position from lat/lon, equatorial radius, and inverse flattening
+	vec3 localVertex = quatRotate(angle, modelVertex);				//calculate position, aligned to solar system frame, but still locally offset
+	vec3 solarSystemVertex = localVertex + pos;								//offset to solar system (elliptical) coordinates -- but offset to be relative to orbitted object
+
+	//hmm... this is going to require a min/max search across the entire texture ...
+	// ... or we can approximate it by the last iteration ...
+	// but maybe it'd be best to do this on the GPU first, then do a reduction across it to find the min/max
+	// ... or we can do it frame-by-frame, so it lags behind 1/30th of a ms
+	// then we still get per-pixel calculations
+	float tideValue = calculateTidalValue(localVertex);	//computes force magnitude 
+	gl_FragColor = vec4(tideValue);
+}
+*/}),
+		uniforms : {
+			tex : 0,
+			hsvTex : 1
+		}
+	});
+}
 
 
 	//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
@@ -3468,6 +3606,22 @@ void main() {
 	//init stars now that shaders are made
 	initStars();
 
+	lineObj = new glutil.SceneObject({
+		mode : gl.LINES,
+		shader : colorShader,
+		attrs : {
+			vertex : new glutil.ArrayBuffer({
+				count : 2,
+				usage : gl.DYNAMIC_DRAW
+			})
+		},
+		uniforms : {
+			color : [1,1,1,1]
+		},
+		parent : null,
+		static : true
+	});
+	
 	var planetsDone = 0;
 
 	for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { (function(){
@@ -3880,7 +4034,6 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 	var eccentricAnomaly = undefined;
 	var orbitType = undefined;
 	var meanAnomaly = undefined;
-	var meanMotion = undefined;
 	var A, B;
 
 	//used by planets to offset reconstructed orbit coordinates to exact position of planet
@@ -3929,7 +4082,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
 		var orbitalPeriod = undefined;
 		if (orbitType === 'elliptic') {
-			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed / gravitationalParameter) / (60*60*24);	//julian day
 		}
 
 		var longitudeOfAscendingNode = assertExists(planet.sourceData, 'longitudeOfAscendingNode');
@@ -3944,13 +4097,16 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		var cosInclination = Math.cos(inclination);
 		var sinInclination = Math.sin(inclination);
 
+		var oneMinusEccentricitySquared = 1 - eccentricity * eccentricity;
+		//magnitude of A is a 
 		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
 			 semiMajorAxis * sinPericenter * sinInclination];
-		B = [-semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-			 semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-			 semiMajorAxis * Math.sqrt(Math.abs(1 - eccentricity * eccentricity)) * cosPericenter * sinInclination];
-
+		//magnitude of B is a * sqrt(|1 - e^2|)
+		B = [semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
+			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination];
+		//inner product: A dot B = 0
 
 		var timeOfPeriapsisCrossing;
 		if (planet.isComet) {
@@ -3960,11 +4116,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		if (orbitType === 'parabolic') {
 			eccentricAnomaly = Math.tan(argumentOfPericenter / 2);
 			meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
-			meanMotion = meanAnomaly / (julianDate - timeOfPeriapsisCrossing);
 		} else if (orbitType === 'hyperbolic') {
 			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
 			meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
-			meanMotion = meanAnomaly / (julianDate - timeOfPeriapsisCrossing);
 		} else if (orbitType === 'elliptic') {
 			//in theory I can say 
 			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPericenter)) / (1 + eccentricity * Math.cos(argumentOfPericenter)));
@@ -3973,8 +4127,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			if (planet.isComet) {
 				timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
 				var timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
-				meanMotion = 2 * Math.PI / orbitalPeriod;
-				meanAnomaly = timeSinceLastPeriapsisCrossing * meanMotion;
+				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 			} else if (planet.isAsteroid) {
 				meanAnomaly = planet.sourceData.meanAnomaly;
 			//} else {
@@ -4004,8 +4157,8 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 				func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
 				deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
 			} else if (orbitType === 'hyperbolic') {	//hyperbolic
-				func = meanAnomaly - eccentricity  * Math.sinh(eccentricAnomaly) - eccentricAnomaly;
-				deriv = -1 - eccentricity * Math.cosh(eccentricAnomaly);
+				func = meanAnomaly + eccentricAnomaly - eccentricity  * Math.sinh(eccentricAnomaly);
+				deriv = 1 - eccentricity * Math.cosh(eccentricAnomaly);
 			} else {
 				throw 'here';
 			}
@@ -4020,16 +4173,100 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		
 		//parabolas and hyperbolas don't define orbitalPeriod
 		// so no need to recalculate it
-		if (orbitalPeriod !== undefined && meanMotion !== undefined) {
-			timeOfPeriapsisCrossing = meanAnomaly / meanMotion; //if it is a comet then we're just reversing the calculation above ...
+		if (orbitalPeriod !== undefined && meanAnomaly !== undefined) {
+			timeOfPeriapsisCrossing = meanAnomaly * orbitalPeriod / (2 * Math.PI); //if it is a comet then we're just reversing the calculation above ...
 		}
 
-		var posX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
-		var posY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
-		var posZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-		var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * meanMotion;	//m/day
-		var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * meanMotion;
-		var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * meanMotion;
+/*
+r = radial distance
+a = semi major axis
+E = eccentric anomaly
+nu = true anomaly
+
+r^2 = a^2 (cos(E) - e)^2 + a^2 |1 - e^2| sin(E)^2
+r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + |1 - e^2| sin(E)^2)
+
+=== for eccentric orbits ... e < 1 <=> e^2 < 1 <=> 1 - e^2 > 0
+r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + (1 - e^2) sin(E)^2)
+r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + sin(E)^2 - e^2 sin(E)^2)
+r^2 = a^2 (1 - 2 e cos(E) + e^2 - e^2 sin(E)^2)
+r^2 = a^2 (1 - 2 e cos(E) + e^2 - e^2 (1 - cos(E)^2))
+r^2 = a^2 (1 - 2 e cos(E) + e^2 cos(E)^2)
+r^2 = a^2 (1 - e cos(E))^2
+r = a (1 - e cos(E))		true according to http://en.wikipedia.org/wiki/Eccentric_anomaly
+
+r = a (1 - e^2) / (1 + e cos(nu)) is stated by http://www.bogan.ca/orbits/kepler/orbteqtn.html
+therefore should be true:
+(1 - e cos(E)) = (1 - e^2) / (1 + e cos(nu))
+1 + e cos(nu) = (1 - e^2) / (1 - e cos(E))
+e cos(nu) = (1 - e^2 - 1 + e cos(E)) / (1 - e cos(E))
+cos(nu) = (cos(E) - e) / (1 - e cos(E))
+...which checks out with Wikipedia: http://en.wikipedia.org/wiki/True_anomaly#From_the_eccentric_anomaly
+
+r = a (1 - e^2) / (1 + e cos(nu))
+r/a = (1 - e^2) / (1 + e cos(nu))
+a/r = (1 + e cos(nu)) / (1 - e^2)
+2 a/r - 1 = (1 + e cos(nu)) / (1 - e^2) - (1 - e^2)/(1 - e^2)
+2 a/r - r/r = e (e + cos(nu)) / (1 - e^2)
+(2 a - r)/(r a) = [e (e + cos(nu))] / [a (1 - e^2)]
+v^2 = mu (2/r - 1/a) = mu (e^2 + e cos(nu)) / (a (1 - e^2))
+the first of these is true: v^2 = mu (2/r - 1/a) according to both bogan.ca and wikipedia 
+
+the second: v^2 = mu e (e + cos(nu)) / (a (1 - e^2)) should match v^2 = mu / (a (1 - e^2)) (1 - 2 cos(nu) + e^2)
+is true only for e^2 + e cos(nu) = 1 - 2 cos(nu) + e^2
+	... e cos(nu) = 1 - 2 cos(nu)
+	... (2 + e) cos(nu) = 1
+	... cos(nu) = 1/(e + 2)	...which doesn't look true ... so maybe that bogan.ca second velocity equation v^2 = (mu/p)(1 - 2 cos(nu) + e^2) is wrong?
+
+=== for hyperbolic orbits ... e > 1 <=> e^2 > 1 <=> 1 - e^2 < 0
+r^2 = a^2 (cos(E) 
+	... we should get to 
+
+*/
+		var dt_dE;
+		if (orbitType == 'parabolic') {
+			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (1 + eccentricAnomaly * eccentricAnomaly);
+		} else if (orbitType == 'elliptic') {
+			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (1 - eccentricity * Math.cos(eccentricAnomaly));
+		} else if (orbitType == 'hyperbolic') {
+			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (eccentricity * Math.cosh(eccentricAnomaly) - 1);
+		}
+		var dE_dt = 1/dt_dE;
+		//finally using http://en.wikipedia.org/wiki/Kepler_orbit like I should've in the first place ...
+		var coeffA, coeffB;
+		var coeffDerivA, coeffDerivB;
+		if (orbitType == 'parabolic') {
+			//...?
+		} else if (orbitType == 'elliptic') { 
+			coeffA = Math.cos(eccentricAnomaly) - eccentricity;
+			coeffB = Math.sin(eccentricAnomaly);
+			coeffDerivA = -Math.sin(eccentricAnomaly) * dE_dt;
+			coeffDerivB = Math.cos(eccentricAnomaly) * dE_dt;
+		} else if (orbitType == 'hyperbolic') {
+			coeffA = eccentricity - Math.cosh(eccentricAnomaly);
+			coeffB = Math.sinh(eccentricAnomaly);
+			coeffDerivA = -Math.sinh(eccentricAnomaly) * dE_dt;
+			coeffDerivB = Math.cosh(eccentricAnomaly) * dE_dt;
+		}
+		
+		var posX = A[0] * coeffA + B[0] * coeffB;
+		var posY = A[1] * coeffA + B[1] * coeffB;
+		var posZ = A[2] * coeffA + B[2] * coeffB;
+		//v^2 = (a^2 sin^2(E) + a^2 |1 - e^2| cos^2(E)) * mu/a^3 / (1 - e cos(E))
+		//v^2 = (sin^2(E) + |1 - e^2| cos^2(E)) * mu/(a (1 - e cos(E)))
+		
+		//v^2 should be = mu/(a(1-e^2)) * (1 + e^2 - 2 cos(nu))	<- for nu = true anomaly
+		//v^2 should also be = mu (2/r - 1/a) = mu (2a - r) / (r a)
+		//... then (2 a - r) / (r a) should = (1 - 2 cos(nu) + e^2) / (a (1 - e^2))
+		//...	2 a/r - 1 should = (1 - 2 cos(nu) + e^2) / ((1 + e) (1 - e))
+		//...	2 a/r should = (1-e^2)/(1-e^2) + (1 - 2 cos(nu) + e^2) / (1-e^2)
+		//...	2 a/r should = (2 - 2 cos(nu)) / (1-e^2)
+		//...	a/r should = (1 - cos(nu)) / (1 - e^2)
+		//...	r/a should = (1 - e^2) / (1 - cos(nu))
+		//...	r should = a (1 - e^2) / (1 - cos(nu))
+		var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
+		var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
+		var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
 		planet.pos[0] = posX + parentPlanet.pos[0];
 		planet.pos[1] = posY + parentPlanet.pos[1];
 		planet.pos[2] = posZ + parentPlanet.pos[2];
@@ -4048,7 +4285,6 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			inclination : inclination,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
-			meanMotion : meanMotion,
 			orbitType : orbitType,
 			orbitalPeriod : orbitalPeriod,	//only exists for elliptical orbits
 			A : A,
@@ -4099,6 +4335,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		//i've eliminated all but one of the rotation degrees of freedom ...
 
 		//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
+		//http://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
 
 		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
 		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
@@ -4166,8 +4403,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
 		}
 				
-		meanMotion = 2 * Math.PI / orbitalPeriod;
-		//meanAnomaly = timeSinceLastPeriapsisCrossing * meanMotion;
+		meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 
 		planet.keplerianOrbitalElements = {
 			relVelSq : velSq,
@@ -4182,8 +4418,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			argumentOfPericenter : argumentOfPericenter,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			//meanAnomaly : meanAnomaly,
-			meanMotion : meanMotion,
+			meanAnomaly : meanAnomaly,
 			orbitType : orbitType,
 			orbitalPeriod : orbitalPeriod,
 			A : A,
@@ -4200,12 +4435,24 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		var frac = i / (orbitPathResolution - 1);
 		var theta = frac * 2 * Math.PI;
 		var pathEccentricAnomaly = eccentricAnomaly + theta;
-		var pathCosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-		var pathSinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
 
-		var vtxPosX = A[0] * (pathCosEccentricAnomaly - eccentricity) + B[0] * pathSinEccentricAnomaly;
-		var vtxPosY = A[1] * (pathCosEccentricAnomaly - eccentricity) + B[1] * pathSinEccentricAnomaly;
-		var vtxPosZ = A[2] * (pathCosEccentricAnomaly - eccentricity) + B[2] * pathSinEccentricAnomaly;
+		//matches above
+		var coeffA, coeffB;
+		if (orbitType == 'parabolic') {
+			//...?
+		} else if (orbitType == 'elliptic') { 
+			coeffA = Math.cos(pathEccentricAnomaly) - eccentricity;
+			coeffB = Math.sin(pathEccentricAnomaly);
+			//t = a sqrt(a/mu) (E - e sin(E))
+		} else if (orbitType == 'hyperbolic') {
+			coeffA = eccentricity - Math.cosh(pathEccentricAnomaly);
+			coeffB = Math.sinh(pathEccentricAnomaly);
+			//t = a sqrt(a/mu) (e sinh(E) - E)
+		}
+
+		var vtxPosX = A[0] * coeffA + B[0] * coeffB;
+		var vtxPosY = A[1] * coeffA + B[1] * coeffB;
+		var vtxPosZ = A[2] * coeffA + B[2] * coeffB;
 
 		//add to buffer
 		vertexes.push(vtxPosX);
@@ -4252,27 +4499,57 @@ function recomputePlanetsAlongOrbit() {
 		var planet = starSystem.planets[i];
 		if (planet.parent) {
 			var ke = planet.keplerianOrbitalElements;
+			var orbitType = ke.orbitType;
+
 			var meanMotion = undefined;
-			if (ke.orbitalPeriod !== undefined) {
+			if (ke.orbitalPeriod !== undefined) {	//elliptical
 				meanMotion = 2 * Math.PI / ke.orbitalPeriod;
-			} else if (ke.timeOfPeriapsisCrossing !== undefined) {
+			} else if (ke.timeOfPeriapsisCrossing !== undefined) {	//hyperbolic ... shouldn't be using mean motion?
 				meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
 			} else {
 				throw 'here';
 			}
+		
+			//TODO don't use meanMotion for hyperbolic orbits
 			var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
 			var theta = timeAdvanced * meanMotion;
 			var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
-			var cosEccentricAnomaly = Math.cos(pathEccentricAnomaly);
-			var sinEccentricAnomaly = Math.sin(pathEccentricAnomaly);
 			var A = ke.A;
 			var B = ke.B;
-			var posX = A[0] * (cosEccentricAnomaly - ke.eccentricity) + B[0] * sinEccentricAnomaly;
-			var posY = A[1] * (cosEccentricAnomaly - ke.eccentricity) + B[1] * sinEccentricAnomaly;
-			var posZ = A[2] * (cosEccentricAnomaly - ke.eccentricity) + B[2] * sinEccentricAnomaly;
-			var velX = (A[0] * -sinEccentricAnomaly + B[0] * cosEccentricAnomaly) * meanMotion;
-			var velY = (A[1] * -sinEccentricAnomaly + B[1] * cosEccentricAnomaly) * meanMotion;
-			var velZ = (A[2] * -sinEccentricAnomaly + B[2] * cosEccentricAnomaly) * meanMotion;
+		
+			//matches above
+			var dt_dE;
+			var semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
+			if (orbitType == 'parabolic') {
+				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 + pathEccentricAnomaly * pathEccentricAnomaly);
+			} else if (orbitType == 'elliptic') {
+				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 - ke.eccentricity * Math.cos(pathEccentricAnomaly));
+			} else if (orbitType == 'hyperbolic') {
+				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (ke.eccentricity * Math.cosh(pathEccentricAnomaly) - 1);
+			}
+			var dE_dt = 1/dt_dE;
+			var coeffA, coeffB;
+			var coeffDerivA, coeffDerivB;
+			if (orbitType == 'parabolic') {
+				//...?
+			} else if (orbitType == 'elliptic') { 
+				coeffA = Math.cos(pathEccentricAnomaly) - ke.eccentricity;
+				coeffB = Math.sin(pathEccentricAnomaly);
+				coeffDerivA = -Math.sin(pathEccentricAnomaly) * dE_dt;
+				coeffDerivB = Math.cos(pathEccentricAnomaly) * dE_dt;
+			} else if (orbitType == 'hyperbolic') {
+				coeffA = ke.eccentricity - Math.cosh(pathEccentricAnomaly);
+				coeffB = Math.sinh(pathEccentricAnomaly);
+				coeffDerivA = -Math.sinh(pathEccentricAnomaly) * dE_dt;
+				coeffDerivB = Math.cosh(pathEccentricAnomaly) * dE_dt;
+			}
+			var posX = A[0] * coeffA + B[0] * coeffB;
+			var posY = A[1] * coeffA + B[1] * coeffB;
+			var posZ = A[2] * coeffA + B[2] * coeffB;
+			var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
+			var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
+			var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
+			
 			planet.pos[0] = posX + planet.parent.pos[0];
 			planet.pos[1] = posY + planet.parent.pos[1];
 			planet.pos[2] = posZ + planet.parent.pos[2];
@@ -4364,7 +4641,7 @@ void main() {
 */})
 	});
 
-
+	//for rendering the orbital path
 	orbitPathShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
@@ -4390,6 +4667,9 @@ void main() {
 }
 */})
 	});
+
+	//shader for recomputing planet positions
+	//associated with texture per-planet that stores position (and maybe velocity)
 
 	//TODO update these when we integrate!
 	var calcOrbitPathStartTime = Date.now();
@@ -4778,6 +5058,9 @@ function initScene() {
 	gl.enable(gl.CULL_FACE);
 	gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
+
+	//assign our initial orbitting solar system
+	orbitStarSystem = solarSystem;
 
 	var trackPlanetName = 'Earth';
 	if ($.url().param('target') !== undefined) {
