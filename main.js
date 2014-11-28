@@ -1138,7 +1138,7 @@ var planetPointVisRatio = .001;
 				lineObj.draw({uniforms : { color : planet.color }});
 			}
 
-			if (showOrbitAxis) {
+			if (showOrbitAxis && planet.orbitAxis) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
 				lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
 				lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
