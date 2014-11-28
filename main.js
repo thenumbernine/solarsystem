@@ -3212,13 +3212,21 @@ void main() {
 attribute vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
+
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
 
 */}) + geodeticPositionCode + mlstr(function(){/*
 
 void main() {
-	vec4 vtx4 = mvMat * vec4(geodeticPosition(vertex), 1.);
+	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
