@@ -630,7 +630,7 @@ function mouseRay() {
 	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
 
-function chooseNewOrbitObject(mouseDir,doChoose) {
+function chooseNewOrbitObject(mouseDir, doChoose) {
 	var bestDot = Math.cos(Math.deg(10));
 	var bestTarget = undefined;
 	/*
@@ -667,10 +667,12 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 	processList(orbitStarSystem.planets);
 
 	//for larger-scale clicks, use the starfield
+/* gets annoying, trying to click on a planet and catching a star.  just use the side menu for selecting new stars. 
 	if (showStars) {
 		processList(starSystems);
 	}
-
+*/
+	
 	mouseOverTarget = undefined;
 	if (bestTarget !== undefined) {
 		$('#hoverTargetText').text(bestTarget.name);
@@ -1138,7 +1140,7 @@ var planetPointVisRatio = .001;
 				lineObj.draw({uniforms : { color : planet.color }});
 			}
 
-			if (showOrbitAxis) {
+			if (showOrbitAxis && planet.orbitAxis) {
 				vec3.sub(delta, planet.pos, orbitTarget.pos);
 				lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
 				lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
@@ -3218,13 +3220,21 @@ void main() {
 attribute vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
+
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
 
 */}) + geodeticPositionCode + mlstr(function(){/*
 
 void main() {
-	vec4 vtx4 = mvMat * vec4(geodeticPosition(vertex), 1.);
+	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }

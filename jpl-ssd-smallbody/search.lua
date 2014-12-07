@@ -1,6 +1,6 @@
-module(..., package.seeall)
+#!/usr/bin/env wsapi.cgi
 require 'ext'
-require 'wsapi.request'
+local wsapi_request = require 'wsapi.request'
 
 local bodyTypeForEnum = {
 	[0] = 'comet',
@@ -19,9 +19,10 @@ GET parameters:
 	text = what string to search for
 	page = what page of results to look at
 --]]
-function run(env)
+return {
+run = function(env)
 	local headers = {["Content-type"] = "text/javascript"}
-	local req = wsapi.request.new(env)
+	local req = wsapi_request.new(env)
 	local get = req.GET
 
 	local isComet = false
@@ -110,4 +111,5 @@ function run(env)
 	end
 	return 200, headers, coroutine.wrap(text)
 end
+}
 
