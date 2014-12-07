@@ -630,7 +630,7 @@ function mouseRay() {
 	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
 
-function chooseNewOrbitObject(mouseDir,doChoose) {
+function chooseNewOrbitObject(mouseDir, doChoose) {
 	var bestDot = Math.cos(Math.deg(10));
 	var bestTarget = undefined;
 	/*
@@ -667,10 +667,12 @@ function chooseNewOrbitObject(mouseDir,doChoose) {
 	processList(orbitStarSystem.planets);
 
 	//for larger-scale clicks, use the starfield
+/* gets annoying, trying to click on a planet and catching a star.  just use the side menu for selecting new stars. 
 	if (showStars) {
 		processList(starSystems);
 	}
-
+*/
+	
 	mouseOverTarget = undefined;
 	if (bestTarget !== undefined) {
 		$('#hoverTargetText').text(bestTarget.name);
