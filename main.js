@@ -3,14 +3,26 @@ var CALCULATE_TIDES_WITH_GPU = false;
 
 //TODO put this in js/gl-util-kernel.js
 
-
 GLUtil.prototype.oninit.push(function() {
 	var glutil = this;
 	glutil.KernelShader = makeClass({
 		super : glutil.ShaderProgram,
+		
+		/*
+		args:
+			code : the fragment code
+			varying : name of varying variable.  default 'pos'
+			vertexCode : (optional) vertex code
+			uniforms : { uniformName : uniformType }
+					: { uniformName : [uniformType, initialValue] }
+			texs : [texName]
+				: [{texName : texType}]
+			precision : (optional) mediump (default), highp, etc
+		*/
 		init : function(args) {
+			var varyingVar = args.varying !== undefined ? args.varying : 'pos';
 			
-			var varyingCodePrefix = 'varying vec2 pos;\n';
+			var varyingCodePrefix = 'varying vec2 '+varyingVar+';\n';
 
 			var fragmentCodePrefix = '';
 			var uniforms = {};
@@ -50,7 +62,7 @@ GLUtil.prototype.oninit.push(function() {
 attribute vec2 vertex;
 attribute vec2 texCoord;
 void main() {
-	pos = texCoord; 
+	*/}) + varyingVar + mlstr(function(){/* = texCoord; 
 	gl_Position = vec4(vertex, 0., 1.);
 }
 */})
@@ -1235,7 +1247,9 @@ var planetPointVisRatio = .001;
 					// works the same as not using it
 					updatePlanetStateBuffer[3 + 4 * planetIndex] = 0;
 				} else {
-					updatePlanetStateBuffer[3 + 4 * planetIndex] = planet.mass === undefined ? 0 : planet.mass;
+					updatePlanetStateBuffer[3 + 4 * planetIndex] = 
+						(planet.mass === undefined ? 0 : planet.mass)
+						* 1e-18;	//shader mass precision bias
 				}
 			}
 
@@ -3615,7 +3629,7 @@ uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z 
 uniform bvec4 flags; 
 
 */}) 
-+ 'const float gravitationalConstant = '+gravitationalConstant+';	// m^3 / (kg * s^2)\n'
++ 'const float gravitationalConstant = '+(gravitationalConstant*1e+11)+';	// m^3 / (kg * s^2)\n'
 + geodeticPositionCode + mlstr(function(){/*
 
 vec3 quatRotate(vec4 q, vec3 v){
@@ -3626,8 +3640,23 @@ vec3 quatRotate(vec4 q, vec3 v){
 //while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
 //1e+19 is still an upper bound for our floating point numbers
 //soo ... scale everything down here, and up later
-const float precisionBias = 1e-4;
 
+//pluto sits at 4.9e+12 m from the sun, but distances are cubed (and cannot exceed 1e+19) so ...
+const float distancePrecisionBias = 1e-6;
+
+//planet masses are all less than the sun at 2e+30
+// so scale mass down by 1e-18 or so to put it in the same range as distance
+const float massPrecisionBias = 1.;	//baking this directly into the uploaded mass: 1e-18
+
+//...and gravity is pretty out there ... 6e-11
+const float gravityPrecisionBias = 1.;//baking this directly in the constant: 1e+11
+
+//also note, m only shows up next to g, so maybe merge them into the numbers as well?
+//maybe upload M*G=mu gravitational parameters of planets instead of masses?
+
+//finally the force rescaling
+// equal to 2*d-g-m to renormalize everything
+const float forcePrecisionBias = 1e-5;
 
 //https://thasler.com/blog/?p=93
 
@@ -3731,7 +3760,6 @@ double1 double1_sqrt(double1 a) {
 }
 
 //same as double1 but trying to take advantage of parallelization
-//upper bound: 1.3e+19
 
 struct double3 {
 	vec3 hi, lo;
@@ -3825,49 +3853,63 @@ double1 double3_length(double3 dsa) {
 	return double1_sqrt(double3_dot(dsa, dsa));
 }
 
-double3 calcGravityAccel(double3 solarSystemVertex, double3 planetPos, double1 planetMass) {
-	double3 x = double3_sub(solarSystemVertex, planetPos);
-	double1 r = double3_length(x);
-	double1 r2 = double1_mul(r, r);	//zero -- too big
-	double1 r3 = double1_mul(r, r2);
-	return double3_scale(
-			x, 
-			double1_div(
-				double1_mul(
-					double1_set(-gravitationalConstant * precisionBias), 
-					planetMass
+//returns magnitude g+m-2d
+double3 calcGravityAccel(
+	double3 solarSystemVertex, 	//d
+	double3 planetPos, 			//d
+	double1 planetMass			//m
+) {
+	double3 x = double3_sub(solarSystemVertex, planetPos);	//d
+	double1 r = double3_length(x);							//d
+	double1 r2 = double1_mul(r, r);							//2d
+	double1 r3 = double1_mul(r, r2);						//3d
+	return double3_scale(									//g+m-2d
+			x,												//d
+			double1_div(									//g+m-3d
+				double1_mul(								//g+m
+					double1_set(-gravitationalConstant * gravityPrecisionBias), //g
+					planetMass								 //m
 				), 
-				r3
+				r3											//3d
 			)
 		);
 }
 
-double3 calcTidalAccel(double3 solarSystemVertex, double3 solarSystemNormal, double3 planetPos, double1 planetMass) {
-	double3 x = double3_sub(solarSystemVertex, planetPos);
-	double1 r = double3_length(x);
-	double1 r2 = double1_mul(r, r);
-	double1 r3 = double1_mul(r, r2);
-	double1 xDotN = double3_dot(x, solarSystemNormal);
-	return double3_scale(
-			double3_sub(
-				double3_scale(
-					x, 
-					double1_div(
-						double1_mul(
-							double1_set(3.), 
-							xDotN
+//returns magnitude g+m-2d
+double3 calcTidalAccel(
+	double3 solarSystemVertex,	//d
+	double3 solarSystemNormal,	//0
+	double3 planetPos,			//d
+	double1 planetMass			//m
+) {
+	double3 x = double3_sub(solarSystemVertex, planetPos);	//d
+	double1 r = double3_length(x);							//d
+	double1 r2 = double1_mul(r, r);							//2d
+	double1 r3 = double1_mul(r, r2);						//3d
+	double1 xDotN = double3_dot(x, solarSystemNormal);		//d
+	return double3_scale(						//g+m-2d
+			double3_sub(						//0
+				double3_scale(					//0
+					x, 							//d
+					double1_div(				//-d
+						double1_mul(			//d
+							double1_set(3.), 	//0
+							xDotN				//d
 						), 
-						r2
+						r2						//2d
 					)
 				), 
-				solarSystemNormal
+				solarSystemNormal				//0
 			),
-			double1_div(
-				double1_mul(
-					double1_set(gravitationalConstant * precisionBias),
-					planetMass
-				),
-				r3
+			double1_mul(							//g+m-2d
+				double1_set(distancePrecisionBias),	//d
+				double1_div(						//g+m-3d
+					double1_mul(					//g+m
+						double1_set(gravitationalConstant * gravityPrecisionBias),	//g
+						planetMass					//m
+					),
+					r3								//3d
+				)
 			)
 		);
 }
@@ -3879,7 +3921,7 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 	//that means we'll have to upload the positions and masses via textures ...
 	//this would fit well with my plans to eventually do the keplerian orbital element pos calcs on the GPU
 
-	double3 solarSystemVertex = double3_set(solarSystemVertex_s * precisionBias);
+	double3 solarSystemVertex = double3_set(solarSystemVertex_s * distancePrecisionBias);
 	double3 solarSystemNormal = double3_set(solarSystemNormal_s);
 
 	double3 tideAccel = double3_zero();
@@ -3894,8 +3936,8 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 		vec4 planetState = texture2D(planetStateTex, vec2(.5, (float(i)+.5)*delta_i));
 		if (planetState.w == 0.) continue;
 
-		double3 planetPos = double3_set(planetState.xyz * precisionBias);
-		double1 planetMass = double1_set(planetState.w * precisionBias);
+		double3 planetPos = double3_set(planetState.xyz * distancePrecisionBias);
+		double1 planetMass = double1_set(planetState.w * massPrecisionBias);	//might have to pull the rescale outside the shader ...
 		if ((flags[0] || flags[1]) && (i != sourcePlanetIndex)) {
 			tideAccel = double3_add(tideAccel, calcTidalAccel(solarSystemVertex, solarSystemNormal, planetPos, planetMass));
 		}
@@ -3914,7 +3956,12 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 	if (flags[1]) accel = double3_add(accel, tideTangent);
 	if (flags[2]) accel = double3_add(accel, gravNormal);
 	if (flags[3]) accel = double3_add(accel, gravTangent);
-	return double3_length(accel).v.x;
+
+	double1 force = double3_length(accel);	//units of g + m - 2 * d
+	force = double1_mul(		//0
+		force, 					//g+m-2d
+		double1_set(forcePrecisionBias));	//2d-g-m
+	return force.v.x;
 }
 
 void main() {
