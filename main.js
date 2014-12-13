@@ -1109,8 +1109,6 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 								equatorialRadius : planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius,
 								inverseFlattening : planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5,
 								sourcePlanetIndex : planet.index,
-								//TODO or just use the planet index, but then we can look up the mass in the 'influence' table .. but that would mean setting aside a new flag (other than mass) for the influence flag (for when the user disabled influence from the source planet)
-								sourcePlanetMass : planet.mass !== undefined ? planet.mass : .5,
 								planetStateTexHeight : orbitStarSystem.planetStateTex.height,
 								flags : flags
 							},
@@ -3596,6 +3594,7 @@ void main() {
 		*/}),
 		fragmentCode : mlstr(function(){/*
 precision highp sampler2D;
+
 varying vec2 texCoordv;
 
 uniform vec3 pos;					//planet position, relative to the sun
@@ -3605,7 +3604,6 @@ uniform float equatorialRadius;
 uniform float inverseFlattening;
 
 uniform int sourcePlanetIndex;		//index of the source planet.
-uniform float sourcePlanetMass;		//mass of this planet, in kg.  TODO 1) introduce "influencing" flag 2) use sourcePlanetIndex to look up in planet state tex instead of using this.
 
 uniform int planetStateTexHeight;
 uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z mass]
@@ -3624,35 +3622,269 @@ vec3 quatRotate(vec4 q, vec3 v){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 
-vec3 calcGravityAccel(vec3 solarSystemVertex, vec4 planetState) {
-	vec3 x = solarSystemVertex - planetState.xyz;
-	float r = length(x);
-	float r2 = r * r;
-	float r3 = r * r2;
-	return x * (-gravitationalConstant * planetState.w / r3);
+
+//while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
+//1e+19 is still an upper bound for our floating point numbers
+//soo ... scale everything down here, and up later
+const float precisionBias = 1e-4;
+
+
+//https://thasler.com/blog/?p=93
+
+struct double1 {
+	vec2 v;	//v.x == hi, v.y == lo
+};
+
+double1 double1_set(float a) {
+	double1 d;
+	d.v = vec2(a, 0.);
+	return d;
 }
 
-vec3 calcTidalAccel(vec3 solarSystemVertex, vec3 solarSystemNormal, vec4 planetState) {
-	vec3 x = solarSystemVertex - planetState.xyz;
-	float r = length(x);
-	float r2 = r * r;
-	float r3 = r * r2;
-	float r4 = r * r3;
-	float r5 = r * r4;
-	float xDotN = dot(x, solarSystemNormal);
-	return (gravitationalConstant * planetState.w) * (3. * xDotN * x / r5 - solarSystemNormal / r3);
+double1 double1_set2(float hi, float lo) {
+	double1 d;
+	d.v = vec2(hi, lo);
+	return d;
 }
 
-float calcForceValue(vec3 solarSystemVertex, vec3 solarSystemNormal) {
+double1 double1_add(double1 dsa, double1 dsb) {
+	double1 dsc;
+	float t1 = dsa.v.x + dsb.v.x;
+	float e = t1 - dsa.v.x;
+	float t2 = ((dsb.v.x - e) + (dsa.v.x - (t1 - e))) + dsa.v.y + dsb.v.y;
+	dsc.v.x = t1 + t2;
+	dsc.v.y = t2 - (dsc.v.x - t1);
+	return dsc;
+}
+
+double1 double1_sub(double1 dsa, double1 dsb) {
+	double1 dsc;
+	float t1 = dsa.v.x - dsb.v.x;
+	float e = t1 - dsa.v.x;
+	float t2 = ((-dsb.v.x - e) + (dsa.v.x - (t1 - e))) + dsa.v.y - dsb.v.y;
+	dsc.v.x = t1 + t2;
+	dsc.v.y = t2 - (dsc.v.x - t1);
+	return dsc;
+}
+
+double1 double1_mul(double1 dsa, double1 dsb) {
+	double1 dsc;
+	const float split = 8193.;
+
+	float cona = dsa.v.x * split;
+	float conb = dsb.v.x * split;
+	float a1 = cona - (cona - dsa.v.x);
+	float b1 = conb - (conb - dsb.v.x);
+	float a2 = dsa.v.x - a1;
+	float b2 = dsb.v.x - b1;
+
+	float c11 = dsa.v.x * dsb.v.x;
+	float c21 = a2 * b2 + (a2 * b1 + (a1 * b2 + (a1 * b1 - c11)));
+
+	float c2 = dsa.v.x * dsb.v.y + dsa.v.y * dsb.v.x;
+
+	float t1 = c11 + c2;
+	float e = t1 - c11;
+	float t2 = dsa.v.y * dsb.v.y + ((c2 - e) + (c11 - (t1 - e))) + c21;
+
+	dsc.v.x = t1 + t2;
+	dsc.v.y = t2 - (dsc.v.x - t1);
+
+	return dsc;
+}
+
+double1 double1_div(double1 dsa, double1 dsb) {
+	const float split = 8193.;
+	float s1 = dsa.v.x / dsb.v.x;
+	float cona = s1 * split;
+	float conb = dsb.v.x * split;
+	float a1 = cona - (cona - s1);
+	float b1 = conb - (conb - dsb.v.x);
+	float a2 = s1 - a1;
+	float b2 = dsb.v.x - b1;
+	float c11 = s1 * dsb.v.x;
+	float c21 = (((a1 * b1 - c11) + a1 * b2) + a2 * b1) + a2 * b2;
+	float c2 = s1 * dsb.v.y;
+	float t1 = c11 + c2;
+	float e = t1 - c11;
+	float t2 = ((c2 - e) + (c11 - (t1 - e))) + c21;
+	float t12 = t1 + t2;
+	float t22 = t2 - (t12 - t1);
+	float t11 = dsa.v.x - t12;
+	e = t11 - dsa.v.x;
+	float t21 = ((-t12 - e) + (dsa.v.x - (t11 - e))) + dsa.v.y - t22;
+	float s2 = (t11 + t21) / dsb.v.x;
+	float dsc_hi = s1 + s2;
+	return double1_set2(dsc_hi, s2 - (dsc_hi - s1));
+}
+
+double1 double1_sqrt(double1 a) {
+	if (a.v.x == 0.) return double1_set(0.);
+	float t1 = 1. / sqrt(a.v.x);
+	float t2 = a.v.x * t1;
+	double1 s0 = double1_mul(double1_set(t2), double1_set(t2));
+	double1 s1 = double1_sub(a, s0);
+	float t3 = 0.5 * s1.v.x * t1;
+	s0 = double1_set(t2);
+	s1 = double1_set(t3);
+	return double1_add(s0, s1);
+}
+
+//same as double1 but trying to take advantage of parallelization
+//upper bound: 1.3e+19
+
+struct double3 {
+	vec3 hi, lo;
+};
+
+double3 double3_zero() {
+	double3 d;
+	d.hi = d.lo = vec3(0., 0., 0.);
+	return d;
+}
+
+double3 double3_set(vec3 v) {
+	double3 d;
+	d.hi = v;
+	d.lo = vec3(0., 0., 0.);
+	return d;
+}
+
+double3 double3_set2(vec3 hi, vec3 lo) {
+	double3 d;
+	d.hi = hi;
+	d.lo = lo;
+	return d;
+}
+
+double3 double3_add(double3 dsa, double3 dsb) {
+	double3 dsc;
+	vec3 t1 = dsa.hi + dsb.hi;
+	vec3 e = t1 - dsa.hi;
+	vec3 t2 = ((dsb.hi - e) + (dsa.hi - (t1 - e))) + dsa.lo + dsb.lo;
+	dsc.hi = t1 + t2;
+	dsc.lo = t2 - (dsc.hi - t1);
+	return dsc;
+}
+
+double3 double3_sub(double3 dsa, double3 dsb) {
+	double3 dsc;
+	vec3 t1 = dsa.hi - dsb.hi;
+	vec3 e = t1 - dsa.hi;
+	vec3 t2 = ((-dsb.hi - e) + (dsa.hi - (t1 - e))) + dsa.lo - dsb.lo;
+	dsc.hi = t1 + t2;
+	dsc.lo = t2 - (dsc.hi - t1);
+	return dsc;
+}
+
+double3 double3_mul(double3 dsa, double3 dsb) {
+	double3 dsc;
+	const vec3 split = vec3(8193.);
+
+	vec3 cona = dsa.hi * split;
+	vec3 conb = dsb.hi * split;
+	vec3 a1 = cona - (cona - dsa.hi);
+	vec3 b1 = conb - (conb - dsb.hi);
+	vec3 a2 = dsa.hi - a1;
+	vec3 b2 = dsb.hi - b1;
+
+	vec3 c11 = dsa.hi * dsb.hi;
+	vec3 c21 = a2 * b2 + (a2 * b1 + (a1 * b2 + (a1 * b1 - c11)));
+
+	vec3 c2 = dsa.hi * dsb.lo + dsa.lo * dsb.hi;
+
+	vec3 t1 = c11 + c2;
+	vec3 e = t1 - c11;
+	vec3 t2 = dsa.lo * dsb.lo + ((c2 - e) + (c11 - (t1 - e))) + c21;
+
+	dsc.hi = t1 + t2;
+	dsc.lo = t2 - (dsc.hi - t1);
+
+	return dsc;
+}
+
+double3 double3_scale(double3 dsa, double1 dsb) {
+	double1 x = double1_mul(double1_set2(dsa.hi.x, dsa.lo.x), dsb);
+	double1 y = double1_mul(double1_set2(dsa.hi.y, dsa.lo.y), dsb);
+	double1 z = double1_mul(double1_set2(dsa.hi.z, dsa.lo.z), dsb);
+	return double3_set2(vec3(x.v.x, y.v.x, z.v.x), vec3(x.v.y, y.v.y, z.v.y));
+}
+
+double1 double3_dot(double3 dsa, double3 dsb) {
+	double3 dsc = double3_mul(dsa, dsb);
+	return double1_add(
+		double1_set2(dsc.hi.x, dsc.lo.x),
+		double1_add(
+			double1_set2(dsc.hi.y, dsc.lo.y),
+			double1_set2(dsc.hi.z, dsc.lo.z)
+		)
+	);
+}
+
+double1 double3_length(double3 dsa) {
+	return double1_sqrt(double3_dot(dsa, dsa));
+}
+
+double3 calcGravityAccel(double3 solarSystemVertex, double3 planetPos, double1 planetMass) {
+	double3 x = double3_sub(solarSystemVertex, planetPos);
+	double1 r = double3_length(x);
+	double1 r2 = double1_mul(r, r);	//zero -- too big
+	double1 r3 = double1_mul(r, r2);
+	return double3_scale(
+			x, 
+			double1_div(
+				double1_mul(
+					double1_set(-gravitationalConstant * precisionBias), 
+					planetMass
+				), 
+				r3
+			)
+		);
+}
+
+double3 calcTidalAccel(double3 solarSystemVertex, double3 solarSystemNormal, double3 planetPos, double1 planetMass) {
+	double3 x = double3_sub(solarSystemVertex, planetPos);
+	double1 r = double3_length(x);
+	double1 r2 = double1_mul(r, r);
+	double1 r3 = double1_mul(r, r2);
+	double1 xDotN = double3_dot(x, solarSystemNormal);
+	return double3_scale(
+			double3_sub(
+				double3_scale(
+					x, 
+					double1_div(
+						double1_mul(
+							double1_set(3.), 
+							xDotN
+						), 
+						r2
+					)
+				), 
+				solarSystemNormal
+			),
+			double1_div(
+				double1_mul(
+					double1_set(gravitationalConstant * precisionBias),
+					planetMass
+				),
+				r3
+			)
+		);
+}
+
+float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 	//here's where we have to cycle through every planet and perform our calculation on each of them
 	//then sum the results ...
 	// I can guarantee already that the # of planets will exceed the GLSL max uniforms ...
 	//that means we'll have to upload the positions and masses via textures ...
 	//this would fit well with my plans to eventually do the keplerian orbital element pos calcs on the GPU
 
-	vec3 tideAccel = vec3(0., 0., 0.);
-	vec3 gravAccel = vec3(0., 0., 0.);
+	double3 solarSystemVertex = double3_set(solarSystemVertex_s * precisionBias);
+	double3 solarSystemNormal = double3_set(solarSystemNormal_s);
 
+	double3 tideAccel = double3_zero();
+	double3 gravAccel = double3_zero();
+	
 	float delta_i = 1. / float(planetStateTexHeight);
 	//only works with constant upper bounds ...
 	const int NEEDLESSUPPERBOUND = 1024;
@@ -3661,28 +3893,28 @@ float calcForceValue(vec3 solarSystemVertex, vec3 solarSystemNormal) {
 		if (i >= planetStateTexHeight) break;
 		vec4 planetState = texture2D(planetStateTex, vec2(.5, (float(i)+.5)*delta_i));
 		if (planetState.w == 0.) continue;
+
+		double3 planetPos = double3_set(planetState.xyz * precisionBias);
+		double1 planetMass = double1_set(planetState.w * precisionBias);
 		if ((flags[0] || flags[1]) && (i != sourcePlanetIndex)) {
-			tideAccel += calcTidalAccel(solarSystemVertex, solarSystemNormal, planetState);
+			tideAccel = double3_add(tideAccel, calcTidalAccel(solarSystemVertex, solarSystemNormal, planetPos, planetMass));
 		}
 		if (flags[2] || flags[3]) {
-			gravAccel += calcGravityAccel(solarSystemVertex, planetState);
+			gravAccel = double3_add(gravAccel, calcGravityAccel(solarSystemVertex, planetPos, planetMass));
 		}
 	}
 
-	vec3 tideNormal = solarSystemNormal * dot(tideAccel, solarSystemNormal);
-	vec3 tideTangent = tideAccel - tideNormal;
-	//TODO use floats and just scale flags.xy by the basis
-	if (!flags[0]) tideAccel -= tideNormal;
-	if (!flags[1]) tideAccel -= tideTangent;
+	double3 tideNormal = double3_scale(solarSystemNormal, double3_dot(tideAccel, solarSystemNormal));
+	double3 tideTangent = double3_sub(tideAccel, tideNormal);
+	double3 gravNormal = double3_scale(solarSystemNormal, double3_dot(gravAccel, solarSystemNormal));
+	double3 gravTangent = double3_sub(gravAccel, gravNormal);
 
-	vec3 gravNormal = solarSystemNormal * dot(gravAccel, solarSystemNormal);
-	vec3 gravTangent = gravAccel - gravNormal;
-	//TODO use floats and just scale flags.zw by the basis
-	if (!flags[2]) gravAccel -= gravNormal;
-	if (!flags[3]) gravAccel -= gravTangent;
-
-	vec3 accel = tideAccel + gravAccel;
-	return length(accel);
+	double3 accel = double3_zero();
+	if (flags[0]) accel = double3_add(accel, tideNormal);
+	if (flags[1]) accel = double3_add(accel, tideTangent);
+	if (flags[2]) accel = double3_add(accel, gravNormal);
+	if (flags[3]) accel = double3_add(accel, gravTangent);
+	return double3_length(accel).v.x;
 }
 
 void main() {
