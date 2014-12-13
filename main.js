@@ -1,5 +1,5 @@
 //getting rid of the old way incrementally
-var CALCULATE_TIDES_WITH_GPU = true;
+var CALCULATE_TIDES_WITH_GPU = false;
 
 //TODO put this in js/gl-util-kernel.js
 
