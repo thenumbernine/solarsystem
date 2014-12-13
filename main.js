@@ -1,3 +1,72 @@
+//getting rid of the old way incrementally
+var CALCULATE_TIDES_WITH_GPU = true;
+
+//TODO put this in js/gl-util-kernel.js
+
+
+GLUtil.prototype.oninit.push(function() {
+	var glutil = this;
+	glutil.KernelShader = makeClass({
+		super : glutil.ShaderProgram,
+		init : function(args) {
+			
+			var varyingCodePrefix = 'varying vec2 pos;\n';
+
+			var fragmentCodePrefix = '';
+			var uniforms = {};
+			if (args.uniforms !== undefined) {
+				$.each(args.uniforms, function(uniformName, uniformType) {
+					if ($.isArray(uniformType)) {
+						//save initial value
+						uniforms[uniformName] = uniformType[1];
+						uniformType = uniformType[0];
+					}
+					fragmentCodePrefix += 'uniform '+uniformType+' '+uniformName+';\n';
+				});
+			}
+			if (args.texs !== undefined) {
+				for (var i = 0; i < args.texs.length; ++i) {
+					var v = args.texs[i];
+					var name, vartype;
+					if (typeof(v) == 'string') {
+						name = v;
+						vartype = 'sampler2D';
+					} else {
+						name = v[0];
+						vartype = v[1];
+					}
+					fragmentCodePrefix += 'uniform '+vartype+' '+name+';\n';
+					uniforms[name] = i;
+				}
+			}
+
+
+			if (!glutil.KernelShader.prototype.kernelVertexShader) {
+				glutil.KernelShader.prototype.kernelVertexShader = new glutil.VertexShader({
+					code : 
+						glutil.vertexPrecision + 
+						varyingCodePrefix +
+						mlstr(function(){/*
+attribute vec2 vertex;
+attribute vec2 texCoord;
+void main() {
+	pos = texCoord; 
+	gl_Position = vec4(vertex, 0., 1.);
+}
+*/})
+				});	
+			}
+
+			args.vertexShader = glutil.KernelShader.prototype.kernelVertexShader;
+			args.fragmentCode = glutil.fragmentPrecision + varyingCodePrefix + fragmentCodePrefix + args.code;
+			delete args.code;
+			args.uniforms = uniforms;	
+			glutil.KernelShader.super.call(this, args);
+		}
+	});
+});
+
+
 var toGLSLFloat = function(x) {
 	x = ''+x;
 	if (x.indexOf('.') == -1) x = x + '.';
@@ -223,8 +292,11 @@ var StarSystem = makeClass({
 	TODO what to do about comets ...
 	for now just don't add them.
 	they don't get any tidal/gravitational force calculations anywyas.
+		
+	eventually set up a mask tex to hold what planets the user flags on/off
 	*/
 	createPlanetsFBOTex : function() {
+		
 		this.planetStateTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,		//xyz = pos, w = mass.  double this up if you need more precision
 			type : gl.FLOAT,
@@ -424,13 +496,13 @@ var mouse;
 var mouseDir;
 var skyCubeObj;
 
-var skyTexFilenames = [
-	'textures/sky-visible-cube-xp.png',
-	'textures/sky-visible-cube-xn.png',
-	'textures/sky-visible-cube-yp.png',
-	'textures/sky-visible-cube-yn.png',
-	'textures/sky-visible-cube-zp.png',
-	'textures/sky-visible-cube-zn.png'
+var skyTexFilenamePrefixes = [
+	'textures/sky-visible-cube-xp-',
+	'textures/sky-visible-cube-xn-',
+	'textures/sky-visible-cube-yp-',
+	'textures/sky-visible-cube-yn-',
+	'textures/sky-visible-cube-zp-',
+	'textures/sky-visible-cube-zn-'
 ];
 
 var glMaxCubeMapTextureSize;
@@ -787,10 +859,12 @@ function getEarthAngle(jd) {
 var gl;
 var canvas;
 
+var fbo;
 var hsvTex;
 var colorShader;
 var latLonShader;
-var planetHSVShader;
+var planetHeatMapAttrShader;
+var planetHeatMapTexShader;
 var orbitPathShader;
 
 var pointObj;
@@ -877,16 +951,24 @@ var updatePlanetClassSceneObj;
 				planet.sceneObj.texs[0] = planet.tex;
 			}
 		} else {
-			planet.sceneObj.shader = planetHSVShader;
+if (!CALCULATE_TIDES_WITH_GPU) {
+			planet.sceneObj.shader = planetHeatMapAttrShader;
 			planet.sceneObj.texs.length = 2;
 			planet.sceneObj.texs[0] = planet.tex;
 			planet.sceneObj.texs[1] = hsvTex;
+} else {
+			planet.sceneObj.shader = planetHeatMapTexShader;
+			planet.sceneObj.texs.length = 3;
+			planet.sceneObj.texs[0] = planet.tex;
+			planet.sceneObj.texs[1] = planet.tideTex;
+			planet.sceneObj.texs[2] = hsvTex;
+}
 			//and update calculated variable if it is out of date ...
 			if (planet.lastMeasureCalcDate !== julianDate) {
 				planet.lastMeasureCalcDate = julianDate;
 				
 				// old way -- calculate on CPU, upload to vertex buffer 
-if (true) {
+if (!CALCULATE_TIDES_WITH_GPU) {
 				
 				var measureMin = undefined;
 				var measureMax = undefined;
@@ -970,23 +1052,142 @@ if (true) {
 					refreshMeasureText();
 				}
 
-}
-
-if (false) {	//new way -- update planet state buffer to reflect position & mass
+} else {		//new way -- update planet state buffer to reflect position & mass
 				// (could store tide values in a texture then reduce to find min/max, but this means a texture per planet ... that's lots of textures ...)
 				// (could compute this on the fly, but then there's no easy way to find the min/max ... )
-				// (could store as texture, and just keep the texture small ... around the size that the tideBuffer already is ... 36x72  ... but that means singularity at the poles ... )
+				// (could store as texture, and just keep the texture small ... around the size that the tideBuffer already is ... 36x72 )
 
 				//fbo render to the tide tex to calcuate the float values 
-			
+		
+				//look in the shader's code for which does what
+				var flags;
+				switch (displayMethod) {
+				case 'Tangent Tidal':
+					flags = [true, false, false, false];
+					break;
+				case 'Normal Tidal':
+					flags = [false, true, false, false];
+					break;
+				case 'Total Tidal':
+					flags = [true, true, false, false];
+					break;
+				case 'Tangent Gravitational':
+					flags = [false, false, true, false];
+					break;
+				case 'Normal Gravitational':
+					flags = [false, false, false, true];
+					flags[3] = true;
+					break;
+				case 'Total Gravitational':
+					flags = [false, false, true, true];
+					break;
+				case 'Tangent Total':
+					flags = [true, false, true, false];
+					break;
+				case 'Normal Total':
+					flags = [false, true, false, true];
+					break;
+				case 'Total':
+					flags = [true, true, true, true];
+					break;
+				}
 
-			
-				fbo.drawToCallback({
-					shader : calcTideShader,
+				fbo.setColorAttachmentTex2D(0, planet.tideTex);
+				gl.viewport(0, 0, tideTexWidth, tideTexHeight);
+				gl.disable(gl.DEPTH_TEST);
+				gl.disable(gl.CULL_FACE);
+				fbo.draw({
+					callback : function() {
+						//clear is working, but the render is not ...
+						//gl.clearColor(.5,0,0,1);
+						//gl.clear(gl.COLOR_BUFFER_BIT);
+						quadObj.draw({
+							shader : planetSurfaceCalculationShader,
+							uniforms : {
+								pos : planet.pos,
+								angle : planet.angle,
+								equatorialRadius : planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius,
+								inverseFlattening : planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5,
+								sourcePlanetIndex : planet.index,
+								//TODO or just use the planet index, but then we can look up the mass in the 'influence' table .. but that would mean setting aside a new flag (other than mass) for the influence flag (for when the user disabled influence from the source planet)
+								sourcePlanetMass : planet.mass !== undefined ? planet.mass : .5,
+								planetStateTexHeight : orbitStarSystem.planetStateTex.height,
+								flags : flags
+							},
+							texs : [orbitStarSystem.planetStateTex],
+						});
+					}
 				});
 
 				//...then min/max reduce
 
+				var reduce = function(kernelShader, src) {
+					var width = tideTexWidth;
+					var height = tideTexHeight;
+					var dstIndex = 0; 
+					var current = src;
+
+					while (width > 1 && height > 1) {
+						width >>= 1;
+						height >>= 1;
+						if (!width || !height) throw 'got a non-square size... TODO add support for this'; 
+						gl.viewport(0, 0, width, height);
+						
+						fbo.bind();
+						gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tideReduceTexs[dstIndex].obj, 0);
+						fbo.check();
+						gl.clear(gl.COLOR_BUFFER_BIT);
+						quadObj.draw({
+							shader : kernelShader,
+							uniforms : {
+								texsize : [tideTexWidth, tideTexHeight], 
+								viewsize : [width, height]
+							},
+							texs : [current]
+						});
+						fbo.unbind();
+
+						current = tideReduceTexs[dstIndex];
+						dstIndex = (dstIndex + 1) & 1;
+					}
+			
+					//'current' has our texture
+
+					//now that the viewport is 1x1, run the encode shader on it
+					fbo.bind();
+					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, encodeTempTex.obj, 0);
+					fbo.check();
+					gl.viewport(0, 0, encodeTempTex.width, encodeTempTex.height);
+					quadObj.draw({
+						shader : encodeShader[0],
+						texs : [current]
+					});
+
+					var cflUint8Result = new Uint8Array(4);
+					gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, cflUint8Result);
+					fbo.unbind();
+					
+					var cflFloat32Result = new Float32Array(cflUint8Result.buffer);
+					var result = cflFloat32Result[0];
+					return result;
+				};
+
+				planet.measureMin = reduce(minReduceShader, planet.tideTex);
+				planet.measureMax = reduce(maxReduceShader, planet.tideTex);
+//console.log('measure min', planet.measureMin, 'max', planet.measureMax);
+				if (planet == orbitTarget) {
+					refreshMeasureText();
+				}
+
+				//planet.sceneObj.uniforms.forceMin = planet.measureMax;
+				//planet.sceneObj.uniforms.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + planet.measureMax;
+planet.forceMin = planet.measureMax;
+planet.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + planet.measureMax;
+
+				gl.viewport(0, 0, glutil.canvas.width, glutil.canvas.height);
+				gl.enable(gl.DEPTH_TEST);
+				gl.enable(gl.CULL_FACE);
+				
 				//...then use the float buffer, min, and max, to do the hsv overlay rendering
 }
 
@@ -1019,23 +1220,30 @@ var planetPointVisRatio = .001;
 		if (displayMethod != 'None') {
 		
 			var targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
+			
 			if (updatePlanetStateBuffer.length != targetSize) {
 				updatePlanetStateBuffer = new Float32Array(targetSize);
 			}
 
 			//gather pos and mass
 			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				if (!planetInfluences[planetIndex]) continue;
 				var planet = orbitStarSystem.planets[planetIndex];
-			
 				updatePlanetStateBuffer[0 + 4 * planetIndex] = planet.pos[0];
 				updatePlanetStateBuffer[1 + 4 * planetIndex] = planet.pos[1];
 				updatePlanetStateBuffer[2 + 4 * planetIndex] = planet.pos[2];
-				updatePlanetStateBuffer[3 + 4 * planetIndex] = planet.mass === undefined ? 0 : planet.mass;
+				
+				if (!planetInfluences[planetIndex]) {
+					//if we're not using this planet then set the mass to zero
+					// works the same as not using it
+					updatePlanetStateBuffer[3 + 4 * planetIndex] = 0;
+				} else {
+					updatePlanetStateBuffer[3 + 4 * planetIndex] = planet.mass === undefined ? 0 : planet.mass;
+				}
 			}
 
 			//update orbit star system's planet state tex
 			orbitStarSystem.planetStateTex.bind();
+			
 			gl.texSubImage2D(
 				gl.TEXTURE_2D,
 				0,
@@ -1046,8 +1254,8 @@ var planetPointVisRatio = .001;
 				gl.RGBA,
 				gl.FLOAT,
 				updatePlanetStateBuffer);
+			
 			orbitStarSystem.planetStateTex.unbind();
-
 		}
 		
 		mat4.identity(glutil.scene.mvMat);
@@ -1210,7 +1418,14 @@ var planetPointVisRatio = .001;
 				}
 				planet.sceneObj.uniforms.color = planet.color;
 
+if (!CALCULATE_TIDES_WITH_GPU) {
 				planet.sceneObj.attrs.tide = planet.tideBuffer;
+}
+
+//something is overriding this between the update calc and here 
+// making me need to re-assign it ...
+planet.sceneObj.uniforms.forceMin = planet.forceMin;
+planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 				//TODO - ambient for each star
 				// TODO even more - absolute magnitude, radiance, HDR, etc
@@ -1484,6 +1699,8 @@ var longitudeMax = 180;
 var longitudeStep = 5;
 var latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
 var longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
+var tideTexWidth = 128;
+var tideTexHeight = 128;
 
 function resize() {
 	canvas.width = window.innerWidth;
@@ -1789,6 +2006,7 @@ function init1() {
 	});
 
 	glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
+console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 	/*glutil.view.angle[0] = -0.4693271591372717;
 	glutil.view.angle[1] = 0.7157221264895661;
@@ -1797,6 +2015,9 @@ function init1() {
 	glutil.view.zNear = 1e+4;
 	glutil.view.zFar = 1e+25;
 
+	fbo = new glutil.Framebuffer();
+	gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.obj);
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 	//now that GL is initialized, and before we are referencing planets, 
 	// build the solar sytsem
@@ -2346,7 +2567,7 @@ function init1() {
 			
 /*hack for debugging*/
 rows = [
-       //test case for hyperbolic
+	   //test case for hyperbolic
 		{
 			"perihelionDistance" : 209232954020.56,
 			"inclination" : 2.2519519080902,
@@ -2468,7 +2689,6 @@ function initStarsControls() {
 function init2() {
 
 	var imgs = [];
-
 	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
 		var planet = solarSystem.planetForHorizonID[horizonID];
 		imgs.push('textures/'+planet.name.toLowerCase()+'.png');
@@ -2479,8 +2699,9 @@ function init2() {
 	imgs.push('textures/saturn-rings-back-scattered.png');
 	imgs.push('textures/saturn-rings-forward-scattered.png');
 	imgs.push('textures/saturn-rings-unlit-side.png');
-	for (var i = 0; i < skyTexFilenames.length; ++i) {
-		imgs.push(skyTexFilenames[i]);
+	//pick the cubemap textures once we know our max cubemap texture size -- 512 on firefox =( but 1024 on chrome =)
+	for (var i = 0; i < skyTexFilenamePrefixes.length; ++i) {
+		imgs.push(skyTexFilenamePrefixes[i] + Math.min(1024, glMaxCubeMapTextureSize) + '.png');
 	}
 	console.log('loading '+imgs.join(', '));
 	$(imgs).preload(function(){
@@ -2919,23 +3140,25 @@ function initPlanetSceneLatLonLineObjs(planet) {
 		planet.sceneObj = planetSceneObj;
 		planet.latLonObj = planetLatLonObj;
 
+if (!CALCULATE_TIDES_WITH_GPU) {
 		//old way, per-vertex storage, updated by CPU
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
-
+} else {
 		//new way, per-texel storage, updated by GPU FBO kernel
 		//TODO pull these by request rather than allocating them per-planet (since we only ever see one or two or maybe 10 or 20 at a time .. never all 180+ local and even more)
 		planet.tideTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,
 			type : gl.FLOAT,
-			width : longitudeDivisions,
-			height : latitudeDivisions,
-			magFilter : gl.NEAREST,
+			width : tideTexWidth,
+			height : tideTexHeight,
+			magFilter : gl.LINEAR,
 			minFilter : gl.NEAREST,
 			wrap : {
 				s : gl.CLAMP_TO_EDGE,
 				t : gl.CLAMP_TO_EDGE
 			}
 		});
+}
 	}
 }
 
@@ -3229,7 +3452,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
 
-*/}) + geodeticPositionCode + mlstr(function(){/*
+		*/}) + geodeticPositionCode + mlstr(function(){/*
 
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex);
@@ -3238,19 +3461,22 @@ void main() {
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
+		*/}),
 		fragmentCode : mlstr(function(){/*
 uniform vec4 color;
 void main() {
 	gl_FragColor = color;
 }
-*/}),
+		*/}),
 		uniforms : {
 			color : [1,1,1,1]
 		}
 	});
 
-	planetHSVShader = new ModifiedDepthShaderProgram({
+if (!CALCULATE_TIDES_WITH_GPU) {
+	
+	//renders a heat map from the float values of the 'tide' attribute
+	planetHeatMapAttrShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec2 vertex;		//lat/lon pairs
 attribute float tide;
@@ -3298,23 +3524,19 @@ void main() {
 		}
 	});
 
-if (false) {
-	//currently tidal and gravitational calculations are done by cpu and mapped to hsv tex
-	// next step would be to calculate them on GPU according to world position
-	// (possibly need double precision in GLSL ... )
-	// ( use https://thasler.com/blog/?p=93 for emulated double precision in GLSL code)
+} else { //if (CALCULATE_TIDES_WITH_GPU)
 
-	planetSurfaceCalculationShader = new glutil.KernelShader({
-		varying : 'texCoord',
-		code : mlstr(function(){/*
-uniform vec3 pos;		//planet position, relative to the orbit planet
-uniform vec3 angle;		//planet angle
-uniform float equatorialRadius;
-uniform float inverseFlattening;
-uniform sampler2D tex;		//surface colormap texture
-uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z mass]
-
-uniform float heatAlpha;	//how much to blend the heatmap with the surface texture
+	//renders a heat map from the float values of the 'tide' texture 
+	planetHeatMapTexShader = new ModifiedDepthShaderProgram({
+		vertexCode : mlstr(function(){/*
+attribute vec2 vertex;		//lat/lon pairs
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform float equatorialRadius;		//or use planet radius
+uniform float inverseFlattening;	//default 1 if it does not exist
+varying vec2 texCoordv;
 
 vec3 quatRotate(vec4 q, vec3 v){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
@@ -3322,40 +3544,298 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 */}) + geodeticPositionCode + mlstr(function(){/*
 
-float calculateTidalValue() {
+void main() {
+	//vertex is really the lat/lon in degrees
+	vec3 modelVertex = geodeticPosition(vertex);
+	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	gl_Position = projMat * vtx4;
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentCode : mlstr(function(){/*
+precision highp sampler2D;
+
+varying vec2 texCoordv;
+uniform sampler2D tex;
+uniform sampler2D tideTex;
+uniform sampler2D hsvTex;
+uniform float heatAlpha;
+uniform float forceMin, forceMax;	//for clamping range
+void main() {
+	float gradientValue = (texture2D(tideTex, texCoordv).r - forceMin) / (forceMax - forceMin);
+	vec4 hsvColor = texture2D(hsvTex, vec2(gradientValue, .5));
+	vec4 planetColor = texture2D(tex, texCoordv);
+	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+}
+*/}),
+		uniforms : {
+			tex : 0,
+			tideTex : 1,
+			hsvTex : 2
+		}
+	});
+
+
+
+	//this is the FBO kernel update shader
+	//currently tidal and gravitational calculations are done by cpu and mapped to hsv tex
+	// next step would be to calculate them on GPU according to world position
+	// (possibly need double precision in GLSL ... )
+	// ( use https://thasler.com/blog/?p=93 for emulated double precision in GLSL code)
+	planetSurfaceCalculationShader = new ModifiedDepthShaderProgram({
+		vertexCode : mlstr(function(){/*
+attribute vec2 vertex;
+attribute vec2 texCoord;
+varying vec2 texCoordv;
+void main() {
+	texCoordv = texCoord;
+	gl_Position = vec4(vertex, 0., 1.);
+}
+		*/}),
+		fragmentCode : mlstr(function(){/*
+precision highp sampler2D;
+varying vec2 texCoordv;
+
+uniform vec3 pos;					//planet position, relative to the sun
+uniform vec4 angle;					//planet angle
+
+uniform float equatorialRadius;
+uniform float inverseFlattening;
+
+uniform int sourcePlanetIndex;		//index of the source planet.
+uniform float sourcePlanetMass;		//mass of this planet, in kg.  TODO 1) introduce "influencing" flag 2) use sourcePlanetIndex to look up in planet state tex instead of using this.
+
+uniform int planetStateTexHeight;
+uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z mass]
+
+// x = tangent tidal
+// y = normal tidal
+// z = tangent gravitational
+// w = normal gravitational
+uniform bvec4 flags; 
+
+*/}) 
++ 'const float gravitationalConstant = '+gravitationalConstant+';	// m^3 / (kg * s^2)\n'
++ geodeticPositionCode + mlstr(function(){/*
+
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
+vec3 calcGravityAccel(vec3 solarSystemVertex, vec4 planetState) {
+	vec3 x = solarSystemVertex - planetState.xyz;
+	float r = length(x);
+	float r2 = r * r;
+	float r3 = r * r2;
+	return x * (-gravitationalConstant * planetState.w / r3);
+}
+
+vec3 calcTidalAccel(vec3 solarSystemVertex, vec3 solarSystemNormal, vec4 planetState) {
+	vec3 x = solarSystemVertex - planetState.xyz;
+	float r = length(x);
+	float r2 = r * r;
+	float r3 = r * r2;
+	float r4 = r * r3;
+	float r5 = r * r4;
+	float xDotN = dot(x, solarSystemNormal);
+	return (gravitationalConstant * planetState.w) * (3. * xDotN * x / r5 - solarSystemNormal / r3);
+}
+
+float calcForceValue(vec3 solarSystemVertex, vec3 solarSystemNormal) {
 	//here's where we have to cycle through every planet and perform our calculation on each of them
 	//then sum the results ...
 	// I can guarantee already that the # of planets will exceed the GLSL max uniforms ...
 	//that means we'll have to upload the positions and masses via textures ...
 	//this would fit well with my plans to eventually do the keplerian orbital element pos calcs on the GPU
 
-	//now we get to for-loop across the planetStateTex ...
+	vec3 tideAccel = vec3(0., 0., 0.);
+	vec3 gravAccel = vec3(0., 0., 0.);
+
+	float delta_i = 1. / float(planetStateTexHeight);
+	//only works with constant upper bounds ...
+	const int NEEDLESSUPPERBOUND = 1024;
+	for (int i = 0; i < NEEDLESSUPPERBOUND; ++i) {
+		//...so I just have to put another upper bound here ...
+		if (i >= planetStateTexHeight) break;
+		vec4 planetState = texture2D(planetStateTex, vec2(.5, (float(i)+.5)*delta_i));
+		if (planetState.w == 0.) continue;
+		if ((flags[0] || flags[1]) && (i != sourcePlanetIndex)) {
+			tideAccel += calcTidalAccel(solarSystemVertex, solarSystemNormal, planetState);
+		}
+		if (flags[2] || flags[3]) {
+			gravAccel += calcGravityAccel(solarSystemVertex, planetState);
+		}
+	}
+
+	vec3 tideNormal = solarSystemNormal * dot(tideAccel, solarSystemNormal);
+	vec3 tideTangent = tideAccel - tideNormal;
+	//TODO use floats and just scale flags.xy by the basis
+	if (!flags[0]) tideAccel -= tideNormal;
+	if (!flags[1]) tideAccel -= tideTangent;
+
+	vec3 gravNormal = solarSystemNormal * dot(gravAccel, solarSystemNormal);
+	vec3 gravTangent = gravAccel - gravNormal;
+	//TODO use floats and just scale flags.zw by the basis
+	if (!flags[2]) gravAccel -= gravNormal;
+	if (!flags[3]) gravAccel -= gravTangent;
+
+	vec3 accel = tideAccel + gravAccel;
+	return length(accel);
 }
 
 void main() {
-	//pos is vec2 from [0,1] to [0,1]
-	//transform it to [360,180] to get lat/lon
-	vec2 latlon = ((texCoord - vec2(.5, .5)) * vec2(360., 180.)).yx;
-	vec3 modelVertex = geodeticPosition(latlon);				//get global position from lat/lon, equatorial radius, and inverse flattening
-	vec3 localVertex = quatRotate(angle, modelVertex);				//calculate position, aligned to solar system frame, but still locally offset
-	vec3 solarSystemVertex = localVertex + pos;								//offset to solar system (elliptical) coordinates -- but offset to be relative to orbitted object
-
-	//hmm... this is going to require a min/max search across the entire texture ...
-	// ... or we can approximate it by the last iteration ...
-	// but maybe it'd be best to do this on the GPU first, then do a reduction across it to find the min/max
-	// ... or we can do it frame-by-frame, so it lags behind 1/30th of a ms
-	// then we still get per-pixel calculations
-	float tideValue = calculateTidalValue(localVertex);	//computes force magnitude 
-	gl_FragColor = vec4(tideValue);
+	vec2 latLonCoord = ((texCoordv - vec2(.5, .5)) * vec2(360., 180.)).yx;
+	vec3 planetVertex = geodeticPosition(latLonCoord);	//planet's local frame
+	vec3 solarSystemRotatedVertex = quatRotate(angle, planetVertex);	//...rotated into the solar system (but still centered at earth origin)
+	vec3 solarSystemVertex = solarSystemRotatedVertex + pos;	///...translated to be relative to the SSB 
+	vec3 solarSystemNormal = normalize(solarSystemRotatedVertex);	//normalize() doesn't correctly handle ellipses.  you're supposed to scale the normal by [1/sx, 1/sy, 1/sz] or something to correct for the flattening distortion of the normals.
+	float forceValue = calcForceValue(solarSystemVertex, solarSystemNormal);
+	gl_FragColor = vec4(forceValue);
 }
 */}),
 		uniforms : {
-			tex : 0,
-			hsvTex : 1
+			planetStateTex : 0
 		}
 	});
 }
 
+
+
+	//tex used for performing min/max across tide tex
+	tideReduceTexs = [];
+	$.each([0,1],function() {
+		tideReduceTexs.push(new glutil.Texture2D({
+			width : tideTexWidth,
+			height : tideTexHeight,
+			internalFormat : gl.RGBA,
+			format : gl.RGBA,
+			type : gl.FLOAT,
+			minFilter : gl.NEAREST,
+			magFilter : gl.NEAREST,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			}//,
+			//data : initialDataF32	//why is this needed?
+		}));
+	});
+
+	encodeTempTex = new glutil.Texture2D({
+		internalFormat : gl.RGBA,
+		format : gl.RGBA,
+		type : gl.UNSIGNED_BYTE,
+		width : tideTexWidth,
+		height : tideTexHeight,
+		minFilter : gl.NEAREST,
+		magFilter : gl.NEAREST,
+		wrap : {
+			s : gl.CLAMP_TO_EDGE,
+			t : gl.CLAMP_TO_EDGE
+		}
+	});
+
+	minReduceShader = new glutil.KernelShader({
+		code : mlstr(function(){/*
+void main() {
+vec2 intPos = pos * viewsize - .5;
+
+float a = texture2D(srcTex, (intPos * 2. + .5) / texsize).x;
+float b = texture2D(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
+float c = texture2D(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
+float d = texture2D(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
+float e = min(a,b);
+float f = min(c,d);
+float g = min(e,f);
+gl_FragColor = vec4(g, 0., 0., 0.);
+}
+*/}),
+		uniforms : {
+			texsize : 'vec2',
+			viewsize : 'vec2'
+		},
+		texs : ['srcTex']
+	});
+
+	//should I just double this up in the one reduciton pass?
+	//it would mean twice as many operations anyways
+	maxReduceShader = new glutil.KernelShader({
+		code : mlstr(function(){/*
+void main() {
+vec2 intPos = pos * viewsize - .5;
+
+float a = texture2D(srcTex, (intPos * 2. + .5) / texsize).x;
+float b = texture2D(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
+float c = texture2D(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
+float d = texture2D(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
+float e = max(a,b);
+float f = max(c,d);
+float g = max(e,f);
+gl_FragColor = vec4(g, 0., 0., 0.);
+}
+*/}),
+		uniforms : {
+			texsize : 'vec2',
+			viewsize : 'vec2'
+		},
+		texs : ['srcTex']
+	});
+
+
+
+	//http://lab.concord.org/experiments/webgl-gpgpu/webgl.html
+	encodeShader = [];
+	for (var channel = 0; channel < 4; ++channel) {
+		encodeShader[channel] = new glutil.KernelShader({
+			code : mlstr(function(){/*
+float shift_right(float v, float amt) {
+	v = floor(v) + 0.5;
+	return floor(v / exp2(amt));
+}
+
+float shift_left(float v, float amt) {
+	return floor(v * exp2(amt) + 0.5);
+}
+
+float mask_last(float v, float bits) {
+	return mod(v, shift_left(1.0, bits));
+}
+
+float extract_bits(float num, float from, float to) {
+	from = floor(from + 0.5);
+	to = floor(to + 0.5);
+	return mask_last(shift_right(num, from), to - from);
+}
+
+vec4 encode_float(float val) {
+	if (val == 0.0)
+		return vec4(0, 0, 0, 0);
+	float sign = val > 0.0 ? 0.0 : 1.0;
+	val = abs(val);
+	float exponent = floor(log2(val));
+	float biased_exponent = exponent + 127.0;
+	float fraction = ((val / exp2(exponent)) - 1.0) * 8388608.0;
+	
+	float t = biased_exponent / 2.0;
+	float last_bit_of_biased_exponent = fract(t) * 2.0;
+	float remaining_bits_of_biased_exponent = floor(t);
+	
+	float byte4 = extract_bits(fraction, 0.0, 8.0) / 255.0;
+	float byte3 = extract_bits(fraction, 8.0, 16.0) / 255.0;
+	float byte2 = (last_bit_of_biased_exponent * 128.0 + extract_bits(fraction, 16.0, 23.0)) / 255.0;
+	float byte1 = (sign * 128.0 + remaining_bits_of_biased_exponent) / 255.0;
+	return vec4(byte4, byte3, byte2, byte1);
+}
+
+void main() {
+	vec4 data = texture2D(tex, pos);
+	gl_FragColor = encode_float(data[$channel]);
+}
+*/}).replace(/\$channel/g, channel),
+			texs : ['tex']
+		});
+	}
 
 	//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 	//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
@@ -3443,15 +3923,15 @@ if (true) {
 
 			var t;  r=0.0; g=0.0; b=0.0; if (t<-0.4) t=-0.4; if (t> 2.0) t= 2.0;
 			if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); r=0.61+(0.11*t)+(0.1*t*t); }
-			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); r=0.83+(0.17*t)          ; }
-			else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); r=1.00                   ; }
+			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); r=0.83+(0.17*t)		  ; }
+			else if ((bv>= 0.40)&&(bv<2.10)) { t=(bv-0.40)/(2.10-0.40); r=1.00				   ; }
 			if ((bv>=-0.40)&&(bv<0.00)) { t=(bv+0.40)/(0.00+0.40); g=0.70+(0.07*t)+(0.1*t*t); }
-			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); g=0.87+(0.11*t)          ; }
-			else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); g=0.98-(0.16*t)          ; }
-			else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); g=0.82         -(0.5*t*t); }
-			if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); b=1.00                   ; }
+			else if ((bv>= 0.00)&&(bv<0.40)) { t=(bv-0.00)/(0.40-0.00); g=0.87+(0.11*t)		  ; }
+			else if ((bv>= 0.40)&&(bv<1.60)) { t=(bv-0.40)/(1.60-0.40); g=0.98-(0.16*t)		  ; }
+			else if ((bv>= 1.60)&&(bv<2.00)) { t=(bv-1.60)/(2.00-1.60); g=0.82		 -(0.5*t*t); }
+			if ((bv>=-0.40)&&(bv<0.40)) { t=(bv+0.40)/(0.40+0.40); b=1.00				   ; }
 			else if ((bv>= 0.40)&&(bv<1.50)) { t=(bv-0.40)/(1.50-0.40); b=1.00-(0.47*t)+(0.1*t*t); }
-			else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); b=0.63         -(0.6*t*t); }
+			else if ((bv>= 1.50)&&(bv<1.94)) { t=(bv-1.50)/(1.94-1.50); b=0.63		 -(0.6*t*t); }
 
 			return [r,g,b,1];
 }
@@ -3506,7 +3986,6 @@ void main() {
 	});
 
 
-
 	$('#overlaySlider').slider({
 		range : 'max',
 		width : '200px',
@@ -3515,13 +3994,23 @@ void main() {
 		value : 100 * heatAlpha,
 		slide : function(event, ui) {
 			heatAlpha = ui.value / 100;
-			gl.useProgram(planetHSVShader.obj);
-			gl.uniform1f(planetHSVShader.uniforms.heatAlpha.loc, heatAlpha);
+if (!CALCULATE_TIDES_WITH_GPU) {
+			gl.useProgram(planetHeatMapAttrShader.obj);
+			gl.uniform1f(planetHeatMapAttrShader.uniforms.heatAlpha.loc, heatAlpha);
+} else {
+			gl.useProgram(planetHeatMapTexShader.obj);
+			gl.uniform1f(planetHeatMapTexShader.uniforms.heatAlpha.loc, heatAlpha);
+}
 			gl.useProgram(null);
 		}
 	});
-	gl.useProgram(planetHSVShader.obj);
-	gl.uniform1f(planetHSVShader.uniforms.heatAlpha.loc, heatAlpha);
+if (!CALCULATE_TIDES_WITH_GPU) {
+	gl.useProgram(planetHeatMapAttrShader.obj);
+	gl.uniform1f(planetHeatMapAttrShader.uniforms.heatAlpha.loc, heatAlpha);
+} else {
+	gl.useProgram(planetHeatMapTexShader.obj);
+	gl.uniform1f(planetHeatMapTexShader.uniforms.heatAlpha.loc, heatAlpha);
+}
 	gl.useProgram(null);
 
 	pointObj = new glutil.SceneObject({
@@ -3637,7 +4126,22 @@ void main() {
 		parent : null,
 		static : true
 	});
-	
+
+	quadObj = new glutil.SceneObject({
+		mode : gl.TRIANGLE_STRIP,
+		attrs : {
+			vertex : new glutil.ArrayBuffer({
+				dim : 2,
+				data : [-1,-1, 1,-1, -1,1, 1,1]
+			}),
+			texCoord : new glutil.ArrayBuffer({
+				dim : 2,
+				data : [0,0, 1,0, 0,1, 1,1]
+			})
+		},
+		parent : null,
+		static : true
+	});	
 	var planetsDone = 0;
 
 	for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { (function(){
@@ -4837,27 +5341,30 @@ void main() {
 	console.log('calc grav well time ',calcGravWellEndTime-calcGravWellStartTime,'ms');
 
 	//looks like doing these in realtime will mean toning the detail down a bit ...
+	//if the image is too big, how do we downsample the skymap without lagging the whole browser?  1) browsers start using LuaJIT (not going to happen, stupid JS) 2) provide pre-computed sampled down versions.
 
-	new glutil.TextureCube({
-		flipY : true,
-		generateMipmap : true,
-		magFilter : gl.LINEAR,
-		minFilter : gl.LINEAR_MIPMAP_LINEAR,
-		wrap : {
-			s : gl.CLAMP_TO_EDGE,
-			t : gl.CLAMP_TO_EDGE
-		},
-		urls : skyTexFilenames,
-		onload : function(side,url,image) {
-			if (image.width > glMaxCubeMapTextureSize || image.height > glMaxCubeMapTextureSize) {
-				throw "cube map size "+image.width+"x"+image.height+" cannot exceed "+glMaxCubeMapTextureSize;
+	(function(){
+		new glutil.TextureCube({
+			flipY : true,
+			generateMipmap : true,
+			magFilter : gl.LINEAR,
+			minFilter : gl.LINEAR_MIPMAP_LINEAR,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			},
+			urls : skyTexFilenamePrefixes.map(function(filename) {
+				return filename + Math.min(1024, glMaxCubeMapTextureSize) +'.png';
+			}),
+			done : function() {
+				//firefox says something is binding this cubemap before we even load it
+				// which can only mean i'm leaving a binding attached while initializing it (or that Firefox is buggy)
+				//Chrome doesn't complain.
+				console.log('loaded sky cubemap!');
+				initSkyCube(this);
 			}
-		},
-		done : function() {
-			initSkyCube(this);
-		}
-	});
-
+		});
+	})();
 	//only do this after the orbit shader is made
 	initExoplanets();
 
