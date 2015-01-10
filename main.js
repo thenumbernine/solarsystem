@@ -751,11 +751,12 @@ function chooseNewOrbitObject(mouseDir, doChoose) {
 	processList(orbitStarSystem.planets);
 
 	//for larger-scale clicks, use the starfield
-/* gets annoying, trying to click on a planet and catching a star.  just use the side menu for selecting new stars. 
-	if (showStars) {
-		processList(starSystems);
+	// gets annoying, trying to click on a planet and catching a star.  just use the side menu for selecting new stars. 
+	if (allowSelectStars) {
+		if (showStars) {
+			processList(starSystems);
+		}
 	}
-*/
 	
 	mouseOverTarget = undefined;
 	if (bestTarget !== undefined) {
@@ -913,6 +914,7 @@ var showGravityWell = false;
 var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
 var showStars = true;
+var allowSelectStars = false;
 var starsVisibleMagnitudeBias = 4;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
@@ -2268,6 +2270,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showGravityWell',
 		'showOrbits',
 		'showStars',
+		'allowSelectStars',
 		'showPlanetsAsDistantPoints',
 		'gravityWellScaleNormalized',
 		'gravityWellScaleFixed'
