@@ -2916,7 +2916,7 @@ function initExoplanets() {
 			//TODO visual magnitude, which is undocumented but some have
 
 
-			$.each(assertExists(systemInfo, 'bodies'), function(j,bodyInfo) {
+			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
 
 				var name = assertExists(bodyInfo, 'name');
 				var radius = bodyInfo.radius;
@@ -2959,6 +2959,7 @@ function initExoplanets() {
 				bodyInfo.longitudeOfAscendingNode = bodyInfo.longitudeOfAscendingNode || 0;
 				bodyInfo.inclination = bodyInfo.inclination || 0;
 				bodyInfo.eccentricity = bodyInfo.eccentricity || 0;
+				bodyInfo.meanAnomaly = Math.PI * 2 * (j + Math.random()) / systemInfo.bodies.length;
 
 				starSystem.planets.push(body);
 				if (body.type == 'star') starSystem.stars.push(body);
@@ -4813,16 +4814,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 	var planetIndex = planet.index;
 
 	// based on planet position and velocity, find plane of orbit
-	if (planet.parent === undefined) {
-		//console.log(planet.name+' has no orbit parent');
-		planet.orbitAxis = [0,0,1];
-		planet.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
-		return;
-	}
-
 	var parentPlanet = planet.parent;
 	if (parentPlanet === undefined) {
-		console.log(planet.name+' has an invalid orbit planet');
+		//console.log(planet.name+' has no orbit parent');
 		planet.orbitAxis = [0,0,1];
 		planet.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
 		return;
@@ -4929,7 +4923,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 			} else if (planet.isAsteroid) {
 				meanAnomaly = planet.sourceData.meanAnomaly;
-			//} else {
+			} else if (planet.isExoplanet) {
+				meanAnomaly = planet.sourceData.meanAnomaly !== undefined ? planet.sourceData.meanAnomaly : 0;
+			} else {
 			//	throw 'here';
 			}
 		} else {
@@ -5225,7 +5221,9 @@ r^2 = a^2 (cos(E)
 		};
 
 		//not NaN, we successfully reconstructed the position
-		if (checkPosError !== checkPosError) return;
+		if (checkPosError !== checkPosError) {
+			return;
+		}
 	}
 
 	//iterate around the eccentric anomaly to reconstruct the path
