@@ -4443,7 +4443,27 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 		};
 
 		// load texture
-		if (primaryPlanetHorizonIDs.indexOf(planet.id) !== -1) {
+		if (planet.name in {
+			Sun:1,
+			Mercury:1,
+			Venus:1,
+			Earth:1,
+			Moon:1,
+			Mars:1,
+			Jupiter:1,
+				Enceladus:1,
+				Mimas:1,
+				Tethys:1,
+				Dione:1,
+				Rhea:1,
+				Titan:1,
+				Iapetus:1,
+				Phoebe:1,
+			Saturn:1,
+			Neptune:1,
+			Uranus:1,
+			Pluto:1
+		}) {
 			var img = new Image();
 			img.onload = function() {
 				planet.tex = new glutil.Texture2D({
