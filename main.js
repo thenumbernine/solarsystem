@@ -382,7 +382,7 @@ var SolarSystem = makeClass({
 		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, rotationPeriod:58.6462, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, rotationPeriod:-243.0185, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, rotationPeriod:1, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, rotationPeriod:30.25, rotationOffset:2.3247785636564, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, rotationPeriod:30.25, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, ringRadiusRange:[102200000,227000000], type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, ringRadiusRange:[74510000,140390000], type:'planet'}));
@@ -6011,7 +6011,21 @@ function update() {
 			var planet = orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
 				var zrot = [0,0,0,1];
-				quat.rotateZ(zrot, zrot, ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI + (planet.rotationOffset || 0));
+				
+				var angle = 0;
+				if (planet.rotationPeriod) {
+					angle += ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI;
+				}
+				if (planet.keplerianOrbitalElements && 
+					planet.keplerianOrbitalElements.orbitalPeriod !== undefined) 
+				{
+					angle += ((julianDate / planet.keplerianOrbitalElements.orbitalPeriod) % 1) * 2 * Math.PI;
+				}
+				if (planet.rotationOffset !== undefined) {
+					angle += planet.rotationOffset;
+				}
+				
+				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
 			} else {
 				quat.copy(planet.angle, planet.tiltAngle);
