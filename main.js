@@ -2580,7 +2580,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 				}
 			}
 			
-/*hack for debugging*/
+/*hack for debugging* /
 rows = [
 	   //test case for hyperbolic
 		{
@@ -2596,11 +2596,9 @@ rows = [
 			"name" : "2013 A1 (Siding Spring)",
 			"longitudeOfAscendingNode" : 5.2530270564044
 		},
-		/*
-target C1/2013 Siding Spring data: on 2014-11-15 10:30:00
-position m: 	64031628815.774, -196629902235.24, 57392197050.865
-velocity m/day: -1916173862.297, -455287182.34414, 2315832701.4279
-		*/
+//target C1/2013 Siding Spring data: on 2014-11-15 10:30:00
+//position m: 	64031628815.774, -196629902235.24, 57392197050.865
+//velocity m/day: -1916173862.297, -455287182.34414, 2315832701.4279
 		
 		//test case for elliptical
 		{
