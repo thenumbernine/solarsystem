@@ -8,7 +8,7 @@ return {
 	{name='semiMajorAxis', type='number'},	-- asteroids
 	{name='eccentricity', type='number'},
 	{name='inclination', type='number'},
-	{name='argumentOfPerihelion', type='number'},
+	{name='argumentOfPeriapsis', type='number'},
 	{name='longitudeOfAscendingNode', type='number'},
 	{name='meanAnomaly', type='number'},	-- asteroids
 	{name='absoluteMagnitude', type='number'},	-- asteroids
