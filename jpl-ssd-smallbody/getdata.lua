@@ -164,7 +164,7 @@ processToFile{
 		body.perihelionDistance = assert(tonumber(row.q:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))	-- wrt J2000 ecliptic plane
-		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
+		body.argumentOfPeriapsis = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
 	
 		-- time of perihelion passage
@@ -198,7 +198,7 @@ processToFile{
 		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))
-		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
+		body.argumentOfPeriapsis = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
 		body.meanAnomaly = math.rad(assert(tonumber(row.M:trim())))
 		body.absoluteMagnitude = assert(tonumber(row.H:trim()))
@@ -223,7 +223,7 @@ processToFile{
 		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))
-		body.argumentOfPerihelion = math.rad(assert(tonumber(row.w:trim())))
+		body.argumentOfPeriapsis = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
 		body.meanAnomaly = math.rad(assert(tonumber(row.M:trim())))
 		body.absoluteMagnitude = assert(tonumber(row.H:trim()))

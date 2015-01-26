@@ -2581,40 +2581,58 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 			}
 			
 /*hack for debugging* /
-rows = [
-	   //test case for hyperbolic
-		{
-			"perihelionDistance" : 209232954020.56,
-			"inclination" : 2.2519519080902,
-			"timeOfPerihelionPassage" : 2456955.82823,
-			"argumentOfPerihelion" : 0.042602963442406,
-			"bodyType" : "comet",
-			"orbitSolutionReference" : "JPL 101",
-			"epoch" : 56691,
-			"eccentricity" : 1.00074241,
-			"idNumber" : "C",
-			"name" : "2013 A1 (Siding Spring)",
-			"longitudeOfAscendingNode" : 5.2530270564044
-		},
+rows = [];
+if (false) {
+   //test case for hyperbolic
+	rows.push({
+		"perihelionDistance" : 209232954020.56,
+		"inclination" : 2.2519519080902,
+		"timeOfPerihelionPassage" : 2456955.82823,
+		"argumentOfPeriapsis" : 0.042602963442406,
+		"bodyType" : "comet",
+		"orbitSolutionReference" : "JPL 101",
+		"epoch" : 56691,
+		"eccentricity" : 1.00074241,
+		"idNumber" : "C",
+		"name" : "2013 A1 (Siding Spring)",
+		"longitudeOfAscendingNode" : 5.2530270564044
+	});
 //target C1/2013 Siding Spring data: on 2014-11-15 10:30:00
 //position m: 	64031628815.774, -196629902235.24, 57392197050.865
 //velocity m/day: -1916173862.297, -455287182.34414, 2315832701.4279
-		
-		//test case for elliptical
-		{
-			"perihelionDistance" : 87661077532.81,
-			"inclination" : 2.8320181936429,
-			"timeOfPerihelionPassage" : 2446467.39532,
-			"argumentOfPerihelion" : 1.9431185149437,
-			"bodyType" : "comet",
-			"orbitSolutionReference" : "JPL J863/77",
-			"epoch" : 49400,
-			"eccentricity" : 0.96714291,
-			"idNumber" : "1P",
-			"name" : "Halley",
-			"longitudeOfAscendingNode" : 1.0196227452785
-		}
-];
+	
+	//test case for elliptical
+	rows.push({
+		"perihelionDistance" : 87661077532.81,
+		"inclination" : 2.8320181936429,
+		"timeOfPerihelionPassage" : 2446467.39532,
+		"argumentOfPeriapsis" : 1.9431185149437,
+		"bodyType" : "comet",
+		"orbitSolutionReference" : "JPL J863/77",
+		"epoch" : 49400,
+		"eccentricity" : 0.96714291,
+		"idNumber" : "1P",
+		"name" : "Halley",
+		"longitudeOfAscendingNode" : 1.0196227452785
+	});
+}
+if (true) {	//recent asteroid passing by
+	rows.push({
+		"meanAnomaly":6.1790425090414,
+		"longitudeOfAscendingNode":2.2116873367796,
+		"inclination":0.41440347267775,
+		"name":"2004 BL86",
+		"eccentricity":0.40307315,
+		"idNumber":"357439",
+		"bodyType":"numbered asteroid",
+		"orbitSolutionReference":"JPL 34",
+		"absoluteMagnitude":19.1,
+		"argumentOfPeriapsis":5.4324242142291,
+		"magnitudeSlopeParameter":0.15,
+		"semiMajorAxis":224726235521.07,
+		"epoch":57000
+	});
+}
 /**/
 			
 			processResults({rows:rows, count:rows.length});
@@ -2992,9 +3010,9 @@ function initExoplanets() {
 				if (body.sourceData.longitudeOfPeriapsis === undefined) {
 					body.sourceData.longitudeOfPeriapsis = 0;
 				}
-				body.sourceData.argumentOfPerihelion = body.sourceData.longitudeOfPeriapsis - body.sourceData.longitudeOfAscendingNode;
-				if (body.sourceData.argumentOfPerihelion == 0) {
-					body.sourceData.argumentOfPerihelion = Math.PI * 2 * i / starSystem.planets.length;
+				body.sourceData.argumentOfPeriapsis = body.sourceData.longitudeOfPeriapsis - body.sourceData.longitudeOfAscendingNode;
+				if (body.sourceData.argumentOfPeriapsis == 0) {
+					body.sourceData.argumentOfPeriapsis = Math.PI * 2 * i / starSystem.planets.length;
 				}
 
 				vec3.add(body.pos, body.pos, starSystem.pos);
@@ -4903,9 +4921,9 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
 		var sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		var argumentOfPericenter = assertExists(planet.sourceData, 'argumentOfPerihelion');
-		var cosPericenter = Math.cos(argumentOfPericenter);
-		var sinPericenter = Math.sin(argumentOfPericenter);
+		var argumentOfPeriapsis = assertExists(planet.sourceData, 'argumentOfPeriapsis');
+		var cosPericenter = Math.cos(argumentOfPeriapsis);
+		var sinPericenter = Math.sin(argumentOfPeriapsis);
 
 		var inclination = assertExists(planet.sourceData, 'inclination');
 		var cosInclination = Math.cos(inclination);
@@ -4928,14 +4946,14 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		}
 
 		if (orbitType === 'parabolic') {
-			eccentricAnomaly = Math.tan(argumentOfPericenter / 2);
+			eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
 			meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
 		} else if (orbitType === 'hyperbolic') {
 			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
 			meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
 		} else if (orbitType === 'elliptic') {
 			//in theory I can say 
-			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPericenter)) / (1 + eccentricity * Math.cos(argumentOfPericenter)));
+			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPeriapsis)) / (1 + eccentricity * Math.cos(argumentOfPeriapsis)));
 			// ... but Math.acos has a limited range ...
 
 			if (planet.isComet) {
@@ -4983,7 +5001,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			if (Math.abs(delta) < 1e-15) break;
 			eccentricAnomaly -= delta;
 		}
-	
+
 		var sinEccentricAnomaly = Math.sin(eccentricAnomaly);
 		var cosEccentricAnomaly = Math.cos(eccentricAnomaly);
 		
@@ -5097,7 +5115,7 @@ r^2 = a^2 (cos(E)
 			eccentricity : eccentricity,
 			eccentricAnomaly : eccentricAnomaly,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
-			argumentOfPericenter : argumentOfPericenter,
+			argumentOfPeriapsis : argumentOfPeriapsis,
 			inclination : inclination,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
@@ -5171,7 +5189,7 @@ r^2 = a^2 (cos(E)
 
 		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
 		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
-		var argumentOfPericenter = Math.atan(sinPericenter, cosPericenter);
+		var argumentOfPeriapsis = Math.atan(sinPericenter, cosPericenter);
 
 		var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
 		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
@@ -5231,7 +5249,7 @@ r^2 = a^2 (cos(E)
 			eccentricity : eccentricity,
 			eccentricAnomaly : eccentricAnomaly,
 			inclination : inclination,
-			argumentOfPericenter : argumentOfPericenter,
+			argumentOfPeriapsis : argumentOfPeriapsis,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
@@ -5842,8 +5860,8 @@ function setOrbitTarget(newTarget) {
 		if (orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode) {
 			$('#infoDiv').append($('<div>', {html:'Longitude of Ascending Node: '+Math.deg(orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
 		}
-		if (orbitTarget.keplerianOrbitalElements.argumentOfPericenter) {
-			$('#infoDiv').append($('<div>', {html:'Argument of Pericenter: '+Math.deg(orbitTarget.keplerianOrbitalElements.argumentOfPericenter)+'&deg;'}));
+		if (orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis) {
+			$('#infoDiv').append($('<div>', {html:'Argument of Pericenter: '+Math.deg(orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis)+'&deg;'}));
 		}
 		if (orbitTarget.keplerianOrbitalElements.inclination) {
 			$('#infoDiv').append($('<div>', {html:'Inclination: '+Math.deg(orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
