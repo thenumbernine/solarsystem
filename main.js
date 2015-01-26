@@ -1,4 +1,6 @@
-//getting rid of the old way incrementally
+//tried an experiment of doing surface calculations on the GPU
+//it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
+//I might try worker threads later...
 var CALCULATE_TIDES_WITH_GPU = false;
 
 //TODO put this in js/gl-util-kernel.js
@@ -1994,6 +1996,27 @@ function init1() {
 		throw e;
 	}
 
+	$(document).keydown(function(e) {
+		switch (e.keyCode) {
+		case 32:	//space
+			integrationPaused = !integrationPaused;
+			break;
+		case 38:	//up
+			integrateTimeStep *= 2;
+			break;
+		case 40:	//down
+			integrateTimeStep /= 2;
+			break;
+		case 39:	//right
+			integrationPaused = false;
+			integrateTimeStep = Math.abs(integrateTimeStep);
+			break;
+		case 37:	//left
+			integrationPaused = false;
+			integrateTimeStep = -Math.abs(integrateTimeStep);
+			break;
+		}
+	});
 
 	ModifiedDepthShaderProgram = makeClass({
 		super : glutil.ShaderProgram,
