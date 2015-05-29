@@ -406,7 +406,11 @@ var SolarSystem = makeClass({
 		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
 			var dynamicData = horizonsDynamicData.coords[i];
 			var staticData = horizonsStaticData[i];
-			assert(dynamicData.id == staticData.id, "got some bad data");
+			if (dynamicData.id != staticData.id) {
+				console.log('staticData',staticData);
+				console.log('dynamicData',dynamicData);
+				throw "got a mismatch in ids between static data and dynamic data";
+			}
 			if (dynamicData.name.match(/^L[1-5]/)) {
 				//391-395 are Lagrangian points - skip
 			} else if (dynamicData.name.match(/Barycenter$/)) {
@@ -425,7 +429,7 @@ var SolarSystem = makeClass({
 					*/
 					this.planets.push(mergeInto(new Planet(), {
 						id:dynamicData.id,
-						name:dynamicData.name,
+						name:staticData.name,
 						mass:staticData.mass,
 						radius:staticData.radius,
 						equatorialRadius:staticData.equatorialRadius,
@@ -776,100 +780,6 @@ function refreshMeasureText() {
 	$('#measureMax').text(orbitTarget.measureMax === undefined ? '' : (orbitTarget.measureMax.toExponential() + ' m/s^2'));
 }
 
-// routines for calculating the earth's angle ...
-// ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/astrtime.cc
-function getLeapSec(mjd, utc) {
-	// oh great there is a leap-second file...
-	return 0;
-}
-function tai2utc(taimjd, tai) {
-	var mjd = taimjd;
-	var ls = getLeapSec(taimjd, tai);
-	var utc = tai - ls / 86400;
-	if (utc < 0) {
-		++utc;
-		--mjd;
-	}
-	if (ls > getLeapSec(mjd, utc) + .00001) {
-		utc += 1/86400;
-		if (utc > 1) {
-			--utc;
-			++mjd;
-		}
-	}
-	return [mjd, utc];
-}
-function tt2utc(ttmjd, tt) {
-	var tai = tt - 32.184 / 86400;
-	var taimjd = ttmjd;
-	if (tai < 0) {
-		++tai;
-		--taimjd;
-	}
-	return tai2utc(taimjd, tai);
-}
-function getUt1Offset(mjd, utc) {
-	// yet another absurd time offset file
-	return 0;
-}
-function utc2ut1(mjd, utc) {
-	var ut1mjd = mjd;
-	var ut1 = utc + getUt1Offset(mjd, utc) / 86400;
-	if (ut1 > 1) {
-		--ut1;
-		++ut1mjd;
-	}
-	if (ut1 < 0) {
-		++ut1;
-		--ut1mjd;
-	}
-	return [ut1mjd, ut1];
-}
-function iauGmst82() { return 0; } // sofa
-function utc2gmst(mjd, utc) {
-	var tmp = utc2ut1(mjd, utc);
-	var ut1mjd = tmp[0];
-	var ut1 = tmp[1];
-	return iauGmst82(2400000.5, ut1mjd + ut1) / (2 * Math.pi);
-}
-function utc2tai(mjd, utc) {
-	var taimjd = mjd;
-	var tai = utc;
-	tai += getLeapSec(mjd, utc) / 86400;
-	if (tai > 1) {
-		--tai;
-		++taimjd;
-	}
-	return [taimjd, tai];
-}
-function utc2tt(mjd, utc) {
-	return utc2tai(mjd, utc);
-}
-function iauEqeq94() { return 0; }	// sofa
-function utc2gast(mjd, utc) {
-	var gmst = utc2gmst(mjd, utc);
-	var tmp = utc2tt(mjd, utc);
-	var ttmjd = tmp[0];
-	var tt = tmp[1];
-	return gmst + iauEqeq94(2400000.5, ttmjd + tt) / (2 * Math.pi);
-}
-function utc2last(mjd,utc,lon) {
-	var lon = 0;	// longitude of our observatory ... from space!
-	var last = utc2gast(mjd, utc) + lon / (2 * Math.pi);
-	if (last < 0) ++last;	//modulo?
-	if (last > 1) --last;
-	return last;
-}
-function getEarthAngle(jd) {
-	var jdofs = julianDate - 2400000.5;
-	var ttmjd = Math.floor(jdofs);
-	var tt = jdofs - ttmjd;
-	var tmp = tt2utc(ttmjd, tt);
-	var mjd = tmp[0];
-	var utc = tmp[1];
-	var arg = utc2last(mjd,utc) * Math.pi * 2;
-	return deg;
-}
 
 var gl;
 var canvas;
@@ -6046,6 +5956,7 @@ function update() {
 		recomputePlanetsAlongOrbit();
 
 		//recompute angle based on sidereal rotation period
+		//TODO fixme, something is off
 		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 			var planet = orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
