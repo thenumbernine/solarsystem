@@ -134,7 +134,7 @@ end
 
 assert(nextGroup() == 1070)
 
-local json = require 'json'
+local json = require 'dkjson'
 io.writefile(denum..'/header.json', json.encode(hdr))	-- pretty print?
 
 
@@ -149,7 +149,17 @@ local lfs = require 'lfs'
 --lfs.mkdir(denum..'/fits/')
 lfs.mkdir(denum..'/f64/')
 
-require 'ffi.C.stdio'
+ffi.cdef[[
+
+typedef void FILE;
+
+//stdio.h
+
+FILE * fopen ( const char * filename, const char * mode );
+size_t fwrite ( const void * ptr, size_t size, size_t count, FILE * stream );
+int fclose ( FILE * stream );
+
+]]
 
 -- one lump file
 local file = ffi.C.fopen(denum..'/f64/de'..denum..'.f64.raw', 'wb')
