@@ -2471,6 +2471,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 					text : searchStr,
 					page : pageIndex+1	//1-based
 				},
+				cache : false,
 				timeout : 5000
 			}).error(function() {
 				searchText.val(searchStr);
@@ -2975,6 +2976,7 @@ function initExoplanets() {
 	$.ajax({
 		url : exoplanetURL,
 		dataType : 'json',
+		cache : false,
 		timeout : 5000
 	}).error(function() {
 		console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
@@ -2982,7 +2984,6 @@ function initExoplanets() {
 			initExoplanets();
 		}, 5000);
 	}).done(function(data) {
-		console.log(data);
 		processResults(data);
 	});
 }
