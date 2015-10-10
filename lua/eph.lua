@@ -1,7 +1,7 @@
 require 'ext'
 local ffi = require 'ffi'
 require 'ffi.c.stdio'
-local json = require 'json'
+local json = require 'dkjson'
 local vec2 = require 'vec.vec2'
 local vec3 = require 'vec.vec3'
 

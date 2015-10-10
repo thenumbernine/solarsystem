@@ -4,7 +4,7 @@ local json = require 'dkjson'	-- only reason I can't use luajit...
 local htmlparser = require 'htmlparser'
 require 'htmlparser.xpath'
 htmlparser.htmlnonclosing = {}
-local tree = htmlparser.parse(io.readfile('systems.xml'))
+local tree = htmlparser.parse(file['systems.xml'])
 
 local function getText(child)
 	if not (#child.child == 1) then error("tried to parse text of a child with multiple children: " ..toLua(child)) end
@@ -94,6 +94,8 @@ function processPlanet(node, resultSystem)
 			setField(resultBody, 'eccentricity', getNumber(child)) 	-- I'm guessing eccentricity of orbit, and not of spheroid
 		elseif tag == 'periastron' then
 			setField(resultBody, 'longitudeOfPeriapsis', math.rad(getNumber(child))) 	-- degrees -> radians
+		elseif tag == 'periastrontime' then
+			setField(resultBody, 'timeOfPerihelionPassage', math.rad(getNumber(child)))
 		elseif tag == 'longitude' then
 			setField(resultBody, 'meanLongitude', math.rad(getNumber(child)))		-- degrees -> radians
 		elseif tag == 'ascendingnode' then
@@ -127,6 +129,8 @@ function processPlanet(node, resultSystem)
 			setField(resultBody, 'HMagnitude', getNumber(child))
 		elseif tag == 'magk' then
 			setField(resultBody, 'KMagnitude', getNumber(child))
+		elseif tag == 'meananomaly' then
+			setField(resultBody, 'meanAnomaly', getNumber(child))
 		elseif tag == 'discoverymethod' then	-- who cares?
 		elseif tag == 'istransiting' then
 		elseif tag == 'description' then
@@ -823,4 +827,4 @@ I feel like I should be doing the data pre-processing here in this file, to make
 --]]
 
 local results = {systems=resultSystems}
-io.writefile('openExoplanetCatalog.json', json.encode(results, {indent=true}))
+file['openExoplanetCatalog.json'] = json.encode(results, {indent=true})

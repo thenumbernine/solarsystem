@@ -1228,7 +1228,7 @@ var planetPointVisRatio = .001;
 			*/
 
 			if (showLinesToOtherPlanets && orbitStarSystem == solarSystem) {
-				if (orbitTarget !== planet) {
+				if (orbitTarget !== planet && (!planet.parent || planet.parent.index == 0)) {
 					//while here, update lines
 
 					vec3.sub(delta, planet.pos, orbitTarget.pos);
@@ -2971,16 +2971,20 @@ function initExoplanets() {
 	};
 
 	//just over a meg, so I might as well ajax it
+	var exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
 	$.ajax({
-		url : 'exoplanet/openExoplanetCatalog.json',
+		url : exoplanetURL,
 		dataType : 'json',
 		timeout : 5000
 	}).error(function() {
-		console.log('failed to get exoplanets, trying again...');
+		console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
 		setTimeout(function() {
 			initExoplanets();
 		}, 5000);
-	}).done(processResults);
+	}).done(function(data) {
+		console.log(data);
+		processResults(data);
+	});
 }
 
 function addStarSystemsToStarField() {
