@@ -2652,7 +2652,7 @@ function initStarsControls() {
 }
 
 function init2() {
-
+/*
 	var imgs = [];
 	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
 		var planet = solarSystem.planetForHorizonID[horizonID];
@@ -2674,7 +2674,7 @@ function init2() {
 	}, function(percent){
 		$('#loading').attr('value', parseInt(100*percent));
 	});
-
+*/
 	$('#infoPanel').bind('touchmove', function(e) {
 		if (!showBodyInfo) {
 			if (!e.target.classList.contains('scrollable')) {
@@ -2977,7 +2977,7 @@ function initExoplanets() {
 		url : exoplanetURL,
 		dataType : 'json',
 		cache : false,
-		timeout : 5000
+		timeout : 30000
 	}).error(function() {
 		console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
 		setTimeout(function() {
@@ -5961,7 +5961,6 @@ function update() {
 		recomputePlanetsAlongOrbit();
 
 		//recompute angle based on sidereal rotation period
-		//TODO fixme, something is off
 		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 			var planet = orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
@@ -5971,14 +5970,13 @@ function update() {
 				if (planet.rotationPeriod) {
 					angle += ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI;
 				}
+				/* hmm ... why did I think this was necessary?
 				if (planet.keplerianOrbitalElements && 
 					planet.keplerianOrbitalElements.orbitalPeriod !== undefined) 
 				{
 					angle += ((julianDate / planet.keplerianOrbitalElements.orbitalPeriod) % 1) * 2 * Math.PI;
 				}
-				if (planet.rotationOffset !== undefined) {
-					angle += planet.rotationOffset;
-				}
+				*/
 				
 				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
