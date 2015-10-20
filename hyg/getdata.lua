@@ -8,12 +8,12 @@ if arg[1] == 'v' then
 	verbose = true
 end
 
-local csv = require 'csv'.file 'hygxyz.csv'
+local csv = require 'csv'.file 'hygdata_v3.csv'
 csv:setColumnNames(csv.rows:remove(1))
 
 local numRows = #csv.rows
 local numElem = 8
-local buffer = ffi.new('float[?]', numElem * numRows)	-- allocate space for xyz of each planet 
+local buffer = ffi.new('float[?]', numElem * numRows)	-- allocate space for data of each planet 
 
 local maxAbs = 0
 local namedStars = {}
@@ -26,26 +26,32 @@ for i,row in ipairs(csv.rows) do
 		end
 	end
 	local zeroBasedIndex = i-1
-	assert(zeroBasedIndex == tonumber(row.StarID))	-- this assertion isn't required, I was just curious if it was enforced
 	
+	--[[ this assertion isn't required, I was just curious if it was enforced
+	-- and as of the v3 release it's no longer true
+	if zeroBasedIndex ~= tonumber(row.id) then
+		error("zero-based index "..zeroBasedIndex.." not equal to row id "..row.id)
+	end
+	--]]
+
 	-- in parsecs
-	local x = assert(tonumber(row.X))
-	local y = assert(tonumber(row.Y))
-	local z = assert(tonumber(row.Z))
+	local x = assert(tonumber(row.x))
+	local y = assert(tonumber(row.y))
+	local z = assert(tonumber(row.z))
 
 	-- HYG is in equatorial coordinates
-	-- rotate equatorial xyz to ecliptic xyz
+	-- rotate equatorial pos to ecliptic pos
 	local epsilon = math.rad(23 + 1/60*(26 + 1/60*(21.4119)))	-- earth tilt
 	local cosEps = math.cos(epsilon)
 	local sinEps = math.sin(epsilon)
 	y, z = cosEps * y + sinEps * z, -sinEps * y + cosEps * z
 	
-	local mag = assert(tonumber(row.AbsMag))	--apparent magnitude
-	local colorIndex = tonumber(row.ColorIndex) or .656	-- fill in blanks with something close to white
+	local mag = assert(tonumber(row.absmag))	--apparent magnitude
+	local colorIndex = tonumber(row.ci) or .656	-- fill in blanks with something close to white
 
-	local vx = assert(tonumber(row.VX))
-	local vy = assert(tonumber(row.VY))
-	local vz = assert(tonumber(row.VZ))
+	local vx = assert(tonumber(row.vx))
+	local vy = assert(tonumber(row.vy))
+	local vz = assert(tonumber(row.vz))
 	
 	buffer[0 + numElem * zeroBasedIndex] = x
 	buffer[1 + numElem * zeroBasedIndex] = y
@@ -60,8 +66,8 @@ for i,row in ipairs(csv.rows) do
 	maxAbs = math.max(maxAbs, y)
 	maxAbs = math.max(maxAbs, z)
 	
-	if #row.ProperName > 0 then
-		table.insert(namedStars, {name=row.ProperName, index=zeroBasedIndex})
+	if #row.proper > 0 then
+		table.insert(namedStars, {name=row.proper, index=zeroBasedIndex})
 	end
 	if verbose then
 		print(tolua(row))
