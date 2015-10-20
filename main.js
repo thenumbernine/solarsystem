@@ -181,6 +181,8 @@ var Planet = makeClass({
 			this.angle = [0,0,0,1];
 		}
 		this.tiltAngle = [0,0,0,1];
+
+		this.maxSemiMajorAxisOfEllipticalSatellites = 0;	//used for spherical bounding volumes ... excluding parabolic/hyperbolic satellites ...
 	},
 
 	clone : function() {
@@ -1124,17 +1126,34 @@ var drawScene;
 var gravityWellZScale = 1;
 var gravityWellTargetZScale = 1;
 var planetPointVisRatio = .001;
+var showFPS = false;
 (function(){
 	var delta = vec3.create();//[];
 	var viewAngleInv = quat.create();
 	var invRotMat = mat4.create();
 	var viewPosInv = vec3.create();
 	var viewfwd = vec3.create();
+	
+	//fps counter
+	var frames = 0;
+	var lastFPSTime = Date.now();
 
 	//used for new gpu update of tide tex
 	var updatePlanetStateBuffer = new Float32Array(1);
 
 	drawScene = function() {
+
+		frames++;
+		var thisTime = Date.now();
+		if (thisTime - lastFPSTime > 1000) {
+			var fps = frames * 1000 / (thisTime - lastFPSTime);
+			if (showFPS) {
+				console.log('fps '+fps);
+			}
+			frames = 0;
+			lastFPSTime = thisTime;	
+		}
+
 
 		//update the planet state texture
 		// right now it's only used for tide calcs so
@@ -4800,6 +4819,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 	}
 
 	//calculated variables:
+	var semiMajorAxis = undefined;
 	var eccentricity = undefined;
 	var eccentricAnomaly = undefined;
 	var orbitType = undefined;
@@ -4833,7 +4853,6 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		}
 
 		var pericenterDistance;
-		var semiMajorAxis;
 		if (planet.isComet) {
 			pericenterDistance = assert(planet.sourceData.perihelionDistance);
 			if (orbitType !== 'parabolic') {
@@ -5113,7 +5132,7 @@ r^2 = a^2 (cos(E)
 		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
 		var gravitationalParameter = gravitationalConstant * ((planet.mass || 0) + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
 		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
-		var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
+		semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
 		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
 		eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
 
@@ -5202,6 +5221,15 @@ r^2 = a^2 (cos(E)
 			return;
 		}
 	}
+
+	//for elliptic orbits,
+	// we can accumulate & store the largest semi major axis of all children
+	//but for parabolic/hyperbolic ...
+	// there is no bound ... so maybe those objects should be stored/rendered separately?
+	if (parentPlanet !== undefined && orbitType == 'elliptic') {
+		parentPlanet.maxSemiMajorAxisOfEllipticalSatellites = Math.max(semiMajorAxis, parentPlanet.maxSemiMajorAxisOfEllipticalSatellites);
+	}
+
 
 	//iterate around the eccentric anomaly to reconstruct the path
 	var vertexes = [];
