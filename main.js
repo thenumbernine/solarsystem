@@ -4292,7 +4292,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				usage : gl.DYNAMIC_DRAW
 			}),
 			absoluteMagnitude : new glutil.ArrayBuffer({
-				dim ; 1,
+				dim : 1,
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
