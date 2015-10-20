@@ -1470,8 +1470,13 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					//draw as a pixel with apparent magnitude
 					//use the starfield shader
 					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
-					pointObj.attrs.vertex.data[3] = planet.absoluteMagnitude || 10;
 					pointObj.attrs.vertex.updateData();
+					pointObj.attrs.velocity.data[0] = planet.vel[0];
+					pointObj.attrs.velocity.data[1] = planet.vel[1];
+					pointObj.attrs.velocity.data[2] = planet.vel[2];
+					pointObj.attrs.velocity.updateData();
+					pointObj.attrs.absoluteMagnitude.data[0] = planet.absoluteMagnitude || 10;
+					pointObj.attrs.absoluteMagnitude.updateData();
 					pointObj.attrs.colorIndex.data[0] = planet.colorIndex || 0;
 					pointObj.attrs.colorIndex.updateData();
 					pointObj.draw({
@@ -2786,7 +2791,7 @@ function initStars() {
 		}
 	};
 	*/
-	var numElem = 5;
+	var numElem = 8;
 	xhr.onload = function(e) {
 		var arrayBuffer = this.response;
 		var data = new DataView(arrayBuffer);
@@ -2814,8 +2819,10 @@ function initStars() {
 			shader : colorIndexShader,
 			texs : [colorIndexTex],
 			attrs : {
-				vertex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 4, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
-				colorIndex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 4 * Float32Array.BYTES_PER_ELEMENT})	//color-index
+				vertex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
+				velocity : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEM, offset : 3 * Float32Array.BYTES_PER_ELEMENT}),	//velocity
+				absoluteMagnitude : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEM, offset : 6 * Float32Array.BYTES_PER_ELEMENT}),
+				colorIndex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 7 * Float32Array.BYTES_PER_ELEMENT})	//color-index
 			},
 			uniforms : {
 				pointSize : 1,
@@ -4199,7 +4206,9 @@ if (true) {
 '#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
 '#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
 		mlstr(function(){/*
-attribute vec4 vertex;
+attribute vec3 vertex;
+attribute vec3 velocity;
+attribute float absoluteMagnitude;
 attribute float colorIndex;
 varying float alpha;
 varying vec3 color;
@@ -4210,11 +4219,10 @@ uniform sampler2D colorIndexTex;
 #define M_LOG_10			2.3025850929940459010936137929093092679977416992188
 #define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
-	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
+	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
 	//calculate apparent magnitude, convert to alpha
 	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
-	float absoluteMagnitude = vertex.w;
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 
 	//something to note: these power functions give us a sudden falloff,
@@ -4274,7 +4282,17 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 		shader : colorShader,
 		attrs : {
 			vertex : new glutil.ArrayBuffer({
-				dim : 4,
+				dim : 3,
+				count : 1,
+				usage : gl.DYNAMIC_DRAW
+			}),
+			velocity : new glutil.ArrayBuffer({
+				dim : 3,
+				count : 1,
+				usage : gl.DYNAMIC_DRAW
+			}),
+			absoluteMagnitude : new glutil.ArrayBuffer({
+				dim ; 1,
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
