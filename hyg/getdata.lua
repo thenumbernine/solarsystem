@@ -1,17 +1,27 @@
 #! /usr/bin/env luajit
 require 'ext'
+local json = require 'dkjson'
 local ffi = require 'ffi'
-require 'ffi.c.stdio'	-- FILE and all its related functions
+local csv = require 'csv'
 
 local verbose = false
 if arg[1] == 'v' then
 	verbose = true
 end
 
-local csv = require 'csv'.file 'hygdata_v3.csv'
-csv:setColumnNames(csv.rows:remove(1))
+local csvdata = csv.file 'hygdata_v3.csv'
+csvdata:setColumnNames(csvdata.rows:remove(1))
 
-local numRows = #csv.rows
+local sunRow = csvdata.rows[1]
+--print(row.proper, row.x, row.y, row.z, row.vx, row.vy, row.vz)
+-- hmm, in the latest version the sun is at position [0.000005, 0.000000, 0.000000], jjuust to mess with us.
+-- two options: (1) reposition *everything* to put the sun at the center, (2) just nudge the sun ...
+-- I'm going to do #2 for now
+sunRow.x = '0'
+sunRow.y = '0'
+sunRow.z = '0'
+
+local numRows = #csvdata.rows
 local numElem = 8
 local buffer = ffi.new('float[?]', numElem * numRows)	-- allocate space for data of each planet 
 
@@ -19,8 +29,8 @@ local maxAbs = 0
 local namedStars = {}
 local columnCounts = {}
 
-for i,row in ipairs(csv.rows) do
-	for _,col in ipairs(csv.columns) do
+for i,row in ipairs(csvdata.rows) do
+	for _,col in ipairs(csvdata.columns) do
 		if #row[col] > 0 then
 			columnCounts[col] = (columnCounts[col] or 0) + 1
 		end
@@ -76,7 +86,7 @@ for i,row in ipairs(csv.rows) do
 end
 print('abs max coordinate', maxAbs)
 print('num columns provided:')
-for _,name in ipairs(csv.columns) do
+for _,name in ipairs(csvdata.columns) do
 	print('', name, columnCounts[name])
 end
 
@@ -85,27 +95,6 @@ assert(namedStars[1].name == 'Sol')
 namedStars[1].name = 'Sun'
 
 -- write 
-local filename = 'stardata.f32'
-local fh = ffi.C.fopen(filename, 'wb') or error("failed to open file "..filename.." for writing")
-if ffi.C.fwrite(buffer, ffi.sizeof('float') * numElem * numRows, 1, fh) ~= 1 then error("failed to write data to "..filename) end
-ffi.C.fclose(fh)
-
-file['namedStars.json'] = 'namedStars = '
-	.. require 'dkjson'.encode(namedStars, {indent=true}) ..';'
---[=[
-..'[\n\t' ..
--- poor man's json encode 
-	table(namedStars):map(function(namedStar)
-		local kvs = table()
-		for k,v in pairs(namedStar) do
-			if type(v) == 'string' then
-				v = ('%q'):format(v)
-			else
-				v = tostring(v)
-			end
-			kvs:insert(('%q'):format(k) .. ':' .. v)
-		end
-		return '{' .. kvs:concat(', ') .. '}'
-	end):concat(',\n\t') .. '\n];'
---]=]
+file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(buffer))
+file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
 
