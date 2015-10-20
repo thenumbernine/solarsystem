@@ -12,14 +12,13 @@ end
 local csvdata = csv.file 'hygdata_v3.csv'
 csvdata:setColumnNames(csvdata.rows:remove(1))
 
+-- sun is positioned relative to the earth, so offset everything for the sun to be the center
 local sunRow = csvdata.rows[1]
---print(row.proper, row.x, row.y, row.z, row.vx, row.vy, row.vz)
--- hmm, in the latest version the sun is at position [0.000005, 0.000000, 0.000000], jjuust to mess with us.
--- two options: (1) reposition *everything* to put the sun at the center, (2) just nudge the sun ...
--- I'm going to do #2 for now
-sunRow.x = '0'
-sunRow.y = '0'
-sunRow.z = '0'
+local sunPos = {
+	x = assert(tonumber(sunRow.x)),
+	y = assert(tonumber(sunRow.y)),
+	z = assert(tonumber(sunRow.z)),
+}
 
 local numRows = #csvdata.rows
 local numElem = 8
@@ -45,9 +44,9 @@ for i,row in ipairs(csvdata.rows) do
 	--]]
 
 	-- in parsecs
-	local x = assert(tonumber(row.x))
-	local y = assert(tonumber(row.y))
-	local z = assert(tonumber(row.z))
+	local x = assert(tonumber(row.x)) - sunPos.x
+	local y = assert(tonumber(row.y)) - sunPos.y
+	local z = assert(tonumber(row.z)) - sunPos.z
 
 	-- HYG is in equatorial coordinates
 	-- rotate equatorial pos to ecliptic pos
