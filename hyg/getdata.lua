@@ -8,34 +8,30 @@ if arg[1] == 'v' then
 	verbose = true
 end
 
-local lines = io.readfile('hygxyz.csv'):trim():split('\n')
-local header = lines:remove(1)
-local columnNames = header:split(',')	-- columnNames[1] = 'StarID'
-local columnForNames = columnNames:map(function(name,i) return i,name end)	-- columnForNames.StarID = 1
+local csv = require 'csv'.file 'hygxyz.csv'
+csv:setColumnNames(csv.rows:remove(1))
 
--- nahh .. keep the sun ... I can use it for rendering in the star dataset when viewing the solar system from far away.  I just need to remove it from the dataset when up close. 
---assert(lines:remove(1):split(',')[columnForNames.ProperName] == 'Sol')	-- assert that the first star is the sun, named "Sol" (and at xyz = 000)
-
-local numElem = 5
-local buffer = ffi.new('float[?]', numElem * #lines)	-- allocate space for xyz of each planet 
+local numRows = #csv.rows
+local numElem = 8
+local buffer = ffi.new('float[?]', numElem * numRows)	-- allocate space for xyz of each planet 
 
 local maxAbs = 0
 local namedStars = {}
 local columnCounts = {}
-for i=1,#lines do
-	local line = lines[i]
-	local parts = line:split(',')
-	if #parts ~= #columnNames then error("line "..(i+1).." does not have enoguh columns\n"..line) end 
-	local data = parts:map(function(part, i) 
-		local columnName = columnNames[i]
-		if #part > 0 then columnCounts[columnName] = (columnCounts[columnName] or 0) + 1 end
-		return part, columnName
-	end)
+
+for i,row in ipairs(csv.rows) do
+	for _,col in ipairs(csv.columns) do
+		if #row[col] > 0 then
+			columnCounts[col] = (columnCounts[col] or 0) + 1
+		end
+	end
+	local zeroBasedIndex = i-1
+	assert(zeroBasedIndex == tonumber(row.StarID))	-- this assertion isn't required, I was just curious if it was enforced
 	
 	-- in parsecs
-	local x = assert(tonumber(data.X))
-	local y = assert(tonumber(data.Y))
-	local z = assert(tonumber(data.Z))
+	local x = assert(tonumber(row.X))
+	local y = assert(tonumber(row.Y))
+	local z = assert(tonumber(row.Z))
 
 	-- HYG is in equatorial coordinates
 	-- rotate equatorial xyz to ecliptic xyz
@@ -44,30 +40,38 @@ for i=1,#lines do
 	local sinEps = math.sin(epsilon)
 	y, z = cosEps * y + sinEps * z, -sinEps * y + cosEps * z
 	
-	local mag = assert(tonumber(data.AbsMag))	--apparent magnitude
-	local colorIndex = tonumber(data.ColorIndex) or .656	-- fill in blanks with something close to white
-	local zeroBasedIndex = i-1
+	local mag = assert(tonumber(row.AbsMag))	--apparent magnitude
+	local colorIndex = tonumber(row.ColorIndex) or .656	-- fill in blanks with something close to white
+
+	local vx = assert(tonumber(row.VX))
+	local vy = assert(tonumber(row.VY))
+	local vz = assert(tonumber(row.VZ))
+	
 	buffer[0 + numElem * zeroBasedIndex] = x
 	buffer[1 + numElem * zeroBasedIndex] = y
 	buffer[2 + numElem * zeroBasedIndex] = z
-	buffer[3 + numElem * zeroBasedIndex] = mag
-	buffer[4 + numElem * zeroBasedIndex] = colorIndex 
+	buffer[3 + numElem * zeroBasedIndex] = vx
+	buffer[4 + numElem * zeroBasedIndex] = vy
+	buffer[5 + numElem * zeroBasedIndex] = vz
+	buffer[6 + numElem * zeroBasedIndex] = mag
+	buffer[7 + numElem * zeroBasedIndex] = colorIndex 
+	
 	maxAbs = math.max(maxAbs, x)
 	maxAbs = math.max(maxAbs, y)
 	maxAbs = math.max(maxAbs, z)
-	assert(zeroBasedIndex == tonumber(data.StarID))	-- this assertion isn't required, I was just curious if it was enforced
-	if #data.ProperName > 0 then
-		table.insert(namedStars, {name=data.ProperName, index=zeroBasedIndex})
+	
+	if #row.ProperName > 0 then
+		table.insert(namedStars, {name=row.ProperName, index=zeroBasedIndex})
 	end
 	if verbose then
-		print(toLua(data, ' ', ''))
+		print(tolua(row))
 		if io.read(1) == 'q' then break end
 	end
 end
 print('abs max coordinate', maxAbs)
 print('num columns provided:')
-for _,name in ipairs(columnNames) do
-	print('',name,columnCounts[name])
+for _,name in ipairs(csv.columns) do
+	print('', name, columnCounts[name])
 end
 
 -- make name of sun consistent with NASA data
@@ -77,11 +81,14 @@ namedStars[1].name = 'Sun'
 -- write 
 local filename = 'stardata.f32'
 local fh = ffi.C.fopen(filename, 'wb') or error("failed to open file "..filename.." for writing")
-if ffi.C.fwrite(buffer, ffi.sizeof('float') * numElem * #lines, 1, fh) ~= 1 then error("failed to write data to "..filename) end
+if ffi.C.fwrite(buffer, ffi.sizeof('float') * numElem * numRows, 1, fh) ~= 1 then error("failed to write data to "..filename) end
 ffi.C.fclose(fh)
 
-io.writefile('namedStars.json', 'namedStars = [\n\t' ..
--- poor man's json.encode ... I need luajit for the ffi, but my luarocks aren't compiled against luajit, so I can't use dkjson ...
+file['namedStars.json'] = 'namedStars = '
+	.. require 'dkjson'.encode(namedStars, {indent=true}) ..';'
+--[=[
+..'[\n\t' ..
+-- poor man's json encode 
 	table(namedStars):map(function(namedStar)
 		local kvs = table()
 		for k,v in pairs(namedStar) do
@@ -93,4 +100,6 @@ io.writefile('namedStars.json', 'namedStars = [\n\t' ..
 			kvs:insert(('%q'):format(k) .. ':' .. v)
 		end
 		return '{' .. kvs:concat(', ') .. '}'
-	end):concat(',\n\t') .. '\n];')
+	end):concat(',\n\t') .. '\n];'
+--]=]
+
