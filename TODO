@@ -1,0 +1,42 @@
+currently the solar system visualization is a mess of too many different things:
+1) keplerian orbital element calcluator
+	- based on various sources of incoming data:
+		- partial sets of keplerian orbital elements (one set for small bodies, another set for comets/meteors)
+		- position and velocity information - for planets and moons
+2) time-based extrapolation 
+	- via keplerian orbital elements
+	- via n-body simulation (this was what the project started as ... until the JavaScript port proved it couldn't keep up with the original LuaJIT version *cough*V8*cough*
+3) various visualization elements
+	- gravity wells
+	- surface calculations of gravitational and tidal forces
+	- angles between planets (eventually a graph that shows upcoming alignments of planets)
+4) small-body queryable database (500,000 small bodies)
+5) local neighborhood of stars (120,000 stars from HYG Database)
+6) exoplanets (5,000 stars from Open Exoplanet Catalogue ... some overlap with HYG Database)
+
+how to unify this all ...
+
+- hierarchical scenegraph (there, I said it)
+	- from 5000 AU the solar system can be a single point
+	- from 150 AU the jupiter and saturn satellite systems can be single points
+	- from .25 AU the individual planets can be rendered as a single point
+	- any closer and you'd better draw with a sphere
+	- error metrics should be in terms of screen pixels ... 
+	
+	- solar system:
+		- 1 px size
+			- draw as a single point / draw from within the parent node's pointset
+		- bigger
+			- draw children:
+				- planet system:
+					- 1 px size
+						- draw as a single point / draw from within the parent node's pointset (i haven't got this working -- currently planets are drawn individually)
+					- bigger
+						- draw children
+							- planets:
+								- 1px size
+									- single point
+								- bigger
+									- draw children
+
+	- but what about the small bodies ... 500,000 point sets ... same issue as large-scale structure
