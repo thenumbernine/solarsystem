@@ -1,13 +1,13 @@
-#!/usr/bin/env lua -lluarocks.require
+#!/usr/bin/env luajit
 require 'ext'
-local json = require 'dkjson'	-- only reason I can't use luajit...
+local json = require 'dkjson'
 local htmlparser = require 'htmlparser'
 require 'htmlparser.xpath'
 htmlparser.htmlnonclosing = {}
 local tree = htmlparser.parse(file['systems.xml'])
 
 local function getText(child)
-	if not (#child.child == 1) then error("tried to parse text of a child with multiple children: " ..toLua(child)) end
+	if not (#child.child == 1) then error("tried to parse text of a child with multiple children: " ..tolua(child)) end
 	assert(type(child.child[1]) == 'string')
 	return child.child[1]
 end
@@ -27,22 +27,6 @@ local jupiterMassInKg = 1.89813e+27
 local jupiterRadiusInM = 6.9911e+7
 local sunMassInKg = 1.9891e+30
 local sunRadiusInM = 6.960e+8
-
-local function getSeparation(child)
-	-- separation looks to be equivalent of the radius of the orbit
-	-- this should be a fallback for when semimajoraxis is not provided
-	if findattr(child, 'unit') == 'arcsec' then	-- then process separtion in arcseconds?
-		--error('how do we handle arcsecond separation?')
-	elseif findattr(child, 'unit') == 'AU' then
-		return getNumber(child) * auToM
-	else
-		-- sometimes units aren't given ... in that case what do we do?
-		return getNumber(child) * auToM
-		--error('unknown separation type '..toLua(child))
-	end
-end
-
-
 
 --[[
 results = {
@@ -79,6 +63,37 @@ local function setName(obj, name)
 	end
 end
 
+--[[
+local function getSeparation(node)
+	-- separation looks to be equivalent of the radius of the orbit
+	-- this should be a fallback for when semimajoraxis is not provided
+	if findattr(node, 'unit') == 'arcsec' then	-- then process separtion in arcseconds?
+		--error('how do we handle arcsecond separation?')
+	elseif findattr(node, 'unit') == 'AU' then
+		return getNumber(node) * auToM
+	else
+		-- sometimes units aren't given ... in that case what do we do?
+		return getNumber(node) * auToM
+		--error('unknown separation type '..tolua(node))
+	end
+end
+--]]
+
+local function setSeparation(obj, node)
+	-- separation looks to be equivalent of the radius of the orbit
+	-- this should be a fallback for when semimajoraxis is not provided
+	local unit = findattr(node, 'unit')
+	if not unit then
+		io.stderr:write("ignoring separation with no specified units: ",tolua(node),'\n')
+		return
+	elseif unit == 'arcsec' then	-- then process separtion in arcseconds?
+	elseif unit == 'AU' then
+		setField(obj, 'separation', getNumber(node) * auToM)
+	else
+		error('unknown separation type '..tolua(node.attrs))
+	end
+end
+
 function processPlanet(node, resultSystem)
 	local resultBody = {type='planet'}
 	table.insert(resultSystem.bodies, resultBody)
@@ -89,7 +104,7 @@ function processPlanet(node, resultSystem)
 		elseif tag == 'semimajoraxis' then
 			setField(resultBody, 'semiMajorAxis', getNumber(child) * auToM)
 		elseif tag == 'separation' then
-			setField(resultBody, 'separation', getSeparation(child))
+			setSeparation(resultBody, child)
 		elseif tag == 'eccentricity' then
 			setField(resultBody, 'eccentricity', getNumber(child)) 	-- I'm guessing eccentricity of orbit, and not of spheroid
 		elseif tag == 'periastron' then
@@ -218,18 +233,13 @@ function processBinary(node, resultSystem)
 		elseif tag == 'semimajoraxis' then
 			setField(resultBody, 'semiMajorAxis', getNumber(child) * auToM)
 		elseif tag == 'separation' then
-			-- separation looks to be equivalent of the radius of the orbit
-			-- this should be a fallback for when semimajoraxis is not provided
-			if findattr(child, 'unit') == 'arcsec' then	-- then process separtion in arcseconds?
-			elseif findattr(child, 'unit') == 'AU' then
-				setField(resultBody, 'separation', getNumber(child) * auToM)
-			else
-				error('unknown separation type '..toLua(child.attrs))
-			end
+			setSeparation(resultBody, child)
 		elseif tag == 'eccentricity' then
 			setField(resultBody, 'eccentricity', getNumber(child)) 	-- I'm guessing eccentricity of orbit, and not of spheroid
 		elseif tag == 'periastron' then
 			setField(resultBody, 'longitudeOfPeriapsis', math.rad(getNumber(child))) 	-- degrees -> radians
+		elseif tag == 'periastrontime' then
+			setField(resultBody, 'timeOfPerihelionPassage', math.rad(getNumber(child)))
 		elseif tag == 'longitude' then
 			setField(resultBody, 'meanLongitude', math.rad(getNumber(child)))		-- degrees -> radians
 		elseif tag == 'ascendingnode' then
@@ -815,7 +825,7 @@ for _,system in ipairs(resultSystems) do
 	for _,body in ipairs(system.bodies) do
 		if body.parent then 
 			if not body.parent.name then
-				error('body parent has no name: '.. toLua(body.parent))
+				error('body parent has no name: '.. tolua(body.parent))
 			end
 			body.parent = assert(body.parent.name) 
 		end
