@@ -14,3 +14,8 @@ getdata.lua = LuaJIT script that extracts the xyz contents and store them as a b
 	namedStars.json	<- table of the 87 stars with proper names, and their associated (zero-based) indexes in the stardata.f32 buffer 
 
 getstarinfo.lua = Xavante script to return information about the star
+
+getSimbadStarInfo.lua = creates 'simbad-data.lua' which is a lua data file containing Simbad ID and OIDREF of each star
+
+mergeWithExoplanets.lua = reads '../exoplanet/openExoplanetCatalog.json' and removes entries from this and merges them into there
+							relies on 'simbad-data.lua', particularly by matching Simbad OIDREFs

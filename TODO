@@ -11,8 +11,14 @@ currently the solar system visualization is a mess of too many different things:
 	- surface calculations of gravitational and tidal forces
 	- angles between planets (eventually a graph that shows upcoming alignments of planets)
 4) small-body queryable database (500,000 small bodies)
+	- TODO put keplerian orbital elements into a separate texture of 500,000 x 16 or so (i.e. 32mb of f32 data)
 5) local neighborhood of stars (120,000 stars from HYG Database)
 6) exoplanets (5,000 stars from Open Exoplanet Catalogue ... some overlap with HYG Database)
+
+to remove the overlap between HYG and open exoplanets ...
+- query all open exoplanet stars by name from simbad
+- query all hyg stars by name from simbad
+- see what overlaps?
 
 how to unify this all ...
 
