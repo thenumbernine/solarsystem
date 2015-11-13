@@ -2,7 +2,7 @@
 require 'ext'
 local socket = require 'socket'
 local json = require 'dkjson'
-local julian = assert(loadfile('../lua/julian.lua'))()
+local julian = require 'julian'
 
 -- try to match the astro-phys date on file
 
