@@ -797,6 +797,7 @@ var orbitPathShader;
 var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
+var milkyWayObj;
 
 var colorIndexMin = 2.;
 var colorIndexMax = -.4;
@@ -1496,6 +1497,18 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 			}
 		}
 
+		//draw milky way if we're far enough out
+		if (milkyWayObj) {
+			milkyWayObj.uniforms.pos[0] = /* galaxy center relative to solar system - orbitTarget.pos[0] */0;
+			milkyWayObj.uniforms.pos[1] = /* galaxy center relative to solar system - orbitTarget.pos[1] */0;
+			milkyWayObj.uniforms.pos[2] = /* galaxy center relative to solar system - orbitTarget.pos[2] */0;
+			gl.disable(gl.CULL_FACE);
+			gl.depthMask(false);
+			milkyWayObj.draw();
+			gl.enable(gl.CULL_FACE);
+			gl.depthMask(true);
+		}
+
 		if (mouseOverTarget !== undefined) {
 			var planet = mouseOverTarget;
 			if (planet !== undefined) {
@@ -1729,6 +1742,11 @@ var unitsPerM = [
 	{name:'km',		value:1000},
 	{name:'m',		value:1}
 ];
+var unitsPerMByName = {}
+for (var i = 0; i < unitsPerM.length; ++i) {
+	unitsPerMByName[unitsPerM[i].name] = unitsPerM[i].value;
+}
+
 function refreshOrbitTargetDistanceText() {
 	var units = 'm';
 	var dist = orbitTargetDistance;
@@ -1963,12 +1981,12 @@ function init1() {
 			// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
 			//  but, true to the original design, I actually want more detail up front.  Maybe I'll map it to get more detail up front than it already has?
 			args.vertexCode = mlstr(function(){/*
-	uniform float zNear, zFar, depthConstant;
-	float depthfunction(vec4 v) {
-		//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
-		//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w;
-		return v.z;
-	}
+uniform float zNear, zFar, depthConstant;
+//float depthfunction(vec4 v) {
+	//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
+	//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w;
+//}
+#define depthfunction(x) ((x).z)
 	*/}) + (args.vertexCode || '');
 			if (args.uniforms === undefined) args.uniforms = {};
 			args.uniforms.zNear = glutil.view.zNear;
@@ -3201,6 +3219,22 @@ vec3 geodeticPosition(vec2 latLon) {
 }
 */});
 
+var coordinateSystemCode = mlstr(function(){/*
+//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
+//..but this is in equatorial coordinates, so rotate to get to ecliptic
+const mat3 eclipticalToGalactic = mat3(	//represented transposed
+	-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
+	-0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
+	-0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
+
+#define M_COS_EPSILON	0.9177546256839811400496387250314000993967056274414
+#define M_SIN_EPSILON	0.3971478906347805648557880431326339021325111389160
+const mat3 equatorialToEcliptical = mat3(	//represented transposed
+	1., 0., 0.,
+	0., M_COS_EPSILON, M_SIN_EPSILON,
+	0., -M_SIN_EPSILON, M_COS_EPSILON);
+*/});
+
 //request this per solar system.  rebuild if we need, return from cache if we don't.
 var planetShadersPerNumberOfStarsCache = {};
 function getPlanetShadersForNumberOfStars(numberOfStars) {
@@ -4405,6 +4439,84 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 			angle : [0,0,0,1],
 			parent : null
 		});
+	})();
+
+	(function(){
+		var img = new Image();
+		img.onload = function() {
+			milkyWayObj = new glutil.SceneObject({
+				mode : gl.TRIANGLE_STRIP,
+				attrs : {
+					vertex : new glutil.ArrayBuffer({dim : 2, data : [-1, -1, 1, -1, -1, 1, 1, 1]}),
+					texCoord : new glutil.ArrayBuffer({dim : 2, data : [0, 0, 1, 0, 0, 1, 1, 1]})
+				},
+				shader : new ModifiedDepthShaderProgram({
+					vertexCode : mlstr(function(){/*
+attribute vec2 vertex;
+attribute vec2 texCoord;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float scale;
+varying vec2 texCoordv;
+
+vec3 quatRotate( vec4 q, vec3 v ){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+
+*/}) + coordinateSystemCode + mlstr(function(){/*
+
+mat3 transpose(mat3 m) {
+	return mat3(m[0][0], m[1][0], m[2][0],
+				m[0][1], m[1][1], m[2][1],
+				m[0][2], m[1][2], m[2][2]);
+}
+
+void main() {
+	//the image is rotated 90 degrees ...
+	texCoordv = vec2(-texCoord.y, texCoord.x);
+	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
+#define DISTANCE_TO_CENTER	*/}) + 8.7/1000*unitsPerMByName.Mpc + mlstr(function(){/*.
+#define FIXED_SCALE	*/}) + 100000*unitsPerMByName.lyr + mlstr(function(){/*.
+	vec3 galacticPos = vec3(DISTANCE_TO_CENTER, 0., 0.);
+	vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + FIXED_SCALE * vtx3);
+	gl_Position = projMat * mvMat * vec4(modelPos, 1.);
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+					fragmentCode : mlstr(function(){/*
+uniform sampler2D tex;
+varying vec2 texCoordv;
+void main() {
+	gl_FragColor = texture2D(tex, texCoordv);
+}
+*/}),
+				}),
+				uniforms : {
+					tex : 0,
+					pos : [0, 0, 0],
+					angle : [0, 0, 0, 1],
+					scale : 1e+10
+				},
+				texs : [
+					new glutil.Texture2D({
+						flipY : true,
+						data : img,
+						minFilter : gl.LINEAR_MIPMAP_LINEAR,
+						magFilter : gl.LINEAR,
+						generateMipmap : true
+					})
+				],
+				blend : [gl.SRC_ALPHA, gl.ONE],
+				parent : null,
+				static : true
+			});
+			console.log("created milky way")
+		};
+		img.onerror = function() {
+			console.log('failed to find texture for milky way');
+			//checkDone();
+		};
+		img.src = 'textures/milkyway.png';
 	})();
 
 	//init stars now that shaders are made
@@ -5722,23 +5834,11 @@ uniform vec4 viewAngle;
 vec3 quatRotate( vec4 q, vec3 v ){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
-
-//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
-//..but this is in equatorial coordinates, so rotate to get to ecliptic
-const mat3 nj = mat3(	//represented transposed
-	-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
-	-0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
-	-0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
-#define M_COS_EPSILON	0.9177546256839811400496387250314000993967056274414
-#define M_SIN_EPSILON	0.3971478906347805648557880431326339021325111389160
-const mat3 equatorialToEcliptical = mat3(	//represented transposed
-	1., 0., 0.,
-	0., M_COS_EPSILON, M_SIN_EPSILON,
-	0., -M_SIN_EPSILON, M_COS_EPSILON);
+*/}) + coordinateSystemCode + mlstr(function(){/*
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
-	dir = nj * equatorialToEcliptical * dir;
+	dir = eclipticalToGalactic * equatorialToEcliptical * dir;
 	gl_FragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
 	gl_FragColor.a = 1.;
 }
