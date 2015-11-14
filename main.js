@@ -1230,6 +1230,11 @@ var showFPS = false;
 			if (starfield !== undefined && starfield.sceneObj !== undefined) {
 				gl.disable(gl.DEPTH_TEST);
 				starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					starfield.sceneObj.pos[0] = -orbitTarget.pos[0];
+					starfield.sceneObj.pos[1] = -orbitTarget.pos[1];
+					starfield.sceneObj.pos[2] = -orbitTarget.pos[2];
+				}
 				starfield.sceneObj.draw();
 				gl.enable(gl.DEPTH_TEST);
 			}
@@ -1499,9 +1504,9 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 		//draw milky way if we're far enough out
 		if (milkyWayObj) {
-			milkyWayObj.uniforms.pos[0] = /* galaxy center relative to solar system - orbitTarget.pos[0] */0;
-			milkyWayObj.uniforms.pos[1] = /* galaxy center relative to solar system - orbitTarget.pos[1] */0;
-			milkyWayObj.uniforms.pos[2] = /* galaxy center relative to solar system - orbitTarget.pos[2] */0;
+			if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+				vec3.copy(milkyWayObj.uniforms.orbitTarget, orbitTarget.pos);
+			}
 			gl.disable(gl.CULL_FACE);
 			gl.depthMask(false);
 			milkyWayObj.draw();
@@ -2854,6 +2859,7 @@ function initStars() {
 				colorIndexTex : 0
 			},
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
 			parent : null
 		});
 
@@ -3218,6 +3224,32 @@ vec3 geodeticPosition(vec2 latLon) {
 		(N * (1. - eccentricitySquared) + height) * sinPhi);
 }
 */});
+
+var eclipticalToGalacticTransform = mat3.create();	//column-major
+eclipticalToGalacticTransform[0] = -0.054875539390;
+eclipticalToGalacticTransform[1] = -0.873437104725;
+eclipticalToGalacticTransform[2] = -0.483834991775;
+eclipticalToGalacticTransform[3] = 0.494109453633;
+eclipticalToGalacticTransform[4] = -0.444829594298;
+eclipticalToGalacticTransform[5] = 0.746982248696;
+eclipticalToGalacticTransform[6] = -0.867666135681;
+eclipticalToGalacticTransform[7] = -0.198076389622;
+eclipticalToGalacticTransform[8] = 0.455983794523;
+var galacticToEclipticalTransform = mat3.create();
+mat3.transpose(galacticToEclipticalTransform, eclipticalToGalacticTransform);
+
+var equatorialToEclipticalTransform = mat3.create();
+equatorialToEclipticalTransform[0] = 1;
+equatorialToEclipticalTransform[1] = 0;
+equatorialToEclipticalTransform[2] = 0;
+equatorialToEclipticalTransform[3] = 0;
+equatorialToEclipticalTransform[4] = 0.9177546256839811400496387250314000993967056274414;
+equatorialToEclipticalTransform[5] = -0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[6] = 0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[7] = 0.9177546256839811400496387250314000993967056274414;
+equatorialToEclipticalTransform[8] = 0;
+var eclipticalToEquatorialTransform = mat3.create();
+mat3.transpose(eclipticalToEquatorialTransform, equatorialToEclipticalTransform);
 
 var coordinateSystemCode = mlstr(function(){/*
 //"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
@@ -4456,12 +4488,8 @@ attribute vec2 vertex;
 attribute vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-uniform float scale;
+uniform vec3 orbitTarget;
 varying vec2 texCoordv;
-
-vec3 quatRotate( vec4 q, vec3 v ){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
 
 */}) + coordinateSystemCode + mlstr(function(){/*
 
@@ -4475,11 +4503,11 @@ void main() {
 	//the image is rotated 90 degrees ...
 	texCoordv = vec2(-texCoord.y, texCoord.x);
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
-#define DISTANCE_TO_CENTER	*/}) + 8.7/1000*unitsPerMByName.Mpc + mlstr(function(){/*.
-#define FIXED_SCALE	*/}) + 100000*unitsPerMByName.lyr + mlstr(function(){/*.
-	vec3 galacticPos = vec3(DISTANCE_TO_CENTER, 0., 0.);
-	vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + FIXED_SCALE * vtx3);
-	gl_Position = projMat * mvMat * vec4(modelPos, 1.);
+#define DISTANCE_TO_CENTER  */}) + 8.7/1000*unitsPerMByName.Mpc + mlstr(function(){/*.
+#define FIXED_SCALE */}) + 80000*unitsPerMByName.lyr + mlstr(function(){/*.
+    vec3 galacticPos = vec3(DISTANCE_TO_CENTER, 0., 0.);
+    vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + FIXED_SCALE * vtx3) - orbitTarget;
+    gl_Position = projMat * mvMat * vec4(modelPos, 1.);
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -4492,10 +4520,8 @@ void main() {
 */}),
 				}),
 				uniforms : {
-					tex : 0,
-					pos : [0, 0, 0],
-					angle : [0, 0, 0, 1],
-					scale : 1e+10
+					orbitTarget : [0, 0, 0],
+					tex : 0
 				},
 				texs : [
 					new glutil.Texture2D({
@@ -5914,14 +5940,17 @@ function setOrbitTarget(newTarget) {
 	}
 
 	if (selectingNewSystem) {
-		orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
-		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
-			var planet = orbitStarSystem.planets[i];
-			orbitTargetDistance = Math.max(orbitTargetDistance,
-				(planet.sourceData || {}).semiMajorAxis ||
-				(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
-				0);
-			refreshOrbitTargetDistanceText();
+		//if you want to reset the distance every time you select a new object ...
+		{
+			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
+			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
+				var planet = orbitStarSystem.planets[i];
+				orbitTargetDistance = Math.max(orbitTargetDistance,
+					(planet.sourceData || {}).semiMajorAxis ||
+					(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
+					0);
+				refreshOrbitTargetDistanceText();
+			}
 		}
 		recomputePlanetsAlongOrbit();
 	}
