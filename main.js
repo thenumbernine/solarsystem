@@ -829,7 +829,8 @@ var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
 var showStars = true;
 var allowSelectStars = false;
-var starsVisibleMagnitudeBias = 4;
+var starsVisibleMagnitudeBias = 0;
+var planetScaleExaggeration = 1;
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
@@ -1038,6 +1039,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 								inverseFlattening : planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5,
 								sourcePlanetIndex : planet.index,
 								planetStateTexHeight : orbitStarSystem.planetStateTex.height,
+								scaleExaggeration : planetScaleExaggeration,
 								flags : flags
 							},
 							texs : [orbitStarSystem.planetStateTex],
@@ -1314,7 +1316,7 @@ var showFPS = false;
 			var dx = planet.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
 			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
-			planet.visRatio = planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz);
+			planet.visRatio = planetScaleExaggeration * planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz);
 		}
 
 		//draw sphere planets
@@ -1375,6 +1377,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				//TODO - ambient for each star
 				// TODO even more - absolute magnitude, radiance, HDR, etc
 				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : .1;
+				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
 
 				planet.sceneObj.draw();
 
@@ -1383,6 +1386,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					quat.copy(planet.latLonObj.angle, planet.sceneObj.uniforms.angle);
 					planet.latLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
 					planet.latLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : 1.;
+					planet.latLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
 					planet.latLonObj.draw();
 				}
 			}
@@ -2246,7 +2250,8 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 	$.each([
 		'gravityWellScaleFixedValue',
-		'starsVisibleMagnitudeBias'
+		'starsVisibleMagnitudeBias',
+		'planetScaleExaggeration'
 	], function(_, toggle) {
 		(function(){
 			var textfield = $('#'+toggle);
@@ -3021,7 +3026,7 @@ console.log('adding star systems to star fields and vice versa');
 
 	//add buffer points
 
-	var array = starfield.buffer.data;	//5 fields: x y z absmag colorIndex
+	var array = starfield.buffer.data;	//8 fields: x y z vx vy vz absmag colorIndex
 	array = Array.prototype.slice.call(array);	//to js array
 
 	for (var i = 0; i < starSystems.length; ++i) {
@@ -3030,6 +3035,9 @@ console.log('adding star systems to star fields and vice versa');
 		array.push(starSystem.pos[0]);
 		array.push(starSystem.pos[1]);
 		array.push(starSystem.pos[2]);
+		array.push(0);
+		array.push(0);
+		array.push(0);
 		array.push(5);	//abs mag
 		array.push(0);	//color index
 	}
@@ -3213,6 +3221,7 @@ uniform vec4 angle;			//planet angle
 uniform vec3 sunDir[NUM_STARS];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
+uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
 varying vec3 lightDir[NUM_STARS];		//light position
 varying vec3 normal;		//surface normal
@@ -3225,7 +3234,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 void main() {
 	//vertex is really the lat/lon in degrees
-	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
 */}) + unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
@@ -3268,6 +3277,7 @@ uniform vec4 angle;			//planet angle
 uniform vec3 sunDir[NUM_STARS];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
+uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
 varying vec2 texCoordv;
 varying vec3 lightDir[NUM_STARS];
@@ -3281,7 +3291,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 void main() {
 	//vertex is really the lat/lon in degrees
-	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
@@ -3325,6 +3335,7 @@ uniform vec4 angle;			//planet angle
 uniform vec3 sunDir[NUM_STARS];		//sun pos, for lighting calculations
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
+uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
 varying vec3 modelVertexv;
 varying vec3 normal;
@@ -3338,7 +3349,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 void main() {
 	//vertex is really the lat/lon in degrees
-	modelVertexv = geodeticPosition(vertex);
+	modelVertexv = geodeticPosition(vertex) * scaleExaggeration;
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 worldVertex = quatRotate(angle, modelVertexv) + pos;
 	normal = quatRotate(angle, normalize(modelVertexv));
@@ -3443,6 +3454,7 @@ uniform vec3 pos;
 uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
+uniform float scaleExaggeration;
 
 vec3 quatRotate(vec4 q, vec3 v){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
@@ -3451,7 +3463,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 		*/}) + geodeticPositionCode + mlstr(function(){/*
 
 void main() {
-	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
 	gl_Position = projMat * vtx4;
@@ -3482,6 +3494,7 @@ uniform vec3 pos;
 uniform vec4 angle;
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
+uniform float scaleExaggeration;
 varying float tidev;
 varying vec2 texCoordv;
 
@@ -3493,7 +3506,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 void main() {
 	//vertex is really the lat/lon in degrees
-	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	tidev = tide;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
@@ -3532,6 +3545,7 @@ uniform vec3 pos;
 uniform vec4 angle;
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
+uniform float scaleExaggeration;
 varying vec2 texCoordv;
 
 vec3 quatRotate(vec4 q, vec3 v){
@@ -3542,7 +3556,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 void main() {
 	//vertex is really the lat/lon in degrees
-	vec3 modelVertex = geodeticPosition(vertex);
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
@@ -3600,6 +3614,7 @@ uniform vec4 angle;					//planet angle
 
 uniform float equatorialRadius;
 uniform float inverseFlattening;
+uniform float scaleExaggeration;
 
 uniform int sourcePlanetIndex;		//index of the source planet.
 
@@ -3950,7 +3965,7 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 
 void main() {
 	vec2 latLonCoord = ((texCoordv - vec2(.5, .5)) * vec2(360., 180.)).yx;
-	vec3 planetVertex = geodeticPosition(latLonCoord);	//planet's local frame
+	vec3 planetVertex = geodeticPosition(latLonCoord) * scaleExaggeration;	//planet's local frame
 	vec3 solarSystemRotatedVertex = quatRotate(angle, planetVertex);	//...rotated into the solar system (but still centered at earth origin)
 	vec3 solarSystemVertex = solarSystemRotatedVertex + pos;	///...translated to be relative to the SSB 
 	vec3 solarSystemNormal = normalize(solarSystemRotatedVertex);	//normalize() doesn't correctly handle ellipses.  you're supposed to scale the normal by [1/sx, 1/sy, 1/sz] or something to correct for the flattening distortion of the normals.
@@ -4222,13 +4237,23 @@ void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
 	//calculate apparent magnitude, convert to alpha
-	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs
-	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
+	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs	
 
 	//something to note: these power functions give us a sudden falloff,
 	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
 	// one last fix would be to never scale the vertices and render different scaled objects at separate coordinate systems
-	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+	
+	//https://en.wikipedia.org/wiki/Apparent_magnitude
+	//float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
+	
+	//not sure where I got this one from ...
+	//alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+
+	//combined ...
+	//a^b = exp(log(a^b)) = exp(b*log(a))
+	distanceInParsecs = min(distanceInParsecs, 1e+10);
+	alpha = pow(10., 1. - visibleMagnitudeBias - .2 * absoluteMagnitude - log(distanceInParsecs) / M_LOG_10);
+	alpha *= alpha;
 
 	//calculate color
 	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
@@ -6016,13 +6041,14 @@ function update() {
 				if (planet.rotationPeriod) {
 					angle += ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI;
 				}
-				/* hmm ... why did I think this was necessary?
+				/* this makes sure the day starts at the right time -- relative to the sun rise -- rather than relative to the equinox 
+				... but it looks like it is already accounted for in the numbers I've been given * / 
 				if (planet.keplerianOrbitalElements && 
 					planet.keplerianOrbitalElements.orbitalPeriod !== undefined) 
 				{
 					angle += ((julianDate / planet.keplerianOrbitalElements.orbitalPeriod) % 1) * 2 * Math.PI;
 				}
-				*/
+				/**/
 				
 				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
