@@ -807,6 +807,7 @@ var planetLatLonObj;
 var milkyWayObj;
 var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
+var milkyWayDistanceToCenterInKpc = 8.7;
 
 var galaxyFieldSceneObj;
 
@@ -2919,8 +2920,12 @@ function floatToGLSL(x) {
 }
 
 function initGalaxies() {
-	var galaxyCenterCoords = [0,0,0];	//TODO offset intergalactic objects by coordinate system centered at the sun
-	
+	var galaxyCenterInGalacticCoords = [milkyWayDistanceToCenterInKpc * 1000 * unitsPerMByName.pc, 0, 0];
+	var galaxyCenterInEclipticalCoords = [];
+	vec3.transformMat3(galaxyCenterInEclipticalCoords, galaxyCenterInGalacticCoords, galacticToEclipticalTransform);
+	var galaxyCenterInEquatorialCoords = [];
+	vec3.transformMat3(galaxyCenterInEquatorialCoords, galaxyCenterInEclipticalCoords, eclipticalToEquatorialTransform);
+
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'simbad/galaxies.f32', true);
 	xhr.responseType = 'arraybuffer';
@@ -2936,7 +2941,7 @@ function initGalaxies() {
 				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
 			}
 			x *= unitsPerMByName.Mpc;	//scale from megaparsecs to meters
-			floatBuffer[j] = x + galaxyCenterCoords[j%3];
+			floatBuffer[j] = x - galaxyCenterInEquatorialCoords[j%3];
 		}
 
 		//now that we have the float buffer ...
@@ -4593,7 +4598,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
 
-'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(8.7 * 1000 * unitsPerMByName.pc) + '\n'
+'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(milkyWayDistanceToCenterInKpc * 1000 * unitsPerMByName.pc) + '\n'
 + '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(80000 * unitsPerMByName.lyr) + '\n'
 + mlstr(function(){/*
 attribute vec2 vertex;
@@ -4627,15 +4632,7 @@ uniform float fadeInAlpha;
 varying vec2 texCoordv;
 void main() {
 	gl_FragColor = texture2D(tex, texCoordv);
-
-	//fade in over a distance
 	gl_FragColor.a *= fadeInAlpha;
-
-	//smooth off the edges
-	//I could do this in the texture.  Meh.
-	vec2 d = texCoordv - vec2(-.5, .5);
-	float l = length(d);
-	gl_FragColor.a *= 1. - smoothstep(.4, .5, l);
 }
 */}),
 				}),
