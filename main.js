@@ -514,7 +514,11 @@ var orbitZoomFactor = .0003;	// upon mousewheel
 
 var mouse;
 var mouseDir;
+
 var skyCubeObj;
+var skyCubeMaxBrightness = .3;
+var skyCubeFadeOutStartDistInLyr = 100;
+var skyCubeFadeOutEndDistInLyr = 200;
 
 var skyTexFilenamePrefixes = [
 	'textures/sky-visible-cube-xp-',
@@ -526,6 +530,8 @@ var skyTexFilenamePrefixes = [
 ];
 
 var glMaxCubeMapTextureSize;
+
+var resetDistanceOnSelect = true;
 
 var speedOfLight = 299792458;	// m/s
 var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
@@ -797,7 +803,10 @@ var orbitPathShader;
 var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
+
 var milkyWayObj;
+var milkyWayFadeMinDistInLyr = 50;
+var milkyWayFadeMaxDistInLyr = 1000;
 
 var colorIndexMin = 2.;
 var colorIndexMax = -.4;
@@ -1217,9 +1226,14 @@ var showFPS = false;
 		vec3.scale(viewfwd, viewfwd, -1);
 
 		if (skyCubeObj) {
-			gl.disable(gl.DEPTH_TEST);
-			skyCubeObj.draw();
-			gl.enable(gl.DEPTH_TEST);
+			if (orbitDistance < skyCubeFadeOutEndDistInLyr * unitsPerMByName.lyr) {
+				var brightness = skyCubeMaxBrightness * (1 - Math.clamp((orbitDistance / unitsPerMByName.lyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
+				
+				gl.disable(gl.DEPTH_TEST);
+				skyCubeObj.uniforms.brightness = brightness;
+				skyCubeObj.draw();
+				gl.enable(gl.DEPTH_TEST);
+			}
 		}
 
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
@@ -1504,14 +1518,20 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 		//draw milky way if we're far enough out
 		if (milkyWayObj) {
-			if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-				vec3.copy(milkyWayObj.uniforms.orbitTarget, orbitTarget.pos);
+			if (orbitDistance > milkyWayFadeMinDistInLyr * unitsPerMByName.lyr) {
+				var alpha = Math.clamp((orbitDistance / unitsPerMByName.lyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+			
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					vec3.copy(milkyWayObj.uniforms.orbitTarget, orbitTarget.pos);
+				}
+			
+				gl.disable(gl.CULL_FACE);
+				gl.depthMask(false);
+				milkyWayObj.uniforms.fadeInAlpha = alpha;
+				milkyWayObj.draw();
+				gl.enable(gl.CULL_FACE);
+				gl.depthMask(true);
 			}
-			gl.disable(gl.CULL_FACE);
-			gl.depthMask(false);
-			milkyWayObj.draw();
-			gl.enable(gl.CULL_FACE);
-			gl.depthMask(true);
 		}
 
 		if (mouseOverTarget !== undefined) {
@@ -4513,9 +4533,19 @@ void main() {
 */}),
 					fragmentCode : mlstr(function(){/*
 uniform sampler2D tex;
+uniform float fadeInAlpha;
 varying vec2 texCoordv;
 void main() {
 	gl_FragColor = texture2D(tex, texCoordv);
+
+	//fade in over a distance
+	gl_FragColor.a *= fadeInAlpha;
+
+	//smooth off the edges
+	//I could do this in the texture.  Meh.
+	vec2 d = texCoordv - vec2(-.5, .5);
+	float l = length(d);
+	gl_FragColor.a *= 1. - smoothstep(.4, .5, l);
 }
 */}),
 				}),
@@ -5851,9 +5881,7 @@ void main() {
 precision mediump float;
 varying vec3 vertexv;
 uniform samplerCube skyTex;
-
-//TODO scale this from low value in solar system (.3 or so) to a large value at the range of the star field (1) before fading into the universe model
-const float brightness = .3;
+uniform float brightness;
 
 //uniform vec4 angle;
 uniform vec4 viewAngle;
@@ -5940,8 +5968,7 @@ function setOrbitTarget(newTarget) {
 	}
 
 	if (selectingNewSystem) {
-		//if you want to reset the distance every time you select a new object ...
-		{
+		if (resetDistanceOnSelect) {
 			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
 			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 				var planet = orbitStarSystem.planets[i];
