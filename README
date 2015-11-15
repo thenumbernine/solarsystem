@@ -31,7 +31,7 @@ Comets and small bodies are from NASA JPL SSD data files at http://ssd.jpl.nasa.
 
 See horizons/README for how to gather data from NASA Horizons telnet site
 See jpl-ssd-smallbody/README for how to gather data from NASA JPL/SSD
-See lua/eph.lua for gathering data from NASA Horizons Ephemeris 406
+See simbad/README for how to get intergalactic data from Simbad
 
 TODO
 
