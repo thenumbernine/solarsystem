@@ -1541,11 +1541,10 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				gl.enable(gl.CULL_FACE);
 				gl.depthMask(true);
 			}
-		
+			
 			//wait for the milky way obj to load and grab its texture
 			//TODO work out loading and what a mess it has become
 			if (galaxyFieldSceneObj) {
-				distFromSolarSystemInLyr
 				galaxyFieldSceneObj.texs[0] = milkyWayObj.texs[0];	
 				galaxyFieldSceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
 				galaxyFieldSceneObj.draw();
