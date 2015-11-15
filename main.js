@@ -491,7 +491,7 @@ var StarInField = makeClass({
 
 var StarField = makeClass({});
 var starfield = undefined;
-
+var starfieldMaxDistInLyr = 5000;
 
 var orbitPathResolution = 500;
 var ringResolution = 200;
@@ -807,6 +807,8 @@ var planetLatLonObj;
 var milkyWayObj;
 var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
+
+var galaxyFieldSceneObj;
 
 var colorIndexMin = 2.;
 var colorIndexMax = -.4;
@@ -1224,10 +1226,14 @@ var showFPS = false;
 		//TODO pull from matrix
 		vec3.quatZAxis(viewfwd, glutil.view.angle);
 		vec3.scale(viewfwd, viewfwd, -1);
+		
+		var distFromSolarSystemInM = vec3.length(glutil.view.pos);
+		var distFromSolarSystemInLyr = distFromSolarSystemInM / unitsPerMByName.lyr;
+		var distFromSolarSystemInMpc = distFromSolarSystemInM / unitsPerMByName.Mpc;
 
 		if (skyCubeObj) {
-			if (orbitDistance < skyCubeFadeOutEndDistInLyr * unitsPerMByName.lyr) {
-				var brightness = skyCubeMaxBrightness * (1 - Math.clamp((orbitDistance / unitsPerMByName.lyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
+			if (distFromSolarSystemInLyr < skyCubeFadeOutEndDistInLyr) {
+				var brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
 				
 				gl.disable(gl.DEPTH_TEST);
 				skyCubeObj.uniforms.brightness = brightness;
@@ -1241,16 +1247,18 @@ var showFPS = false;
 
 
 		if (showStars) {
-			if (starfield !== undefined && starfield.sceneObj !== undefined) {
-				gl.disable(gl.DEPTH_TEST);
-				starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
-				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-					starfield.sceneObj.pos[0] = -orbitTarget.pos[0];
-					starfield.sceneObj.pos[1] = -orbitTarget.pos[1];
-					starfield.sceneObj.pos[2] = -orbitTarget.pos[2];
+			if (distFromSolarSystemInLyr < starfieldMaxDistInLyr) {
+				if (starfield !== undefined && starfield.sceneObj !== undefined) {
+					gl.disable(gl.DEPTH_TEST);
+					starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+						starfield.sceneObj.pos[0] = -orbitTarget.pos[0];
+						starfield.sceneObj.pos[1] = -orbitTarget.pos[1];
+						starfield.sceneObj.pos[2] = -orbitTarget.pos[2];
+					}
+					starfield.sceneObj.draw();
+					gl.enable(gl.DEPTH_TEST);
 				}
-				starfield.sceneObj.draw();
-				gl.enable(gl.DEPTH_TEST);
 			}
 		}
 
@@ -1518,8 +1526,8 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 		//draw milky way if we're far enough out
 		if (milkyWayObj) {
-			if (orbitDistance > milkyWayFadeMinDistInLyr * unitsPerMByName.lyr) {
-				var alpha = Math.clamp((orbitDistance / unitsPerMByName.lyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+			if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
+				var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
 			
 				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
 					vec3.copy(milkyWayObj.uniforms.orbitTarget, orbitTarget.pos);
@@ -1531,6 +1539,15 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				milkyWayObj.draw();
 				gl.enable(gl.CULL_FACE);
 				gl.depthMask(true);
+			}
+		
+			//wait for the milky way obj to load and grab its texture
+			//TODO work out loading and what a mess it has become
+			if (galaxyFieldSceneObj) {
+				distFromSolarSystemInLyr
+				galaxyFieldSceneObj.texs[0] = milkyWayObj.texs[0];	
+				galaxyFieldSceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
+				galaxyFieldSceneObj.draw();
 			}
 		}
 
@@ -1762,6 +1779,7 @@ function invalidateForces() {
 
 var unitsPerM = [
 	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
+	{name:'pc', 	value:648000/Math.PI*149597870700},
 	{name:'lyr', 	value:9460730472580800},
 	{name:'AU', 	value:149597870700},
 	{name:'km',		value:1000},
@@ -2849,12 +2867,13 @@ function initStars() {
 		for (var j = 0; j < len; ++j) {
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 
+			//NOTICE don't forget velocity is not being rescaled
 			if (j % numElem < 3) {
 				//convert xyz from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
 				if (Math.abs(x) > 1e+20) {
 					console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
 				}
-				x *= 3.08567758e+16;
+				x *= unitsPerMByName.pc;
 			}
 
 			floatBuffer[j] = x;
@@ -2878,7 +2897,7 @@ function initStars() {
 				visibleMagnitudeBias : starsVisibleMagnitudeBias,
 				colorIndexTex : 0
 			},
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],	//gl.ONE?
 			pos : [0,0,0],
 			parent : null
 		});
@@ -2889,6 +2908,75 @@ function initStars() {
 		//now that we've built all our star system data ... add it to the star field
 		if (starSystems.length > 1) addStarSystemsToStarField();
 
+	};
+	xhr.send();
+}
+
+function floatToGLSL(x) {
+	x = ''+x;
+	if (x.indexOf('.') == -1 && x.indexOf('e') == -1) x += '.';
+	return x;
+}
+
+function initGalaxies() {
+	var galaxyCenterCoords = [0,0,0];	//TODO offset intergalactic objects by coordinate system centered at the sun
+	
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'simbad/galaxies.f32', true);
+	xhr.responseType = 'arraybuffer';
+	xhr.onload = function(e) {
+		var arrayBuffer = this.response;
+		var data = new DataView(arrayBuffer);
+
+		var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
+		var len = floatBuffer.length;
+		for (var j = 0; j < len; ++j) {
+			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
+			if (Math.abs(x) > 1e+26) {
+				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
+			}
+			x *= unitsPerMByName.Mpc;	//scale from megaparsecs to meters
+			floatBuffer[j] = x + galaxyCenterCoords[j%3];
+		}
+
+		//now that we have the float buffer ...
+		var buffer = new glutil.ArrayBuffer({data : floatBuffer});
+		galaxyFieldSceneObj = new glutil.SceneObject({
+			mode : gl.POINTS,
+			shader : new ModifiedDepthShaderProgram({
+				vertexPrecision : 'best',
+				vertexCode : 
+'#define MPC_PER_M '+floatToGLSL(unitsPerMByName.Mpc)+'\n'+
+mlstr(function(){/*
+attribute vec3 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float pointSize;	// = constant sprite width / screen width, though I have a tapering function that changes size with scale
+void main() {
+	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
+	gl_PointSize = pointSize / (gl_Position.w / MPC_PER_M);
+	gl_Position.w = depthfunction(gl_Position);
+}
+*/}),
+				fragmentPrecision : 'best',
+				fragmentCode : mlstr(function(){/*
+uniform sampler2D tex;
+void main() {
+	gl_FragColor = texture2D(tex, gl_PointCoord);
+	gl_FragColor *= gl_FragColor;
+}
+*/})
+			}),
+			attrs : {
+				vertex : new glutil.Attribute({buffer : buffer, size : 3, stride : 3 * Float32Array.BYTES_PER_ELEMENT}),
+			},
+			texs : [],
+			blend : [gl.SRC_ALPHA, gl.ONE],
+			pos : [0,0,0],
+			parent : null
+		});
+	
+		console.log("loaded galaxies");
 	};
 	xhr.send();
 }
@@ -4337,7 +4425,7 @@ void main() {
 
 	//combined ...
 	//a^b = exp(log(a^b)) = exp(b*log(a))
-	distanceInParsecs = min(distanceInParsecs, 1e+10);
+	//distanceInParsecs = min(distanceInParsecs, 1e+10);
 	alpha = pow(10., 1. - visibleMagnitudeBias - .2 * absoluteMagnitude - log(distanceInParsecs) / M_LOG_10);
 	alpha *= alpha;
 
@@ -4503,7 +4591,11 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 					texCoord : new glutil.ArrayBuffer({dim : 2, data : [0, 0, 1, 0, 0, 1, 1, 1]})
 				},
 				shader : new ModifiedDepthShaderProgram({
-					vertexCode : mlstr(function(){/*
+					vertexCode :
+
+'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(8.7 * 1000 * unitsPerMByName.pc) + '\n'
++ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(80000 * unitsPerMByName.lyr) + '\n'
++ mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
 uniform mat4 mvMat;
@@ -4523,10 +4615,8 @@ void main() {
 	//the image is rotated 90 degrees ...
 	texCoordv = vec2(-texCoord.y, texCoord.x);
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
-#define DISTANCE_TO_CENTER  */}) + 8.7/1000*unitsPerMByName.Mpc + mlstr(function(){/*.
-#define FIXED_SCALE */}) + 80000*unitsPerMByName.lyr + mlstr(function(){/*.
-    vec3 galacticPos = vec3(DISTANCE_TO_CENTER, 0., 0.);
-    vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + FIXED_SCALE * vtx3) - orbitTarget;
+    vec3 galacticPos = vec3(DISTANCE_TO_CENTER_OF_MILKY_WAY, 0., 0.);
+    vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + SCALE_OF_MILKY_WAY_SPRITE * vtx3) - orbitTarget;
     gl_Position = projMat * mvMat * vec4(modelPos, 1.);
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -4577,6 +4667,9 @@ void main() {
 
 	//init stars now that shaders are made
 	initStars();
+	
+	//and galaxies
+	initGalaxies();
 
 	lineObj = new glutil.SceneObject({
 		mode : gl.LINES,
