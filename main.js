@@ -4667,14 +4667,14 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 			milkyWayObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
 				attrs : {
-					vertex : new glutil.ArrayBuffer({dim : 2, data : [-1, -1, 1, -1, -1, 1, 1, 1]}),
+					vertex : new glutil.ArrayBuffer({dim : 2, data : [-.5, -.5, .5, -.5, -.5, .5, .5, .5]}),
 					texCoord : new glutil.ArrayBuffer({dim : 2, data : [0, 0, 1, 0, 0, 1, 1, 1]})
 				},
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
 
 '#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(milkyWayDistanceToCenterInKpc * (unitsPerMByName.Mpc / 1000)) + '\n'
-+ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(80000 * unitsPerMByName.lyr) + '\n'
++ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr) + '\n'
 + mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
