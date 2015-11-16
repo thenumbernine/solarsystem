@@ -80,6 +80,17 @@ void main() {
 	});
 });
 
+var unitsPerM = [
+	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
+	{name:'lyr', 	value:9460730472580800},
+	{name:'AU', 	value:149597870700},
+	{name:'km',		value:1000},
+	{name:'m',		value:1}
+];
+var unitsPerMByName = {}
+for (var i = 0; i < unitsPerM.length; ++i) {
+	unitsPerMByName[unitsPerM[i].name] = unitsPerM[i].value;
+}
 
 var toGLSLFloat = function(x) {
 	x = ''+x;
@@ -703,13 +714,86 @@ function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height)
 	planetCartesianToSolarSystemBarycentric(destX, destX, planet);
 }
 
+var gl;
+var canvas;
+
+var fbo;
+var hsvTex;
+var colorShader;
+var latLonShader;
+var planetHeatMapAttrShader;
+var planetHeatMapTexShader;
+var orbitPathShader;
+
+var pointObj;
+var planetSceneObj;
+var planetLatLonObj;
+
+var milkyWayObj;
+var milkyWayFadeMinDistInLyr = 50;
+var milkyWayFadeMaxDistInLyr = 1000;
+var milkyWayDistanceToCenterInKpc = 8.7;
+var interGalacticRenderScale = 100;
+
+var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
+var GalaxyField = makeClass({});
+var galaxyField;
+
+var colorIndexMin = 2.;
+var colorIndexMax = -.4;
+var colorIndexTex;
+var colorIndexShader;	//used for rendering point stars
+
+var displayMethods = [
+	'None',
+	'Tangent Tidal',
+	'Normal Tidal',
+	'Total Tidal',
+	'Tangent Gravitational',
+	'Normal Gravitational',
+	'Total Gravitational',
+	'Tangent Total',
+	'Normal Total',
+	'Total'
+];
+var displayMethod = 'None';
+var planetInfluences = [];
+
+var showLinesToOtherPlanets = false;
+var showVelocityVectors = false;
+var velocityVectorScale = 30;
+var showRotationAxis = false;
+var showOrbitAxis = false;
+var showLatAndLonLines = false;
+var showGravityWell = false;
+var showPlanetsAsDistantPoints = true;
+var showOrbits = true;
+var showStars = true;
+var allowSelectStars = false;
+var starsVisibleMagnitudeBias = 0;
+var planetScaleExaggeration = 1;
+var gravityWellScaleNormalized = true;
+var gravityWellScaleFixed = false;
+var gravityWellScaleFixedValue = 2000;
+var gravityWellRadialMinLog100 = -1;
+var gravityWellRadialMaxLog100 = 2;
+
+var allowSelectGalaxies = true;
+
+var heatAlpha = .5;
+var colorBarHSVRange = 2/3;	// how much of the rainbow to use
+
+var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
+
+var integrationPaused = true;
+var defaultIntegrateTimeStep = 1/(24*60);
+var integrateTimeStep = defaultIntegrateTimeStep;
+
+
 var cachedGalaxies = {};
-function getCachedGalaxy(index) {
+function getCachedGalaxy(index,x,y,z) {
 	if (cachedGalaxies[index]) return cachedGalaxies[index];
 	var buffer = galaxyField.buffer;
-	var x = buffer.data[3*index+0];
-	var y = buffer.data[3*index+1];
-	var z = buffer.data[3*index+2];
 	var galaxy = new Galaxy({
 		name : galaxyNames[index].id,
 		galaxyField : galaxyField,
@@ -781,9 +865,9 @@ var ChooseNewOrbitObject = makeClass({
 		var searchStart = parseInt(buffer.count * this.searchGalaxyCurrentSlice / this.searchGalaxyTotalSlices); 
 		var searchEnd = parseInt(buffer.count * (this.searchGalaxyCurrentSlice+1) / this.searchGalaxyTotalSlices); 
 		for (var index = searchStart; index < searchEnd; ++index) {
-			var x = buffer.data[3*index+0];
-			var y = buffer.data[3*index+1];
-			var z = buffer.data[3*index+2];
+			var x = buffer.data[3*index+0] * interGalacticRenderScale;
+			var y = buffer.data[3*index+1] * interGalacticRenderScale;
+			var z = buffer.data[3*index+2] * interGalacticRenderScale;
 			var deltaX = x - glutil.view.pos[0] - orbitTarget.pos[0];
 			var deltaY = y - glutil.view.pos[1] - orbitTarget.pos[1];
 			var deltaZ = z - glutil.view.pos[2] - orbitTarget.pos[2];
@@ -796,7 +880,7 @@ var ChooseNewOrbitObject = makeClass({
 				this.bestDot = dot;
 				this.bestDistance = dist;
 				//there's too many galaxies to store them somewhere (or is there?) so allocate them as we go
-				this.bestTarget = getCachedGalaxy(index);
+				this.bestTarget = getCachedGalaxy(index,x,y,z);
 			}
 		}
 		this.searchGalaxyCurrentSlice++;
@@ -855,79 +939,6 @@ function refreshMeasureText() {
 }
 
 
-var gl;
-var canvas;
-
-var fbo;
-var hsvTex;
-var colorShader;
-var latLonShader;
-var planetHeatMapAttrShader;
-var planetHeatMapTexShader;
-var orbitPathShader;
-
-var pointObj;
-var planetSceneObj;
-var planetLatLonObj;
-
-var milkyWayObj;
-var milkyWayFadeMinDistInLyr = 50;
-var milkyWayFadeMaxDistInLyr = 1000;
-var milkyWayDistanceToCenterInKpc = 8.7;
-
-var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
-var GalaxyField = makeClass({});
-var galaxyField;
-
-var colorIndexMin = 2.;
-var colorIndexMax = -.4;
-var colorIndexTex;
-var colorIndexShader;	//used for rendering point stars
-
-var displayMethods = [
-	'None',
-	'Tangent Tidal',
-	'Normal Tidal',
-	'Total Tidal',
-	'Tangent Gravitational',
-	'Normal Gravitational',
-	'Total Gravitational',
-	'Tangent Total',
-	'Normal Total',
-	'Total'
-];
-var displayMethod = 'None';
-var planetInfluences = [];
-
-var showLinesToOtherPlanets = false;
-var showVelocityVectors = false;
-var velocityVectorScale = 30;
-var showRotationAxis = false;
-var showOrbitAxis = false;
-var showLatAndLonLines = false;
-var showGravityWell = false;
-var showPlanetsAsDistantPoints = true;
-var showOrbits = true;
-var showStars = true;
-var allowSelectStars = false;
-var starsVisibleMagnitudeBias = 0;
-var planetScaleExaggeration = 1;
-var gravityWellScaleNormalized = true;
-var gravityWellScaleFixed = false;
-var gravityWellScaleFixedValue = 2000;
-var gravityWellRadialMinLog100 = -1;
-var gravityWellRadialMaxLog100 = 2;
-
-var allowSelectGalaxies = false;
-
-var heatAlpha = .5;
-var colorBarHSVRange = 2/3;	// how much of the rainbow to use
-
-var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
-
-var integrationPaused = true;
-var defaultIntegrateTimeStep = 1/(24*60);
-var integrateTimeStep = defaultIntegrateTimeStep;
 
 var updatePlanetClassSceneObj;
 (function(){
@@ -1601,9 +1612,18 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
 			
 				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-					vec3.copy(milkyWayObj.uniforms.orbitTarget, orbitTarget.pos);
+					milkyWayObj.uniforms.orbitTarget[0] = orbitTarget.pos[0] / interGalacticRenderScale;
+					milkyWayObj.uniforms.orbitTarget[1] = orbitTarget.pos[1] / interGalacticRenderScale;
+					milkyWayObj.uniforms.orbitTarget[2] = orbitTarget.pos[2] / interGalacticRenderScale;
 				}
-			
+				
+				//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
+				mat4.fromQuat(milkyWayObj.uniforms.mvMat, viewAngleInv);
+				mat4.translate(milkyWayObj.uniforms.mvMat, milkyWayObj.uniforms.mvMat,
+					[-glutil.view.pos[0] / interGalacticRenderScale,
+					-glutil.view.pos[1] / interGalacticRenderScale,
+					-glutil.view.pos[2] / interGalacticRenderScale]);
+				
 				gl.disable(gl.CULL_FACE);
 				gl.depthMask(false);
 				milkyWayObj.uniforms.fadeInAlpha = alpha;
@@ -1617,6 +1637,15 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 			if (galaxyField) {
 				if (galaxyField.sceneObj) {
 					galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
+				
+					//while milky way had orbit target built in (because factoring it out and re-applying the galactic coordinate matrices used to cause fp errors - before i rendered the intergalactic stuff with a separate scale)
+					//this is not going to have orbittarget in the shader, so it needs it in the mvMat (like everything else)
+					mat4.fromQuat(galaxyField.sceneObj.uniforms.mvMat, viewAngleInv);
+					mat4.translate(galaxyField.sceneObj.uniforms.mvMat, galaxyField.sceneObj.uniforms.mvMat,
+						[(-orbitTarget.pos[0] - glutil.view.pos[0]) / interGalacticRenderScale,
+						(-orbitTarget.pos[1] - glutil.view.pos[1]) / interGalacticRenderScale,
+						(-orbitTarget.pos[2] - glutil.view.pos[2]) / interGalacticRenderScale]);
+										
 					galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
 					galaxyField.sceneObj.draw();
 				}
@@ -1849,17 +1878,6 @@ function invalidateForces() {
 	}
 }
 
-var unitsPerM = [
-	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
-	{name:'lyr', 	value:9460730472580800},
-	{name:'AU', 	value:149597870700},
-	{name:'km',		value:1000},
-	{name:'m',		value:1}
-];
-var unitsPerMByName = {}
-for (var i = 0; i < unitsPerM.length; ++i) {
-	unitsPerMByName[unitsPerM[i].name] = unitsPerM[i].value;
-}
 
 function refreshOrbitTargetDistanceText() {
 	var units = 'm';
@@ -2991,7 +3009,8 @@ function floatToGLSL(x) {
 }
 
 function initGalaxies() {
-	var galaxyCenterInGalacticCoords = [milkyWayDistanceToCenterInKpc * (unitsPerMByName.Mpc / 1000), 0, 0];
+	//units of Mpc
+	var galaxyCenterInGalacticCoords = [milkyWayDistanceToCenterInKpc / 1000, 0, 0];
 	var galaxyCenterInEclipticalCoords = [];
 	vec3.transformMat3(galaxyCenterInEclipticalCoords, galaxyCenterInGalacticCoords, galacticToEclipticalTransform);
 	var galaxyCenterInEquatorialCoords = [];
@@ -3007,12 +3026,15 @@ function initGalaxies() {
 		var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
 		var len = floatBuffer.length;
 		for (var j = 0; j < len; ++j) {
+			//units in Mpc
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 			if (Math.abs(x) > 1e+26) {
 				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
 			}
-			x *= unitsPerMByName.Mpc;	//scale from megaparsecs to meters
+			//units still in Mpc
 			floatBuffer[j] = x - galaxyCenterInEquatorialCoords[j%3];
+			//units converted to intergalactic render units
+			floatBuffer[j] *= unitsPerMByName.Mpc / interGalacticRenderScale;
 		}
 
 		//now that we have the float buffer ...
@@ -3023,16 +3045,14 @@ function initGalaxies() {
 			mode : gl.POINTS,
 			shader : new ModifiedDepthShaderProgram({
 				vertexPrecision : 'best',
-				vertexCode : 
-'#define MPC_PER_M '+floatToGLSL(unitsPerMByName.Mpc)+'\n'+
-mlstr(function(){/*
+				vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;	// = constant sprite width / screen width, though I have a tapering function that changes size with scale
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
-	gl_PointSize = pointSize / (gl_Position.w / MPC_PER_M);
+	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(unitsPerMByName.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
 	gl_Position.w = depthfunction(gl_Position);
 }
 */}),
@@ -3048,10 +3068,13 @@ void main() {
 			attrs : {
 				vertex : new glutil.Attribute({buffer : buffer, size : 3, stride : 3 * Float32Array.BYTES_PER_ELEMENT}),
 			},
+			uniforms : {
+				mvMat : mat4.create()
+			},
 			texs : [],
 			blend : [gl.SRC_ALPHA, gl.ONE],
-			pos : [0,0,0],
-			parent : null
+			parent : null,
+			static : true
 		});
 	
 		console.log("loaded galaxies");
@@ -4673,8 +4696,8 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
 
-'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(milkyWayDistanceToCenterInKpc * (unitsPerMByName.Mpc / 1000)) + '\n'
-+ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr) + '\n'
+'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(milkyWayDistanceToCenterInKpc / 1000 * unitsPerMByName.Mpc / interGalacticRenderScale) + '\n'
++ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr / interGalacticRenderScale) + '\n'
 + mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
@@ -4714,6 +4737,7 @@ void main() {
 				}),
 				uniforms : {
 					orbitTarget : [0, 0, 0],
+					mvMat : mat4.create(),
 					tex : 0
 				},
 				texs : [
