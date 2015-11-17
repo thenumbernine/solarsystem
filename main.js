@@ -791,15 +791,16 @@ var defaultIntegrateTimeStep = 1/(24*60);
 var integrateTimeStep = defaultIntegrateTimeStep;
 
 
+//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
 var eclipticalToGalacticTransform = mat3.create();	//column-major
 eclipticalToGalacticTransform[0] = -0.054875539390;
-eclipticalToGalacticTransform[1] = -0.873437104725;
-eclipticalToGalacticTransform[2] = -0.483834991775;
-eclipticalToGalacticTransform[3] = 0.494109453633;
+eclipticalToGalacticTransform[1] = 0.494109453633;
+eclipticalToGalacticTransform[2] = -0.867666135681;
+eclipticalToGalacticTransform[3] = -0.873437104725;
 eclipticalToGalacticTransform[4] = -0.444829594298;
-eclipticalToGalacticTransform[5] = 0.746982248696;
-eclipticalToGalacticTransform[6] = -0.867666135681;
-eclipticalToGalacticTransform[7] = -0.198076389622;
+eclipticalToGalacticTransform[5] = -0.198076389622;
+eclipticalToGalacticTransform[6] = -0.483834991775;
+eclipticalToGalacticTransform[7] = 0.746982248696;
 eclipticalToGalacticTransform[8] = 0.455983794523;
 var galacticToEclipticalTransform = mat3.create();
 mat3.transpose(galacticToEclipticalTransform, eclipticalToGalacticTransform);
@@ -810,10 +811,10 @@ equatorialToEclipticalTransform[1] = 0;
 equatorialToEclipticalTransform[2] = 0;
 equatorialToEclipticalTransform[3] = 0;
 equatorialToEclipticalTransform[4] = 0.9177546256839811400496387250314000993967056274414;
-equatorialToEclipticalTransform[5] = -0.3971478906347805648557880431326339021325111389160;
-equatorialToEclipticalTransform[6] = 0.3971478906347805648557880431326339021325111389160;
-equatorialToEclipticalTransform[7] = 0.9177546256839811400496387250314000993967056274414;
-equatorialToEclipticalTransform[8] = 0;
+equatorialToEclipticalTransform[5] = 0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[6] = 0;
+equatorialToEclipticalTransform[7] = -0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[8] = 0.9177546256839811400496387250314000993967056274414;
 var eclipticalToEquatorialTransform = mat3.create();
 mat3.transpose(eclipticalToEquatorialTransform, equatorialToEclipticalTransform);
 
@@ -3046,6 +3047,16 @@ function floatToGLSL(x) {
 	return x;
 }
 
+function mat3ToGLSL(m) {
+	var s = 'mat3(';
+	for (var i = 0; i < 9; ++i) {
+		if (i > 0) s += ',';
+		s += floatToGLSL(m[i]);
+	}
+	s += ')';
+	return s;
+}
+
 function initGalaxies() {
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'simbad/galaxies.f32', true);
@@ -3463,21 +3474,9 @@ vec3 geodeticPosition(vec2 latLon) {
 }
 */});
 
-var coordinateSystemCode = mlstr(function(){/*
-//"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
-//..but this is in equatorial coordinates, so rotate to get to ecliptic
-const mat3 eclipticalToGalactic = mat3(	//represented transposed
-	-0.054875539390, 0.494109453633, -0.867666135681,	//x-axis column
-	-0.873437104725, -0.444829594298, -0.198076389622,	//y-axis column
-	-0.483834991775, 0.746982248696, 0.455983794523);	//z-axis column
-
-#define M_COS_EPSILON	0.9177546256839811400496387250314000993967056274414
-#define M_SIN_EPSILON	0.3971478906347805648557880431326339021325111389160
-const mat3 equatorialToEcliptical = mat3(	//represented transposed
-	1., 0., 0.,
-	0., M_COS_EPSILON, M_SIN_EPSILON,
-	0., -M_SIN_EPSILON, M_COS_EPSILON);
-*/});
+var coordinateSystemCode = 
+'const mat3 eclipticalToGalactic = '+mat3ToGLSL(eclipticalToGalacticTransform)+';\n'
++'const mat3 equatorialToEcliptical = '+mat3ToGLSL(equatorialToEclipticalTransform)+';\n';
 
 //request this per solar system.  rebuild if we need, return from cache if we don't.
 var planetShadersPerNumberOfStarsCache = {};
@@ -4728,7 +4727,7 @@ void main() {
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
     vec3 galacticPos = vec3(DISTANCE_TO_CENTER_OF_MILKY_WAY, 0., 0.);
     vec3 modelPos =
-		//applying these separately in the shader is fine, but I'm having trouble with moving this into the 'pos' uniform ...
+		//applying these separately in the shader is fine, but I'm having trouble with moving this into the mvMat transform ...
 		transpose(eclipticalToGalactic * equatorialToEcliptical) * galacticPos
 		+ transpose(eclipticalToGalactic * equatorialToEcliptical) * (SCALE_OF_MILKY_WAY_SPRITE * vtx3);
     gl_Position = projMat * mvMat * vec4(modelPos, 1.);
