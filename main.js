@@ -729,6 +729,7 @@ var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
 
+var mpcSceneObj;
 var milkyWayObj;
 var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
@@ -788,6 +789,41 @@ var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
 var integrationPaused = true;
 var defaultIntegrateTimeStep = 1/(24*60);
 var integrateTimeStep = defaultIntegrateTimeStep;
+
+
+var eclipticalToGalacticTransform = mat3.create();	//column-major
+eclipticalToGalacticTransform[0] = -0.054875539390;
+eclipticalToGalacticTransform[1] = -0.873437104725;
+eclipticalToGalacticTransform[2] = -0.483834991775;
+eclipticalToGalacticTransform[3] = 0.494109453633;
+eclipticalToGalacticTransform[4] = -0.444829594298;
+eclipticalToGalacticTransform[5] = 0.746982248696;
+eclipticalToGalacticTransform[6] = -0.867666135681;
+eclipticalToGalacticTransform[7] = -0.198076389622;
+eclipticalToGalacticTransform[8] = 0.455983794523;
+var galacticToEclipticalTransform = mat3.create();
+mat3.transpose(galacticToEclipticalTransform, eclipticalToGalacticTransform);
+
+var equatorialToEclipticalTransform = mat3.create();
+equatorialToEclipticalTransform[0] = 1;
+equatorialToEclipticalTransform[1] = 0;
+equatorialToEclipticalTransform[2] = 0;
+equatorialToEclipticalTransform[3] = 0;
+equatorialToEclipticalTransform[4] = 0.9177546256839811400496387250314000993967056274414;
+equatorialToEclipticalTransform[5] = -0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[6] = 0.3971478906347805648557880431326339021325111389160;
+equatorialToEclipticalTransform[7] = 0.9177546256839811400496387250314000993967056274414;
+equatorialToEclipticalTransform[8] = 0;
+var eclipticalToEquatorialTransform = mat3.create();
+mat3.transpose(eclipticalToEquatorialTransform, equatorialToEclipticalTransform);
+
+//units of Mpc
+var galaxyCenterInGalacticCoordsInMpc = [milkyWayDistanceToCenterInKpc / 1000, 0, 0];
+var galaxyCenterInEclipticalCoordsInMpc = [];
+vec3.transformMat3(galaxyCenterInEclipticalCoordsInMpc, galaxyCenterInGalacticCoordsInMpc, galacticToEclipticalTransform);
+var galaxyCenterInEquatorialCoordsInMpc = [];
+vec3.transformMat3(galaxyCenterInEquatorialCoordsInMpc, galaxyCenterInEclipticalCoordsInMpc, eclipticalToEquatorialTransform);
+
 
 
 var cachedGalaxies = {};
@@ -1607,47 +1643,51 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 		}
 
 		//draw milky way if we're far enough out
-		if (milkyWayObj) {
-			if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
-				var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+		{
+			//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
+			// set up Mpc scaled view
+			mat4.fromQuat(mpcSceneObj.mvMat, viewAngleInv);
+			mat4.translate(mpcSceneObj.mvMat, mpcSceneObj.mvMat,
+				[-glutil.view.pos[0] / interGalacticRenderScale,
+				-glutil.view.pos[1] / interGalacticRenderScale,
+				-glutil.view.pos[2] / interGalacticRenderScale]);
 			
-				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-					milkyWayObj.uniforms.orbitTarget[0] = orbitTarget.pos[0] / interGalacticRenderScale;
-					milkyWayObj.uniforms.orbitTarget[1] = orbitTarget.pos[1] / interGalacticRenderScale;
-					milkyWayObj.uniforms.orbitTarget[2] = orbitTarget.pos[2] / interGalacticRenderScale;
+			if (milkyWayObj) {
+				if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
+					var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+				
+					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+						milkyWayObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
+						milkyWayObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
+						milkyWayObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+					}
+				
+					//apply milky way local transforms to mpc mv mat
+					gl.disable(gl.CULL_FACE);
+					gl.depthMask(false);
+					milkyWayObj.uniforms.fadeInAlpha = alpha;
+					milkyWayObj.draw();
+					gl.enable(gl.CULL_FACE);
+					gl.depthMask(true);
 				}
 				
-				//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
-				mat4.fromQuat(milkyWayObj.uniforms.mvMat, viewAngleInv);
-				mat4.translate(milkyWayObj.uniforms.mvMat, milkyWayObj.uniforms.mvMat,
-					[-glutil.view.pos[0] / interGalacticRenderScale,
-					-glutil.view.pos[1] / interGalacticRenderScale,
-					-glutil.view.pos[2] / interGalacticRenderScale]);
-				
-				gl.disable(gl.CULL_FACE);
-				gl.depthMask(false);
-				milkyWayObj.uniforms.fadeInAlpha = alpha;
-				milkyWayObj.draw();
-				gl.enable(gl.CULL_FACE);
-				gl.depthMask(true);
-			}
-			
-			//wait for the milky way obj to load and grab its texture
-			//TODO work out loading and what a mess it has become
-			if (galaxyField) {
-				if (galaxyField.sceneObj) {
-					galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
-				
-					//while milky way had orbit target built in (because factoring it out and re-applying the galactic coordinate matrices used to cause fp errors - before i rendered the intergalactic stuff with a separate scale)
-					//this is not going to have orbittarget in the shader, so it needs it in the mvMat (like everything else)
-					mat4.fromQuat(galaxyField.sceneObj.uniforms.mvMat, viewAngleInv);
-					mat4.translate(galaxyField.sceneObj.uniforms.mvMat, galaxyField.sceneObj.uniforms.mvMat,
-						[(-orbitTarget.pos[0] - glutil.view.pos[0]) / interGalacticRenderScale,
-						(-orbitTarget.pos[1] - glutil.view.pos[1]) / interGalacticRenderScale,
-						(-orbitTarget.pos[2] - glutil.view.pos[2]) / interGalacticRenderScale]);
-										
-					galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
-					galaxyField.sceneObj.draw();
+				//wait for the milky way obj to load and grab its texture
+				//TODO work out loading and what a mess it has become
+				if (galaxyField) {
+					if (galaxyField.sceneObj) {
+						galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
+					
+						//while milky way had orbit target built in (because factoring it out and re-applying the galactic coordinate matrices used to cause fp errors - before i rendered the intergalactic stuff with a separate scale)
+						//this is not going to have orbittarget in the shader, so it needs it in the mvMat (like everything else)
+						mat4.fromQuat(galaxyField.sceneObj.uniforms.mvMat, viewAngleInv);
+						mat4.translate(galaxyField.sceneObj.uniforms.mvMat, galaxyField.sceneObj.uniforms.mvMat,
+							[(-orbitTarget.pos[0] - glutil.view.pos[0]) / interGalacticRenderScale,
+							(-orbitTarget.pos[1] - glutil.view.pos[1]) / interGalacticRenderScale,
+							(-orbitTarget.pos[2] - glutil.view.pos[2]) / interGalacticRenderScale]);
+											
+						galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
+						galaxyField.sceneObj.draw();
+					}
 				}
 			}
 		}
@@ -3009,13 +3049,6 @@ function floatToGLSL(x) {
 }
 
 function initGalaxies() {
-	//units of Mpc
-	var galaxyCenterInGalacticCoords = [milkyWayDistanceToCenterInKpc / 1000, 0, 0];
-	var galaxyCenterInEclipticalCoords = [];
-	vec3.transformMat3(galaxyCenterInEclipticalCoords, galaxyCenterInGalacticCoords, galacticToEclipticalTransform);
-	var galaxyCenterInEquatorialCoords = [];
-	vec3.transformMat3(galaxyCenterInEquatorialCoords, galaxyCenterInEclipticalCoords, eclipticalToEquatorialTransform);
-
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'simbad/galaxies.f32', true);
 	xhr.responseType = 'arraybuffer';
@@ -3032,7 +3065,7 @@ function initGalaxies() {
 				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
 			}
 			//units still in Mpc
-			floatBuffer[j] = x - galaxyCenterInEquatorialCoords[j%3];
+			floatBuffer[j] = x - galaxyCenterInEquatorialCoordsInMpc[j%3];
 			//units converted to intergalactic render units
 			floatBuffer[j] *= unitsPerMByName.Mpc / interGalacticRenderScale;
 		}
@@ -3433,32 +3466,6 @@ vec3 geodeticPosition(vec2 latLon) {
 		(N * (1. - eccentricitySquared) + height) * sinPhi);
 }
 */});
-
-var eclipticalToGalacticTransform = mat3.create();	//column-major
-eclipticalToGalacticTransform[0] = -0.054875539390;
-eclipticalToGalacticTransform[1] = -0.873437104725;
-eclipticalToGalacticTransform[2] = -0.483834991775;
-eclipticalToGalacticTransform[3] = 0.494109453633;
-eclipticalToGalacticTransform[4] = -0.444829594298;
-eclipticalToGalacticTransform[5] = 0.746982248696;
-eclipticalToGalacticTransform[6] = -0.867666135681;
-eclipticalToGalacticTransform[7] = -0.198076389622;
-eclipticalToGalacticTransform[8] = 0.455983794523;
-var galacticToEclipticalTransform = mat3.create();
-mat3.transpose(galacticToEclipticalTransform, eclipticalToGalacticTransform);
-
-var equatorialToEclipticalTransform = mat3.create();
-equatorialToEclipticalTransform[0] = 1;
-equatorialToEclipticalTransform[1] = 0;
-equatorialToEclipticalTransform[2] = 0;
-equatorialToEclipticalTransform[3] = 0;
-equatorialToEclipticalTransform[4] = 0.9177546256839811400496387250314000993967056274414;
-equatorialToEclipticalTransform[5] = -0.3971478906347805648557880431326339021325111389160;
-equatorialToEclipticalTransform[6] = 0.3971478906347805648557880431326339021325111389160;
-equatorialToEclipticalTransform[7] = 0.9177546256839811400496387250314000993967056274414;
-equatorialToEclipticalTransform[8] = 0;
-var eclipticalToEquatorialTransform = mat3.create();
-mat3.transpose(eclipticalToEquatorialTransform, equatorialToEclipticalTransform);
 
 var coordinateSystemCode = mlstr(function(){/*
 //"Reconsidering the galactic coordinate system", Jia-Cheng Liu, Zi Zhu, and Hong Zhang, Oct 20, 2010 eqn 9
@@ -4684,6 +4691,12 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 		});
 	})();
 
+	//transform group - just for rescaling position when computing mvMat
+	mpcSceneObj = new glutil.SceneObject({
+		parent : null,
+		static : false
+	});
+
 	(function(){
 		var img = new Image();
 		img.onload = function() {
@@ -4703,7 +4716,6 @@ attribute vec2 vertex;
 attribute vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-uniform vec3 orbitTarget;
 varying vec2 texCoordv;
 
 */}) + coordinateSystemCode + mlstr(function(){/*
@@ -4719,7 +4731,10 @@ void main() {
 	texCoordv = vec2(-texCoord.y, texCoord.x);
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
     vec3 galacticPos = vec3(DISTANCE_TO_CENTER_OF_MILKY_WAY, 0., 0.);
-    vec3 modelPos = transpose(equatorialToEcliptical) * transpose(eclipticalToGalactic) * (galacticPos + SCALE_OF_MILKY_WAY_SPRITE * vtx3) - orbitTarget;
+    vec3 modelPos =
+		//applying these separately in the shader is fine, but I'm having trouble with moving this into the 'pos' uniform ...
+		transpose(eclipticalToGalactic * equatorialToEcliptical) * galacticPos
+		+ transpose(eclipticalToGalactic * equatorialToEcliptical) * (SCALE_OF_MILKY_WAY_SPRITE * vtx3);
     gl_Position = projMat * mvMat * vec4(modelPos, 1.);
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -4736,8 +4751,6 @@ void main() {
 */}),
 				}),
 				uniforms : {
-					orbitTarget : [0, 0, 0],
-					mvMat : mat4.create(),
 					tex : 0
 				},
 				texs : [
@@ -4750,8 +4763,9 @@ void main() {
 					})
 				],
 				blend : [gl.SRC_ALPHA, gl.ONE],
-				parent : null,
-				static : true
+				parent : mpcSceneObj,
+				pos : [0,0,0],
+				static : false
 			});
 			console.log("created milky way")
 		};
