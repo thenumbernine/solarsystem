@@ -4,8 +4,16 @@ local json = require 'dkjson'
 local ffi = require 'ffi'
 local csv = require 'csv'
 
-local csvdata = csv.file 'hygdata_v3.csv'
-csvdata:setColumnNames(csvdata.rows:remove(1))
+-- [[ v2
+local csvdata = csv.file'hygxyz.csv'
+--]]
+--[[ v3
+local csvdata = csv.file'hygdata_v3.csv'
+--]]
+
+local rowHeaders = csvdata.rows:remove(1)
+for i=1,#rowHeaders do rowHeaders[i] = rowHeaders[i]:lower() end
+csvdata:setColumnNames(rowHeaders)
 
 -- sun is positioned relative to the earth, so offset everything for the sun to be the center
 local sunRow = csvdata.rows[1]
@@ -59,7 +67,7 @@ for i,row in ipairs(csvdata.rows) do
 		-- reconstruct spherical to cartesian and see accurate the xyz is
 		local ra = assert(tonumber(row.ra))
 		local dec = assert(tonumber(row.dec))
-		local dist = assert(tonumber(row.dist))
+		local dist = assert(tonumber(row.dist or row.distance))
 		local rx = dist * math.cos(ra) * math.cos(dec) - sunPos.x
 		local ry = dist * math.sin(ra) * math.cos(dec) - sunPos.y
 		local rz = dist * math.sin(dec) - sunPos.z
@@ -86,9 +94,10 @@ for i,row in ipairs(csvdata.rows) do
 		maxAbs = math.max(maxAbs, x)
 		maxAbs = math.max(maxAbs, y)
 		maxAbs = math.max(maxAbs, z)
-		
-		if #row.proper > 0 then
-			table.insert(namedStars, {name=row.proper, index=zeroBasedIndex})
+
+		local properName = row.proper or row.propername
+		if properName and #properName > 0 then
+			table.insert(namedStars, {name=properName, index=zeroBasedIndex})
 		end
 		
 		zeroBasedIndex = zeroBasedIndex + 1

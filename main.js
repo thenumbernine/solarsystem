@@ -4492,6 +4492,7 @@ if (true) {
 	colorIndexShader = new ModifiedDepthShaderProgram({
 		vertexCode :
 '#define M_LOG_10 '+floatToGLSL(Math.log(10))+'\n'+
+'#define PARSECS_PER_M+'+floatToGLSL(1/metersPerUnits.pc)+'\n'+
 '#define COLOR_INDEX_MIN '+floatToGLSL(colorIndexMin)+'\n'+
 '#define COLOR_INDEX_MAX '+floatToGLSL(colorIndexMax)+'\n'+
 		mlstr(function(){/*
@@ -4505,7 +4506,6 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float visibleMagnitudeBias;
 uniform sampler2D colorIndexTex;
-#define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
