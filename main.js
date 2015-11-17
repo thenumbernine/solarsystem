@@ -826,7 +826,6 @@ var galaxyCenterInEquatorialCoordsInMpc = [];
 vec3.transformMat3(galaxyCenterInEquatorialCoordsInMpc, galaxyCenterInEclipticalCoordsInMpc, eclipticalToEquatorialTransform);
 
 
-
 var cachedGalaxies = {};
 function getCachedGalaxy(index,x,y,z) {
 	if (cachedGalaxies[index]) return cachedGalaxies[index];
@@ -1658,9 +1657,9 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
 				
 					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-						milkyWayObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
-						milkyWayObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
-						milkyWayObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+						milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
+						milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
+						milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
 					}
 				
 					//apply milky way local transforms to mpc mv mat
@@ -3074,7 +3073,7 @@ function initGalaxies() {
 				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
 			}
 			//units still in Mpc
-			floatBuffer[j] = x - galaxyCenterInEquatorialCoordsInMpc[j%3];
+			floatBuffer[j] = x + galaxyCenterInEquatorialCoordsInMpc[j%3];
 			//units converted to intergalactic render units
 			floatBuffer[j] *= unitsPerMByName.Mpc / interGalacticRenderScale;
 		}
@@ -4703,9 +4702,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				},
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
-
-'#define DISTANCE_TO_CENTER_OF_MILKY_WAY ' + floatToGLSL(milkyWayDistanceToCenterInKpc / 1000 * unitsPerMByName.Mpc / interGalacticRenderScale) + '\n'
-+ '#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr / interGalacticRenderScale) + '\n'
+'#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr / interGalacticRenderScale) + '\n'
 + mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
@@ -4725,11 +4722,7 @@ void main() {
 	//the image is rotated 90 degrees ...
 	texCoordv = vec2(-texCoord.y, texCoord.x);
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
-    vec3 galacticPos = vec3(DISTANCE_TO_CENTER_OF_MILKY_WAY, 0., 0.);
-    vec3 modelPos =
-		//applying these separately in the shader is fine, but I'm having trouble with moving this into the mvMat transform ...
-		transpose(eclipticalToGalactic * equatorialToEcliptical) * galacticPos
-		+ transpose(eclipticalToGalactic * equatorialToEcliptical) * (SCALE_OF_MILKY_WAY_SPRITE * vtx3);
+    vec3 modelPos = transpose(eclipticalToGalactic * equatorialToEcliptical) * (SCALE_OF_MILKY_WAY_SPRITE * vtx3);
     gl_Position = projMat * mvMat * vec4(modelPos, 1.);
 	gl_Position.z = depthfunction(gl_Position);
 }
