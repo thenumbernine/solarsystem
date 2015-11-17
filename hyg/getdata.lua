@@ -33,6 +33,10 @@ local columnCounts = {}
 
 local totalErrors = 0
 
+local range = {}
+range.mag = {}
+range.colorIndex = {}
+
 local zeroBasedIndex = 0
 for i,row in ipairs(csvdata.rows) do
 	for _,col in ipairs(csvdata.columns) do
@@ -76,7 +80,12 @@ for i,row in ipairs(csvdata.rows) do
 		totalErrors = totalErrors + rerr
 
 		local mag = assert(tonumber(row.absmag))	--apparent magnitude
-		local colorIndex = tonumber(row.ci) or .656	-- fill in blanks with something close to white
+		range.mag.min = math.min(range.mag.min or mag, mag)
+		range.mag.max = math.max(range.mag.max or mag, mag)
+		
+		local colorIndex = tonumber(row.colorindex or row.ci) or .656	-- fill in blanks with something close to white
+		range.colorIndex.min = math.min(range.colorIndex.min or colorIndex, colorIndex)
+		range.colorIndex.max = math.max(range.colorIndex.max or colorIndex, colorIndex)
 
 		local vx = assert(tonumber(row.vx))
 		local vy = assert(tonumber(row.vy))
@@ -110,6 +119,10 @@ print('abs max coordinate', maxAbs)
 print('num columns provided:')
 for _,name in ipairs(csvdata.columns) do
 	print('', name, columnCounts[name])
+end
+
+for k,v in pairs(range) do
+	print(k,'min',range[k].min,'max',range[k].max)
 end
 
 -- make name of sun consistent with NASA data

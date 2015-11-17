@@ -495,7 +495,7 @@ var StarInField = makeClass({
 var StarField = makeClass({});
 var starfield;
 var starfieldMaxDistInLyr = 5000;
-var starFieldRenderScale = 1;
+var starFieldRenderScale = 1e+15;
 var starFieldXFormObj;
 
 var orbitPathResolution = 500;
@@ -733,6 +733,7 @@ var interGalacticRenderScale = 100;
 
 var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
 var GalaxyField = makeClass({});
+var showGalaxies = true;
 var galaxyField;
 
 var colorIndexMin = 2.;
@@ -889,6 +890,7 @@ var ChooseNewOrbitObject = makeClass({
 	searchGalaxies : function() {
 		// if we want to consider galaxies then we have to search through 20000 additional points
 		if (!allowSelectGalaxies) return;
+		if (!showGalaxies) return;
 		if (!galaxyField) return;
 		//there's 20,000 galaxies.  that's a lot.  how about we chop that up by 20 and only search 1000 per frame?
 		var buffer = galaxyField.buffer;
@@ -1342,6 +1344,7 @@ var showFPS = false;
 		
 		var distFromSolarSystemInM = vec3.length(glutil.view.pos);
 		var distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
+		var distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
 		var distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
 		if (skyCubeObj) {
@@ -1378,7 +1381,7 @@ var showFPS = false;
 						starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
 					}
 						
-					starfield.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInLyr) * canvas.width;
+					starfield.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInPc) * canvas.width;
 					
 					starfield.sceneObj.draw();
 					gl.enable(gl.DEPTH_TEST);
@@ -1681,7 +1684,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				
 				//wait for the milky way obj to load and grab its texture
 				//TODO work out loading and what a mess it has become
-				if (galaxyField) {
+				if (showGalaxies && galaxyField) {
 					if (galaxyField.sceneObj) {
 						galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
 					
@@ -2429,6 +2432,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showGravityWell',
 		'showOrbits',
 		'showStars',
+		'showGalaxies',
 		'allowSelectStars',
 		'allowSelectGalaxies',
 		'showPlanetsAsDistantPoints',
@@ -3017,7 +3021,7 @@ function initStars() {
 					console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
 				}
 				//convert parsecs to meters
-				x *= metersPerUnits.pc;
+				x *= metersPerUnits.pc / starFieldRenderScale;
 			}
 			floatBuffer[j] = x;
 		}
@@ -3324,9 +3328,9 @@ console.log('adding star systems to star fields and vice versa');
 	for (var i = 0; i < starSystems.length; ++i) {
 		var starSystem = starSystems[i];
 		starSystem.starfieldIndex = array.length / 5;
-		array.push(starSystem.pos[0]);// / metersPerUnits.pc);
-		array.push(starSystem.pos[1]);// / metersPerUnits.pc);
-		array.push(starSystem.pos[2]);// / metersPerUnits.pc);
+		array.push(starSystem.pos[0] / starFieldRenderScale);
+		array.push(starSystem.pos[1] / starFieldRenderScale);
+		array.push(starSystem.pos[2] / starFieldRenderScale);
 		array.push(0);
 		array.push(0);
 		array.push(0);
@@ -3359,9 +3363,9 @@ console.log('adding star systems to star fields and vice versa');
 
 		//note stars.buffer holds x y z abs-mag color-index
 		starSystem.pos = [
-			starfield.buffer.data[0 + starSystem.starfieldIndex * starfield.buffer.dim],// * metersPerUnits.pc,
-			starfield.buffer.data[1 + starSystem.starfieldIndex * starfield.buffer.dim],// * metersPerUnits.pc,
-			starfield.buffer.data[2 + starSystem.starfieldIndex * starfield.buffer.dim]// * metersPerUnits.pc
+			starfield.buffer.data[0 + starSystem.starfieldIndex * starfield.buffer.dim] * starFieldRenderScale,
+			starfield.buffer.data[1 + starSystem.starfieldIndex * starfield.buffer.dim] * starFieldRenderScale,
+			starfield.buffer.data[2 + starSystem.starfieldIndex * starfield.buffer.dim] * starFieldRenderScale
 		];
 
 		//starSystem.sourceData = ...
@@ -4414,7 +4418,7 @@ void main() {
 	}
 
 	var starTexWidth = 512;
-	var starTexData = new Uint8Array(starTexWidth * starTexWidth * 3);
+	var starTexData = new Uint8Array(starTexWidth * starTexWidth * 4);
 	for (var j = 0; j < starTexWidth; ++j) {
 		var y = (j+.5) / starTexWidth - .5;
 		var ay = Math.abs(y);
@@ -4427,16 +4431,17 @@ void main() {
 			var sigma = 1/5;
 			var rs = r / sigma;
 			var lum = Math.exp(-rs*rs);
-			starTexData[0+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
-			starTexData[1+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
-			starTexData[2+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[0+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[1+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[2+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[3+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
 		}
 	}
 	starTex = new glutil.Texture2D({
 		width : starTexWidth,
 		height : starTexWidth,
-		internalFormat : gl.RGB,
-		format : gl.RGB,
+		internalFormat : gl.RGBA,
+		format : gl.RGBA,
 		type : gl.UNSIGNED_BYTE,
 		magFilter : gl.LINEAR,
 		minFilter : gl.LINEAR_MIPMAP_LINEAR,
@@ -4447,24 +4452,24 @@ void main() {
 		var level = 1;
 		var lastStarTexData = starTexData;
 		for (var w = starTexWidth>>1; w; w>>=1, ++level) {
-			var starTexData = new Uint8Array(w * w * 3);
+			var starTexData = new Uint8Array(w * w * 4);
 			var lastW = w<<1;
 			for (var j = 0; j < w; ++j) {
 				for (var i = 0; i < w; ++i) {
-					for (var k = 0; k < 3; ++k) {
-						starTexData[k+3*(i+w*j)] = Math.max(
-							lastStarTexData[k+3*((2*i+0)+2*w*(2*j+0))],
-							lastStarTexData[k+3*((2*i+1)+2*w*(2*j+0))],
-							lastStarTexData[k+3*((2*i+0)+2*w*(2*j+1))],
-							lastStarTexData[k+3*((2*i+1)+2*w*(2*j+1))]);
+					for (var k = 0; k < 4; ++k) {
+						starTexData[k+4*(i+w*j)] = Math.max(
+							lastStarTexData[k+4*((2*i+0)+2*w*(2*j+0))],
+							lastStarTexData[k+4*((2*i+1)+2*w*(2*j+0))],
+							lastStarTexData[k+4*((2*i+0)+2*w*(2*j+1))],
+							lastStarTexData[k+4*((2*i+1)+2*w*(2*j+1))]);
 					}
 				}
 			}
 			starTex.bind();
 			starTex.setImage({
 				level : level,
-				internalFormat : gl.RGB,
-				format : gl.RGB,
+				internalFormat : gl.RGBA,
+				format : gl.RGBA,
 				type : gl.UNSIGNED_BYTE,
 				width : w,
 				height : w,
@@ -4578,7 +4583,7 @@ if (true) {
 	colorIndexShader = new ModifiedDepthShaderProgram({
 		vertexCode :
 '#define M_LOG_10 '+floatToGLSL(Math.log(10))+'\n'+
-'#define PARSECS_PER_M+'+floatToGLSL(1/metersPerUnits.pc)+'\n'+
+'#define _10_5TH_ROOT 1.58489319246111359795747830503387376666069030761719\n'+
 '#define COLOR_INDEX_MIN '+floatToGLSL(colorIndexMin)+'\n'+
 '#define COLOR_INDEX_MAX '+floatToGLSL(colorIndexMax)+'\n'+
 		mlstr(function(){/*
@@ -4600,24 +4605,19 @@ void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
 	//calculate apparent magnitude, convert to alpha
-	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs	
-	
-	//keep stars from ever fading out when we zoom out too far
-	//distanceInParsecs = min(distanceInParsecs, 1e+10);
-
-	//something to note: these power functions give us a sudden falloff,
-	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
-	// one last fix would be to never scale the vertices and render different scaled objects at separate coordinate systems
+	float distanceInParsecs = length(vtx4.xyz) / ( */}) + floatToGLSL(metersPerUnits.pc / starFieldRenderScale) + mlstr(function(){/*);	//convert distance to parsecs
 	
 	//https://en.wikipedia.org/wiki/Apparent_magnitude
-	//float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
+	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	
 	//not sure where I got this one from ...
-	//alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
-	
+	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+
 	//combined ...
-	alpha = pow(10., 1. - visibleMagnitudeBias - .2 * absoluteMagnitude - log(distanceInParsecs) / M_LOG_10);
-	alpha *= alpha;
+	//alpha = pow(_10_5TH_ROOT, 1. + visibleMagnitudeBias - absoluteMagnitude) / distanceInParsecs;
+	//alpha *= alpha;
+	
+	alpha = clamp(alpha, 0., 1.);
 
 	//calculate color
 	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
@@ -4625,7 +4625,7 @@ void main() {
 	gl_Position = projMat * vtx4;
 	
 	//TODO point sprite / point spread function?
-	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.lyr / starFieldRenderScale) + mlstr(function(){/* );
+	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.pc / starFieldRenderScale) + mlstr(function(){/* );
 	gl_PointSize = max(1., gl_PointSize);
 	
 	gl_Position.z = depthfunction(gl_Position);
