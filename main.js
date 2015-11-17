@@ -80,22 +80,14 @@ void main() {
 	});
 });
 
-var unitsPerM = [
-	{name:'Mpc',	value:1000000*648000/Math.PI*149597870700},
-	{name:'lyr', 	value:9460730472580800},
-	{name:'AU', 	value:149597870700},
-	{name:'km',		value:1000},
-	{name:'m',		value:1}
-];
-var unitsPerMByName = {}
-for (var i = 0; i < unitsPerM.length; ++i) {
-	unitsPerMByName[unitsPerM[i].name] = unitsPerM[i].value;
-}
-
-var toGLSLFloat = function(x) {
-	x = ''+x;
-	if (x.indexOf('.') == -1) x = x + '.';
-	return x;
+var metersPerUnits = {
+	Mpc :	648000/Math.PI*149597870700*1000000,
+	Kpc :	648000/Math.PI*149597870700*1000,
+	pc :	648000/Math.PI*149597870700,
+	lyr :	9460730472580800,
+	AU :	149597870700,
+	km :	1000,
+	m :		1
 };
 
 function setCSSRotation(obj, degrees) {
@@ -835,7 +827,7 @@ function getCachedGalaxy(index,x,y,z) {
 		galaxyField : galaxyField,
 		index : index,
 		pos : [x,y,z],
-		radius : 10 * unitsPerMByName.Mpc / 1000
+		radius : 10 * metersPerUnits.Mpc / 1000
 	});
 	cachedGalaxies[index] = galaxy;
 	return galaxy;
@@ -1346,8 +1338,8 @@ var showFPS = false;
 		vec3.scale(viewfwd, viewfwd, -1);
 		
 		var distFromSolarSystemInM = vec3.length(glutil.view.pos);
-		var distFromSolarSystemInLyr = distFromSolarSystemInM / unitsPerMByName.lyr;
-		var distFromSolarSystemInMpc = distFromSolarSystemInM / unitsPerMByName.Mpc;
+		var distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
+		var distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
 		if (skyCubeObj) {
 			if (distFromSolarSystemInLyr < skyCubeFadeOutEndDistInLyr) {
@@ -1657,9 +1649,9 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
 				
 					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-						milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
-						milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
-						milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (unitsPerMByName.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
+						milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
+						milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
+						milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
 					}
 				
 					//apply milky way local transforms to mpc mv mat
@@ -1916,19 +1908,21 @@ function invalidateForces() {
 	}
 }
 
-
+var orbitTargetUnitOptions = ['Mpc', 'lyr', 'AU', 'km', 'm'];
 function refreshOrbitTargetDistanceText() {
-	var units = 'm';
-	var dist = orbitTargetDistance;
-	for (var i = 0; i < unitsPerM.length; ++i) {
-		var ratio = orbitTargetDistance / unitsPerM[i].value;
-		if (ratio > .1 || i == unitsPerM[i].length-1) {
-			units = unitsPerM[i].name;
-			dist = ratio;
+	var bestUnit = 'm';
+	var bestDist = orbitTargetDistance;
+	for (var i = 0; i < orbitTargetUnitOptions.length; ++i) {
+		var unit = orbitTargetUnitOptions[i];
+		var metersPerUnit = metersPerUnits[unit];
+		var ratio = orbitTargetDistance / metersPerUnit;
+		if (ratio > .1) {
+			bestUnit = unit;
+			bestDist = ratio;
 			break;
 		}
 	}
-	$('#orbitTargetDistance').text(dist.toFixed(4)+' '+units);
+	$('#orbitTargetDistance').text(bestDist.toFixed(4)+' '+bestUnit);
 }
 
 function refreshCurrentTimeText() {
@@ -3001,7 +2995,7 @@ function initStars() {
 				if (Math.abs(x) > 1e+20) {
 					console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
 				}
-				x *= unitsPerMByName.Mpc / 1e+6;
+				x *= metersPerUnits.Mpc / 1e+6;
 			}
 
 			floatBuffer[j] = x;
@@ -3075,7 +3069,7 @@ function initGalaxies() {
 			//units still in Mpc
 			floatBuffer[j] = x + galaxyCenterInEquatorialCoordsInMpc[j%3];
 			//units converted to intergalactic render units
-			floatBuffer[j] *= unitsPerMByName.Mpc / interGalacticRenderScale;
+			floatBuffer[j] *= metersPerUnits.Mpc / interGalacticRenderScale;
 		}
 
 		//now that we have the float buffer ...
@@ -3093,7 +3087,7 @@ uniform mat4 projMat;
 uniform float pointSize;	// = constant sprite width / screen width, though I have a tapering function that changes size with scale
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
-	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(unitsPerMByName.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
+	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
 	gl_PointSize = max(1., gl_PointSize);
 	gl_Position.w = depthfunction(gl_Position);
 }
@@ -4497,8 +4491,9 @@ if (true) {
 
 	colorIndexShader = new ModifiedDepthShaderProgram({
 		vertexCode :
-'#define COLOR_INDEX_MIN '+toGLSLFloat(colorIndexMin)+'\n'+
-'#define COLOR_INDEX_MAX '+toGLSLFloat(colorIndexMax)+'\n'+
+'#define M_LOG_10 '+floatToGLSL(Math.log(10))+'\n'+
+'#define COLOR_INDEX_MIN '+floatToGLSL(colorIndexMin)+'\n'+
+'#define COLOR_INDEX_MAX '+floatToGLSL(colorIndexMax)+'\n'+
 		mlstr(function(){/*
 attribute vec3 vertex;
 attribute vec3 velocity;
@@ -4510,13 +4505,15 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float visibleMagnitudeBias;
 uniform sampler2D colorIndexTex;
-#define M_LOG_10			2.3025850929940459010936137929093092679977416992188
 #define PARSECS_PER_M		3.2407792910106957712004544136882149907718250416875e-17
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
 	//calculate apparent magnitude, convert to alpha
 	float distanceInParsecs = length(vtx4.xyz) * PARSECS_PER_M;	//in parsecs	
+	
+	//keep stars from ever fading out when we zoom out too far
+	//distanceInParsecs = min(distanceInParsecs, 1e+10);
 
 	//something to note: these power functions give us a sudden falloff,
 	// but providing pre-scaled vertices and scaling them afterwards gives us an even more sudden falloff
@@ -4527,10 +4524,8 @@ void main() {
 	
 	//not sure where I got this one from ...
 	//alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
-
+	
 	//combined ...
-	//a^b = exp(log(a^b)) = exp(b*log(a))
-	//distanceInParsecs = min(distanceInParsecs, 1e+10);
 	alpha = pow(10., 1. - visibleMagnitudeBias - .2 * absoluteMagnitude - log(distanceInParsecs) / M_LOG_10);
 	alpha *= alpha;
 
@@ -4703,7 +4698,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				},
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
-'#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * unitsPerMByName.lyr / interGalacticRenderScale) + '\n'
+'#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * metersPerUnits.lyr / interGalacticRenderScale) + '\n'
 + mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
