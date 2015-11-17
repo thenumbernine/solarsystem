@@ -779,7 +779,7 @@ var gravityWellScaleFixedValue = 2000;
 var gravityWellRadialMinLog100 = -1;
 var gravityWellRadialMaxLog100 = 2;
 
-var allowSelectGalaxies = true;
+var allowSelectGalaxies = false;
 
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
@@ -912,7 +912,7 @@ var ChooseNewOrbitObject = makeClass({
 			deltaY /= dist;
 			deltaZ /= dist;
 			var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
-			if (dot > this.bestDot && dist < this.bestDistance) {
+			if (dot > this.bestDot) {// && dist < this.bestDistance) {
 				this.bestDot = dot;
 				this.bestDistance = dist;
 				//there's too many galaxies to store them somewhere (or is there?) so allocate them as we go
@@ -947,7 +947,7 @@ var ChooseNewOrbitObject = makeClass({
 			deltaY /= dist;
 			deltaZ /= dist;
 			var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
-			if (dot > this.bestDot && dist < this.bestDistance) {
+			if (dot > this.bestDot) {// && dist < this.bestDistance) {
 				this.bestDot = dot;
 				this.bestDistance = dist;
 				this.bestTarget = target;
@@ -3094,6 +3094,7 @@ uniform float pointSize;	// = constant sprite width / screen width, though I hav
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(unitsPerMByName.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
+	gl_PointSize = max(1., gl_PointSize);
 	gl_Position.w = depthfunction(gl_Position);
 }
 */}),
