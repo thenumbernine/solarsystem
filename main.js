@@ -493,8 +493,10 @@ var StarInField = makeClass({
 });
 
 var StarField = makeClass({});
-var starfield = undefined;
+var starfield;
 var starfieldMaxDistInLyr = 5000;
+var starFieldRenderScale = 1;
+var starFieldXFormObj;
 
 var orbitPathResolution = 500;
 var ringResolution = 200;
@@ -721,11 +723,12 @@ var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
 
-var mpcSceneObj;
 var milkyWayObj;
 var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
 var milkyWayDistanceToCenterInKpc = 8.7;
+
+var interGalacticXFormObj;
 var interGalacticRenderScale = 100;
 
 var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
@@ -827,7 +830,7 @@ function getCachedGalaxy(index,x,y,z) {
 		galaxyField : galaxyField,
 		index : index,
 		pos : [x,y,z],
-		radius : 10 * metersPerUnits.Mpc / 1000
+		radius : 10 * metersPerUnits.Kpc
 	});
 	cachedGalaxies[index] = galaxy;
 	return galaxy;
@@ -1357,15 +1360,26 @@ var showFPS = false;
 
 
 		if (showStars) {
+			//render local star field in pc units rather than meters (because it's hitting the limit of fp accuracy)
+			mat4.fromQuat(starFieldXFormObj.mvMat, viewAngleInv);
+			mat4.translate(starFieldXFormObj.mvMat, starFieldXFormObj.mvMat,
+				[-glutil.view.pos[0] / starFieldRenderScale,
+				-glutil.view.pos[1] / starFieldRenderScale,
+				-glutil.view.pos[2] / starFieldRenderScale]);		
+			
 			if (distFromSolarSystemInLyr < starfieldMaxDistInLyr) {
 				if (starfield !== undefined && starfield.sceneObj !== undefined) {
 					gl.disable(gl.DEPTH_TEST);
 					starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+					
 					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-						starfield.sceneObj.pos[0] = -orbitTarget.pos[0];
-						starfield.sceneObj.pos[1] = -orbitTarget.pos[1];
-						starfield.sceneObj.pos[2] = -orbitTarget.pos[2];
+						starfield.sceneObj.pos[0] = -orbitTarget.pos[0] / starFieldRenderScale;
+						starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
+						starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
 					}
+						
+					starfield.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInLyr) * canvas.width;
+					
 					starfield.sceneObj.draw();
 					gl.enable(gl.DEPTH_TEST);
 				}
@@ -1624,11 +1638,13 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					pointObj.draw({
 						shader : colorIndexShader,
 						//disable depth test too?
-						blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+						blend : [gl.SRC_ALPHA, gl.ONE],
 						uniforms : {
+							colorIndexTex : 0,
+							starTex : 1,
 							pointSize : 1
 						},
-						texs : [colorIndexTex]
+						texs : [colorIndexTex, starTex]
 					});
 				}
 			}
@@ -1638,8 +1654,8 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 		{
 			//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
 			// set up Mpc scaled view
-			mat4.fromQuat(mpcSceneObj.mvMat, viewAngleInv);
-			mat4.translate(mpcSceneObj.mvMat, mpcSceneObj.mvMat,
+			mat4.fromQuat(interGalacticXFormObj.mvMat, viewAngleInv);
+			mat4.translate(interGalacticXFormObj.mvMat, interGalacticXFormObj.mvMat,
 				[-glutil.view.pos[0] / interGalacticRenderScale,
 				-glutil.view.pos[1] / interGalacticRenderScale,
 				-glutil.view.pos[2] / interGalacticRenderScale]);
@@ -2969,6 +2985,12 @@ function init2() {
 }
 
 function initStars() {
+
+	starFieldXFormObj = new glutil.SceneObject({
+		parent : null,
+		static : false
+	});
+	
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'hyg/stardata.f32', true);
 	xhr.responseType = 'arraybuffer';
@@ -2984,20 +3006,19 @@ function initStars() {
 		var arrayBuffer = this.response;
 		var data = new DataView(arrayBuffer);
 
+		//units are in parsecs
+		//don't forget velocity is not being rescaled (i'm not using it at the moment)
 		var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
 		var len = floatBuffer.length;
 		for (var j = 0; j < len; ++j) {
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
-
-			//NOTICE don't forget velocity is not being rescaled
 			if (j % numElem < 3) {
-				//convert xyz from parsec coordinates to meters ... max float is 10^38, so let's hope (/warn) if an incoming value is close to 10^22
 				if (Math.abs(x) > 1e+20) {
 					console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
 				}
-				x *= metersPerUnits.Mpc / 1e+6;
+				//convert parsecs to meters
+				x *= metersPerUnits.pc;
 			}
-
 			floatBuffer[j] = x;
 		}
 
@@ -3006,7 +3027,7 @@ function initStars() {
 		StarField.prototype.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			shader : colorIndexShader,
-			texs : [colorIndexTex],
+			texs : [colorIndexTex, starTex],
 			attrs : {
 				vertex : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
 				velocity : new glutil.Attribute({buffer : StarField.prototype.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEM, offset : 3 * Float32Array.BYTES_PER_ELEMENT}),	//velocity
@@ -3017,11 +3038,13 @@ function initStars() {
 				pointSize : 1,
 				color : [1,1,1,1],
 				visibleMagnitudeBias : starsVisibleMagnitudeBias,
-				colorIndexTex : 0
+				colorIndexTex : 0,
+				starTex : 1
 			},
-			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],	//gl.ONE?
+			blend : [gl.SRC_ALPHA, gl.ONE],
 			pos : [0,0,0],
-			parent : null
+			parent : starFieldXFormObj,
+			static : false
 		});
 
 		//assign after all prototype buffer stuff is written, so StarField can call Star can use it during ctor
@@ -3089,7 +3112,7 @@ void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
 	gl_PointSize = max(1., gl_PointSize);
-	gl_Position.w = depthfunction(gl_Position);
+	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 				fragmentPrecision : 'best',
@@ -3097,17 +3120,19 @@ void main() {
 uniform sampler2D tex;
 void main() {
 	gl_FragColor = texture2D(tex, gl_PointCoord);
-	//gl_FragColor *= gl_FragColor;
 }
 */})
 			}),
 			attrs : {
 				vertex : new glutil.Attribute({buffer : buffer, size : 3, stride : 3 * Float32Array.BYTES_PER_ELEMENT}),
 			},
+			uniforms : {
+				tex : 0
+			},
 			texs : [],
 			blend : [gl.SRC_ALPHA, gl.ONE],
 			pos : [0,0,0],
-			parent : mpcSceneObj,
+			parent : interGalacticXFormObj,
 			static : false
 		});
 	
@@ -3299,9 +3324,9 @@ console.log('adding star systems to star fields and vice versa');
 	for (var i = 0; i < starSystems.length; ++i) {
 		var starSystem = starSystems[i];
 		starSystem.starfieldIndex = array.length / 5;
-		array.push(starSystem.pos[0]);
-		array.push(starSystem.pos[1]);
-		array.push(starSystem.pos[2]);
+		array.push(starSystem.pos[0]);// / metersPerUnits.pc);
+		array.push(starSystem.pos[1]);// / metersPerUnits.pc);
+		array.push(starSystem.pos[2]);// / metersPerUnits.pc);
 		array.push(0);
 		array.push(0);
 		array.push(0);
@@ -3334,9 +3359,9 @@ console.log('adding star systems to star fields and vice versa');
 
 		//note stars.buffer holds x y z abs-mag color-index
 		starSystem.pos = [
-			starfield.buffer.data[0 + starSystem.starfieldIndex * starfield.buffer.dim],
-			starfield.buffer.data[1 + starSystem.starfieldIndex * starfield.buffer.dim],
-			starfield.buffer.data[2 + starSystem.starfieldIndex * starfield.buffer.dim]
+			starfield.buffer.data[0 + starSystem.starfieldIndex * starfield.buffer.dim],// * metersPerUnits.pc,
+			starfield.buffer.data[1 + starSystem.starfieldIndex * starfield.buffer.dim],// * metersPerUnits.pc,
+			starfield.buffer.data[2 + starSystem.starfieldIndex * starfield.buffer.dim]// * metersPerUnits.pc
 		];
 
 		//starSystem.sourceData = ...
@@ -4388,6 +4413,67 @@ void main() {
 		});
 	}
 
+	var starTexWidth = 512;
+	var starTexData = new Uint8Array(starTexWidth * starTexWidth * 3);
+	for (var j = 0; j < starTexWidth; ++j) {
+		var y = (j+.5) / starTexWidth - .5;
+		var ay = Math.abs(y);
+		for (var i = 0; i < starTexWidth; ++i) {
+			var x = (i+.5) / starTexWidth - .5;
+			var ax = Math.abs(x);
+			var rL2 = Math.sqrt(Math.pow(ax,2) + Math.pow(ay,2));
+			var rL_2 = Math.pow(ax,1/2) + Math.pow(ay,1/2);
+			var r = rL2 + rL_2;
+			var sigma = 1/5;
+			var rs = r / sigma;
+			var lum = Math.exp(-rs*rs);
+			starTexData[0+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[1+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[2+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+		}
+	}
+	starTex = new glutil.Texture2D({
+		width : starTexWidth,
+		height : starTexWidth,
+		internalFormat : gl.RGB,
+		format : gl.RGB,
+		type : gl.UNSIGNED_BYTE,
+		magFilter : gl.LINEAR,
+		minFilter : gl.LINEAR_MIPMAP_LINEAR,
+		alignment : 1,
+		data : starTexData
+	});
+	{
+		var level = 1;
+		var lastStarTexData = starTexData;
+		for (var w = starTexWidth>>1; w; w>>=1, ++level) {
+			var starTexData = new Uint8Array(w * w * 3);
+			var lastW = w<<1;
+			for (var j = 0; j < w; ++j) {
+				for (var i = 0; i < w; ++i) {
+					for (var k = 0; k < 3; ++k) {
+						starTexData[k+3*(i+w*j)] = Math.max(
+							lastStarTexData[k+3*((2*i+0)+2*w*(2*j+0))],
+							lastStarTexData[k+3*((2*i+1)+2*w*(2*j+0))],
+							lastStarTexData[k+3*((2*i+0)+2*w*(2*j+1))],
+							lastStarTexData[k+3*((2*i+1)+2*w*(2*j+1))]);
+					}
+				}
+			}
+			starTex.bind();
+			starTex.setImage({
+				level : level,
+				internalFormat : gl.RGB,
+				format : gl.RGB,
+				type : gl.UNSIGNED_BYTE,
+				width : w,
+				height : w,
+				data : starTexData
+			});
+			lastStarTexData = starTexData;
+		}
+	}
+	
 	//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 	//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
 	var colorIndexTexWidth = 1024;
@@ -4500,12 +4586,16 @@ attribute vec3 vertex;
 attribute vec3 velocity;
 attribute float absoluteMagnitude;
 attribute float colorIndex;
-varying float alpha;
-varying vec3 color;
+
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float visibleMagnitudeBias;
+uniform float pointSize;
 uniform sampler2D colorIndexTex;
+
+varying float alpha;
+varying vec3 color;
+
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
@@ -4532,18 +4622,21 @@ void main() {
 	//calculate color
 	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
 
-	//TODO point sprite / point spread function?
-	gl_PointSize = 1.;
-
 	gl_Position = projMat * vtx4;
+	
+	//TODO point sprite / point spread function?
+	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.lyr / starFieldRenderScale) + mlstr(function(){/* );
+	gl_PointSize = max(1., gl_PointSize);
+	
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
 	fragmentCode : mlstr(function(){/*
+uniform sampler2D starTex;
 varying vec3 color;
 varying float alpha;
 void main() {
-	gl_FragColor = vec4(color, alpha);
+	gl_FragColor = texture2D(starTex, gl_PointCoord) * vec4(color, alpha);
 }
 */})
 	});
@@ -4682,7 +4775,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 	})();
 
 	//transform group - just for rescaling position when computing mvMat
-	mpcSceneObj = new glutil.SceneObject({
+	interGalacticXFormObj = new glutil.SceneObject({
 		parent : null,
 		static : false
 	});
@@ -4729,7 +4822,6 @@ uniform float fadeInAlpha;
 varying vec2 texCoordv;
 void main() {
 	gl_FragColor = texture2D(tex, texCoordv);
-	//gl_FragColor *= gl_FragColor; 
 	gl_FragColor.a *= fadeInAlpha;
 }
 */}),
@@ -4747,7 +4839,7 @@ void main() {
 					})
 				],
 				blend : [gl.SRC_ALPHA, gl.ONE],
-				parent : mpcSceneObj,
+				parent : interGalacticXFormObj,
 				pos : [0,0,0],
 				static : false
 			});
