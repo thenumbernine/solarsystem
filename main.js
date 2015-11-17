@@ -1677,14 +1677,12 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					if (galaxyField.sceneObj) {
 						galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
 					
-						//while milky way had orbit target built in (because factoring it out and re-applying the galactic coordinate matrices used to cause fp errors - before i rendered the intergalactic stuff with a separate scale)
-						//this is not going to have orbittarget in the shader, so it needs it in the mvMat (like everything else)
-						mat4.fromQuat(galaxyField.sceneObj.uniforms.mvMat, viewAngleInv);
-						mat4.translate(galaxyField.sceneObj.uniforms.mvMat, galaxyField.sceneObj.uniforms.mvMat,
-							[(-orbitTarget.pos[0] - glutil.view.pos[0]) / interGalacticRenderScale,
-							(-orbitTarget.pos[1] - glutil.view.pos[1]) / interGalacticRenderScale,
-							(-orbitTarget.pos[2] - glutil.view.pos[2]) / interGalacticRenderScale]);
-											
+						if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+							galaxyField.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
+							galaxyField.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
+							galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+						}
+
 						galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
 						galaxyField.sceneObj.draw();
 					}
@@ -3101,13 +3099,11 @@ void main() {
 			attrs : {
 				vertex : new glutil.Attribute({buffer : buffer, size : 3, stride : 3 * Float32Array.BYTES_PER_ELEMENT}),
 			},
-			uniforms : {
-				mvMat : mat4.create()
-			},
 			texs : [],
 			blend : [gl.SRC_ALPHA, gl.ONE],
-			parent : null,
-			static : true
+			pos : [0,0,0],
+			parent : mpcSceneObj,
+			static : false
 		});
 	
 		console.log("loaded galaxies");
