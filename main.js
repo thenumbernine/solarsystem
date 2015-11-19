@@ -837,6 +837,26 @@ function getCachedGalaxy(index,x,y,z) {
 	return galaxy;
 }
 
+var lastOrbitTextX, lastOrbitTextY;
+function updateOrbitTargetTextPos() {
+	if (!mouseOverTarget) return;
+	var pos = [];
+	vec3.sub(pos, mouseOverTarget.pos, orbitTarget.pos);
+	pos[3] = 1;
+	vec4.transformMat4(pos, pos, glutil.scene.mvMat);
+	vec4.transformMat4(pos, pos, glutil.scene.projMat);
+	vec4.scale(pos, pos, 1/pos[3]);
+	var targetScreenX = parseInt((1+pos[0])/2 * canvas.width);
+	var targetScreenY = parseInt((1-pos[1])/2 * canvas.height);
+	if (targetScreenX !== lastOrbitTextX || targetScreenY !== lastOrbitTextY) {
+		lastOrbitTextX = targetScreenX;
+		lastOrbitTextY = targetScreenY;
+		$('#hoverTargetText')
+			.text(mouseOverTarget.name)
+			.css({left:targetScreenX, top:targetScreenY});
+	}
+}
+
 /*
 in absence of coroutines i'm going to make a search object + callback
 for planets, stars, etc this will resolve the callback in one frame
@@ -954,8 +974,7 @@ var ChooseNewOrbitObject = makeClass({
 
 	resolveSearch : function() {
 		mouseOverTarget = undefined;
-		if (this.bestTarget !== undefined) {
-			$('#hoverTargetText').text(this.bestTarget.name);
+		if (this.bestTarget !== undefined) {				
 			mouseOverTarget = this.bestTarget;
 			if (this.bestTarget !== orbitTarget && this.doChoose) {
 				setOrbitTarget(this.bestTarget);
@@ -6419,6 +6438,8 @@ function initScene() {
 }
 
 function update() {
+			
+	updateOrbitTargetTextPos();
 
 	//finish any searches
 	if (chooseNewOrbitObject.searching) chooseNewOrbitObject.run();
