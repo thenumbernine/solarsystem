@@ -4,10 +4,10 @@ local json = require 'dkjson'
 local ffi = require 'ffi'
 local csv = require 'csv'
 
--- [[ v2
+--[[ v2
 local csvdata = csv.file'hygxyz.csv'
 --]]
---[[ v3
+-- [[ v3
 local csvdata = csv.file'hygdata_v3.csv'
 --]]
 
@@ -36,6 +36,7 @@ local totalErrors = 0
 local range = {}
 range.mag = {}
 range.colorIndex = {}
+range.dist = {}
 
 local zeroBasedIndex = 0
 for i,row in ipairs(csvdata.rows) do
@@ -78,6 +79,9 @@ for i,row in ipairs(csvdata.rows) do
 		ry, rz = cosEps * ry + sinEps * rz, -sinEps * ry + cosEps * rz
 		local rerr = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)/math.max(1,dist)
 		totalErrors = totalErrors + rerr
+		
+		range.dist.min = math.min(range.dist.min or dist, dist)
+		range.dist.max = math.max(range.dist.max or dist, dist)
 
 		local mag = assert(tonumber(row.absmag))	--apparent magnitude
 		range.mag.min = math.min(range.mag.min or mag, mag)
@@ -87,6 +91,7 @@ for i,row in ipairs(csvdata.rows) do
 		range.colorIndex.min = math.min(range.colorIndex.min or colorIndex, colorIndex)
 		range.colorIndex.max = math.max(range.colorIndex.max or colorIndex, colorIndex)
 
+		-- in parsecs per year
 		local vx = assert(tonumber(row.vx))
 		local vy = assert(tonumber(row.vy))
 		local vz = assert(tonumber(row.vz))

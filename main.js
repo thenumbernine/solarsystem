@@ -495,7 +495,7 @@ var StarInField = makeClass({
 var StarField = makeClass({});
 var starfield;
 var starfieldMaxDistInLyr = 5000;
-var starFieldRenderScale = 1e+15;
+var starFieldRenderScale = 1e+10;
 var starFieldXFormObj;
 
 var orbitPathResolution = 500;
@@ -837,24 +837,47 @@ function getCachedGalaxy(index,x,y,z) {
 	return galaxy;
 }
 
-var lastOrbitTextX, lastOrbitTextY;
-function updateOrbitTargetTextPos() {
-	if (!mouseOverTarget) return;
+var overlayTitleInfos = [];
+var overlayTitleIndex = 0;
+var maxOverlayTitlesAtOnce = 10;
+function resetOverlayTitleInfos() { overlayTitleIndex = 0; } 
+function setOverlayTitle(name, targetPos) {
+	var overlayTitleInfo = undefined;
+	if (overlayTitleIndex < overlayTitleInfos.length) {
+		overlayTitleInfo = overlayTitleInfos[overlayTitleIndex];
+		if (!overlayTitleInfo) throw 'here';
+	} else {
+		if (overlayTitleInfos.length > maxOverlayTitlesAtOnce) return;
+		var div = document.createElement('div');
+		div.style.position = 'absolute';
+		div.style.pointerEvents = 'none';
+		div.style.zIndex = 3;
+		document.body.appendChild(div);
+		overlayTitleInfo = {div:div};
+		overlayTitleInfos.push(overlayTitleInfo); 
+	}
+	++overlayTitleIndex;
+	$(overlayTitleInfo.div).text(name);
+
 	var pos = [];
-	vec3.sub(pos, mouseOverTarget.pos, orbitTarget.pos);
+	vec3.sub(pos, targetPos, orbitTarget.pos);
 	pos[3] = 1;
 	vec4.transformMat4(pos, pos, glutil.scene.mvMat);
 	vec4.transformMat4(pos, pos, glutil.scene.projMat);
 	vec4.scale(pos, pos, 1/pos[3]);
 	var targetScreenX = parseInt((1+pos[0])/2 * canvas.width);
 	var targetScreenY = parseInt((1-pos[1])/2 * canvas.height);
-	if (targetScreenX !== lastOrbitTextX || targetScreenY !== lastOrbitTextY) {
-		lastOrbitTextX = targetScreenX;
-		lastOrbitTextY = targetScreenY;
-		$('#hoverTargetText')
-			.text(mouseOverTarget.name)
-			.css({left:targetScreenX, top:targetScreenY});
+	if (targetScreenX !== overlayTitleInfo.x || targetScreenY !== overlayTitleInfo.y) {
+		overlayTitleInfo.x = targetScreenX;
+		overlayTitleInfo.y = targetScreenY;
+		overlayTitleInfo.div.style.left = targetScreenX;
+		overlayTitleInfo.div.style.top = targetScreenY;
 	}
+}
+
+function updateOrbitTargetTextPos() {
+	if (!mouseOverTarget) return;
+	setOverlayTitle(mouseOverTarget.name, mouseOverTarget.pos);
 }
 
 /*
@@ -949,11 +972,17 @@ var ChooseNewOrbitObject = makeClass({
 		.pos[j]
 	*/
 	processList : function(list) {
-		for (var i = 0; i < list.length; ++i) {
+		//easy way to prioritize planets over moons: search in reverse
+		for (var i = list.length-1; i >= 0; --i) {
 			var target = list[i];
 
 			//no need to select in starfield the system we're already orbitting
 			if (list === starfield && target == orbitStarSystem) continue;
+
+			//if we're selecting an orbitting planet
+			// and its orbit is small 
+			//  then don't bother select it (so we can get the parent instead)
+			if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue;
 
 			if (target.hide) continue;
 			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
@@ -1399,8 +1428,8 @@ var showFPS = false;
 						starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
 						starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
 					}
-						
-					starfield.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInPc) * canvas.width;
+if (window.asdf === undefined) window.asdf = .02						
+					starfield.sceneObj.uniforms.pointSize = asdf * canvas.width * Math.sqrt(distFromSolarSystemInPc)
 					
 					starfield.sceneObj.draw();
 					gl.enable(gl.DEPTH_TEST);
@@ -1490,6 +1519,7 @@ var showFPS = false;
 			var dx = planet.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
 			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+			//approximated pixel width with a fov of 90 degrees
 			planet.visRatio = planetScaleExaggeration * planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz);
 		}
 
@@ -1720,6 +1750,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 			}
 		}
 
+		//draw mouse-over highlight
 		if (mouseOverTarget !== undefined) {
 			var planet = mouseOverTarget;
 			if (planet !== undefined) {
@@ -1739,6 +1770,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 			}
 		}
 
+		//draw orbits
 		if (showOrbits) {
 			window.orbitPathsDrawn = 0;
 			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
@@ -1757,33 +1789,13 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 					vec3.sub(delta, delta, glutil.view.pos);
 					var deltaLength = vec3.length(delta);
 
-					var visRatio = distPeriapsis / deltaLength;
+					planet.orbitVisRatio = distPeriapsis / deltaLength;
 
-					var cosAngleToParent = vec3.dot(delta, viewfwd) / deltaLength;
-					var angleToParent = Math.acos(Math.clamp(cosAngleToParent, -1, 1));
-
-					//TODO cone/sphere intersection.  sphere center is delta, radius is distPeriapsis, cone center is origin, angle is angle
-					var distToParentPlanet = vec3.dot(delta, viewfwd);
-					//if (distToParentPlanet > 0)
-					{
-						var tanAngleOfParentInScreen = distPeriapsis / distToParentPlanet;
-						var angleOfParentInScreen = Math.abs(Math.atan(tanAngleOfParentInScreen));
-						//if (distToParentPlanet > 0 && (angleToParent < glutil.view.fovY * Math.PI / 180 + angleOfParentInScreen) ||
-						//	deltaLength < distPeriapsis)
-						{
-
-							//if sphere around parent planet of size max orbit size
-							// intersects with the view frustum then don't draw it
-							//test whether the view pos is in the sphere, or if the view dir dot delta
-							//if (deltaLength < distPeriapsis ||	//if we're within the periapsis
-							//	cosAngle > 0)
-							{
-								//recenter around orbitting planet
-								vec3.sub(planet.orbitPathObj.pos, planet.parent.pos, orbitTarget.pos);
-								planet.orbitPathObj.draw();
-								++orbitPathsDrawn;
-							}
-						}
+					if (planet.orbitVisRatio > planetPointVisRatio) {
+						//recenter around orbitting planet
+						vec3.sub(planet.orbitPathObj.pos, planet.parent.pos, orbitTarget.pos);
+						planet.orbitPathObj.draw();
+						++orbitPathsDrawn;
 					}
 				}
 			}
@@ -4436,8 +4448,8 @@ void main() {
 		});
 	}
 
-	var starTexWidth = 512;
-	var starTexData = new Uint8Array(starTexWidth * starTexWidth * 4);
+	var starTexWidth = 64;
+	var starTexData = new Uint8Array(starTexWidth * starTexWidth * 3);
 	for (var j = 0; j < starTexWidth; ++j) {
 		var y = (j+.5) / starTexWidth - .5;
 		var ay = Math.abs(y);
@@ -4450,24 +4462,24 @@ void main() {
 			var sigma = 1/5;
 			var rs = r / sigma;
 			var lum = Math.exp(-rs*rs);
-			starTexData[0+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
-			starTexData[1+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
-			starTexData[2+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
-			starTexData[3+4*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[0+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[1+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
+			starTexData[2+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
 		}
 	}
 	starTex = new glutil.Texture2D({
 		width : starTexWidth,
 		height : starTexWidth,
-		internalFormat : gl.RGBA,
-		format : gl.RGBA,
+		internalFormat : gl.RGB,
+		format : gl.RGB,
 		type : gl.UNSIGNED_BYTE,
 		magFilter : gl.LINEAR,
 		minFilter : gl.LINEAR_MIPMAP_LINEAR,
-		alignment : 1,
-		data : starTexData
+		data : starTexData,
+		//alignment : 1,
+		generateMipmap : true
 	});
-	{
+	/*{
 		var level = 1;
 		var lastStarTexData = starTexData;
 		for (var w = starTexWidth>>1; w; w>>=1, ++level) {
@@ -4497,7 +4509,8 @@ void main() {
 			lastStarTexData = starTexData;
 		}
 	}
-	
+	*/
+
 	//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 	//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
 	var colorIndexTexWidth = 1024;
@@ -4631,10 +4644,6 @@ void main() {
 	
 	//not sure where I got this one from ...
 	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
-
-	//combined ...
-	//alpha = pow(_10_5TH_ROOT, 1. + visibleMagnitudeBias - absoluteMagnitude) / distanceInParsecs;
-	//alpha *= alpha;
 	
 	alpha = clamp(alpha, 0., 1.);
 
@@ -4646,7 +4655,8 @@ void main() {
 	//TODO point sprite / point spread function?
 	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.pc / starFieldRenderScale) + mlstr(function(){/* );
 	gl_PointSize = max(1., gl_PointSize);
-	
+	gl_PointSize = min(10., gl_PointSize);
+	gl_PointSize = 1.;
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -4655,7 +4665,7 @@ uniform sampler2D starTex;
 varying vec3 color;
 varying float alpha;
 void main() {
-	gl_FragColor = texture2D(starTex, gl_PointCoord) * vec4(color, alpha);
+	gl_FragColor = vec4(color, alpha);	// * texture2D(starTex, gl_PointCoord);
 }
 */})
 	});
@@ -6401,7 +6411,6 @@ function initScene() {
 	orbitTargetDistance = 2. * orbitTarget.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
-	$('#hoverTargetText').text(orbitTarget.name);
 
 	var dragging = false;
 	var tmpQ = quat.create();
@@ -6438,7 +6447,12 @@ function initScene() {
 }
 
 function update() {
-			
+
+	/*
+	some new thoughts:
+	- only enable mouseover highlighting if orbit major axis (largest radius) exceeds point vis threshold
+	*/
+	resetOverlayTitleInfos();
 	updateOrbitTargetTextPos();
 
 	//finish any searches
