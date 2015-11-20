@@ -733,6 +733,7 @@ var milkyWayDistanceToCenterInKpc = 8.7;
 
 var interGalacticXFormObj;
 var interGalacticRenderScale = 100;
+var closestGalaxyDistanceInM = undefined;	//for occlusion of all selection stuff
 
 var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
 var GalaxyField = makeClass({});
@@ -954,11 +955,6 @@ function addOverlayText(target) {
 	++overlayTextIndex;
 }
 
-function updateOrbitTargetTextPos() {
-	if (!mouseOverTarget) return;
-	addOverlayText(mouseOverTarget);
-}
-
 /*
 in absence of coroutines i'm going to make a search object + callback
 for planets, stars, etc this will resolve the callback in one frame
@@ -1014,6 +1010,9 @@ var ChooseNewOrbitObject = makeClass({
 		if (!allowSelectGalaxies) return;
 		if (!showGalaxies) return;
 		if (!galaxyField) return;
+		
+		if (closestGalaxyDistanceInM > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) return;
+		
 		//there's 20,000 galaxies.  that's a lot.  how about we chop that up by 20 and only search 1000 per frame?
 		var buffer = galaxyField.buffer;
 		var searchGalaxyPerFrame = 1000;
@@ -3231,17 +3230,27 @@ function initGalaxies() {
 		var data = new DataView(arrayBuffer);
 
 		var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
-		var len = floatBuffer.length;
-		for (var j = 0; j < len; ++j) {
+		var pos = [];
+		for (var j = 0; j < floatBuffer.length; ++j) {
 			//units in Mpc
 			var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 			if (Math.abs(x) > 1e+26) {
 				console.log('galaxy '+Math.floor(j/3)+' has coordinate that position exceeds fp resolution');
 			}
 			//units still in Mpc
-			floatBuffer[j] = x + galaxyCenterInEquatorialCoordsInMpc[j%3];
+			x += galaxyCenterInEquatorialCoordsInMpc[j%3];
 			//units converted to intergalactic render units
-			floatBuffer[j] *= metersPerUnits.Mpc / interGalacticRenderScale;
+			x *= metersPerUnits.Mpc;
+			floatBuffer[j] = x / interGalacticRenderScale;
+			pos[j%3] = x;
+			if (j%3 == 2) {
+				var len = vec3.length(pos);
+				if (closestGalaxyDistanceInM === undefined) {
+					closestGalaxyDistanceInM = len;
+				} else {
+					closestGalaxyDistanceInM = Math.min(len, closestGalaxyDistanceInM); 
+				}
+			}
 		}
 
 		//now that we have the float buffer ...
@@ -6567,7 +6576,8 @@ function update() {
 	- only enable mouseover highlighting if orbit major axis (largest radius) exceeds point vis threshold
 	*/
 	overlayTexts_updateBegin();
-	updateOrbitTargetTextPos();
+	if (mouseOverTarget) addOverlayText(mouseOverTarget);
+	if (orbitTarget && orbitTarget.name && orbitTarget.pos) addOverlayText(orbitTarget);
 
 	//finish any searches
 	if (chooseNewOrbitObject.searching) chooseNewOrbitObject.run();
