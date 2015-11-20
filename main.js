@@ -890,8 +890,14 @@ function addOverlayText(target) {
 	document.body.appendChild(overlayText.div);
 	var sw = overlayText.div.clientWidth;
 	var sh = overlayText.div.clientHeight;
+	
 	//bump out of the way of other texts
-	var bumpedEver = false;
+	var bumpedEver = true;
+	sx -= sw/2;
+	sy -= sh/2;
+
+	var startSX = sx;
+	var startSY = sy;
 	while (true) {
 		var bumped = false;
 		for (var i = 0; i <  overlayTextIndex; ++i) {
@@ -900,8 +906,14 @@ function addOverlayText(target) {
 			var overlapY = sy < o.y + o.div.clientHeight && sy + sh > o.y;
 			if (overlapX && overlapY) {
 				var push = 0;	//push direction.  0 = x, 1 = y 
-				var dx = Math.abs((sx + .5 * sw) - (o.x + .5 * o.div.clientWidth));
-				var dy = Math.abs((sy + .5 * sh) - (o.x + .5 * o.div.clientHeight));
+				/*push by distance from collided object*/
+				var dx = (sx + .5 * sw) - (o.x + .5 * o.div.clientWidth);
+				var dy = (sy + .5 * sh) - (o.x + .5 * o.div.clientHeight);
+				/**/
+				/*push by distance from start * /
+				var dx = (sx + .5 * sw) - startSX;
+				var dy = (sy + .5 * sh) - startSY;
+				/**/
 				if (overlapX && overlapY) {
 					if (Math.abs(dy) > Math.abs(dx)) push = 1;
 				} else if (overlapY) {
