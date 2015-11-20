@@ -118,7 +118,7 @@ for _,p in ipairs(ps) do
 	end
 end
 
---[[
+-- [[
 local cacheFileName = 'ssd_sat_planet_phys_par.html'
 local page = file[cacheFileName]
 if not page then
@@ -128,34 +128,56 @@ if not page then
 end
 page = page:gsub('\r\n', '\n')
 -- fix nasa's crappy html
-page = page:gsub('(D>\n)<TR', '%1</TR><TR')
+page = page:gsub('<tr>', '</tr>')
+
 local tree = htmlparser.parse(page)
-local tabls = htmlparser.xpath(tree, '//table')
-if tabls then
-	for i,tabl in ipairs(tabls) do
-		local tabl = tabls[5]
-		print(i,tabl.child and #tabl.child)
-		print(flattenText(tabl))
-	end
-	local trs = findchilds(tabl, 'tr')
-	for i=2,#trs do	-- trs[1] is the header column ...
-		local tr = trs[i]
-		local tds = findchilds(tr, 'td')
-		local name = flattenText(tds[1])
-		local equatorialRadius = parseFloat(flattenText(tds[2]))
-		local meanRadius = parseFloat(flattenText(tds[3]))
-		local mass = parseFloat(flattenText(tds[4]))
-		local bulkDensity = parseFloat(flattenText(tds[5]))
-		local rotationPeriod = parseFloat(flattenText(tds[6]))
-		local orbitPeriod = parseFloat(flattenText(tds[7]))
-		local magnitude = parseFloat(flattenText(tds[8]))
-		local albedo = parseFloat(flattenText(tds[9]))
-		local equatorialGravity = parseFloat(flattenText(tds[10]))
-		local escapeVelocity = parseFloat(flattenText(tds[11]))
-		print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
+local tds = htmlparser.xpath(tree, '//td')
+print('#tds',#tds)
+for _,td in ipairs(tds) do
+	if td.child then
+		local tabls = findchilds(td, 'table')
+		for _,tabl in ipairs(tabls) do
+			local trs = findchilds(tabl, 'tr')
+			if trs[1] then
+				local td = findchild(trs[1], 'td')
+				if td and flattenText(td) == 'Planet' then
+					for i=3,#trs do	-- trs[1] is the header column ...
+						local tr = trs[i]
+						local tds = findchilds(tr, 'td')
+						local function stupidNasaHTML(s)
+							return flattenText(s):match('(%S+)%.')
+						end
+						local name = stupidNasaHTML(tds[1]) 
+						local equatorialRadius = 1e+3 * parseFloat(stupidNasaHTML(tds[2]))
+						local meanRadius = 1e+3 * parseFloat(stupidNasaHTML(tds[3]))
+						local mass = 1e+24 * parseFloat(stupidNasaHTML(tds[4]))
+						local bulkDensity = 1e+3 * parseFloat(stupidNasaHTML(tds[5]))
+						local rotationPeriod = parseFloat(stupidNasaHTML(tds[6]))
+						local orbitPeriod = parseFloat(stupidNasaHTML(tds[7]))
+						local magnitude = parseFloat(stupidNasaHTML(tds[8]))
+						local albedo = parseFloat(stupidNasaHTML(tds[9]))
+						local equatorialGravity = parseFloat(stupidNasaHTML(tds[10]))
+						local escapeVelocity = parseFloat(stupidNasaHTML(tds[11]))
+						print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
+						
+						name = name:lower()
+						name = ({
+							pluto = '134340 pluto',
+						})[name] or name
+						
+						vars[name] = {
+							equatorialRadius = equatorialRadius,
+							radius = meanRadius,
+							mass = mass,
+							density = bulkDensity,
+							magnitude = magnitude,
+						}
+					end
+				end
+			end
+		end
 	end
 end
-os.exit()
 --]]
 
 -- [[
