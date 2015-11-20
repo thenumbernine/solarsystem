@@ -837,38 +837,38 @@ function getCachedGalaxy(index,x,y,z) {
 	return galaxy;
 }
 
-var overlayTitleInfos = [];
-var overlayTitleIndex = 0;
-var maxOverlayTitlesAtOnce = 10;
-function overlayTitleInfos_updateBegin() {
-	overlayTitleIndex = 0;
+var overlayTexts = [];
+var overlayTextIndex = 0;
+var maxOverlayTitlesAtOnce = 20;
+function overlayTexts_updateBegin() {
+	overlayTextIndex = 0;
 }
-function overlayTitleInfos_updateEnd() {
-	for (var i = overlayTitleIndex; i < overlayTitleInfos.length; ++i) {
-		var div = overlayTitleInfos[i].div
+function overlayTexts_updateEnd() {
+	for (var i = overlayTextIndex; i < overlayTexts.length; ++i) {
+		var div = overlayTexts[i].div
 		var parent = div.parentNode;
 		if (parent) parent.removeChild(div);
 	}
 }
 function addOverlayText(target) {
-	for (var i = 0; i < overlayTitleIndex; ++i) {
-		if (overlayTitleInfos[i].target == target) return;
+	for (var i = 0; i < overlayTextIndex; ++i) {
+		if (overlayTexts[i].target == target) return;
 	}
 	
-	var overlayTitleInfo = undefined;
-	if (overlayTitleIndex < overlayTitleInfos.length) {
-		overlayTitleInfo = overlayTitleInfos[overlayTitleIndex];
-		if (!overlayTitleInfo) throw 'here';
+	var overlayText = undefined;
+	if (overlayTextIndex < overlayTexts.length) {
+		overlayText = overlayTexts[overlayTextIndex];
+		if (!overlayText) throw 'here';
 	} else {
-		if (overlayTitleInfos.length > maxOverlayTitlesAtOnce) return;
+		if (overlayTexts.length > maxOverlayTitlesAtOnce) return;
 		var div = document.createElement('div');
 		div.style.position = 'absolute';
 		div.style.pointerEvents = 'none';
 		div.style.zIndex = 3;
-		overlayTitleInfo = {div:div};
-		overlayTitleInfos.push(overlayTitleInfo); 
+		overlayText = {div:div};
+		overlayTexts.push(overlayText); 
 	}
-	$(overlayTitleInfo.div).text(target.name);
+	$(overlayText.div).text(target.name);
 
 	var pos = [];
 	vec3.sub(pos, target.pos, orbitTarget.pos);
@@ -878,17 +878,65 @@ function addOverlayText(target) {
 	vec4.scale(pos, pos, 1/pos[3]);
 	if (pos[0] < -1 || pos[0] > 1 || pos[1] < -1 || pos[1] > 1 || pos[2] < -1 || pos[2] > 1) return;
 	
-	var targetScreenX = parseInt((1+pos[0])/2 * canvas.width);
-	var targetScreenY = parseInt((1-pos[1])/2 * canvas.height);
-	//if (targetScreenX == overlayTitleInfo.x && targetScreenY == overlayTitleInfo.y) return;
+	var sx = parseInt((1+pos[0])/2 * canvas.width);
+	var sy = parseInt((1-pos[1])/2 * canvas.height);
+	//if (sx == overlayText.x && sy == overlayText.y) return;
 
-	overlayTitleInfo.target = target;
-	overlayTitleInfo.x = targetScreenX;
-	overlayTitleInfo.y = targetScreenY;
-	overlayTitleInfo.div.style.left = targetScreenX;
-	overlayTitleInfo.div.style.top = targetScreenY;
-	document.body.appendChild(overlayTitleInfo.div);
-	++overlayTitleIndex;
+	overlayText.target = target;
+	overlayText.x = sx;
+	overlayText.y = sy;
+	overlayText.div.style.left = sx;
+	overlayText.div.style.top = sy;
+	document.body.appendChild(overlayText.div);
+	var sw = overlayText.div.clientWidth;
+	var sh = overlayText.div.clientHeight;
+	//bump out of the way of other texts
+	var bumpedEver = false;
+	while (true) {
+		var bumped = false;
+		for (var i = 0; i <  overlayTextIndex; ++i) {
+			var o = overlayTexts[i];
+			var overlapX = sx < o.x + o.div.clientWidth && sx + sw > o.x;
+			var overlapY = sy < o.y + o.div.clientHeight && sy + sh > o.y;
+			if (overlapX && overlapY) {
+				var push = 0;	//push direction.  0 = x, 1 = y 
+				var dx = Math.abs((sx + .5 * sw) - (o.x + .5 * o.div.clientWidth));
+				var dy = Math.abs((sy + .5 * sh) - (o.x + .5 * o.div.clientHeight));
+				if (overlapX && overlapY) {
+					if (Math.abs(dy) > Math.abs(dx)) push = 1;
+				} else if (overlapY) {
+					push = 1;
+				}
+				var padding = 1;
+				if (push == 0) {
+					if (dx > 0) {
+						sx = o.x + o.div.clientWidth + padding;
+					} else {
+						sx = o.x - sw - padding;
+					}
+					bumped = true;
+					bumpedEver = true;
+				} else {	//push == 1
+					if (dy > 0) {
+						sy = o.y + o.div.clientHeight + padding;
+					} else {
+						sy = o.y - sh - padding;
+					}
+					bumped = true;
+					bumpedEver = true;
+				}
+			}
+		}
+		if (!bumped) break;
+	}
+	if (bumpedEver) {
+		overlayText.x = sx;
+		overlayText.y = sy;
+		overlayText.div.style.left = sx;
+		overlayText.div.style.top = sy;
+	}
+	
+	++overlayTextIndex;
 }
 
 function updateOrbitTargetTextPos() {
@@ -6473,7 +6521,7 @@ function update() {
 	some new thoughts:
 	- only enable mouseover highlighting if orbit major axis (largest radius) exceeds point vis threshold
 	*/
-	overlayTitleInfos_updateBegin();
+	overlayTexts_updateBegin();
 	updateOrbitTargetTextPos();
 
 	//finish any searches
@@ -6600,6 +6648,6 @@ function update() {
 
 	requestAnimFrame(update);
 	
-	overlayTitleInfos_updateEnd();
+	overlayTexts_updateEnd();
 }
 
