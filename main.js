@@ -840,8 +840,21 @@ function getCachedGalaxy(index,x,y,z) {
 var overlayTitleInfos = [];
 var overlayTitleIndex = 0;
 var maxOverlayTitlesAtOnce = 10;
-function resetOverlayTitleInfos() { overlayTitleIndex = 0; } 
-function setOverlayTitle(name, targetPos) {
+function overlayTitleInfos_updateBegin() {
+	overlayTitleIndex = 0;
+}
+function overlayTitleInfos_updateEnd() {
+	for (var i = overlayTitleIndex; i < overlayTitleInfos.length; ++i) {
+		var div = overlayTitleInfos[i].div
+		var parent = div.parentNode;
+		if (parent) parent.removeChild(div);
+	}
+}
+function addOverlayText(target) {
+	for (var i = 0; i < overlayTitleIndex; ++i) {
+		if (overlayTitleInfos[i].target == target) return;
+	}
+	
 	var overlayTitleInfo = undefined;
 	if (overlayTitleIndex < overlayTitleInfos.length) {
 		overlayTitleInfo = overlayTitleInfos[overlayTitleIndex];
@@ -852,32 +865,35 @@ function setOverlayTitle(name, targetPos) {
 		div.style.position = 'absolute';
 		div.style.pointerEvents = 'none';
 		div.style.zIndex = 3;
-		document.body.appendChild(div);
 		overlayTitleInfo = {div:div};
 		overlayTitleInfos.push(overlayTitleInfo); 
 	}
-	++overlayTitleIndex;
-	$(overlayTitleInfo.div).text(name);
+	$(overlayTitleInfo.div).text(target.name);
 
 	var pos = [];
-	vec3.sub(pos, targetPos, orbitTarget.pos);
+	vec3.sub(pos, target.pos, orbitTarget.pos);
 	pos[3] = 1;
 	vec4.transformMat4(pos, pos, glutil.scene.mvMat);
 	vec4.transformMat4(pos, pos, glutil.scene.projMat);
 	vec4.scale(pos, pos, 1/pos[3]);
+	if (pos[0] < -1 || pos[0] > 1 || pos[1] < -1 || pos[1] > 1 || pos[2] < -1 || pos[2] > 1) return;
+	
 	var targetScreenX = parseInt((1+pos[0])/2 * canvas.width);
 	var targetScreenY = parseInt((1-pos[1])/2 * canvas.height);
-	if (targetScreenX !== overlayTitleInfo.x || targetScreenY !== overlayTitleInfo.y) {
-		overlayTitleInfo.x = targetScreenX;
-		overlayTitleInfo.y = targetScreenY;
-		overlayTitleInfo.div.style.left = targetScreenX;
-		overlayTitleInfo.div.style.top = targetScreenY;
-	}
+	//if (targetScreenX == overlayTitleInfo.x && targetScreenY == overlayTitleInfo.y) return;
+
+	overlayTitleInfo.target = target;
+	overlayTitleInfo.x = targetScreenX;
+	overlayTitleInfo.y = targetScreenY;
+	overlayTitleInfo.div.style.left = targetScreenX;
+	overlayTitleInfo.div.style.top = targetScreenY;
+	document.body.appendChild(overlayTitleInfo.div);
+	++overlayTitleIndex;
 }
 
 function updateOrbitTargetTextPos() {
 	if (!mouseOverTarget) return;
-	setOverlayTitle(mouseOverTarget.name, mouseOverTarget.pos);
+	addOverlayText(mouseOverTarget);
 }
 
 /*
@@ -1584,6 +1600,7 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
 
 				planet.sceneObj.draw();
+addOverlayText(planet);
 
 				if (showLatAndLonLines) {
 					vec3.copy(planet.latLonObj.pos, planet.sceneObj.uniforms.pos);
@@ -1796,6 +1813,10 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 						vec3.sub(planet.orbitPathObj.pos, planet.parent.pos, orbitTarget.pos);
 						planet.orbitPathObj.draw();
 						++orbitPathsDrawn;
+					}
+
+					if (planet.orbitVisRatio > .1) {
+						addOverlayText(planet);
 					}
 				}
 			}
@@ -6452,7 +6473,7 @@ function update() {
 	some new thoughts:
 	- only enable mouseover highlighting if orbit major axis (largest radius) exceeds point vis threshold
 	*/
-	resetOverlayTitleInfos();
+	overlayTitleInfos_updateBegin();
 	updateOrbitTargetTextPos();
 
 	//finish any searches
@@ -6578,5 +6599,7 @@ function update() {
 	glutil.clearAlpha();
 
 	requestAnimFrame(update);
+	
+	overlayTitleInfos_updateEnd();
 }
 
