@@ -517,6 +517,9 @@ var orbitOffset = [0,0,0];
 var orbitTargetDistance;
 var orbitZoomFactor = .0003;	// upon mousewheel
 
+//if we're orbitting at 1AU then we can only click things at 1000 AU
+var ratioOfOrbitDistanceToAllowSelection = 1000;
+
 var mouse;
 var mouseDir;
 
@@ -766,7 +769,7 @@ var showGravityWell = false;
 var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
 var showStars = true;
-var allowSelectStars = false;
+var allowSelectStars = true;
 var starsVisibleMagnitudeBias = 0;
 var planetScaleExaggeration = 1;
 var gravityWellScaleNormalized = true;
@@ -775,7 +778,7 @@ var gravityWellScaleFixedValue = 2000;
 var gravityWellRadialMinLog100 = -1;
 var gravityWellRadialMaxLog100 = 2;
 
-var allowSelectGalaxies = false;
+var allowSelectGalaxies = true;
 
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
@@ -1024,6 +1027,11 @@ var ChooseNewOrbitObject = makeClass({
 			var deltaY = y - glutil.view.pos[1] - orbitTarget.pos[1];
 			var deltaZ = z - glutil.view.pos[2] - orbitTarget.pos[2];
 			var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+			
+			//TODO occlude based on apparent magnitude since some distant bright objects can still be seen
+			//if this dist from orbit target is over 100x the orbit distance then assume it's too far away to select 
+			if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
+			
 			deltaX /= dist;
 			deltaY /= dist;
 			deltaZ /= dist;
@@ -1058,13 +1066,18 @@ var ChooseNewOrbitObject = makeClass({
 			//if we're selecting an orbitting planet
 			// and its orbit is small 
 			//  then don't bother select it (so we can get the parent instead)
-			if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue;
+			if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue;	
 
 			if (target.hide) continue;
 			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
 			var deltaY = target.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var deltaZ = target.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 			var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+			
+			//TODO occlude based on apparent magnitude since some distant bright objects can still be seen
+			//if this dist from orbit target is over 100x the orbit distance then assume it's too far away to select 
+			if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
+			
 			deltaX /= dist;
 			deltaY /= dist;
 			deltaZ /= dist;
@@ -2039,21 +2052,41 @@ function invalidateForces() {
 	}
 }
 
-var orbitTargetUnitOptions = ['Mpc', 'lyr', 'AU', 'km', 'm'];
-function refreshOrbitTargetDistanceText() {
+//unitsToTest should be largest to smallest
+function unitsToStr(measureInBaseUnits, otherUnitsInBaseUnits, unitsToTest) {
 	var bestUnit = 'm';
-	var bestDist = orbitTargetDistance;
-	for (var i = 0; i < orbitTargetUnitOptions.length; ++i) {
-		var unit = orbitTargetUnitOptions[i];
-		var metersPerUnit = metersPerUnits[unit];
-		var ratio = orbitTargetDistance / metersPerUnit;
+	var bestDist = measureInBaseUnits;
+	for (var i = 0; i < unitsToTest.length; ++i) {
+		var unit = unitsToTest[i];
+		var ratio = measureInBaseUnits / otherUnitsInBaseUnits[unit];
 		if (ratio > .1) {
 			bestUnit = unit;
 			bestDist = ratio;
 			break;
 		}
 	}
-	$('#orbitTargetDistance').text(bestDist.toFixed(4)+' '+bestUnit);
+	return bestDist.toFixed(4)+' '+bestUnit;
+}
+
+var distanceToStrUnits = ['Mpc', 'lyr', 'AU', 'km', 'm'];
+function distanceToStr(distInMeters) {
+	return unitsToStr(distInMeters, metersPerUnits, distanceToStrUnits);
+}
+
+var timeToStrUnits = ['years', 'days', 'm', 'h', 's'];
+var daysPerUnits = {
+	years : 365.4996816895717,
+	days : 1,
+	h : 1/24,
+	m : 1/(60*24),
+	s : 1/(60*60*24),
+}
+function timeToStr(timeInDays) {
+	return unitsToStr(timeInDays, daysPerUnits, timeToStrUnits);
+}
+
+function refreshOrbitTargetDistanceText() {
+	$('#orbitTargetDistance').text(distanceToStr(orbitTargetDistance));
 }
 
 function refreshCurrentTimeText() {
@@ -6386,23 +6419,23 @@ function setOrbitTarget(newTarget) {
 		$('#infoDiv').append($('<div>', {text:'Mass: '+orbitTarget.mass+' kg'}));
 	}
 	if (orbitTarget.equatorialRadius !== undefined) {
-		$('#infoDiv').append($('<div>', {text:'Equatorial Radius: '+orbitTarget.equatorialRadius+' m'}));
+		$('#infoDiv').append($('<div>', {text:'Equatorial Radius: '+distanceToStr(orbitTarget.equatorialRadius)}));
 	} else if (orbitTarget.radius !== undefined) {
-		$('#infoDiv').append($('<div>', {text:'Radius: '+orbitTarget.radius+' m'}));
+		$('#infoDiv').append($('<div>', {text:'Radius: '+distanceToStr(orbitTarget.radius)}));
 	}
 	if (orbitTarget.inverseFlattening !== undefined) {
 		$('#infoDiv').append($('<div>', {text:'Inverse Flattening: '+orbitTarget.inverseFlattening}));
 	}
 	if (orbitTarget.rotationPeriod !== undefined) {
-		$('#infoDiv').append($('<div>', {text:'Rotation Period: '+orbitTarget.rotationPeriod+' days'}));
+		$('#infoDiv').append($('<div>', {text:'Rotation Period: '+timeToStr(orbitTarget.rotationPeriod)}));
 	}
 	if (orbitTarget.ringRadiusRange !== undefined) {
-		$('#infoDiv').append($('<div>', {text:'Ring Min Radius: '+orbitTarget.ringRadiusRange[0]+' m'}));
-		$('#infoDiv').append($('<div>', {text:'Ring Max Radius: '+orbitTarget.ringRadiusRange[1]+' m'}));
+		$('#infoDiv').append($('<div>', {text:'Ring Min Radius: '+distanceToStr(orbitTarget.ringRadiusRange[0])}));
+		$('#infoDiv').append($('<div>', {text:'Ring Max Radius: '+distanceToStr(orbitTarget.ringRadiusRange[1])}));
 	}
 	if (orbitTarget.keplerianOrbitalElements) {
 		if (orbitTarget.keplerianOrbitalElements.semiMajorAxis) {
-			$('#infoDiv').append($('<div>', {text:'Semi-Major Axis: '+orbitTarget.keplerianOrbitalElements.semiMajorAxis+' m'}));
+			$('#infoDiv').append($('<div>', {text:'Semi-Major Axis: '+distanceToStr(orbitTarget.keplerianOrbitalElements.semiMajorAxis)}));
 		}
 		if (orbitTarget.keplerianOrbitalElements.orbitType) {
 			$('#infoDiv').append($('<div>', {text:'Orbit Type: '+orbitTarget.keplerianOrbitalElements.orbitType}));
@@ -6423,10 +6456,10 @@ function setOrbitTarget(newTarget) {
 			$('#infoDiv').append($('<div>', {html:'Inclination: '+Math.deg(orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
 		}
 		if (orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing) {
-			$('#infoDiv').append($('<div>', {html:'Time of Periapsis Crossing: '+orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing+' days'}));
+			$('#infoDiv').append($('<div>', {html:'Time of Periapsis Crossing: '+timeToStr(orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing)}));
 		}
 		if (orbitTarget.keplerianOrbitalElements.orbitalPeriod) {
-			$('#infoDiv').append($('<div>', {text:'Orbital Period: '+orbitTarget.keplerianOrbitalElements.orbitalPeriod+' days'}));
+			$('#infoDiv').append($('<div>', {text:'Orbital Period: '+timeToStr(orbitTarget.keplerianOrbitalElements.orbitalPeriod)}));
 		}
 	}
 	$('#infoDiv').append($('<br>'));
