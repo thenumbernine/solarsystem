@@ -18,6 +18,16 @@ planetsData = planetsLines:concat('\n')
 local planets = assert(json.decode(planetsData))
 --]]
 
+local G = 6.67259e-20
+local function parseFloat(s)
+	s = s:trim()
+	if s == '?' then return 0 end
+	s = s:match('[%d%.e%+%-]*')
+	return tonumber(s)
+end
+
+local vars = {}
+
 local cacheFileName = 'ssd_sat_phys_par.html'
 local page = file[cacheFileName]
 if not page then
@@ -30,8 +40,6 @@ page = page:gsub('\r\n', '\n')
 page = page:gsub('(D>\n)<TR', '%1</TR><TR')
 local tree = htmlparser.parse(page)
 local ps = htmlparser.xpath(tree, '//p')
-
-local vars = {}
 for _,p in ipairs(ps) do
 	if p.child then
 		local tabl = findchild(p, 'table')
@@ -49,26 +57,19 @@ for _,p in ipairs(ps) do
 				end
 				assert(#tds == 10, "found "..#tds.." cols")
 		
-				local function parseFloat(s)
-					s = s:trim()
-					if s == '?' then return 0 end
-					s = s:match('[%d%.e%+%-]*')
-					return tonumber(s)
-				end
-				local G = 6.67259e-20
 				local name = flattenText(tds[1])
 				local GM = parseFloat(flattenText(tds[2]))
 				local mass = GM / G
 				local radius = parseFloat(flattenText(tds[4]))
-				local density = parseFloat(flattenText(tds[6]))
+				-- radius in m
+				radius = radius * 1000
+				-- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
+				local density = parseFloat(flattenText(tds[6])) * 1e+12
 				local magnitude = parseFloat(flattenText(tds[7]))	-- V0 or R (if has a R suffix)
 				if mass == 0 and density ~= 0 then
-					-- density in kg/km^3 = kg/g (cm/km)^3 g/cm^3 = g/cm^3 * 1e+12
-					mass = 1e+12 * density * (4/3 * math.pi * radius^3)
+					mass = density * (4/3 * math.pi * radius^3)
 					print('calculating mass of ',name,' to be',mass)
 				end
-				-- from here on out, radius in meters
-				radius = radius * 1000
 				local albedo = parseFloat(flattenText(tds[9]))
 				print(name, mass, radius, density, magnitude, albedo)
 				name = name:trim():lower()
@@ -117,6 +118,46 @@ for _,p in ipairs(ps) do
 	end
 end
 
+--[[
+local cacheFileName = 'ssd_sat_planet_phys_par.html'
+local page = file[cacheFileName]
+if not page then
+	local url = 'http://ssd.jpl.nasa.gov/?planet_phys_par'
+	page = assert(http.request(url))
+	file[cacheFileName] = page
+end
+page = page:gsub('\r\n', '\n')
+-- fix nasa's crappy html
+page = page:gsub('(D>\n)<TR', '%1</TR><TR')
+local tree = htmlparser.parse(page)
+local tabls = htmlparser.xpath(tree, '//table')
+if tabls then
+	for i,tabl in ipairs(tabls) do
+		local tabl = tabls[5]
+		print(i,tabl.child and #tabl.child)
+		print(flattenText(tabl))
+	end
+	local trs = findchilds(tabl, 'tr')
+	for i=2,#trs do	-- trs[1] is the header column ...
+		local tr = trs[i]
+		local tds = findchilds(tr, 'td')
+		local name = flattenText(tds[1])
+		local equatorialRadius = parseFloat(flattenText(tds[2]))
+		local meanRadius = parseFloat(flattenText(tds[3]))
+		local mass = parseFloat(flattenText(tds[4]))
+		local bulkDensity = parseFloat(flattenText(tds[5]))
+		local rotationPeriod = parseFloat(flattenText(tds[6]))
+		local orbitPeriod = parseFloat(flattenText(tds[7]))
+		local magnitude = parseFloat(flattenText(tds[8]))
+		local albedo = parseFloat(flattenText(tds[9]))
+		local equatorialGravity = parseFloat(flattenText(tds[10]))
+		local escapeVelocity = parseFloat(flattenText(tds[11]))
+		print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
+	end
+end
+os.exit()
+--]]
+
 -- [[
 for _,planet in ipairs(planets) do
 	planet.name = planet.name:trim()
@@ -124,10 +165,11 @@ for _,planet in ipairs(planets) do
 	else
 		local v = vars[planet.name:lower()]
 		if v then
-			print('replacing',planet.name,'mass from',planet.mass,'to',v.mass)
-			planet.mass = v.mass
-			print('replacing',planet.name,'radius from',planet.radius,'to',v.radius)
-			planet.radius = v.radius
+			local fields = {'mass', 'radius', 'density', 'magnitude', 'albedo'}
+			for _,field in ipairs(fields) do
+				print('replacing',planet.name,field,'from',planet[field],'to',v[field])
+				planet[field] = v[field]
+			end
 			v.read = true
 		end
 	end

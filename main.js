@@ -403,7 +403,7 @@ var SolarSystem = makeClass({
 		//start out with the current planets
 		var currentIDs = {};
 		for (var i = 0; i < this.planets.length; ++i) {
-			currentIDs[this.planets[i].id] = true;
+			currentIDs[this.planets[i].id] = this.planets[i];
 		}
 
 		//I need to fix up my export script ...
@@ -423,6 +423,7 @@ var SolarSystem = makeClass({
 			} else {
 				if (currentIDs[dynamicData.id]) {
 					//if the id already exists then skip it
+					currentIDs[dynamicData.id].magnitude = staticData.magnitude;
 				} else {
 					//... finally, add the planet
 					/*
@@ -431,6 +432,7 @@ var SolarSystem = makeClass({
 					radius
 					equatorialRadius (all but sun, pluto, moon)
 					inverseFlattening (all but sun, mercury, venus, moon, pluto)
+					magntidue
 					*/
 					this.planets.push(mergeInto(new Planet(), {
 						id:dynamicData.id,
@@ -439,6 +441,7 @@ var SolarSystem = makeClass({
 						radius:staticData.radius,
 						equatorialRadius:staticData.equatorialRadius,
 						inverseFlattening:staticData.inverseFlattening,
+						magnitude:staticData.magnitude,
 						parent:staticData.parent
 					}));
 					currentIDs[dynamicData.id] = true;
@@ -1516,8 +1519,8 @@ var showFPS = false;
 						starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
 						starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
 					}
-if (window.asdf === undefined) window.asdf = .02						
-					starfield.sceneObj.uniforms.pointSize = asdf * canvas.width * Math.sqrt(distFromSolarSystemInPc)
+if (window.asdf === undefined) window.asdf = 1e-2;
+					starfield.sceneObj.uniforms.pointSize = asdf * canvas.width;// * Math.sqrt(distFromSolarSystemInPc);
 					
 					starfield.sceneObj.draw();
 					gl.enable(gl.DEPTH_TEST);
@@ -1527,9 +1530,14 @@ if (window.asdf === undefined) window.asdf = .02
 			for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
 				var starSystem = starSystems[starSystemIndex];
 				
+				var withinSolarSystem = false;
 				for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
-					if (starSystem.planets[planetIndex].orbitVisRatio > 1) continue;
+					if (starSystem.planets[planetIndex].orbitVisRatio > 1) {
+						withinSolarSystem = true;
+						break;
+					}
 				}
+				if (withinSolarSystem) continue;
 				
 				//if the star system is close enough
 				//TODO use luminance
@@ -3523,8 +3531,7 @@ console.log('adding star systems to star fields and vice versa');
 		if (({
 			Sun:1,
 			"Kapteyn's Star":1,
-			"Rigel Kentaurus A":1,
-			"Rigel Kentaurus B":1
+			"Fomalhaut":1,
 		})[args.name]) continue;	//hmm... there are some double-ups ...
 		
 		var starSystem = new StarSystem();
@@ -4602,7 +4609,7 @@ void main() {
 			var rL2 = Math.sqrt(Math.pow(ax,2) + Math.pow(ay,2));
 			var rL_2 = Math.pow(ax,1/2) + Math.pow(ay,1/2);
 			var r = rL2 + rL_2;
-			var sigma = 1/5;
+			var sigma = 1;
 			var rs = r / sigma;
 			var lum = Math.exp(-rs*rs);
 			starTexData[0+3*(i+j*starTexWidth)] = 255*Math.clamp(lum,0,1);
@@ -4797,9 +4804,7 @@ void main() {
 	
 	//TODO point sprite / point spread function?
 	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.pc / starFieldRenderScale) + mlstr(function(){/* );
-	gl_PointSize = max(1., gl_PointSize);
-	gl_PointSize = min(10., gl_PointSize);
-	gl_PointSize = 1.;
+	gl_PointSize = clamp(gl_PointSize, 1., 10.);
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -4808,7 +4813,7 @@ uniform sampler2D starTex;
 varying vec3 color;
 varying float alpha;
 void main() {
-	gl_FragColor = vec4(color, alpha);	// * texture2D(starTex, gl_PointCoord);
+	gl_FragColor = vec4(color, alpha) * texture2D(starTex, gl_PointCoord);
 }
 */})
 	});
@@ -6604,6 +6609,9 @@ function update() {
 	*/
 	overlayTexts_updateBegin();
 	if (mouseOverTarget) addOverlayText(mouseOverTarget);
+	
+	//TODO instead of always showing the orbit target, show what it collapses into (moon -> earth -> solar system -> milky way)
+	// but this would mean unifying all the overlay text show/hide conditions ...
 	if (orbitTarget && orbitTarget.name && orbitTarget.pos) addOverlayText(orbitTarget);
 
 	//finish any searches
