@@ -902,7 +902,7 @@ function addOverlayText(target) {
 
 	var startSX = sx;
 	var startSY = sy;
-	while (true) {
+	for (var tries = 0; tries < overlayTextIndex; ++tries) {
 		var bumped = false;
 		for (var i = 0; i <  overlayTextIndex; ++i) {
 			var o = overlayTexts[i];
@@ -1521,6 +1521,26 @@ if (window.asdf === undefined) window.asdf = .02
 					
 					starfield.sceneObj.draw();
 					gl.enable(gl.DEPTH_TEST);
+				}
+			}
+		
+			for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
+				var starSystem = starSystems[starSystemIndex];
+				
+				for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
+					if (starSystem.planets[planetIndex].orbitVisRatio > 1) continue;
+				}
+				
+				//if the star system is close enough
+				//TODO use luminance
+				var deltaX = starSystem.pos[0] - orbitTarget.pos[0];
+				var deltaY = starSystem.pos[1] - orbitTarget.pos[1];
+				var deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
+				var dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
+				//TODO if the dist is lower than the max radius of the star system then don't draw it
+				var ratio = dist / orbitTargetDistance
+				if (0.1 < ratio && ratio < 10) {
+					addOverlayText(starSystem);
 				}
 			}
 		}
