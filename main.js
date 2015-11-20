@@ -518,7 +518,7 @@ var orbitTargetDistance;
 var orbitZoomFactor = .0003;	// upon mousewheel
 
 //if we're orbitting at 1AU then we can only click things at 1000 AU
-var ratioOfOrbitDistanceToAllowSelection = 1000;
+var ratioOfOrbitDistanceToAllowSelection = 10000;
 
 var mouse;
 var mouseDir;
@@ -5066,19 +5066,26 @@ void main() {
 			Earth:1,
 			Moon:1,
 			Mars:1,
+				Phobos:1,
+				Deimos:1,
 			Jupiter:1,
-				Enceladus:1,
+				Io:1,
+				Europa:1,
+				Ganymede:1,
+				Callisto:1,
+			Saturn:1,
 				Mimas:1,
+				Enceladus:1,
 				Tethys:1,
 				Dione:1,
 				Rhea:1,
 				Titan:1,
 				Iapetus:1,
 				Phoebe:1,
-			Saturn:1,
 			Neptune:1,
 			Uranus:1,
-			Pluto:1
+			Pluto:1,
+				Charon:1
 		}) {
 			var img = new Image();
 			img.onload = function() {

@@ -8,12 +8,12 @@ require 'ext'
 local json = require 'dkjson'
 local socket = require 'socket'
 local http = require 'socket.http'
-require 'htmlparser.htmlparser'
+local htmlparser = require 'htmlparser.htmlparser'
 require 'htmlparser.common'
 require 'htmlparser.xpath'
 
 local planetsFilename = 'static-vars.json'
-local planetsData = io.readfile(planetsFilename)
+local planetsData = file[planetsFilename]
 -- strip off variable wrapper
 local planetsLines = planetsData:trim():split('\n')
 planetsLines[1] = assert(planetsLines[1]:match('horizonsStaticData = (.*)'))
@@ -45,7 +45,7 @@ local function getInfo(planet)
 	local urlname = upperCase(prefix)..upperCase(planet.name)
 	local url = [[http://solarsystem.nasa.gov/planets/profile.cfm?Object=]]..urlname
 	local page = assert(http.request(url))
-	io.writefile('solarsystem.nasa.gov_planets_profile_'..planet.name..'.html', page)
+	file['solarsystem.nasa.gov_planets_profile_'..planet.name..'.html'] = page
 	local tree = htmlparser.new(page):parse()
 	local spans = htmlparser.xpath(tree, '//span')
 	print(#spans,'spans')
@@ -106,4 +106,4 @@ for _,planet in ipairs(planets) do
 end
 
 local planetsData = 'horizonsStaticData = '..json.encode(planets, {indent=true})..';'
-io.writefile(planetsFilename, planetsData)
+file[planetsFilename] = planetsData

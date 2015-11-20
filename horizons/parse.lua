@@ -29,13 +29,13 @@ end
 function canbe(pattern)
 	local res = {nextline:match(pattern)}
 	if #res > 0 then getline() end
-	return unpack(res)
+	return table.unpack(res)
 end
 
 function mustbe(pattern)
 	local res = {canbe(pattern)}
 	if #res == 0 then error('failed to match pattern '..pattern) end
-	return unpack(res)
+	return table.unpack(res)
 end
 
 local unknownDatas = {}
@@ -78,11 +78,9 @@ xpcall(function()
 			if name:match('^L%d ') then
 				-- L-n lagrangian points don't have any data
 			else
-				canbe('^ Physical: ... %d%d, %d%d%d%d$')	-- sun has an extra date line 
 				canbe('^ Description: ... %d%d, %d%d%d%d')	-- Hegemone / (Jupiter) and Kore (Jupiter) have an extra description line 
 				while canbe('^%s+http://') do end	-- Mimas / (Saturn) and Helene / (Saturn)
-				mustbe('^%s*$') 	-- then always comes a newline
-				while canbe('^%s*$') do end	-- sometimes two
+				while canbe('^%s*$') do end	-- maybe some spaces 
 				
 				if canbe('^ Solution fit to Voyager and Cassini data%.$') then
 					while canbe('^%s*$') do end
@@ -90,7 +88,7 @@ xpcall(function()
 
 				if canbe('^ GEOPHYSICAL DATA')
 				or canbe('^ PHYSICAL DATA')
-				or canbe('^ ?PHYSICAL PROPERTIES:$')
+				or canbe('^ ?PHYSICAL PROPERTIES[^\n]*:$')
 				or canbe('^ SATELLITE PHYSICAL PROPERTIES:')
 				then
 					local varlines = table()
@@ -228,7 +226,7 @@ for _,planetInfo in ipairs(planetInfos) do
 				planetInfo.mass = tonumber(v) * 10^scale
 			end
 			if k == 'Radius (photosphere)' then
-				local v2, scale = v:match('^([.%d]+)%(10%^(%d+)%) km$')
+				local v2, scale = v:match('^([.%d]+)%(10%^(%d+)%) km')
 				v2 = tonumber(v2)
 				scale = tonumber(scale)
 				planetInfo.radius = v2 * 10^(scale+3)
