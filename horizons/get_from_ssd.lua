@@ -199,8 +199,9 @@ for _,td in ipairs(tds) do
 					
 						-- convert from V(1,0) magnitude to abs magnitude
 						-- magnitude is V(1,0) which I've found in one source to be the magnitude when planet is opposite the sun of earth, with distance measured in AU
-						local distToObserverInKM = distFromSunInKM[name] + distFromSunInKM.earth
-						magnitude = magnitude - 5 * (math.log(distToObserverInKM / parsecInKM, 10) - 1)
+						--local distToObserverInKM = name == 'earth' and parsecInKM or math.abs(distFromSunInKM[name] - distFromSunInKM.earth)
+						local distToObserverInKM = auInKM
+						local absMag = magnitude - 5 * (math.log(distToObserverInKM / parsecInKM, 10) - 1)
 						
 						print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
 						
@@ -213,7 +214,7 @@ for _,td in ipairs(tds) do
 							radius = meanRadius,
 							mass = mass,
 							density = bulkDensity,
-							magnitude = magnitude,
+							magnitude = absMag,
 						}
 					end
 				end

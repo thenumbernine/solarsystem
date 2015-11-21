@@ -21,7 +21,7 @@ local function getNumber(child)
 	return upperlimit or lowerlimit or error("failed to find number value")
 end
 
-local auToM = 149597870700
+local auInM = 149597870700
 local parsecsToMeters = 3.08567758e+16
 local jupiterMassInKg = 1.89813e+27
 local jupiterRadiusInM = 6.9911e+7
@@ -70,10 +70,10 @@ local function getSeparation(node)
 	if findattr(node, 'unit') == 'arcsec' then	-- then process separtion in arcseconds?
 		--error('how do we handle arcsecond separation?')
 	elseif findattr(node, 'unit') == 'AU' then
-		return getNumber(node) * auToM
+		return getNumber(node) * auInM
 	else
 		-- sometimes units aren't given ... in that case what do we do?
-		return getNumber(node) * auToM
+		return getNumber(node) * auInM
 		--error('unknown separation type '..tolua(node))
 	end
 end
@@ -88,7 +88,7 @@ local function setSeparation(obj, node)
 		return
 	elseif unit == 'arcsec' then	-- then process separtion in arcseconds?
 	elseif unit == 'AU' then
-		setField(obj, 'separation', getNumber(node) * auToM)
+		setField(obj, 'separation', getNumber(node) * auInM)
 	else
 		error('unknown separation type '..tolua(node.attrs))
 	end
@@ -102,7 +102,7 @@ function processPlanet(node, resultSystem)
 		if tag == 'name' then
 			setName(resultBody, getText(child))
 		elseif tag == 'semimajoraxis' then
-			setField(resultBody, 'semiMajorAxis', getNumber(child) * auToM)
+			setField(resultBody, 'semiMajorAxis', getNumber(child) * auInM)
 		elseif tag == 'separation' then
 			setSeparation(resultBody, child)
 		elseif tag == 'eccentricity' then
@@ -231,7 +231,7 @@ function processBinary(node, resultSystem)
 		elseif tag == 'name' then
 			setName(resultBody, getText(child))
 		elseif tag == 'semimajoraxis' then
-			setField(resultBody, 'semiMajorAxis', getNumber(child) * auToM)
+			setField(resultBody, 'semiMajorAxis', getNumber(child) * auInM)
 		elseif tag == 'separation' then
 			setSeparation(resultBody, child)
 		elseif tag == 'eccentricity' then

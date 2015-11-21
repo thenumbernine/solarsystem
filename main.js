@@ -1706,8 +1706,6 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 planet.sceneObj.uniforms.forceMin = planet.forceMin;
 planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
-				//TODO - ambient for each star
-				// TODO even more - absolute magnitude, radiance, HDR, etc
 				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : .1;
 				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
 
@@ -2387,6 +2385,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 	solarSystem.index = starSystems.length;
 	starSystems.push(solarSystem);
 	solarSystem.doneBuildingPlanets();
+	solarSystem.magnitude = solarSystem.planets[solarSystem.indexes.Sun].magnitude;
 
 
 	// overlay side panel
@@ -3388,8 +3387,9 @@ function initExoplanets() {
 			starSystem.sourceData = systemInfo;
 			vec3.copy(starSystem.pos, pos);
 
-			//TODO visual magnitude, which is undocumented but some have
+			//TODO absoluate magnitude of the collective system (sum of all parts?)
 
+			var minAbsMag = undefined;
 
 			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
 
@@ -3438,7 +3438,17 @@ function initExoplanets() {
 
 				starSystem.planets.push(body);
 				if (body.type == 'star') starSystem.stars.push(body);
+				
+				if (bodyInfo.visualMagnitude !== undefined) {
+					//absolute magnitude based on visual magnitude
+					body.magnitude = bodyInfo.visualMagnitude - 5 * (Math.log10(distance / metersPerUnits.pc) - 1);
+					//...???
+					minAbsMag = minAbsMag === undefined ? body.magnitude : Math.min(minAbsMag, body.magnitude);
+				}
 			});
+			if (minAbsMag !== undefined) {
+				starSystem.magnitude = minAbsMag;
+			}
 
 			starSystem.doneBuildingPlanets();
 
