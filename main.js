@@ -883,9 +883,9 @@ function addOverlayText(target) {
 
 	var pos = [];
 	vec3.sub(pos, target.pos, orbitTarget.pos);
-var distInM = vec3.length(pos);
 	pos[3] = 1;
 	vec4.transformMat4(pos, pos, glutil.scene.mvMat);
+var distInM = vec3.length(pos);
 	vec4.transformMat4(pos, pos, glutil.scene.projMat);
 	vec4.scale(pos, pos, 1/pos[3]);
 	if (pos[0] < -1 || pos[0] > 1 || pos[1] < -1 || pos[1] > 1 || pos[2] < -1 || pos[2] > 1) return;
@@ -895,10 +895,10 @@ var distInM = vec3.length(pos);
 	//if (sx == overlayText.x && sy == overlayText.y) return;
 
 var distInParsecs = distInM / metersPerUnits.pc;
-var apparentMagnitude = 
+var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 	
 	$(overlayText.div).text(
-		target.name+' '+apparentMagnitude
+		target.name+' '+apparentMagnitude.toFixed(4)
 	);
 
 	overlayText.target = target;

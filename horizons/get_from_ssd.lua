@@ -82,7 +82,7 @@ for _,p in ipairs(ps) do
 				-- "mean opposition magnitude" is the magnitude when the planet and earth are in opposition and at mean distances from the sun 
 				-- so this is the apparent magnitude with distance of this avg distance from sun plus earth's avg distance from sun 
 				local distanceInKM = assert(({
-					earth = 149600000,
+					earth = 384400,
 					mars = 227940000,
 					jupiter = 778330000,
 					saturn = 1424600000,
