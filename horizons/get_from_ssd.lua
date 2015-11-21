@@ -45,6 +45,15 @@ for _,p in ipairs(ps) do
 		local tabl = findchild(p, 'table')
 		local font = findchild(p, 'font')
 		if tabl and tabl.child and font then
+			local parentPlanetName = flattenText(font):match('%w+'):lower()
+			print(parentPlanetName)
+			parentPlanetName = ({
+				martian = 'mars',
+				jovian = 'jupiter',
+				saturnian = 'saturn',
+				uranian = 'uranus',
+				neptunian = 'neptune',
+			})[parentPlanetName] or parentPlanetName
 			local trs = findchilds(tabl, 'tr')
 			for i=2,#trs do	-- trs[1] is the header column ...
 				local tr = trs[i]
@@ -60,17 +69,31 @@ for _,p in ipairs(ps) do
 				local name = flattenText(tds[1])
 				local GM = parseFloat(flattenText(tds[2]))
 				local mass = GM / G
-				local radius = parseFloat(flattenText(tds[4]))
-				-- radius in m
-				radius = radius * 1000
-				-- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
-				local density = parseFloat(flattenText(tds[6])) * 1e+12
+				local radius = 1e+3 * parseFloat(flattenText(tds[4])) -- radius in m
+				local density = parseFloat(flattenText(tds[6])) * 1e+12 -- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
 				local magnitude = parseFloat(flattenText(tds[7]))	-- V0 or R (if has a R suffix)
+				local albedo = parseFloat(flattenText(tds[9]))
+				
 				if mass == 0 and density ~= 0 then
 					mass = density * (4/3 * math.pi * radius^3)
 					print('calculating mass of ',name,' to be',mass)
 				end
-				local albedo = parseFloat(flattenText(tds[9]))
+
+				-- "mean opposition magnitude" is the magnitude when the planet and earth are in opposition and at mean distances from the sun 
+				-- so this is the apparent magnitude with distance of this avg distance from sun plus earth's avg distance from sun 
+				local distanceInKM = assert(({
+					earth = 149600000,
+					mars = 227940000,
+					jupiter = 778330000,
+					saturn = 1424600000,
+					uranus = 2873550000,
+					neptune = 4501000000,
+					pluto = 5945900000,
+				})[parentPlanetName], "couldn't find distance for planet "..parentPlanetName)
+				local parsecInKM = 3.08567758e+13
+				local distanceInParsecs = distanceInKM / parsecInKM 
+				magnitude = magnitude - 5 * (math.log(distanceInParsecs,10) - 1)
+
 				print(name, mass, radius, density, magnitude, albedo)
 				name = name:trim():lower()
 				name = ({
@@ -119,7 +142,7 @@ for _,p in ipairs(ps) do
 end
 
 -- [[
-local cacheFileName = 'ssd_sat_planet_phys_par.html'
+local cacheFileName = 'ssd_planet_phys_par.html'
 local page = file[cacheFileName]
 if not page then
 	local url = 'http://ssd.jpl.nasa.gov/?planet_phys_par'
@@ -158,6 +181,12 @@ for _,td in ipairs(tds) do
 						local albedo = parseFloat(stupidNasaHTML(tds[9]))
 						local equatorialGravity = parseFloat(stupidNasaHTML(tds[10]))
 						local escapeVelocity = parseFloat(stupidNasaHTML(tds[11]))
+					
+						-- convert from V(1,0) magnitude to abs magnitude
+						-- magnitude is V(1,0) which I've found in one source to be "the magnitude at 1au"
+						local log10_parsecsInAU = -5.3144251332746 
+						magnitude = magnitude - 5 * (log10_parsecsInAU - 1)
+						
 						print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
 						
 						name = name:lower()

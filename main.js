@@ -776,11 +776,14 @@ var showStars = true;
 var allowSelectStars = true;
 var starsVisibleMagnitudeBias = 0;
 var planetScaleExaggeration = 1;
+
 var gravityWellScaleNormalized = true;
 var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
 var gravityWellRadialMinLog100 = -1;
 var gravityWellRadialMaxLog100 = 2;
+
+var showNames = true;
 
 var allowSelectGalaxies = true;
 
@@ -858,6 +861,8 @@ function overlayTexts_updateEnd() {
 	}
 }
 function addOverlayText(target) {
+	if (!showNames) return;
+	
 	for (var i = 0; i < overlayTextIndex; ++i) {
 		if (overlayTexts[i].target == target) return;
 	}
@@ -875,10 +880,10 @@ function addOverlayText(target) {
 		overlayText = {div:div};
 		overlayTexts.push(overlayText); 
 	}
-	$(overlayText.div).text(target.name);
 
 	var pos = [];
 	vec3.sub(pos, target.pos, orbitTarget.pos);
+var distInM = vec3.length(pos);
 	pos[3] = 1;
 	vec4.transformMat4(pos, pos, glutil.scene.mvMat);
 	vec4.transformMat4(pos, pos, glutil.scene.projMat);
@@ -888,6 +893,13 @@ function addOverlayText(target) {
 	var sx = parseInt((1+pos[0])/2 * canvas.width);
 	var sy = parseInt((1-pos[1])/2 * canvas.height);
 	//if (sx == overlayText.x && sy == overlayText.y) return;
+
+var distInParsecs = distInM / metersPerUnits.pc;
+var apparentMagnitude = 
+	
+	$(overlayText.div).text(
+		target.name+' '+apparentMagnitude
+	);
 
 	overlayText.target = target;
 	overlayText.x = sx;
@@ -2602,6 +2614,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showOrbitAxis',
 		'showLatAndLonLines',
 		'showGravityWell',
+		'showNames',
 		'showOrbits',
 		'showStars',
 		'showGalaxies',
