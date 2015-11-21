@@ -19,6 +19,23 @@ local planets = assert(json.decode(planetsData))
 --]]
 
 local G = 6.67259e-20
+local parsecInKM = 3.08567758e+13
+local auInKM = 149597871
+
+-- http://idahoptv.org/ntti/nttilessons/lessons2000/lau1.html
+local distFromEarthToMoonInKM = 384400
+local distFromSunInKM = {
+	mercury = 57910000,
+	venus = 108200000,
+	earth = 149600000,
+	mars = 227940000,
+	jupiter = 778330000,
+	saturn = 1424600000,
+	uranus = 2873550000,
+	neptune = 4501000000,
+	pluto = 5945900000,
+}
+
 local function parseFloat(s)
 	s = s:trim()
 	if s == '?' then return 0 end
@@ -71,30 +88,26 @@ for _,p in ipairs(ps) do
 				local mass = GM / G
 				local radius = 1e+3 * parseFloat(flattenText(tds[4])) -- radius in m
 				local density = parseFloat(flattenText(tds[6])) * 1e+12 -- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
-				local magnitude = parseFloat(flattenText(tds[7]))	-- V0 or R (if has a R suffix)
+				local meanOppositionMagnitude = parseFloat(flattenText(tds[7]))	-- V0 or R (if has a R suffix)
 				local albedo = parseFloat(flattenText(tds[9]))
 				
 				if mass == 0 and density ~= 0 then
 					mass = density * (4/3 * math.pi * radius^3)
 					print('calculating mass of ',name,' to be',mass)
 				end
-
+				
 				-- "mean opposition magnitude" is the magnitude when the planet and earth are in opposition and at mean distances from the sun 
 				-- so this is the apparent magnitude with distance of this avg distance from sun plus earth's avg distance from sun 
-				local distanceInKM = assert(({
-					earth = 384400,
-					mars = 227940000,
-					jupiter = 778330000,
-					saturn = 1424600000,
-					uranus = 2873550000,
-					neptune = 4501000000,
-					pluto = 5945900000,
-				})[parentPlanetName], "couldn't find distance for planet "..parentPlanetName)
-				local parsecInKM = 3.08567758e+13
-				local distanceInParsecs = distanceInKM / parsecInKM 
-				magnitude = magnitude - 5 * (math.log(distanceInParsecs,10) - 1)
+				
+				local distInKM
+				if parentPlanetName == 'earth' then 	-- because moon orbits earth where observations are from, use this distance:
+					distInKM = distFromEarthToMoonInKM
+				else
+					distInKM = distFromSunInKM[parentPlanetName]
+				end
+				local absMag = meanOppositionMagnitude - 5 * (math.log(distInKM / parsecInKM, 10) - 1)
 
-				print(name, mass, radius, density, magnitude, albedo)
+				print(name, mass, radius, density, absMag, albedo)
 				name = name:trim():lower()
 				name = ({
 					herse = 'herse (2003j17)',
@@ -133,7 +146,7 @@ for _,p in ipairs(ps) do
 					mass = mass,
 					radius = radius,
 					density = density,
-					magnitude = magnitude,
+					magnitude = absMag,
 					albedo = albedo,
 				}
 			end
@@ -181,15 +194,16 @@ for _,td in ipairs(tds) do
 						local albedo = parseFloat(stupidNasaHTML(tds[9]))
 						local equatorialGravity = parseFloat(stupidNasaHTML(tds[10]))
 						local escapeVelocity = parseFloat(stupidNasaHTML(tds[11]))
+						
+						name = name:lower()
 					
 						-- convert from V(1,0) magnitude to abs magnitude
-						-- magnitude is V(1,0) which I've found in one source to be "the magnitude at 1au"
-						local log10_parsecsInAU = -5.3144251332746 
-						magnitude = magnitude - 5 * (log10_parsecsInAU - 1)
+						-- magnitude is V(1,0) which I've found in one source to be the magnitude when planet is opposite the sun of earth, with distance measured in AU
+						local distToObserverInKM = distFromSunInKM[name] + distFromSunInKM.earth
+						magnitude = magnitude - 5 * (math.log(distToObserverInKM / parsecInKM, 10) - 1)
 						
 						print(name, equatorialRadius, meanRadius, mass, bulkDensity, rotationPeriod, orbitPeriod, magnitude, albedo, equatorialGravity, escapeVelocity) 
 						
-						name = name:lower()
 						name = ({
 							pluto = '134340 pluto',
 						})[name] or name
