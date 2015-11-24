@@ -6590,15 +6590,10 @@ function initScene() {
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
 
-	var dragging = false;
 	var tmpQ = quat.create();
 	mouse = new Mouse3D({
 		pressObj : canvas,
-		mousedown : function() {
-			dragging = false;
-		},
 		move : function(dx,dy) {
-			dragging = true;
 			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
 			quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
 			quat.multiply(glutil.view.angle, glutil.view.angle, tmpQ);
@@ -6609,13 +6604,12 @@ function initScene() {
 			chooseNewOrbitObject.run(mouseDir, false);
 		},
 		zoom : function(zoomChange) {
-			dragging = true;
 			var scale = Math.exp(-orbitZoomFactor * zoomChange);
 			orbitTargetDistance *= scale;
 			refreshOrbitTargetDistanceText();
 		},
 		click : function() {
-			if (dragging) return;
+			if (mouse.isDragging) return;
 			mouseDir = mouseRay();
 			chooseNewOrbitObject.run(mouseDir, true);
 		}
