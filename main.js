@@ -3,6 +3,8 @@
 //I might try worker threads later...
 var CALCULATE_TIDES_WITH_GPU = false;
 
+var SHOW_ALL_SMALL_BODIES_AT_ONCE = false;
+
 //TODO put this in js/gl-util-kernel.js
 
 GLUtil.prototype.oninit.push(function() {
@@ -503,6 +505,8 @@ var starFieldXFormObj;
 
 var orbitPathResolution = 500;
 var ringResolution = 200;
+var orbitPathIndexForType = {elliptic:0, hyperbolic:1, parabolic:2};	//used in the shader
+var orbitPathShader;
 
 var julianDate = 0;
 var lastJulianDate = 0;
@@ -897,7 +901,7 @@ var distInParsecs = distInM / metersPerUnits.pc;
 var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 	
 	$(overlayText.div).text(
-		target.name//+' '+apparentMagnitude.toFixed(4)
+		target.name+' '+apparentMagnitude.toFixed(4)
 	);
 
 	overlayText.target = target;
@@ -1876,6 +1880,44 @@ addOverlayText(planet);
 			}
 		}
 
+
+if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
+		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
+		smallBodyFBO.draw({
+			callback : function() {
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				gl.disable(gl.DEPTH_TEST);
+				var color = [1,1,1,smallBodiesPointAlpha];
+				//gl.depthMask(false);
+				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodiesNodes.length; ++i) {
+					allSmallBodiesNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
+					allSmallBodiesNodes[i].sceneObj.uniforms.color = color;
+					allSmallBodiesNodes[i].sceneObj.draw();
+				}
+				//gl.depthMask(true);
+				gl.enable(gl.DEPTH_TEST);
+			}
+		});
+		//smallBodyFBOTex.bind();
+		//gl.generateMipmap(gl.TEXTURE_2D);
+		//smallBodyFBOTex.unbind();
+		gl.viewport(0, 0, this.glutil.canvas.width, this.glutil.canvas.height);
+		gl.disable(gl.DEPTH_TEST);
+		hsvTex
+			.bind()
+			.setWrap({s : gl.REPEAT, t : gl.REPEAT})
+			.unbind();
+		glutil.unitQuad.draw({
+			shader : smallBodyOverlayShader,
+			uniforms : {
+				logBase : smallBodyOverlayLogBase
+			},
+			texs : [smallBodyFBOTex, hsvTex],
+			blend : [gl.SRC_ALPHA, gl.ONE]
+		});
+		gl.enable(gl.DEPTH_TEST);
+}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
+
 		//draw mouse-over highlight
 		if (mouseOverTarget !== undefined) {
 			var planet = mouseOverTarget;
@@ -1920,13 +1962,13 @@ addOverlayText(planet);
 					if (planet.orbitVisRatio > planetPointVisRatio) {
 						//recenter around orbitting planet
 						vec3.sub(orbitPathSceneObj.pos, planet.parent.pos, orbitTarget.pos);
-					
+
 						orbitPathSceneObj.uniforms.color = planet.color;
 						orbitPathSceneObj.uniforms.A = planet.keplerianOrbitalElements.A;
 						orbitPathSceneObj.uniforms.B = planet.keplerianOrbitalElements.B;
 						orbitPathSceneObj.uniforms.eccentricity = planet.keplerianOrbitalElements.eccentricity;
 						orbitPathSceneObj.uniforms.eccentricAnomaly = planet.keplerianOrbitalElements.eccentricAnomaly;
-						orbitPathSceneObj.uniforms.orbitType = ['elliptic', 'hyperbolic', 'parabolic'][planet.keplerianOrbitalElements.orbitType];
+						orbitPathSceneObj.uniforms.orbitType = orbitPathIndexForType[planet.keplerianOrbitalElements.orbitType];
 						orbitPathSceneObj.uniforms.fractionOffset = planet.keplerianOrbitalElements.fractionOffset;
 
 						orbitPathSceneObj.draw();
@@ -3253,6 +3295,182 @@ function initStars() {
 	};
 	xhr.send();
 }
+
+if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
+
+var pointsPerNode = 1000;
+var smallBodiesRootNode;
+var allSmallBodiesNodes = [];
+var maxSmallBodyNodesToDraw = 7000;
+var smallBodiesPointSize = 1;
+var smallBodiesPointAlpha = 1;
+var smallBodyFBOTexWidth = 2048;
+var smallBodyFBOTexHeight = 2048;
+var smallBodyOverlayLogBase = 1;
+var smallBodyFBO;
+
+function initSmallBodies() {
+	smallBodyFBOTex = new glutil.Texture2D({
+		internalFormat : gl.RGBA,
+		format : gl.RGBA,
+		type : gl.FLOAT,
+		width : smallBodyFBOTexWidth,
+		height : smallBodyFBOTexHeight,
+		magFilter : gl.LINEAR,
+		minFilter : gl.LINEAR,
+		wrap : {
+			s : gl.CLAMP_TO_EDGE,
+			t : gl.CLAMP_TO_EDGE
+		}
+	});
+	smallBodyFBO = new glutil.Framebuffer();
+	gl.bindFramebuffer(gl.FRAMEBUFFER, smallBodyFBO.obj);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, smallBodyFBOTex.obj, 0);
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	smallBodyOverlayShader = new glutil.ShaderProgram({
+		vertexPrecision : 'best',
+		vertexCode : mlstr(function(){/*
+attribute vec2 vertex;
+varying vec2 tc;
+void main() {
+	tc = vertex;
+	gl_Position = vec4(vertex * 2. - 1., 0., 1.);
+}
+*/}),
+		fragmentPrecision : 'best',
+		fragmentCode : mlstr(function(){/*
+uniform sampler2D tex;
+uniform sampler2D hsvTex;
+uniform float logBase;
+varying vec2 tc;
+void main() {
+	float alpha = texture2D(tex, tc).x;
+	alpha = log(alpha + 1.) / logBase;
+	gl_FragColor = texture2D(hsvTex, vec2(alpha, .5));
+	gl_FragColor.a = min(alpha * 100., 1.);
+}
+*/}),
+		uniforms : {
+			tex : 0,
+			hsvTex : 1,
+			logBase : 1
+		}
+	});
+
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'jpl-ssd-smallbody/output.f32', true);
+	xhr.responseType = 'arraybuffer';
+	xhr.onload = function(e) {
+		var arrayBuffer = this.response;
+		var data = new DataView(arrayBuffer);
+
+		/*
+		500k points ...
+		x4 bytes per float x3 floats = 8mb of data ...
+		I could store another 8mb for velocity data and use those to reconstruct orbits ...
+		*/
+
+		console.log('processing small body points...');
+		//units are in parsecs
+		//don't forget velocity is not being rescaled (i'm not using it at the moment)
+		var vtxs = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
+		var len = vtxs.length;
+		for (var i = 0; i < len; ++i) {
+			vtxs[i] = data.getFloat32(i * Float32Array.BYTES_PER_ELEMENT, true);
+		}
+		
+		//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
+		var mins = [-6e+12, -6e+12, -6e+12];
+		var maxs = [6e+12, 6e+12, 6e+12];
+		var size = [
+			maxs[0] - mins[0],
+			maxs[1] - mins[1],
+			maxs[2] - mins[2]];
+
+		for (var i = 0; i < 3; ++i) {
+			assert(mins[i] === mins[i]);
+			assert(maxs[i] === maxs[i]);
+		}
+
+		var PointOctreeNode = makeClass({
+			init : function() {
+				this.points = [];
+				this.children = [];
+				this.mins = [];
+				this.maxs = [];
+				this.center = [];
+			}
+		});
+
+		smallBodiesRootNode = new PointOctreeNode();
+		allSmallBodiesNodes.push(smallBodiesRootNode);
+		for (var j = 0; j < 3; ++j) {
+			smallBodiesRootNode.mins[j] = mins[j];
+			smallBodiesRootNode.maxs[j] = maxs[j];
+			smallBodiesRootNode.center[j] = .5 * (mins[j] + maxs[j]);
+		}
+
+		//8 + 8^2 + 8^3 = 584 nodes
+		//3 nodes deep = 3 digits of resolution
+		for (var i = 0; i < len; ++i) { 
+			var x = vtxs[i+0];
+			var y = vtxs[i+1];
+			var z = vtxs[i+2];
+	
+			if (x !== x) continue;
+			if (y !== y) continue;
+			if (z !== z) continue;
+
+			var node = smallBodiesRootNode;
+			while (node.points.length > 3000) {
+				var ix = x > node.center[0] ? 1 : 0;
+				var iy = y > node.center[1] ? 1 : 0;
+				var iz = z > node.center[2] ? 1 : 0;
+				var is = [ix,iy,iz];
+				var childIndex = ix + 2*(iy + 2*iz);
+				var child = node.children[childIndex];
+				if (child === undefined) {
+					child = new PointOctreeNode();
+					allSmallBodiesNodes.push(child);
+					node.children[childIndex] = child;
+					for (var j = 0; j < 3; ++j) {
+						child.mins[j] = is[j] ? node.center[j] : node.mins[j];
+						child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
+						child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
+					}
+				}
+				node = child;
+			}
+
+			node.points.push(vtxs[i+0]);
+			node.points.push(vtxs[i+1]);
+			node.points.push(vtxs[i+2]);
+		}
+
+		$.each(allSmallBodiesNodes, function(i,node) {
+			node.buffer = new glutil.ArrayBuffer({data : node.points});
+			node.sceneObj = new glutil.SceneObject({
+				mode : gl.POINTS,
+				shader : colorShader,
+				attrs : {
+					vertex : node.buffer,
+				},
+				uniforms : {
+					pointSize : 2,
+					color : [1,1,1,1]
+				},
+				blend : [gl.SRC_ALPHA, gl.ONE],
+				parent : null,
+				static : true
+			});
+		});
+
+		console.log('loaded small bodies');
+	};
+	xhr.send();
+}
+
+}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
 
 function floatToGLSL(x) {
 	x = ''+x;
@@ -5063,7 +5281,12 @@ void main() {
 
 	//init stars now that shaders are made
 	initStars();
-	
+
+if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
+	//and small bodies in the solar system
+	initSmallBodies();
+}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
+
 	//and galaxies
 	initGalaxies();
 
@@ -6015,6 +6238,7 @@ function recomputePlanetsAlongOrbit() {
 			planet.vel[0] = velX + planet.parent.vel[0];
 			planet.vel[1] = velY + planet.parent.vel[1];
 			planet.vel[2] = velZ + planet.parent.vel[2];
+			
 			planet.keplerianOrbitalElements.fractionOffset = fractionOffset;
 		}
 	}
