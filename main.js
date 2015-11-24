@@ -723,7 +723,6 @@ var colorShader;
 var latLonShader;
 var planetHeatMapAttrShader;
 var planetHeatMapTexShader;
-var orbitPathShader;
 
 var pointObj;
 var planetSceneObj;
@@ -898,7 +897,7 @@ var distInParsecs = distInM / metersPerUnits.pc;
 var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 	
 	$(overlayText.div).text(
-		target.name+' '+apparentMagnitude.toFixed(4)
+		target.name//+' '+apparentMagnitude.toFixed(4)
 	);
 
 	overlayText.target = target;
@@ -1904,7 +1903,7 @@ addOverlayText(planet);
 				var planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 
-				if (planet.orbitPathObj) {
+				if (planet.renderOrbit) {
 
 					var semiMajorAxis = planet.keplerianOrbitalElements.semiMajorAxis;
 					var eccentricity = planet.keplerianOrbitalElements.eccentricity;
@@ -1920,8 +1919,18 @@ addOverlayText(planet);
 
 					if (planet.orbitVisRatio > planetPointVisRatio) {
 						//recenter around orbitting planet
-						vec3.sub(planet.orbitPathObj.pos, planet.parent.pos, orbitTarget.pos);
-						planet.orbitPathObj.draw();
+						vec3.sub(orbitPathSceneObj.pos, planet.parent.pos, orbitTarget.pos);
+					
+						orbitPathSceneObj.uniforms.color = planet.color;
+						orbitPathSceneObj.uniforms.A = planet.keplerianOrbitalElements.A;
+						orbitPathSceneObj.uniforms.B = planet.keplerianOrbitalElements.B;
+						orbitPathSceneObj.uniforms.eccentricity = planet.keplerianOrbitalElements.eccentricity;
+						orbitPathSceneObj.uniforms.eccentricAnomaly = planet.keplerianOrbitalElements.eccentricAnomaly;
+						orbitPathSceneObj.uniforms.orbitType = ['elliptic', 'hyperbolic', 'parabolic'][planet.keplerianOrbitalElements.orbitType];
+						orbitPathSceneObj.uniforms.fractionOffset = planet.keplerianOrbitalElements.fractionOffset;
+
+						orbitPathSceneObj.draw();
+						
 						++orbitPathsDrawn;
 					}
 
@@ -5901,17 +5910,20 @@ r^2 = a^2 (cos(E)
 			distanceToParent : distanceToParent,
 			semiMajorAxis : semiMajorAxis,
 			semiLatusRectum : semiLatusRectum,
-			eccentricity : eccentricity,
-			eccentricAnomaly : eccentricAnomaly,
 			inclination : inclination,
 			argumentOfPeriapsis : argumentOfPeriapsis,
 			longitudeOfAscendingNode : longitudeOfAscendingNode,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
-			orbitType : orbitType,
 			orbitalPeriod : orbitalPeriod,
+			//the following are used for the orbit path shader:
+			orbitType : orbitType,
+			eccentricity : eccentricity,
+			eccentricAnomaly : eccentricAnomaly,
 			A : A,
-			B : B
+			B : B,
+			//this is used for drawing but not in the shader
+			fractionOffset : 0
 		};
 
 		//not NaN, we successfully reconstructed the position
@@ -5928,60 +5940,7 @@ r^2 = a^2 (cos(E)
 		parentPlanet.maxSemiMajorAxisOfEllipticalSatellites = Math.max(semiMajorAxis, parentPlanet.maxSemiMajorAxisOfEllipticalSatellites);
 	}
 
-
-	//iterate around the eccentric anomaly to reconstruct the path
-	var vertexes = [];
-	for (var i = 0; i < orbitPathResolution; ++i) {
-		var frac = i / (orbitPathResolution - 1);
-		var theta = frac * 2 * Math.PI;
-		var pathEccentricAnomaly = eccentricAnomaly + theta;
-
-		//matches above
-		var coeffA, coeffB;
-		if (orbitType == 'parabolic') {
-			//...?
-		} else if (orbitType == 'elliptic') { 
-			coeffA = Math.cos(pathEccentricAnomaly) - eccentricity;
-			coeffB = Math.sin(pathEccentricAnomaly);
-			//t = a sqrt(a/mu) (E - e sin(E))
-		} else if (orbitType == 'hyperbolic') {
-			coeffA = eccentricity - Math.cosh(pathEccentricAnomaly);
-			coeffB = Math.sinh(pathEccentricAnomaly);
-			//t = a sqrt(a/mu) (e sinh(E) - E)
-		}
-
-		var vtxPosX = A[0] * coeffA + B[0] * coeffB;
-		var vtxPosY = A[1] * coeffA + B[1] * coeffB;
-		var vtxPosZ = A[2] * coeffA + B[2] * coeffB;
-
-		//add to buffer
-		vertexes.push(vtxPosX);
-		vertexes.push(vtxPosY);
-		vertexes.push(vtxPosZ);
-
-		//pack transparency info into the vertex
-		var alpha = frac;
-		vertexes.push(alpha);
-	}
-
-	planet.orbitPathObj = new glutil.SceneObject({
-		mode : gl.LINE_STRIP,
-		shader : assert(orbitPathShader, "failed to find orbitPathShader for planet "+planet.name),
-		attrs : {
-			vertex : new glutil.ArrayBuffer({
-				dim : 4,
-				data : vertexes
-			})
-		},
-		uniforms : {
-			color : planet.color,
-			fractionOffset : 0,
-		},
-		blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-		pos : [0,0,0],
-		angle : [0,0,0,1],
-		parent : null
-	});
+	planet.renderOrbit = true;
 
 	/*
 	integration can be simulated along Keplerian orbits using the A and B vectors ...
@@ -6056,64 +6015,8 @@ function recomputePlanetsAlongOrbit() {
 			planet.vel[0] = velX + planet.parent.vel[0];
 			planet.vel[1] = velY + planet.parent.vel[1];
 			planet.vel[2] = velZ + planet.parent.vel[2];
-			planet.orbitPathObj.uniforms.fractionOffset = fractionOffset;
+			planet.keplerianOrbitalElements.fractionOffset = fractionOffset;
 		}
-	}
-}
-
-function downloadOrbitPaths() {
-	var s = '';
-	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		var lines = [];
-
-		var planet = solarSystem.planets[i];
-		if (planet.orbitPathObj) {
-			var name = '';
-			if (planet.id) name += planet.id + ' ';
-			name += planet.name;
-			if (planet.parent) name += ', moon of ' + planet.parent.name;
-
-			lines.push('#####');
-			lines.push('# ' + name);
-
-			//json.stringify chokes on float32arrays
-			var alpha = [];
-			var vsrc = planet.orbitPathObj.attrs.vertex.data;
-			if (vsrc.length % 4 != 0) throw 'this shouldnt be';
-			var vtx = [];
-			for (var j = 0; j < vsrc.length; j += 4) {
-				for (var k = 0; k < 3; ++k) {
-					vtx[k] = vsrc[j+k] + planet.pos[k];	//position .. offset it by the planet's position
-				}
-				lines.push('v ' + vtx[0] + ' ' + vtx[1] + ' ' + vtx[2]);
-				alpha[j/4] = vsrc[j+3];	//alpha
-			}
-			for (var j = 0; j < alpha.length; ++j) {
-				lines.push('vt ' + alpha[j] + ' .5');
-			}
-			for (var j = 1; j <= alpha.length; ++j) {
-				var jn = (j % alpha.length) + 1;
-				lines.push('l v'+j+'/vt'+j+' v'+jn+'/vt'+jn);
-			}
-		}
-
-		s += lines.join('\n') + '\n';
-	}
-
-	console.log('size of orbit path data is '+s.length);
-
-	//TODO open in new tab?  can chrome handle opening each piece in a new tab at the same time?
-	//chrome can't handle the file, it's too big ...
-	var chopped = 3;	//TODO calculate by data size and by browser max download size ... which varies on the browser
-	var i = 2;{//for (var i = 0; i < chopped; ++i) {	//too many of these at once, even chopped down correctly, will crash Chrome
-		var start = Math.floor(i*s.length/chopped);
-		var end = Math.floor((i+1)*s.length/chopped);
-		var sub = s.substring(start, end);
-		var a = document.createElement('a');
-		console.log('size of chopped piece is '+sub.length);
-		a.href = "data:text/plain,"+encodeURIComponent(sub);
-		a.target = '_blank';
-		a.click();
 	}
 }
 
@@ -6142,16 +6045,39 @@ void main() {
 	});
 
 	//for rendering the orbital path
-	orbitPathShader = new ModifiedDepthShaderProgram({
+	var orbitPathShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+uniform vec3 A, B;
+uniform float eccentricity;
+uniform float eccentricAnomaly;
+uniform int orbitType;
+
+float cosh(float x) { return .5 * (exp(x) + exp(-x)); }
+float sinh(float x) { return .5 * (exp(x) - exp(-x)); }
+
+#define TWO_PI 6.283185307179586231995926937088
 void main() {
-	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
-	alpha = vertex.w;
-	gl_Position = projMat * vtx4;
+	float frac = vertex.x;
+	float theta = frac * TWO_PI;
+	float pathEccentricAnomaly = eccentricAnomaly + theta;
+
+	float coeffA, coeffB;
+	if (orbitType == 0) {	//elliptic
+		coeffA = cos(pathEccentricAnomaly) - eccentricity;
+		coeffB = sin(pathEccentricAnomaly);
+	} else {	//if (orbitType == 1) {	//hyperbolic
+		coeffA = eccentricity - cosh(pathEccentricAnomaly);
+		coeffB = sinh(pathEccentricAnomaly);
+	}
+	vec3 pos = A * coeffA + B * coeffB;	
+	
+	alpha = frac; 
+
+	gl_Position = projMat * (mvMat * vec4(pos, 1.));
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -6167,6 +6093,25 @@ void main() {
 }
 */})
 	});
+
+	//iterate around the eccentric anomaly to reconstruct the path
+	var vertexes = [];
+	for (var i = 0; i < orbitPathResolution; ++i) {
+		vertexes.push(i / (orbitPathResolution - 1));
+	}
+	
+	orbitPathSceneObj = new glutil.SceneObject({
+		mode : gl.LINE_STRIP,
+		shader : orbitPathShader,
+		attrs : {
+			vertex : new glutil.ArrayBuffer({dim : 1, data : vertexes})
+		},
+		blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+		pos : [0,0,0],
+		angle : [0,0,0,1],
+		parent : null
+	});
+
 
 	//shader for recomputing planet positions
 	//associated with texture per-planet that stores position (and maybe velocity)
