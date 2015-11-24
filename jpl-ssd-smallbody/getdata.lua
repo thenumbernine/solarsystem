@@ -6,16 +6,16 @@ either JSON or SQLite3 at the moment
 
 require 'ext'
 
-local julian = assert(loadfile('../lua/julian.lua'))()
+local julian = assert(loadfile('../horizons/julian.lua'))()
 local json = require 'dkjson'
 
 local function readCache(filename, url)
-	if io.fileexists(filename) then return io.readfile(filename) end
+	if io.fileexists(filename) then return file[filename] end
 	local http = require 'socket.http'
 	local results = {http.request(url)}
 	print(unpack(results))
 	local data = results[1]
-	io.writefile(filename, data)
+	file[filename] = data
 	return data
 end
 
@@ -26,6 +26,9 @@ readCache('ELEMENTS.COMET', 'http://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
 local auInM = 149597870700	-- 1AU in meters
 
 local OutputToJSON = class()
+
+function OutputToJSON:staticInit() end
+function OutputToJSON:staticDone() end
 
 --[[
 args:
@@ -46,7 +49,7 @@ end
 
 function OutputToJSON:done()
 	self.outputLines:insert('];')
-	io.writefile(self.filename, self.outputLines:concat('\n'))
+	file[self.filename] = self.outputLines:concat('\n')
 end
 
 local OutputToSQLite3 = class()
@@ -120,7 +123,7 @@ local function processToFile(args)
 	local outputMethod = assert(args.outputMethod)
 
 	local lastTime = os.time()
-	local lines = io.readfile(inputFilename):split('\n')
+	local lines = file[inputFilename]:split('\n')
 	local cols = Columns(lines)
 	for i=3,#lines do	-- skip headers and ---- line
 		local line = lines[i]
