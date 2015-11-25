@@ -2869,7 +2869,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 								initPlanetColorSchRadiusAngle(planet);
 								initPlanetSceneLatLonLineObjs(planet);
-								initPlanetOrbitPathObj(planet, false);
+								calcKeplerianOrbitalElements(planet, false);
 							}
 
 							titleSpan.css({textDecoration:'underline', cursor:'pointer'});
@@ -3717,7 +3717,7 @@ function initExoplanets() {
 					console.log('system '+starSystem.name+' planet '+body.name+' has bad pos');
 				}
 
-				initPlanetOrbitPathObj(body, false);
+				calcKeplerianOrbitalElements(body, false);
 			}
 
 			starSystem.initPlanets = starSystem.clonePlanets();
@@ -3817,7 +3817,7 @@ console.log('adding star systems to star fields and vice versa');
 		vec3.add(body.pos, body.pos, starSystem.pos);
 		initPlanetColorSchRadiusAngle(body);
 		initPlanetSceneLatLonLineObjs(body);
-		initPlanetOrbitPathObj(body, false);
+		calcKeplerianOrbitalElements(body, false);
 		
 		starSystem.planets.push(body);
 		starSystem.stars.push(body);
@@ -5736,15 +5736,15 @@ void main() {
 	})();
 }
 
-function initPlanetOrbitPathObj(planet, useVectorState) {
-	var planetIndex = planet.index;
+function calcKeplerianOrbitalElements(body, useVectorState) {
+	var planetIndex = body.index;
 
-	// based on planet position and velocity, find plane of orbit
-	var parentPlanet = planet.parent;
-	if (parentPlanet === undefined) {
-		//console.log(planet.name+' has no orbit parent');
-		planet.orbitAxis = [0,0,1];
-		planet.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
+	// based on body position and velocity, find plane of orbit
+	var parentBody = body.parent;
+	if (parentBody === undefined) {
+		//console.log(body.name+' has no orbit parent');
+		body.orbitAxis = [0,0,1];
+		body.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
 		return;
 	}
 
@@ -5756,7 +5756,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 	var meanAnomaly = undefined;
 	var A, B;
 
-	//used by planets to offset reconstructed orbit coordinates to exact position of planet
+	//used by planets to offset reconstructed orbit coordinates to exact position of body
 	var checkPosToPosX = 0;
 	var checkPosToPosY = 0;
 	var checkPosToPosZ = 0;
@@ -5771,7 +5771,7 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		we compute:
 		*/
 
-		eccentricity = assertExists(planet.sourceData, 'eccentricity');
+		eccentricity = assertExists(body.sourceData, 'eccentricity');
 
 		var parabolicEccentricityEpsilon = 1e-7;
 		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
@@ -5783,19 +5783,19 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		}
 
 		var pericenterDistance;
-		if (planet.isComet) {
-			pericenterDistance = assert(planet.sourceData.perihelionDistance);
+		if (body.isComet) {
+			pericenterDistance = assert(body.sourceData.perihelionDistance);
 			if (orbitType !== 'parabolic') {
 				semiMajorAxis = pericenterDistance / (1 - eccentricity);
 			}	//otherwise, if it is parabolic, we don't get the semi-major axis ...
-		} else if (planet.isAsteroid) {
-			semiMajorAxis = assert(planet.sourceData.semiMajorAxis);
+		} else if (body.isAsteroid) {
+			semiMajorAxis = assert(body.sourceData.semiMajorAxis);
 			pericenterDistance = semiMajorAxis * (1 - eccentricity);
-		} else if (planet.isExoplanet) {
-			semiMajorAxis = planet.sourceData.semiMajorAxis || 0;
+		} else if (body.isExoplanet) {
+			semiMajorAxis = body.sourceData.semiMajorAxis || 0;
 		}
 
-		var gravitationalParameter = gravitationalConstant * parentPlanet.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
+		var gravitationalParameter = gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		
 		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
@@ -5804,15 +5804,15 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed / gravitationalParameter) / (60*60*24);	//julian day
 		}
 
-		var longitudeOfAscendingNode = assertExists(planet.sourceData, 'longitudeOfAscendingNode');
+		var longitudeOfAscendingNode = assertExists(body.sourceData, 'longitudeOfAscendingNode');
 		var cosAscending = Math.cos(longitudeOfAscendingNode);
 		var sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		var argumentOfPeriapsis = assertExists(planet.sourceData, 'argumentOfPeriapsis');
+		var argumentOfPeriapsis = assertExists(body.sourceData, 'argumentOfPeriapsis');
 		var cosPericenter = Math.cos(argumentOfPeriapsis);
 		var sinPericenter = Math.sin(argumentOfPeriapsis);
 
-		var inclination = assertExists(planet.sourceData, 'inclination');
+		var inclination = assertExists(body.sourceData, 'inclination');
 		var cosInclination = Math.cos(inclination);
 		var sinInclination = Math.sin(inclination);
 
@@ -5828,8 +5828,8 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 		//inner product: A dot B = 0
 
 		var timeOfPeriapsisCrossing;
-		if (planet.isComet) {
-			timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
+		if (body.isComet) {
+			timeOfPeriapsisCrossing = body.sourceData.timeOfPerihelionPassage;	//julian day
 		}
 
 		if (orbitType === 'parabolic') {
@@ -5843,14 +5843,14 @@ function initPlanetOrbitPathObj(planet, useVectorState) {
 			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPeriapsis)) / (1 + eccentricity * Math.cos(argumentOfPeriapsis)));
 			// ... but Math.acos has a limited range ...
 
-			if (planet.isComet) {
-				timeOfPeriapsisCrossing = planet.sourceData.timeOfPerihelionPassage;	//julian day
+			if (body.isComet) {
+				timeOfPeriapsisCrossing = body.sourceData.timeOfPerihelionPassage;	//julian day
 				var timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
 				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
-			} else if (planet.isAsteroid) {
-				meanAnomaly = planet.sourceData.meanAnomaly;
-			} else if (planet.isExoplanet) {
-				meanAnomaly = planet.sourceData.meanAnomaly !== undefined ? planet.sourceData.meanAnomaly : 0;
+			} else if (body.isAsteroid) {
+				meanAnomaly = body.sourceData.meanAnomaly;
+			} else if (body.isExoplanet) {
+				meanAnomaly = body.sourceData.meanAnomaly !== undefined ? body.sourceData.meanAnomaly : 0;
 			} else {
 			//	throw 'here';
 			}
@@ -5988,16 +5988,16 @@ r^2 = a^2 (cos(E)
 		var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
 		var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
 		var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
-		planet.pos[0] = posX + parentPlanet.pos[0];
-		planet.pos[1] = posY + parentPlanet.pos[1];
-		planet.pos[2] = posZ + parentPlanet.pos[2];
-		planet.vel[0] = velX + parentPlanet.vel[0];
-		planet.vel[1] = velY + parentPlanet.vel[1];
-		planet.vel[2] = velZ + parentPlanet.vel[2];
-		vec3.copy(solarSystem.initPlanets[planetIndex].pos, planet.pos);
-		vec3.copy(solarSystem.initPlanets[planetIndex].vel, planet.vel);
+		body.pos[0] = posX + parentBody.pos[0];
+		body.pos[1] = posY + parentBody.pos[1];
+		body.pos[2] = posZ + parentBody.pos[2];
+		body.vel[0] = velX + parentBody.vel[0];
+		body.vel[1] = velY + parentBody.vel[1];
+		body.vel[2] = velZ + parentBody.vel[2];
+		vec3.copy(solarSystem.initPlanets[planetIndex].pos, body.pos);
+		vec3.copy(solarSystem.initPlanets[planetIndex].vel, body.vel);
 
-		planet.keplerianOrbitalElements = {
+		body.keplerianOrbitalElements = {
 			semiMajorAxis : semiMajorAxis,
 			eccentricity : eccentricity,
 			eccentricAnomaly : eccentricAnomaly,
@@ -6019,14 +6019,14 @@ r^2 = a^2 (cos(E)
 
 		//consider position relative to orbitting parent
 		// should I be doing the same thing with the velocity?  probably...
-		var posX = planet.pos[0] - parentPlanet.pos[0];
-		var posY = planet.pos[1] - parentPlanet.pos[1];
-		var posZ = planet.pos[2] - parentPlanet.pos[2];
+		var posX = body.pos[0] - parentBody.pos[0];
+		var posY = body.pos[1] - parentBody.pos[1];
+		var posZ = body.pos[2] - parentBody.pos[2];
 
 		//convert from m/day to m/s to coincide with the units of our gravitational constant
-		var velX = (planet.vel[0] - parentPlanet.vel[0]) / (60 * 60 * 24);
-		var velY = (planet.vel[1] - parentPlanet.vel[1]) / (60 * 60 * 24);
-		var velZ = (planet.vel[2] - parentPlanet.vel[2]) / (60 * 60 * 24);
+		var velX = (body.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
+		var velY = (body.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
+		var velZ = (body.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
 
 		var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
 
@@ -6036,21 +6036,21 @@ r^2 = a^2 (cos(E)
 		var angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
 		var angularMomentumMag = Math.sqrt(angularMomentumMagSq);
 		if (angularMomentumMag < 1e-9) {
-			planet.orbitAxis = [0,0,1];
+			body.orbitAxis = [0,0,1];
 		} else {
 			var axisX = angularMomentumX / angularMomentumMag;
 			var axisY = angularMomentumY / angularMomentumMag;
 			var axisZ = angularMomentumZ / angularMomentumMag;
-			planet.orbitAxis = [axisX, axisY, axisZ];
+			body.orbitAxis = [axisX, axisY, axisZ];
 		}
 
 		var basisX = [0,0,0];
 		var basisY = [0,0,0];
-		var basisZ = planet.orbitAxis;
+		var basisZ = body.orbitAxis;
 		//TODO use the inclination and longitudeOfAscendingNode
 		calcBasis(basisX, basisY, basisZ);
 		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
-		planet.orbitBasis = [basisX, basisY, basisZ];
+		body.orbitBasis = [basisX, basisY, basisZ];
 
 		//now decompose the relative position in the coordinates of the orbit basis
 		//i've eliminated all but one of the rotation degrees of freedom ...
@@ -6060,7 +6060,7 @@ r^2 = a^2 (cos(E)
 
 		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
 		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-		var gravitationalParameter = gravitationalConstant * ((planet.mass || 0) + parentPlanet.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+		var gravitationalParameter = gravitationalConstant * ((body.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
 		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
 		semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
 		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
@@ -6109,24 +6109,24 @@ r^2 = a^2 (cos(E)
 		var checkPosError = checkPosToPosDist / distanceToParent;
 		if (checkPosError === checkPosError) {
 			if (checkPosError > 1e-5) {	//only report significant error
-				console.log(planet.name+' error of reconstructed position '+ checkPosError);
+				console.log(body.name+' error of reconstructed position '+ checkPosError);
 			}
 		} else {	//NaN? debug!
 
 		/*
-			for (k in planet) {
-				var v = planet[k];
+			for (k in body) {
+				var v = body[k];
 				if (k != 'name' && typeof(v) != 'function') {
-					console.log(planet.name, k, v);
+					console.log(body.name, k, v);
 				}
 			}
 		*/
-			console.log(planet.name+' has no orbit info.  mass: '+planet.mass+' radius: '+planet.radius);
+			console.log(body.name+' has no orbit info.  mass: '+body.mass+' radius: '+body.radius);
 		}
 				
 		meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 
-		planet.keplerianOrbitalElements = {
+		body.keplerianOrbitalElements = {
 			relVelSq : velSq,
 			gravitationalParameter : gravitationalParameter,
 			specificOrbitalEnergy : specificOrbitalEnergy,
@@ -6159,17 +6159,17 @@ r^2 = a^2 (cos(E)
 	// we can accumulate & store the largest semi major axis of all children
 	//but for parabolic/hyperbolic ...
 	// there is no bound ... so maybe those objects should be stored/rendered separately?
-	if (parentPlanet !== undefined && orbitType == 'elliptic') {
-		parentPlanet.maxSemiMajorAxisOfEllipticalSatellites = Math.max(semiMajorAxis, parentPlanet.maxSemiMajorAxisOfEllipticalSatellites);
+	if (parentBody !== undefined && orbitType == 'elliptic') {
+		parentBody.maxSemiMajorAxisOfEllipticalSatellites = Math.max(semiMajorAxis, parentBody.maxSemiMajorAxisOfEllipticalSatellites);
 	}
 
-	planet.renderOrbit = true;
+	body.renderOrbit = true;
 
 	/*
 	integration can be simulated along Keplerian orbits using the A and B vectors ...
 		time advanced = simulated date - data snapshot date
 		orbit fraction advanced = time advanced / orbital period
-		planet position and velocity can then be computed using A and B's evaluation and derivatives
+		body position and velocity can then be computed using A and B's evaluation and derivatives
 		then the alpha of the orbit needs to be updated ...
 	*/
 }
@@ -6344,7 +6344,7 @@ void main() {
 	var calcOrbitPathStartTime = Date.now();
 	//init solar system planets based on Horizons data
 	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		initPlanetOrbitPathObj(solarSystem.planets[i], true);
+		calcKeplerianOrbitalElements(solarSystem.planets[i], true);
 	}
 	var calcOrbitPathEndTime = Date.now();
 
