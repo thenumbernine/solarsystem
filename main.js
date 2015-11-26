@@ -390,8 +390,30 @@ var SolarSystem = makeClass({
 		this.planets.push(mergeInto(new Planet(), {id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8, type:'star'}));
 		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, rotationPeriod:58.6462, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, rotationPeriod:-243.0185, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:399, name:'Earth', parent:'Sun', mass:5.9736e+24, radius:6.37101e+6, equatorialRadius:6378.136e+3, inverseFlattening:298.257223563, rotationPeriod:1, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:301, name:'Moon', parent:'Earth', mass:7.349e+22, radius:1.73753e+6, rotationPeriod:30.25, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 399,
+			name : 'Earth',
+			parent : 'Sun',
+			mass : 5.9736e+24,
+			radius : 6.37101e+6,
+			equatorialRadius : 6378.136e+3,
+			inverseFlattening : 298.257223563,
+			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,
+			orbitalPeriod : 365.256363004,
+			rotationOffset : 1.15,
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 301,
+			name : 'Moon',
+			parent : 'Earth',
+			mass : 7.349e+22,
+			radius : 1.73753e+6,
+			rotationPeriod : 27.321662,
+			orbitalPeriod : 27.321662,
+			rotationOffset : 1/8 * 2 * Math.PI,
+			type : 'planet'
+		}));
 		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, ringRadiusRange:[102200000,227000000], type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, ringRadiusRange:[74510000,140390000], type:'planet'}));
@@ -511,8 +533,6 @@ var orbitPathShader;
 var julianDate = 0;
 var lastJulianDate = 0;
 var initJulianDate = 0;
-var targetJulianDate = undefined;
-var dateTime = Date.now();
 
 // track ball motion variables
 var mouseOverTarget;
@@ -2178,7 +2198,6 @@ function refreshOrbitTargetDistanceText() {
 }
 
 function refreshCurrentTimeText() {
-//local debugging
 if (astro) {
 	$('#currentTimeText').text(astro.julianToCalendar(julianDate));
 }
@@ -3087,7 +3106,6 @@ if (true) {	//recent asteroid passing by
 	//TODO get current julian date from client
 	// integrate forward by the small timestep between the two
 	julianDate = calendarToJulian(new Date());
-
 
 	initJulianDate = julianDate;
 	refreshCurrentTimeText();
@@ -6084,6 +6102,9 @@ r^2 = a^2 (cos(E)
 
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
 		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+//override for Earth
+if (body.orbitalPeriod !== undefined) orbitalPeriod = body.orbitalPeriod;
+		
 		var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
 
 		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
@@ -6803,23 +6824,8 @@ function update() {
 	//finish any searches
 	if (chooseNewOrbitObject.searching) chooseNewOrbitObject.run();
 	
-	if (mouse.leftClick) {
-		if (mouseOverEvent) {
-			targetJulianDate = mouseOverEvent.julianDate;
-		}
-	} else if (mouse.leftDragging) {
-		var magn = Math.sqrt(mouse.deltaX * mouse.deltaY + mouse.deltaY * mouse.deltaY) * 1000;
-		if (magn > 0) {
-			var normDelta = vec2.fromValues(mouse.deltaX / magn, mouse.deltaY / magn);
-			var r = quat.create();
-			quat.fromAxisAngle(r, [-normDelta[2], normDelta[1], 0], -magn);
-			quat.mul(glutil.view.angle, glutil.view.angle, r);
-			quat.normalize(glutil.view.angle, glutil.view.angle);
-		}
-	}
-
 	/* converage angle on target planet * /
-
+	
 	var delta = vec3.create();
 	vec3.scale(delta, glutil.view.pos, -1);
 	var fwd = vec3.create();
@@ -6880,21 +6886,14 @@ function update() {
 		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 			var planet = orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
+				var angle = ((julianDate % planet.rotationPeriod) / planet.rotationPeriod) * 2 * Math.PI;
+			
+				//I really don't like this variable.  I don't think it should be used.
+				if (planet.rotationOffset !== undefined) {
+					angle += planet.rotationOffset;
+				}
+				
 				var zrot = [0,0,0,1];
-				
-				var angle = 0;
-				if (planet.rotationPeriod) {
-					angle += ((julianDate / planet.rotationPeriod) % 1) * 2 * Math.PI;
-				}
-				/* this makes sure the day starts at the right time -- relative to the sun rise -- rather than relative to the equinox 
-				... but it looks like it is already accounted for in the numbers I've been given * / 
-				if (planet.keplerianOrbitalElements && 
-					planet.keplerianOrbitalElements.orbitalPeriod !== undefined) 
-				{
-					angle += ((julianDate / planet.keplerianOrbitalElements.orbitalPeriod) % 1) * 2 * Math.PI;
-				}
-				/**/
-				
 				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
 			} else {

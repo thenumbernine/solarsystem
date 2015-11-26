@@ -81,11 +81,11 @@ local function getMajorBodies(data)
 	return bodies
 end
 
-local time = os.time()
-local date = os.date('!*t', time)
+local date = os.date('!*t')
+local time = os.time(date)
 local julianDate = julian.fromCalendar(date)
-local startDate = os.date('%Y-%b-%d %H:%M', time)	--'2014-Sep-18 22:07'
-local endDate = os.date('%Y-%b-%d %H:%M', time+61)	--'2014-Sep-18 22:08'
+local startDate = os.date('%Y-%b-%d %H:%M', time)
+local endDate = os.date('%Y-%b-%d %H:%M', time+61)
 
 local entries = {}
 local function run()
@@ -96,15 +96,10 @@ local function run()
 	send('page')		-- get rid of interactive output
 	readUntil('Horizons>')
 
-	-- [[
 	send('mb')	-- list major bodies
 	local majorBodies = getMajorBodies(readUntil(': '))		-- list major bodies
 	send('')			-- end final prompt
 	readUntil('Horizons>')
-	--]]
-	--[[
-	local majorBodies = {'10', '1'}	-- debug: sun and mercury
-	--]]
 
 -- NOTICE planet Hartley 2 has no orbit data past 2012-MAR-16 
 
@@ -150,7 +145,7 @@ local function run()
 		local ephemerisData = table(ephemerisData, body)
 		setmetatable(ephemerisData, nil)
 		table.insert(entries, ephemerisData)
-		--io.writefile('horizons-results.json', json.encode(entries))
+		--file['horizons-results.json'] = json.encode(entries)
 		-- done with output table stuff
 		send('n')	-- exit sun ephemeris query
 		readUntil('Horizons>')
@@ -172,5 +167,5 @@ entries = {
 	coords = entries,
 	julianDate = julianDate,
 }
-io.writefile('dynamic-vars.json', 'horizonsDynamicData = '..json.encode(entries, {indent=true})..';')
+file['dynamic-vars.json'] = 'horizonsDynamicData = '..json.encode(entries, {indent=true})..';'
 
