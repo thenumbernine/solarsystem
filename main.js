@@ -3172,7 +3172,7 @@ function init2() {
 
 	setCSSRotation($('#toggleBodyInfo'), -90);
 	//$('#infoPanel').css('height', $('#infoDiv').offset().top - $('#infoPanel').offset().top);
-	//$('#infoPanel').css('bottom', -15);
+	//$('#infoPanel').css('bottom', -25);
 	$('#toggleBodyInfo').click(function() {
 		if (!showBodyInfo) {
 			showBodyInfo = true;
@@ -3206,7 +3206,7 @@ function init2() {
 			showBodyInfo = false;
 			$('#infoPanel').css('height', '104px');
 			var infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
-			var infoDivDestBottom = -15;
+			var infoDivDestBottom = -25;
 			console.log('fixing body info bottom at', infoDivBottom);
 			console.log('interpolating to dest bottom ', infoDivDestBottom);
 
@@ -6721,7 +6721,7 @@ function setOrbitTarget(newTarget) {
 
 	setTimeout(function() {
 		//refresh offset if the infoPanel is hidden
-		$('#infoPanel').css('bottom', -15);
+		$('#infoPanel').css('bottom', -25);
 		if (!showBodyInfo) {
 			$('#infoPanel').css('height', '104px');
 		} else {
