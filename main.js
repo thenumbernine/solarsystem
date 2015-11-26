@@ -523,7 +523,6 @@ var StarField = makeClass({});
 var starfield;
 var starfieldMaxDistInLyr = 5000;
 var starFieldRenderScale = 1e+10;
-var starFieldXFormObj;
 
 var orbitPathResolution = 500;
 var ringResolution = 200;
@@ -757,7 +756,6 @@ var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
 var milkyWayDistanceToCenterInKpc = 8.7;
 
-var interGalacticXFormObj;
 var interGalacticRenderScale = 100;
 var closestGalaxyDistanceInM = undefined;	//for occlusion of all selection stuff
 
@@ -1506,11 +1504,10 @@ var showFPS = false;
 			orbitStarSystem.planetStateTex.unbind();
 		}
 		
-		mat4.identity(glutil.scene.mvMat);
-
 		quat.conjugate(viewAngleInv, glutil.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
-		mat4.multiply(glutil.scene.mvMat, glutil.scene.mvMat, invRotMat);
+		
+		mat4.copy(glutil.scene.mvMat, invRotMat);
 
 		//TODO pull from matrix
 		vec3.quatZAxis(viewfwd, glutil.view.angle);
@@ -1532,17 +1529,9 @@ var showFPS = false;
 			}
 		}
 
-		vec3.scale(viewPosInv, glutil.view.pos, -1);
-		mat4.translate(glutil.scene.mvMat, glutil.scene.mvMat, viewPosInv);
-
-
 		if (showStars) {
-			//render local star field in pc units rather than meters (because it's hitting the limit of fp accuracy)
-			mat4.fromQuat(starFieldXFormObj.mvMat, viewAngleInv);
-			mat4.translate(starFieldXFormObj.mvMat, starFieldXFormObj.mvMat,
-				[-glutil.view.pos[0] / starFieldRenderScale,
-				-glutil.view.pos[1] / starFieldRenderScale,
-				-glutil.view.pos[2] / starFieldRenderScale]);		
+			vec3.scale(viewPosInv, glutil.view.pos, -1/starFieldRenderScale);
+			mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 			
 			if (distFromSolarSystemInLyr < starfieldMaxDistInLyr) {
 				if (starfield !== undefined && starfield.sceneObj !== undefined) {
@@ -1587,6 +1576,9 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 				}
 			}
 		}
+		
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			var planet = orbitStarSystem.planets[planetIndex];
@@ -1851,17 +1843,14 @@ addOverlayText(planet);
 				}
 			}
 		}
+		
+		//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
+		// set up Mpc scaled view
+		vec3.scale(viewPosInv, glutil.view.pos, -1/interGalacticRenderScale);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		//draw milky way if we're far enough out
 		{
-			//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
-			// set up Mpc scaled view
-			mat4.fromQuat(interGalacticXFormObj.mvMat, viewAngleInv);
-			mat4.translate(interGalacticXFormObj.mvMat, interGalacticXFormObj.mvMat,
-				[-glutil.view.pos[0] / interGalacticRenderScale,
-				-glutil.view.pos[1] / interGalacticRenderScale,
-				-glutil.view.pos[2] / interGalacticRenderScale]);
-			
 			if (milkyWayObj) {
 				if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
 					var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
@@ -1900,6 +1889,8 @@ addOverlayText(planet);
 			}
 		}
 
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
@@ -3243,11 +3234,6 @@ function init2() {
 
 function initStars() {
 
-	starFieldXFormObj = new glutil.SceneObject({
-		parent : null,
-		static : false
-	});
-	
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'hyg/stardata.f32', true);
 	xhr.responseType = 'arraybuffer';
@@ -3300,7 +3286,7 @@ function initStars() {
 			},
 			blend : [gl.SRC_ALPHA, gl.ONE],
 			pos : [0,0,0],
-			parent : starFieldXFormObj,
+			parent : null,
 			static : false
 		});
 
@@ -3575,7 +3561,7 @@ void main() {
 			texs : [],
 			blend : [gl.SRC_ALPHA, gl.ONE],
 			pos : [0,0,0],
-			parent : interGalacticXFormObj,
+			parent : null,
 			static : false
 		});
 	
@@ -5219,12 +5205,6 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 		});
 	})();
 
-	//transform group - just for rescaling position when computing mvMat
-	interGalacticXFormObj = new glutil.SceneObject({
-		parent : null,
-		static : false
-	});
-
 	(function(){
 		var img = new Image();
 		img.onload = function() {
@@ -5284,7 +5264,7 @@ void main() {
 					})
 				],
 				blend : [gl.SRC_ALPHA, gl.ONE],
-				parent : interGalacticXFormObj,
+				parent : null,
 				pos : [0,0,0],
 				static : false
 			});
