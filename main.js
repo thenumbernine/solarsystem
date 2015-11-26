@@ -6361,7 +6361,7 @@ void main() {
 		var moon = solarSystem.planets[solarSystem.indexes[moonName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
-		quat.copy(solarSystem.initPlanets[solarSystem.indexes[planetName]].tiltAngle, planet.tiltAngle);
+		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
 	//accepts degrees
@@ -6371,7 +6371,7 @@ void main() {
 		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
-		quat.copy(solarSystem.initPlanets[solarSystem.indexes[planetName]].tiltAngle, planet.tiltAngle);
+		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
 	setPlanetTiltAngleToFixedValue('Mercury', 2.11/60);		//TODO tilt from mercury orbit plane.  until then it's off
@@ -6383,6 +6383,20 @@ void main() {
 	setPlanetTiltAngleToMoonOrbitPlane('Uranus', 'Cordelia');	//ours: 97.71, exact: 97.77
 	setPlanetTiltAngleToMoonOrbitPlane('Neptune', 'Galatea');	//ours: 28.365, exact: 28.32
 	setPlanetTiltAngleToMoonOrbitPlane('Pluto', 'Charon');		//ours: 119, exact: 119
+
+	//now set all moon tilt angles to the orbit axis 
+	var Sun = solarSystem.planets[0];
+	for (var i = 0; i < solarSystem.planets.length; ++i) {
+		var planet = solarSystem.planets[i];
+		if (planet.parent !== undefined &&
+			planet.parent.parent !== undefined &&
+			planet.parent.parent == Sun)
+		{
+			quat.rotateZ(planet.tiltAngle, planet.tiltAngle, planet.keplerianOrbitalElements.longitudeOfAscendingNode);
+			quat.rotateX(planet.tiltAngle, planet.tiltAngle, planet.keplerianOrbitalElements.inclination);
+			quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
+		}
+	}
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
