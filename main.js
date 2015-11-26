@@ -419,7 +419,15 @@ var SolarSystem = makeClass({
 		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, ringRadiusRange:[74510000,140390000], type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293, type:'planet'}));
 		this.planets.push(mergeInto(new Planet(), {id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:999, name:'Pluto', parent:'Sun', mass:1.314e+22, radius:1.151e+6, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 999,
+			name : 'Pluto',
+			parent : 'Sun',
+			mass : 1.314e+22,
+			radius : 1.151e+6,
+			rotationPeriod : -6.387230,
+			type : 'planet'
+		}));
 
 		//sun is our only star
 		this.stars.push(this.planets[0]);
@@ -1728,12 +1736,12 @@ planet.sceneObj.uniforms.forceMax = planet.forceMax;
 addOverlayText(planet);
 
 				if (showLatAndLonLines) {
-					vec3.copy(planet.latLonObj.pos, planet.sceneObj.uniforms.pos);
-					quat.copy(planet.latLonObj.angle, planet.sceneObj.uniforms.angle);
-					planet.latLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
-					planet.latLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : 1.;
-					planet.latLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
-					planet.latLonObj.draw();
+					vec3.copy(planetLatLonObj.pos, planet.sceneObj.uniforms.pos);
+					quat.copy(planetLatLonObj.angle, planet.sceneObj.uniforms.angle);
+					planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
+					planetLatLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
+					planetLatLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
+					planetLatLonObj.draw();
 				}
 			}
 		}
@@ -3873,7 +3881,6 @@ function initPlanetSceneLatLonLineObjs(planet) {
 		for (var i = 0; i < tideArray.length; ++i) tideArray[i] = 0;
 
 		planet.sceneObj = planetSceneObj;
-		planet.latLonObj = planetLatLonObj;
 
 if (!CALCULATE_TIDES_WITH_GPU) {
 		//old way, per-vertex storage, updated by CPU
@@ -6375,7 +6382,7 @@ void main() {
 	setPlanetTiltAngleToMoonOrbitPlane('Saturn', 'Atlas');		//ours: 26.75, exact: 26.73
 	setPlanetTiltAngleToMoonOrbitPlane('Uranus', 'Cordelia');	//ours: 97.71, exact: 97.77
 	setPlanetTiltAngleToMoonOrbitPlane('Neptune', 'Galatea');	//ours: 28.365, exact: 28.32
-	setPlanetTiltAngleToMoonOrbitPlane('Pluto', 'Charon');		//ours: 119, exact: 123
+	setPlanetTiltAngleToMoonOrbitPlane('Pluto', 'Charon');		//ours: 119, exact: 119
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
