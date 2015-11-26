@@ -921,7 +921,7 @@ var distInParsecs = distInM / metersPerUnits.pc;
 var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 	
 	$(overlayText.div).text(
-		target.name+' '+apparentMagnitude.toFixed(4)
+		target.name	//+' '+apparentMagnitude.toFixed(4)
 	);
 
 	overlayText.target = target;
