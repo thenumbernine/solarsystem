@@ -1233,7 +1233,7 @@ var ChooseNewOrbitObject = makeClass({
 			
 			//TODO occlude based on apparent magnitude since some distant bright objects can still be seen
 			//if this dist from orbit target is over 100x the orbit distance then assume it's too far away to select 
-			if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
+			//if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
 			
 			deltaX /= dist;
 			deltaY /= dist;
@@ -1634,6 +1634,8 @@ var showFPS = false;
 		//TODO pull from matrix
 		vec3.quatZAxis(viewfwd, glutil.view.angle);
 		vec3.scale(viewfwd, viewfwd, -1);
+					
+		var tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
 		
 		var distFromSolarSystemInM = vec3.length(glutil.view.pos);
 		var distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
@@ -1785,7 +1787,7 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 			//approximated pixel width with a fov of 90 degrees
-			planet.visRatio = planetScaleExaggeration * planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz);
+			planet.visRatio = planetScaleExaggeration * planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz) / tanFovY;
 		}
 
 		//draw sphere planets
@@ -2090,7 +2092,7 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 					vec3.sub(delta, delta, glutil.view.pos);
 					var deltaLength = vec3.length(delta);
 
-					planet.orbitVisRatio = distPeriapsis / deltaLength;
+					planet.orbitVisRatio = distPeriapsis / deltaLength / tanFovY;
 
 					if (planet.orbitVisRatio > planetPointVisRatio) {
 						//recenter around orbitting planet
@@ -6900,7 +6902,12 @@ function initScene() {
 		pressObj : canvas,
 		move : function(dx,dy) {
 			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
-			quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
+			var tanHalfFov = Math.tan(glutil.view.fovY * Math.PI / 360);
+			if (orbitGeodeticLocation !== undefined) {
+				quat.setAxisAngle(tmpQ, [tanHalfFov * dy, tanHalfFov * dx, 0], rotAngle);
+			} else {
+				quat.setAxisAngle(tmpQ, [-dy, -dx, 0], rotAngle);
+			}
 			quat.multiply(glutil.view.angle, glutil.view.angle, tmpQ);
 			quat.normalize(glutil.view.angle, glutil.view.angle);
 		},
@@ -7078,6 +7085,7 @@ function update() {
 			quat.setAxisAngle(deltaAngle, orbitTargetAxis, deltaJulianDate * (orbitTarget.rotationPeriod || 0) * 2 * Math.PI);
 		
 			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
+			quat.normalize(glutil.view.angle, glutil.view.angle);
 			//TODO reset angle (to keep targets from offsetting when the ffwd/rewind buttons are pushed)
 		}
 	}
