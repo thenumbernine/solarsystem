@@ -1115,7 +1115,6 @@ var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 }
 
 function clearGeodeticLocation() {
-	console.log('clearing geodetic location');
 	if (orbitGeodeticLocation === undefined) return;
 
 	orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
@@ -7033,7 +7032,6 @@ function update() {
 		var pos = [];
 		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
 		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(orbitTarget, pos);
-		console.log('setting geodetic location based on orbit target radius '+orbitTarget.radius+' and orbit target distance '+orbitTargetDistance);
 
 		glutil.view.fovY = 120;
 		
