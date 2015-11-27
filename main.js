@@ -1125,7 +1125,7 @@ function clearGeodeticLocation() {
 	glutil.updateProjection();
 
 	/*...and in one fell swoop, turn the camera around
-	//TODO spread this out over a few frames * /
+	//TODO spread this out over a few frames */
 	var rot = [];
 	quat.identity(rot);
 	quat.rotateY(rot, rot, Math.PI);
