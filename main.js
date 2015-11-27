@@ -595,6 +595,7 @@ var NewtonApproximateMetric = makeClass({
 	x''^u = -Conn^u_ab x'^a x'^b
 
 	Newtonian approximation:
+	Phi = G M / |x|
 	Conn^j_tt = dPhi/dx^j = G M x^j / |x|^3
 	so x''^j = G M x^j / |x|^3
 	*/
@@ -617,19 +618,43 @@ var NewtonApproximateMetric = makeClass({
 
 	/*
 	geodesic deviation:
-	x''^i = R^i_jkl n^j dx^k n^l
+	x''^i = R^i_jkl u^j dx^k v^l
+
+	x''^i = R^i_ttt u^t dx^t v^t	= 0 by Riemann anitsymmetry
+		  + R^i_jtt u^j dx^t v^t	= 0 by Riemann antisymmetry
+		  + R^i_tkt u^t dx^k v^t
+		  + R^i_ttl u^t dx^t v^l
+		  + R^i_jkt u^j dx^k v^t
+		  + R^i_tkl u^t dx^k v^l
+		  + R^i_jtl u^j dx^t v^l
+		  + R^i_jkl u^j dx^k v^l
 
 	Newtonian approximation:
-	R^i_tjt = R^i_ttj = phi_,ij
+	R^i_tjt = -R^i_ttj = Phi_,ij
+
+	substitute:
+	x''^i = u^t Phi_,ij (dx^j v^t - dx^t v^j)
+	Phi_,ij = G M (3 xi xj / |x|^5 - delta_ij / |x|^3)
+	x''^i = u^t (dx^j v^t - dx^t v^j) G M (3 xi xj / |x|^5 - delta_ij / |x|^3)
+	
+	u^t = 1 or else everything would be 0
+	either...
+		v^j = n^j
+		dx^t = 1 or else we'd lose normal component
+		either v^t = 0 or dx^j = 0 or both
+	or...
+		dx^j = n^j
+		v^t = 1
+		v^j or dx^t = 0 or both
+
+	x''^i = G M (3 xi (x dot n) / |x|^5 - n / |x|^3)
+
 	But what if phi changes wrt time? then phi_,tt is nonzero, right? How does our Riemann metric change?
 	*/
 	calcTidal : function(accel, pos, srcPlanet) {
-		var x = [];
-		var n = [];
-
-		n[0] = pos[0] - srcPlanet.pos[0];
-		n[1] = pos[1] - srcPlanet.pos[1];
-		n[2] = pos[2] - srcPlanet.pos[2];
+		var nx = pos[0] - srcPlanet.pos[0];
+		var ny = pos[1] - srcPlanet.pos[1];
+		var nz = pos[2] - srcPlanet.pos[2];
 
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
@@ -637,20 +662,18 @@ var NewtonApproximateMetric = makeClass({
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 
-			x[0] = pos[0] - planet.pos[0];
-			x[1] = pos[1] - planet.pos[1];
-			x[2] = pos[2] - planet.pos[2];
-			var r = Math.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
-			var r2 = r * r;
+			var x = pos[0] - planet.pos[0];
+			var y = pos[1] - planet.pos[1];
+			var z = pos[2] - planet.pos[2];
+			var r2 = x*x + y*y + z*z; 
+			var r = Math.sqrt(r2);
 			var r3 = r * r2;
-			var r4 = r * r3;
-			var r5 = r * r4;
+			var r5 = r2 * r3;
+			var xDotN = x * nx + y * ny + z * nz;
 
-			var xDotN = x[0] * n[0] + x[1] * n[1] + x[2] * n[2];
-
-			for (i = 0; i < 3; ++i) {
-				accel[i] += gravitationalConstant * planet.mass * (3 * xDotN * x[i] / r5 - n[i] / r3);
-			}
+			accel[0] += gravitationalConstant * planet.mass * (3 * xDotN * x / r5 - nx / r3);
+			accel[1] += gravitationalConstant * planet.mass * (3 * xDotN * y / r5 - ny / r3);
+			accel[2] += gravitationalConstant * planet.mass * (3 * xDotN * z / r5 - nz / r3);
 		}
 	}
 });
@@ -662,38 +685,87 @@ var SchwarzschildMetric = makeClass({
 	/*
 	geodesic calculation:
 	x''^u = -Conn^u_ab x'^a x'^b
+	
+	Schwarzschild:
+	Conn^r_tt = R(r-R)/(2r^3)
 	*/
 	calcGravity : function(accel, pos) {
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.mass === undefined) continue;
-			var M = planet.mass;
+			
 			var x = pos[0] - planet.pos[0];
 			var y = pos[1] - planet.pos[1];
 			var z = pos[2] - planet.pos[2];
-			var r = Math.sqrt(x*x + y*y + z*z);
+			var r2 = x*x + y*y + z*z;
+			var r = Math.sqrt(r2);
+			
+			var R = 2. * planet.mass * kilogramsPerMeter;
+			var scale = R * (r - R) / (2 * r2 * r2);
+			scale *= secondsPerMeter * secondsPerMeter;
+			
+			accel[0] += x * scale;
+			accel[1] += y * scale;
+			accel[2] += z * scale;
+		}
+	},
+	
+	/*
+	geodesic deviation:
+	x''^i = R^i_jkl u^j dx^k v^l
 
-			var M2 = M * M;
-			var M3 = M2 * M;
-			var x2 = x * x;
-			var y2 = y * y;
-			var z2 = z * z;
-			var x3 = x2 * x;
-			var y3 = y2 * y;
-			var z3 = z2 * z;
-			var r2 = r * r;
-			var r3 = r * r2;
-			var r5 = r3 * r2;
-			var r6 = r5 * r;
-			var r8 = r6 * r2;
-			var r9 = r6 * r3;
+	Schwarzschild:
+	u = v = t, dx = n 
+	x''^i = R^i_tkt n^k
 
-			//TODO simplify more!
-			//something needs to factor out, and until it does you'll get spikes in the evaluation where x^2 = y^2 = z^2
-			accel[0] -= speedOfLight * (4 * x * y2 * z2 * M3 + (-2 * r3 * x * z2-2 * r3 * x * y2) * M2 + r6 * x * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
-			accel[1] -= speedOfLight * (4 * x2 * y * z2 * M3 + (-2 * r3 * y * z2-2 * r3 * x2 * y) * M2 + r6 * y * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
-			accel[2] -= speedOfLight * (4 * x2 * y2 * z * M3 + (-2 * r3 * z * y2-2 * r3 * z * x2) * M2 + r6 * z * M)/(40 * x2 * y2 * z2 * M3 + ((-12 * r3 * y2-12 * r3 * x2) * z2-12 * r3 * x2 * y2) * M2 + 2 * r8 * M + r9);
+	r = r, h = theta, p = phi
+	x''^r = R^r_trt n^r + R^r_tht n^h + R^r_tpt n^p
+	x''^h = R^h_trt n^r + R^h_tht n^h + R^h_tpt n^p
+	x''^p = R^p_trt n^r + R^p_tht n^h + R^p_tpt n^p
+	
+	x''^r = -R(R-r)/r^4 n^r + 0 n^h + 0 n^p
+	x''^h = 0 n^r + R(R-r)/(2r^4) n^h + 0 n^p
+	x''^p = 0 n^r + 0 n^h + R(R-r)/(2r^4) n^p
+	
+	x''^r = -R(R-r)/r^4 n^r
+	x''^h = R(R-r)/(2r^4) n^h
+	x''^p = R(R-r)/(2r^4) n^p
+	
+	x''^r = R(R-r)/(2r^4) n^r * (1 - 3)
+	x''^h = R(R-r)/(2r^4) n^h
+	x''^p = R(R-r)/(2r^4) n^p
+
+	x'' = R(R-r)/(2r^4) (n - 3 n^r e_r)
+
+	difference between this and Newton is on the order of 1e-6 for Earth & Moon
+	*/
+	calcTidal : function(accel, pos, srcPlanet) {
+		var nx = pos[0] - srcPlanet.pos[0];
+		var ny = pos[1] - srcPlanet.pos[1];
+		var nz = pos[2] - srcPlanet.pos[2];
+		
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			if (!planetInfluences[planetIndex]) continue;
+			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.index === srcPlanet.index) continue;
+			if (planet.mass === undefined) continue;
+			
+			var x = pos[0] - planet.pos[0];
+			var y = pos[1] - planet.pos[1];
+			var z = pos[2] - planet.pos[2];
+			
+			var r2 = x*x + y*y + z*z;
+			var r = Math.sqrt(r2);
+
+			var R = 2. * planet.mass * kilogramsPerMeter;
+			var scale = R * (R - r) / (2 * r2 * r2);
+			scale *= secondsPerMeter * secondsPerMeter;
+		
+			var nDotR = nx * x + ny * y + nz * z;
+			accel[0] += scale * (nx - 3 * nDotR * x / r2);
+			accel[1] += scale * (ny - 3 * nDotR * y / r2);
+			accel[2] += scale * (nz - 3 * nDotR * z / r2);
 		}
 	}
 });
@@ -703,8 +775,8 @@ var KerrMetric = makeClass({
 	super : Metric
 });
 
-var metric = new NewtonApproximateMetric();
-//var metric = new SchwarzschildMetric();
+//var metric = new NewtonApproximateMetric();
+var metric = new SchwarzschildMetric();
 
 
 function vec3TransformQuat(dest, src, q) {
