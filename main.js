@@ -6815,7 +6815,7 @@ function setOrbitTarget(newTarget) {
 
 	//reset orbit distance so it doesn't lock to surface immediately
 	if (orbitGeodeticLocation !== undefined) {
-		orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
+		orbitDistance = orbitTargetDistance = orbitTarget.radius;
 	}
 
 	//refresh info div
