@@ -857,6 +857,7 @@ function solarSystemBarycentricToPlanetGeodetic(planet, pos) {
 	return planet.fromGeodeticPosition(tmp);
 }
 
+
 var gl;
 var canvas;
 
@@ -1111,6 +1112,32 @@ var apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 	}
 	
 	++overlayTextIndex;
+}
+
+function clearGeodeticLocation() {
+	console.log('clearing geodetic location');
+	if (orbitGeodeticLocation === undefined) return;
+
+	orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
+
+	orbitGeodeticLocation = undefined;
+	glutil.view.fovY = 90;
+	glutil.updateProjection();
+
+	/*...and in one fell swoop, turn the camera around
+	//TODO spread this out over a few frames * /
+	var rot = [];
+	quat.identity(rot);
+	quat.rotateY(rot, rot, Math.PI);
+	quat.multiply(glutil.view.angle, glutil.view.angle, rot);
+	/**/
+}
+
+function resetOrbitViewPos() {
+	var viewAngleZAxis = vec3.create();
+	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
+	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
+	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
 }
 
 /*
@@ -6767,10 +6794,16 @@ function setOrbitTarget(newTarget) {
 			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
 			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 				var planet = orbitStarSystem.planets[i];
-				orbitTargetDistance = Math.max(orbitTargetDistance,
-					(planet.sourceData || {}).semiMajorAxis ||
-					(planet.keplerianOrbitalElements || {}).semiMajorAxis ||
-					0);
+		
+				//zoom out past orbit for planets
+				//TODO don't do this for stars orbitting the milky way
+				if (planet.sourceData !== undefined && planet.sourceData.semiMajorAxis !== undefined) {
+					orbitTargetDistance = Math.max(orbitTargetDistance, planet.sourceData.semiMajorAxis);
+				}
+				if (planet.keplerianOrbitalElements !== undefined && planet.keplerianOrbitalElements.semiMajorAxis !== undefined) {
+					orbitTargetDistance = Math.max(orbitTargetDistance, planet.keplerianOrbitalElements.semiMajorAxis);
+				}
+				
 				refreshOrbitTargetDistanceText();
 			}
 		}
@@ -6779,6 +6812,11 @@ function setOrbitTarget(newTarget) {
 
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
 	orbitTarget = newTarget
+
+	//reset orbit distance so it doesn't lock to surface immediately
+	if (orbitGeodeticLocation !== undefined) {
+		orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
+	}
 
 	//refresh info div
 
@@ -6984,11 +7022,12 @@ function update() {
 	}
 
 	//if we are close enough to the planet then rotate with it
-	var fixViewToSurface = orbitDistance < orbitTarget.radius * .1;
+	var fixViewToSurface = orbitTargetDistance < orbitTarget.radius * .1;
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
 		var pos = [];
 		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
 		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(orbitTarget, pos);
+		console.log('setting geodetic location based on orbit target radius '+orbitTarget.radius+' and orbit target distance '+orbitTargetDistance);
 
 		glutil.view.fovY = 120;
 		
@@ -6999,16 +7038,7 @@ function update() {
 		quat.rotateY(rot, rot, Math.PI);
 		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
 	} else if (!fixViewToSurface && orbitGeodeticLocation !== undefined) {
-		orbitGeodeticLocation = undefined;
-		glutil.view.fovY = 90;
-		glutil.updateProjection();
-	
-		//...and in one fell swoop, turn the camera around
-		//TODO spread this out over a few frames
-		var rot = [];
-		quat.identity(rot);
-		quat.rotateY(rot, rot, Math.PI);
-		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
+		clearGeodeticLocation();
 	}
 
 	if (orbitGeodeticLocation !== undefined) {
@@ -7024,14 +7054,8 @@ function update() {
 			orbitGeodeticLocation.lon,
 			height);
 		vec3.sub(glutil.view.pos, glutil.view.pos, orbitTarget.pos);
-		
-		var viewAngleZAxis = vec3.create();
-		vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
 	} else {
-		var viewAngleZAxis = vec3.create();
-		vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
-		vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
-		vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
+		resetOrbitViewPos();
 	}
 
 	var orbitConvergeCoeff = .9;
@@ -7075,7 +7099,7 @@ function update() {
 
 		//if we're not fixed on the surface but we are close enough to orbit then spin with the planet
 		//TODO this is messing up on mercury, venus, pluto ... retrograde planets + mercury ... ?
-		if (orbitDistance < orbitTarget.radius * 10) {
+		if (orbitTargetDistance < orbitTarget.radius * 10) {
 			var orbitTargetAxis = [0,0,1];
 			vec3.quatZAxis(orbitTargetAxis, orbitTarget.angle);
 		
@@ -7086,7 +7110,34 @@ function update() {
 		
 			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
 			quat.normalize(glutil.view.angle, glutil.view.angle);
-			//TODO reset angle (to keep targets from offsetting when the ffwd/rewind buttons are pushed)
+			
+			//reset angle (to keep targets from offsetting when the ffwd/rewind buttons are pushed)
+			resetOrbitViewPos();
+		}
+
+		//if we are zoomed in then keep the view following the mouse over target
+		if (orbitGeodeticLocation !== undefined &&
+			mouseOverTarget !== undefined)
+		{
+			var viewFwd = [];
+			vec3.quatZAxis(viewFwd, glutil.view.angle);
+			vec3.scale(viewFwd, viewFwd, -1);
+			vec3.normalize(viewFwd, viewFwd);
+
+			var destViewFwd = [];
+			vec3.sub(destViewFwd, mouseOverTarget.pos, glutil.view.pos); 
+			vec3.normalize(destViewFwd, destViewFwd);
+			
+			var axis = [];
+			vec3.cross(axis, viewFwd, destViewFwd);
+			var sinTheta = vec3.length(axis);
+			if (sinTheta > 1e-5) {
+				var theta = Math.asin(Math.clamp(sinTheta, -1, 1));
+				var rot = [];
+				quat.setAxisAngle(rot, axis, theta);
+				quat.multiply(glutil.view.angle, rot, glutil.view.angle);
+				quat.normalize(glutil.view.angle, glutil.view.angle);
+			}
 		}
 	}
 
