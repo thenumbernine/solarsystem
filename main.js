@@ -6816,6 +6816,12 @@ function setOrbitTarget(newTarget) {
 	//reset orbit distance so it doesn't lock to surface immediately
 	if (orbitGeodeticLocation !== undefined) {
 		orbitDistance = orbitTargetDistance = orbitTarget.radius;
+
+		//and re-orient the camera (because locking on surface had it flipped around / will flip it back around)
+		var rot = [];
+		quat.identity(rot);
+		quat.rotateY(rot, rot, Math.PI);
+		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
 	}
 
 	//refresh info div
