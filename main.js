@@ -208,6 +208,33 @@ var Planet = makeClass({
 		this.vel[2] = src.vel[2];
 	},
 
+	//TODO the math ... don't be lazy
+	fromGeodeticPosition : function(pos) {
+		var x = pos[0];
+		var y = pos[1];
+		var z = pos[2];
+		//if (this.inverseFlattening === undefined) {
+		var r2 = Math.sqrt(x*x + y*y);
+		var r = Math.sqrt(r2*r2 + z*z);
+		var phi = Math.atan2(z, r2);
+		var lambda = Math.atan2(y, x);
+
+		var equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
+		if (equatorialRadius === undefined) {
+			return {
+				lat : 0,
+				lon : 0,
+				height : 0
+			};
+		}
+		return {
+			lat : Math.deg(phi),
+			lon : Math.deg(lambda),
+			height : r - equatorialRadius
+		}
+		//} else it is a nonlinear problem and I will think about it later 
+	},
+	
 	//no longer used for mesh construction -- that all goes on in the shader
 	//this is only used for getting positions for updating the tidal array calculations
 	// and for (geosynchronously) orbitting geodetic locations (which is currently disabled)
@@ -217,15 +244,13 @@ var Planet = makeClass({
 		var cosPhi = Math.cos(phi);
 		var sinPhi = Math.sin(phi);
 
-		var equatorialRadius = this.equatorialRadius !== undefined
-			? this.equatorialRadius
-			: this.radius;
+		var equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
 		if (equatorialRadius === undefined) {
-			"don't know how to calculate this planet's surface "+this.name;
-		}
-		var inverseFlattening = this.inverseFlattening
-		if (inverseFlattening !== undefined) {
-			var eccentricitySquared = (2 * inverseFlattening - 1) / (inverseFlattening * inverseFlattening);
+			destX[0] = 0;
+			destX[1] = 0;
+			destX[2] = 0;
+		} else if (this.inverseFlattening !== undefined) {
+			var eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
 			var sinPhiSquared = sinPhi * sinPhi;
 			var N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
 			var NPlusH = N + height;
@@ -252,10 +277,9 @@ var Planet = makeClass({
 		if (equatorialRadius === undefined) {
 			throw "don't know how to calculate this planet's surface "+this;
 		}
-		var inverseFlattening = this.inverseFlattening;
-		if (inverseFlattening !== undefined) {
+		if (this.inverseFlattening !== undefined) {
 			//mind you this is the planet shape eccentricity, not to be confused with the orbit path eccentricity
-			var eccentricitySquared = (2 * inverseFlattening - 1) / (inverseFlattening * inverseFlattening);
+			var eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
 			var sinPhiSquared = sinPhi * sinPhi;
 			var N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
 			var oneMinusEccSq = 1 - eccentricitySquared;
@@ -779,6 +803,7 @@ var KerrMetric = makeClass({
 var metric = new SchwarzschildMetric();
 
 
+//TODO can I use glmatrix.js or does it still have math bugs? 
 function vec3TransformQuat(dest, src, q) {
 	var vx = src[0];
 	var vy = src[1];
@@ -812,9 +837,24 @@ function planetCartesianToSolarSystemBarycentric(destX, srcX, planet) {
 	destX[2] += planet.pos[2];
 }
 
+function solarSystemBarycentricToPlanetCartesian(destX, srcX, planet) {
+	destX[0] = srcX[0] - planet.pos[0];
+	destX[1] = srcX[1] - planet.pos[1];
+	destX[2] = srcX[2] - planet.pos[2];
+	var invAngle = [];
+	quat.conjugate(invAngle, planet.angle);
+	vec3TransformQuat(destX, destX, invAngle);
+}
+
 function planetGeodeticToSolarSystemBarycentric(destX, planet, lat, lon, height) {
 	planet.geodeticPosition(destX, lat, lon, height);		// position relative to the planet center
 	planetCartesianToSolarSystemBarycentric(destX, destX, planet);
+}
+
+function solarSystemBarycentricToPlanetGeodetic(planet, pos) {
+	var tmp = [];
+	solarSystemBarycentricToPlanetCartesian(tmp, pos, planet);
+	return planet.fromGeodeticPosition(tmp);
 }
 
 var gl;
@@ -830,6 +870,8 @@ var planetHeatMapTexShader;
 var pointObj;
 var planetSceneObj;
 var planetLatLonObj;
+
+var planetAmbientLight = .1;
 
 var milkyWayObj;
 var milkyWayFadeMinDistInLyr = 50;
@@ -1801,7 +1843,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 planet.sceneObj.uniforms.forceMin = planet.forceMin;
 planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
-				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : .1;
+				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
 				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
 
 				planet.sceneObj.draw();
@@ -6868,7 +6910,14 @@ function initScene() {
 		},
 		zoom : function(zoomChange) {
 			var scale = Math.exp(-orbitZoomFactor * zoomChange);
-			orbitTargetDistance *= scale;
+		
+			if (orbitGeodeticLocation !== undefined) {
+				glutil.view.fovY *= scale;
+				glutil.updateProjection();
+			} else {
+				orbitTargetDistance *= scale;
+			}
+			
 			refreshOrbitTargetDistanceText();
 		},
 		click : function() {
@@ -6918,25 +6967,66 @@ function update() {
 		quat.mul(glutil.view.angle, glutil.view.angle, q);
 	}
 	/**/
-
+	
 	// track ball orbit
 	//assumes z points away from the planet
 
-	var orbitCenter;
+	//while fixed, zoom affects fov, so if our fov surpasses the max then zoom us back out
+	if (glutil.view.fovY > 120) {
+		orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
+	}
+
+	//if we are close enough to the planet then rotate with it
+	var fixViewToSurface = orbitDistance < orbitTarget.radius * .1;
+	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
+		var pos = [];
+		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
+		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(orbitTarget, pos);
+
+		glutil.view.fovY = 120;
+		
+		//...and in one fell swoop, turn the camera around
+		//TODO spread this out over a few frames
+		var rot = [];
+		quat.identity(rot);
+		quat.rotateY(rot, rot, Math.PI);
+		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
+	} else if (!fixViewToSurface && orbitGeodeticLocation !== undefined) {
+		orbitGeodeticLocation = undefined;
+		glutil.view.fovY = 90;
+		glutil.updateProjection();
+	
+		//...and in one fell swoop, turn the camera around
+		//TODO spread this out over a few frames
+		var rot = [];
+		quat.identity(rot);
+		quat.rotateY(rot, rot, Math.PI);
+		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
+	}
+
 	if (orbitGeodeticLocation !== undefined) {
+		//fix the height at the surface
+		//TODO spread this out over a few frames
+		var height = (orbitTarget.equatorialRadius || orbitTarget.radius || 1000) * .01;//= orbitGeodeticLocation.height;
+		orbitDistance = orbitTargetDistance = height;
+		
 		planetGeodeticToSolarSystemBarycentric(
-			orbitCenter,
+			glutil.view.pos,
 			orbitTarget,
 			orbitGeodeticLocation.lat,
 			orbitGeodeticLocation.lon,
-			orbitGeodeticLocation.height);
+			height);
+		vec3.sub(glutil.view.pos, glutil.view.pos, orbitTarget.pos);
+		
+		var viewAngleZAxis = vec3.create();
+		vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
 	} else {
-		orbitCenter = orbitTarget.pos;
+		var viewAngleZAxis = vec3.create();
+		vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
+		vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
+		vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
 	}
-	var viewAngleZAxis = vec3.create();
-	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
-	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
-	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
+
 	var orbitConvergeCoeff = .9;
 	vec3.scale(orbitOffset, orbitOffset, orbitConvergeCoeff);
 	{
@@ -6951,7 +7041,9 @@ function update() {
 		julianDate += integrateTimeStep;
 		refreshCurrentTimeText();
 	}
+		
 	if (julianDate !== lastJulianDate) {
+		
 		//recompute position by delta since init planets
 		recomputePlanetsAlongOrbit();
 
@@ -6973,19 +7065,22 @@ function update() {
 				quat.copy(planet.angle, planet.tiltAngle);
 			}
 		}
-	}
 
-	//if we are close enough to the planet then rotate with it
-	/*if (lastJulianDate !== julianDate &&
-		orbitTarget == solarSystem.planets[solarSystem.indexes.Earth] &&	//only for earth at the moment ...
-		orbitDistance < orbitTarget.radius * 10)
-	{
-		var deltaJulianDate = julianDate - lastJulianDate;
-		var deltaAngle = quat.create();
-		quat.rotateZ(deltaAngle, deltaAngle, deltaJulianDate * 2 * Math.PI);
-		vec3TransformQuat(glutil.view.pos, glutil.view.pos, deltaAngle);
-		quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle);
-	}*/
+		//if we're not fixed on the surface but we are close enough to orbit then spin with the planet
+		//TODO this is messing up on mercury, venus, pluto ... retrograde planets + mercury ... ?
+		if (orbitDistance < orbitTarget.radius * 10) {
+			var orbitTargetAxis = [0,0,1];
+			vec3.quatZAxis(orbitTargetAxis, orbitTarget.angle);
+		
+			var deltaJulianDate = julianDate - lastJulianDate;
+			
+			var deltaAngle = quat.create();
+			quat.setAxisAngle(deltaAngle, orbitTargetAxis, deltaJulianDate * (orbitTarget.rotationPeriod || 0) * 2 * Math.PI);
+		
+			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
+			//TODO reset angle (to keep targets from offsetting when the ffwd/rewind buttons are pushed)
+		}
+	}
 
 	lastJulianDate = julianDate;
 
