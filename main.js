@@ -2039,23 +2039,21 @@ addOverlayText(planet);
 			}
 		}
 
-		vec3.scale(viewPosInv, glutil.view.pos, -1);
-		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
+		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
+		
 		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
 		smallBodyFBO.draw({
 			callback : function() {
-				gl.clear(gl.COLOR_BUFFER_BIT);
-				gl.disable(gl.DEPTH_TEST);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 				var color = [1,1,1,smallBodiesPointAlpha];
-				//gl.depthMask(false);
-				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodiesNodes.length; ++i) {
-					allSmallBodiesNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
-					allSmallBodiesNodes[i].sceneObj.uniforms.color = color;
-					allSmallBodiesNodes[i].sceneObj.draw();
+				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
+					allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
+					allSmallBodyNodes[i].sceneObj.uniforms.color = color;
+					allSmallBodyNodes[i].sceneObj.draw();
 				}
-				//gl.depthMask(true);
 				gl.enable(gl.DEPTH_TEST);
 			}
 		});
@@ -2078,6 +2076,9 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		});
 		gl.enable(gl.DEPTH_TEST);
 }	//SHOW_ALL_SMALL_BODIES_AT_ONCE
+		
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		//draw mouse-over highlight
 		if (mouseOverTarget !== undefined) {
@@ -3453,9 +3454,9 @@ function initStars() {
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
 var pointsPerNode = 1000;
-var smallBodiesRootNode;
-var allSmallBodiesNodes = [];
-var maxSmallBodyNodesToDraw = 7000;
+var smallBodyRootNode;
+var allSmallBodyNodes = [];
+var maxSmallBodyNodesToDraw = 1000;
 var smallBodiesPointSize = 1;
 var smallBodiesPointAlpha = 1;
 var smallBodyFBOTexWidth = 2048;
@@ -3549,19 +3550,18 @@ void main() {
 		var PointOctreeNode = makeClass({
 			init : function() {
 				this.points = [];
-				this.children = [];
 				this.mins = [];
 				this.maxs = [];
 				this.center = [];
 			}
 		});
 
-		smallBodiesRootNode = new PointOctreeNode();
-		allSmallBodiesNodes.push(smallBodiesRootNode);
+		smallBodyRootNode = new PointOctreeNode();
+		allSmallBodyNodes.push(smallBodyRootNode);
 		for (var j = 0; j < 3; ++j) {
-			smallBodiesRootNode.mins[j] = mins[j];
-			smallBodiesRootNode.maxs[j] = maxs[j];
-			smallBodiesRootNode.center[j] = .5 * (mins[j] + maxs[j]);
+			smallBodyRootNode.mins[j] = mins[j];
+			smallBodyRootNode.maxs[j] = maxs[j];
+			smallBodyRootNode.center[j] = .5 * (mins[j] + maxs[j]);
 		}
 
 		//8 + 8^2 + 8^3 = 584 nodes
@@ -3575,36 +3575,87 @@ void main() {
 			if (y !== y) continue;
 			if (z !== z) continue;
 
-			var node = smallBodiesRootNode;
-			while (node.points.length > 3000) {
+			//first add to leafmost
+			// until it passes a threshold (1000) then split
+			var node = smallBodyRootNode;
+			while (node.children !== undefined) {
 				var ix = x > node.center[0] ? 1 : 0;
 				var iy = y > node.center[1] ? 1 : 0;
 				var iz = z > node.center[2] ? 1 : 0;
 				var is = [ix,iy,iz];
 				var childIndex = ix + 2*(iy + 2*iz);
-				var child = node.children[childIndex];
-				if (child === undefined) {
-					child = new PointOctreeNode();
-					allSmallBodiesNodes.push(child);
-					node.children[childIndex] = child;
-					for (var j = 0; j < 3; ++j) {
-						child.mins[j] = is[j] ? node.center[j] : node.mins[j];
-						child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
-						child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
-					}
-				}
-				node = child;
-			}
-
+				node = node.children[childIndex];
+			};
+			
 			node.points.push(vtxs[i+0]);
 			node.points.push(vtxs[i+1]);
 			node.points.push(vtxs[i+2]);
+
+			if (node.points.length > 3000) {
+				node.children = [];
+				for (var ix = 0; ix < 2; ++ix) {
+					for (var iy = 0; iy < 2; ++iy) {
+						for (var iz = 0; iz < 2; ++iz) {
+							var is = [ix,iy,iz];
+							var childIndex = ix + 2*(iy + 2*iz);
+							var child = new PointOctreeNode();
+							node.children[childIndex] = child;
+							allSmallBodyNodes.push(child);
+							for (var j = 0; j < 3; ++j) {
+								child.mins[j] = is[j] ? node.center[j] : node.mins[j];
+								child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
+								child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
+							}
+						}
+					}
+				}
+				for (var j = 0; j < node.points.length; j += 3) {
+					var x = node.points[j+0];
+					var y = node.points[j+1];
+					var z = node.points[j+2];
+					
+					var ix = x > node.center[0] ? 1 : 0;
+					var iy = y > node.center[1] ? 1 : 0;
+					var iz = z > node.center[2] ? 1 : 0;
+					var is = [ix,iy,iz];
+					var childIndex = ix + 2*(iy + 2*iz);
+					var child = node.children[childIndex];
+					child.points.push(x);
+					child.points.push(y);
+					child.points.push(z);
+				}
+				node.points.length = 0;
+			}
 		}
 
-		$.each(allSmallBodiesNodes, function(i,node) {
+		//now push upward based on random sampling of all children ...
+		var process = function(node) {
+			if (node.children === undefined) return;
+			//pick 1000 points from all its children
+			for (var i = 0; i < 1000; ++i) {
+				var child = node.children[parseInt(Math.random() * 8)];
+				if (child.points.length == 0) {
+					process(child);
+				}
+
+				if (child.points.length > 0) {
+					var j = parseInt(Math.random()*child.points.length/3);
+					var pt = child.points.splice(3*j, 3);
+					node.points.push(pt[0]);
+					node.points.push(pt[1]);
+					node.points.push(pt[2]);
+				}
+			}
+	
+		};
+		process(smallBodyRootNode);
+
+		//now create scene objects
+		$.each(allSmallBodyNodes, function(i,node) {
 			node.buffer = new glutil.ArrayBuffer({data : node.points});
 			node.sceneObj = new glutil.SceneObject({
 				mode : gl.POINTS,
+				//TODO custom shader to write depth to a color channel
 				shader : colorShader,
 				attrs : {
 					vertex : node.buffer,
@@ -6814,7 +6865,7 @@ function setOrbitTarget(newTarget) {
 
 	//reset orbit distance so it doesn't lock to surface immediately
 	if (orbitGeodeticLocation !== undefined) {
-		orbitDistance = orbitTargetDistance = orbitTarget.radius;
+		orbitDistance = orbitTargetDistance = orbitTarget.radius * 2;
 
 		//and re-orient the camera (because locking on surface had it flipped around / will flip it back around)
 		var rot = [];
