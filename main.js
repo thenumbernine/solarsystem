@@ -4,6 +4,7 @@
 var CALCULATE_TIDES_WITH_GPU = false;
 
 var SHOW_ALL_SMALL_BODIES_AT_ONCE = false;
+var SHOW_ALL_SMALL_BODIES_WITH_DENSITY = false;
 
 //TODO put this in js/gl-util-kernel.js
 
@@ -2043,7 +2044,15 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-		
+	
+if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
+		var color = [1,1,1,smallBodiesPointAlpha];
+		for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
+			allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
+			allSmallBodyNodes[i].sceneObj.uniforms.color = color;
+			allSmallBodyNodes[i].sceneObj.draw();
+		}
+} else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
 		smallBodyFBO.draw({
 			callback : function() {
@@ -2054,7 +2063,6 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 					allSmallBodyNodes[i].sceneObj.uniforms.color = color;
 					allSmallBodyNodes[i].sceneObj.draw();
 				}
-				gl.enable(gl.DEPTH_TEST);
 			}
 		});
 		//smallBodyFBOTex.bind();
@@ -2075,7 +2083,8 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 			blend : [gl.SRC_ALPHA, gl.ONE]
 		});
 		gl.enable(gl.DEPTH_TEST);
-}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
+} //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
+} //SHOW_ALL_SMALL_BODIES_AT_ONCE
 		
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
@@ -3459,12 +3468,18 @@ var allSmallBodyNodes = [];
 var maxSmallBodyNodesToDraw = 1000;
 var smallBodiesPointSize = 1;
 var smallBodiesPointAlpha = 1;
+
+if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 var smallBodyFBOTexWidth = 2048;
 var smallBodyFBOTexHeight = 2048;
 var smallBodyOverlayLogBase = 1;
 var smallBodyFBO;
+var smallBodyFBOTex;
+var smallBodyOverlayShader;
+} // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 
 function initSmallBodies() {
+if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 	smallBodyFBOTex = new glutil.Texture2D({
 		internalFormat : gl.RGBA,
 		format : gl.RGBA,
@@ -3511,6 +3526,7 @@ void main() {
 			logBase : 1
 		}
 	});
+} //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', 'jpl-ssd-smallbody/output.f32', true);
@@ -3634,6 +3650,7 @@ void main() {
 			//pick 1000 points from all its children
 			for (var i = 0; i < 1000; ++i) {
 				var child = node.children[parseInt(Math.random() * 8)];
+				if (child === undefined) continue;
 				if (child.points.length == 0) {
 					process(child);
 				}
