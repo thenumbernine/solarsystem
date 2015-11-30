@@ -2048,7 +2048,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			smallBodyRootNode.prepDraw(drawList, tanFovY);
 			for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
 				var node = drawList.splice(drawList.length-1, 1)[0];
-				node.sceneObj.uniforms.pointSize = smallBodyPointSize * Math.sqrt(distFromSolarSystemInM) * 1e-2;
+				node.sceneObj.uniforms.pointSize = smallBodyPointSize * Math.sqrt(distFromSolarSystemInM);
 				node.draw(drawList, tanFovY);
 			}
 		}
@@ -3498,7 +3498,7 @@ var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
 var maxSmallBodyNodesToDraw = 400;
-var smallBodyPointSize = 1e+8;	//in m ... so maybe convert this to AU
+var smallBodyPointSize = 5e+5;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .5;
 var smallBodyShader;
 
