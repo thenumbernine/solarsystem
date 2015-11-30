@@ -2047,7 +2047,9 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			var drawList = [];
 			smallBodyRootNode.prepDraw(drawList, tanFovY);
 			for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
-				drawList.splice(drawList.length-1, 1)[0].draw(drawList, tanFovY);
+				var node = drawList.splice(drawList.length-1, 1)[0];
+				node.sceneObj.uniforms.pointSize = smallBodyPointSize * Math.sqrt(distFromSolarSystemInM) * 1e-2;
+				node.draw(drawList, tanFovY);
 			}
 		}
 } else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
@@ -3477,7 +3479,7 @@ var PointOctreeNode = makeClass({
 		drawList.splice(0, 0, this);
 	},
 	draw : function(drawList, tanFovY) {
-		this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
+		//this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
 		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
 		this.sceneObj.draw();
 
