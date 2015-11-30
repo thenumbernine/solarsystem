@@ -2482,16 +2482,6 @@ function init1() {
 	$('#reset').click(function() {
 		integrationPaused = true;
 		integrateTimeStep = defaultIntegrateTimeStep;
-		for (var i = 0; i < starSystems.length; ++i) {
-			var starSystem = starSystems[i];
-			for (var j = 0; j < 1/*starSystem.planets.length*/; ++j) {
-				var planet = starSystem.planets[j];
-				var initPlanet = starSystem.initPlanets[j];
-				vec3.copy(planet.pos, initPlanet.pos);
-				vec3.copy(planet.vel, initPlanet.vel);
-				quat.copy(planet.angle, initPlanet.angle);
-			}
-		}
 		julianDate = initJulianDate;
 		refreshCurrentTimeText();
 	});
@@ -3502,11 +3492,10 @@ var PointOctreeNode = makeClass({
 	}
 });
 
-
 var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
-var maxSmallBodyNodesToDraw = 300;
+var maxSmallBodyNodesToDraw = 400;
 var smallBodyPointSize = 1e+8;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .5;
 var smallBodyShader;
@@ -3532,7 +3521,7 @@ uniform float pointSize;
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / gl_Position.w;
-	gl_PointSize = clamp(gl_PointSize, 1., 10.);
+	gl_PointSize = clamp(gl_PointSize, .25, 10.);
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -7234,7 +7223,7 @@ function update() {
 		if (orbitTargetDistance < orbitTarget.radius * 10) {
 			var orbitTargetAxis = [0,0,1];
 			vec3.quatZAxis(orbitTargetAxis, orbitTarget.angle);
-		
+	
 			var deltaJulianDate = julianDate - lastJulianDate;
 			
 			var deltaAngle = quat.create();
