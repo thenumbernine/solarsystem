@@ -3,7 +3,7 @@
 //I might try worker threads later...
 var CALCULATE_TIDES_WITH_GPU = false;
 
-var SHOW_ALL_SMALL_BODIES_AT_ONCE = false;
+var SHOW_ALL_SMALL_BODIES_AT_ONCE = true;
 var SHOW_ALL_SMALL_BODIES_WITH_DENSITY = false;
 
 //TODO put this in js/gl-util-kernel.js
@@ -1120,17 +1120,14 @@ function clearGeodeticLocation() {
 
 	orbitDistance = orbitTargetDistance = orbitTarget.radius * .2;
 
-	orbitGeodeticLocation = undefined;
 	glutil.view.fovY = 90;
 	glutil.updateProjection();
 
-	/*...and in one fell swoop, turn the camera around
-	//TODO spread this out over a few frames */
-	var rot = [];
-	quat.identity(rot);
-	quat.rotateY(rot, rot, Math.PI);
-	quat.multiply(glutil.view.angle, glutil.view.angle, rot);
-	/**/
+	//...and in one fell swoop, restore the original camera angle
+	//TODO spread this out over a few frames
+	quat.copy(glutil.view.angle, orbitGeodeticLocation.lastViewAngle);
+	
+	orbitGeodeticLocation = undefined;
 }
 
 function resetOrbitViewPos() {
@@ -1814,7 +1811,7 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 			//approximated pixel width with a fov of 90 degrees
-			planet.visRatio = planetScaleExaggeration * planet.radius / Math.sqrt(dx * dx + dy * dy + dz * dz) / tanFovY;
+			planet.visRatio = planetScaleExaggeration * planet.radius / (Math.sqrt(dx * dx + dy * dy + dz * dz) * tanFovY);
 		}
 
 		//draw sphere planets
@@ -2046,21 +2043,21 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-		var color = [1,1,1,smallBodiesPointAlpha];
-		for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
-			allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
-			allSmallBodyNodes[i].sceneObj.uniforms.color = color;
-			allSmallBodyNodes[i].sceneObj.draw();
+		if (smallBodyRootNode) {
+			var drawList = [];
+			smallBodyRootNode.prepDraw(drawList, tanFovY);
+			for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
+				drawList.splice(drawList.length-1, 1)[0].draw(drawList, tanFovY);
+			}
 		}
 } else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
 		smallBodyFBO.draw({
 			callback : function() {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-				var color = [1,1,1,smallBodiesPointAlpha];
 				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
-					allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodiesPointSize; 
-					allSmallBodyNodes[i].sceneObj.uniforms.color = color;
+					allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodyPointSize; 
+					allSmallBodyNodes[i].sceneObj.uniforms.alpha = smallBodyPointAlpha;
 					allSmallBodyNodes[i].sceneObj.draw();
 				}
 			}
@@ -2128,7 +2125,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 					vec3.sub(delta, delta, glutil.view.pos);
 					var deltaLength = vec3.length(delta);
 
-					planet.orbitVisRatio = distPeriapsis / deltaLength / tanFovY;
+					planet.orbitVisRatio = distPeriapsis / (deltaLength * tanFovY);
 
 					if (planet.orbitVisRatio > planetPointVisRatio) {
 						//recenter around orbitting planet
@@ -3462,12 +3459,57 @@ function initStars() {
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
+var PointOctreeNode = makeClass({
+	init : function() {
+		this.points = [];
+		this.mins = [];
+		this.maxs = [];
+		this.center = [];
+	},
+	prepDraw : function(drawList, tanFovY) {
+		var radius = Math.max(
+			this.maxs[0] - this.mins[0],
+			this.maxs[1] - this.mins[1],
+			this.maxs[2] - this.mins[2]);
+		//from center 
+		var dx = this.center[0] - glutil.view.pos[0] - orbitTarget.pos[0];
+		var dy = this.center[1] - glutil.view.pos[1] - orbitTarget.pos[1];
+		var dz = this.center[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+		var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+		this.visRatio = radius / (dist * tanFovY);
+		//insert sorted by visRatio, lowest to highest, starting at the back (optimistic)
+		for (var i = drawList.length-1; i >= 0; --i) {
+			if (drawList[i].visRatio < this.visRatio) {
+				drawList.splice(i+1, 0, this);
+				return;
+			}
+		}
+		drawList.splice(0, 0, this);
+	},
+	draw : function(drawList, tanFovY) {
+		this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
+		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
+		this.sceneObj.draw();
+
+		if (this.children !== undefined) {
+			for (var i = 0; i < 8; ++i) {
+				var ch = this.children[i];
+				if (ch !== undefined) {
+					ch.prepDraw(drawList, tanFovY);
+				}
+			}
+		}
+	}
+});
+
+
 var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
-var maxSmallBodyNodesToDraw = 1000;
-var smallBodiesPointSize = 1;
-var smallBodiesPointAlpha = 1;
+var maxSmallBodyNodesToDraw = 300;
+var smallBodyPointSize = 1e+8;	//in m ... so maybe convert this to AU
+var smallBodyPointAlpha = .5;
+var smallBodyShader;
 
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 var smallBodyFBOTexWidth = 2048;
@@ -3479,6 +3521,30 @@ var smallBodyOverlayShader;
 } // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 
 function initSmallBodies() {
+
+	smallBodyShader = new ModifiedDepthShaderProgram({
+		vertexPrecision : 'best',
+		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float pointSize;
+void main() {
+	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
+	gl_PointSize = pointSize / gl_Position.w;
+	gl_PointSize = clamp(gl_PointSize, 1., 10.);
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+		fragmentPrecision : 'best',
+		fragmentCode : mlstr(function(){/*
+uniform float alpha;
+void main() {
+	gl_FragColor = vec4(1., 1., 1., alpha);
+}
+*/}),
+	});
+
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 	smallBodyFBOTex = new glutil.Texture2D({
 		internalFormat : gl.RGBA,
@@ -3562,15 +3628,6 @@ void main() {
 			assert(mins[i] === mins[i]);
 			assert(maxs[i] === maxs[i]);
 		}
-
-		var PointOctreeNode = makeClass({
-			init : function() {
-				this.points = [];
-				this.mins = [];
-				this.maxs = [];
-				this.center = [];
-			}
-		});
 
 		smallBodyRootNode = new PointOctreeNode();
 		allSmallBodyNodes.push(smallBodyRootNode);
@@ -3669,17 +3726,17 @@ void main() {
 
 		//now create scene objects
 		$.each(allSmallBodyNodes, function(i,node) {
+			//TODO only make one object and swap the buffer in and out
 			node.buffer = new glutil.ArrayBuffer({data : node.points});
 			node.sceneObj = new glutil.SceneObject({
 				mode : gl.POINTS,
-				//TODO custom shader to write depth to a color channel
-				shader : colorShader,
+				shader : smallBodyShader,
 				attrs : {
 					vertex : node.buffer,
 				},
 				uniforms : {
-					pointSize : 2,
-					color : [1,1,1,1]
+					pointSize : smallBodyPointSize,
+					alpha : smallBodyPointAlpha
 				},
 				blend : [gl.SRC_ALPHA, gl.ONE],
 				parent : null,
@@ -6882,13 +6939,13 @@ function setOrbitTarget(newTarget) {
 
 	//reset orbit distance so it doesn't lock to surface immediately
 	if (orbitGeodeticLocation !== undefined) {
-		orbitDistance = orbitTargetDistance = orbitTarget.radius * 2;
+		//TODO this is what kicks the next frame out of fixed-view mode,
+		// and the code that does the kicking out resets the distance as if the user had zoomed out (i.e. relatively close)
+		// so somehow impose this distance over the other distance
+		orbitDistance = orbitTargetDistance = orbitTarget.radius * 10;
 
 		//and re-orient the camera (because locking on surface had it flipped around / will flip it back around)
-		var rot = [];
-		quat.identity(rot);
-		quat.rotateY(rot, rot, Math.PI);
-		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
+		quat.copy(orbitGeodeticLocation.lastViewAngle, glutil.view.angle); 
 	}
 
 	//refresh info div
@@ -7099,7 +7156,10 @@ function update() {
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
 		var pos = [];
 		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
+		
 		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(orbitTarget, pos);
+		orbitGeodeticLocation.lastViewAngle = quat.create();
+		quat.copy(orbitGeodeticLocation.lastViewAngle, glutil.view.angle);
 
 		glutil.view.fovY = 120;
 		
