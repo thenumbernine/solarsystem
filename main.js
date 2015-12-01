@@ -2044,12 +2044,20 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		if (smallBodyRootNode) {
-			var drawList = [];
-			smallBodyRootNode.prepDraw(drawList, tanFovY);
-			for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
-				var node = drawList.splice(drawList.length-1, 1)[0];
-				node.sceneObj.uniforms.pointSize = smallBodyPointSize * Math.sqrt(distFromSolarSystemInM);
-				node.draw(drawList, tanFovY);
+			if (showAllSmallBodiesAtOnce) {
+				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
+					var node = allSmallBodyNodes[i];
+					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
+					node.draw();
+				}
+			} else {	//good for selective rendering but bad for all rendering
+				var drawList = [];
+				smallBodyRootNode.prepDraw(drawList, tanFovY);
+				for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
+					var node = drawList.splice(drawList.length-1, 1)[0];
+					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
+					node.drawAndAdd(drawList, tanFovY);
+				}
 			}
 		}
 } else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
@@ -2058,9 +2066,9 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			callback : function() {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
-					allSmallBodyNodes[i].sceneObj.uniforms.pointSize = smallBodyPointSize; 
-					allSmallBodyNodes[i].sceneObj.uniforms.alpha = smallBodyPointAlpha;
-					allSmallBodyNodes[i].sceneObj.draw();
+					var node = allSmallBodyNodes[i];
+					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
+					node.draw();
 				}
 			}
 		});
@@ -3478,10 +3486,8 @@ var PointOctreeNode = makeClass({
 		}
 		drawList.splice(0, 0, this);
 	},
-	draw : function(drawList, tanFovY) {
-		//this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
-		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
-		this.sceneObj.draw();
+	drawAndAdd : function(drawList, tanFovY) {
+		this.draw();
 
 		if (this.children !== undefined) {
 			for (var i = 0; i < 8; ++i) {
@@ -3491,6 +3497,11 @@ var PointOctreeNode = makeClass({
 				}
 			}
 		}
+	},
+	draw : function() {
+		//this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
+		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
+		this.sceneObj.draw();
 	}
 });
 
@@ -3498,7 +3509,8 @@ var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
 var maxSmallBodyNodesToDraw = 400;
-var smallBodyPointSize = 5e+5;	//in m ... so maybe convert this to AU
+var showAllSmallBodiesAtOnce = false;
+var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .5;
 var smallBodyShader;
 
