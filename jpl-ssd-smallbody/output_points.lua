@@ -18,13 +18,6 @@ function OutputToPoints:staticInit()
 	self.pts = table()
 end
 
-function math.cosh(x)
-	return (math.exp(x) + math.exp(-x)) / 2
-end
-function math.sinh(x)
-	return (math.exp(x) - math.exp(-x)) / 2
-end
-
 function OutputToPoints:processBody(body)
 	local isComet = self.currentBodyType == 0
 	local isAsteroid = self.currentBodyType > 0
@@ -196,20 +189,29 @@ function OutputToPoints:processBody(body)
 	local posX = A[1] * coeffA + B[1] * coeffB
 	local posY = A[2] * coeffA + B[2] * coeffB
 	local posZ = A[3] * coeffA + B[3] * coeffB
-	local r = math.sqrt(posX^2 + posY^2 + posZ^2)
+
+	if not math.isfinite(posX) or not math.isfinite(posY) or not math.isfinite(posZ) then
+		-- returning early and avoiding bad data is causing our max radius to report a higher value ?!
+		return
+	end
+	
+	local r = math.sqrt(posX*posX + posY*posY + posZ*posZ)
+	if not math.isfinite(r) then return end
+	
 	OutputToPoints.maxR = math.max(OutputToPoints.maxR or r, r)
 
 	self.pts:insert(posX)
 	self.pts:insert(posY)
 	self.pts:insert(posZ)
 end
+
 function OutputToPoints:staticDone()
 	local ffi = require 'ffi'
 	require 'ffi.c.stdio'
 	local fh = ffi.C.fopen('output.f32', 'wb')
 	ffi.C.fwrite(ffi.new('float[?]', #self.pts, self.pts), #self.pts * 4, 1, fh)
 	ffi.C.fclose(fh)
-	
+
 	print('max radius:',self.maxR)
 end
 
