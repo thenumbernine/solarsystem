@@ -2043,20 +2043,19 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
+		//TODO adjust based on LOD node depth
 		if (smallBodyRootNode) {
 			if (showAllSmallBodiesAtOnce) {
 				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
 					var node = allSmallBodyNodes[i];
-					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
-					node.draw();
+					node.draw(distFromSolarSystemInM);
 				}
 			} else {	//good for selective rendering but bad for all rendering
 				var drawList = [];
 				smallBodyRootNode.prepDraw(drawList, tanFovY);
 				for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
 					var node = drawList.splice(drawList.length-1, 1)[0];
-					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
-					node.drawAndAdd(drawList, tanFovY);
+					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM);
 				}
 			}
 		}
@@ -2067,8 +2066,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
 					var node = allSmallBodyNodes[i];
-					node.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distFromSolarSystemInM);
-					node.draw();
+					node.draw(distFromSolarSystemInM);
 				}
 			}
 		});
@@ -3459,6 +3457,24 @@ function initStars() {
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
+var pointsPerNode = 1000;
+var smallBodyRootNode;
+var allSmallBodyNodes = [];
+var maxSmallBodyNodesToDraw = 400;
+var showAllSmallBodiesAtOnce = false;
+var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
+var smallBodyPointAlpha = .5;
+var smallBodySceneObj;
+
+if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
+var smallBodyFBOTexWidth = 2048;
+var smallBodyFBOTexHeight = 2048;
+var smallBodyOverlayLogBase = 1;
+var smallBodyFBO;
+var smallBodyFBOTex;
+var smallBodyOverlayShader;
+} // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
+
 var PointOctreeNode = makeClass({
 	init : function() {
 		this.points = [];
@@ -3486,8 +3502,8 @@ var PointOctreeNode = makeClass({
 		}
 		drawList.splice(0, 0, this);
 	},
-	drawAndAdd : function(drawList, tanFovY) {
-		this.draw();
+	drawAndAdd : function(drawList, tanFovY, distInM) {
+		this.draw(distInM);
 
 		if (this.children !== undefined) {
 			for (var i = 0; i < 8; ++i) {
@@ -3498,34 +3514,18 @@ var PointOctreeNode = makeClass({
 			}
 		}
 	},
-	draw : function() {
-		//this.sceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width; 
-		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
-		this.sceneObj.draw();
+	draw : function(distInM) {
+		smallBodySceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM);
+		smallBodySceneObj.uniforms.alpha = smallBodyPointAlpha;
+		smallBodySceneObj.geometry = this.geometry;
+		smallBodySceneObj.attrs.vertex = this.buffer;
+		smallBodySceneObj.draw();
 	}
 });
 
-var pointsPerNode = 1000;
-var smallBodyRootNode;
-var allSmallBodyNodes = [];
-var maxSmallBodyNodesToDraw = 400;
-var showAllSmallBodiesAtOnce = false;
-var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
-var smallBodyPointAlpha = .5;
-var smallBodyShader;
-
-if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-var smallBodyFBOTexWidth = 2048;
-var smallBodyFBOTexHeight = 2048;
-var smallBodyOverlayLogBase = 1;
-var smallBodyFBO;
-var smallBodyFBOTex;
-var smallBodyOverlayShader;
-} // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
-
 function initSmallBodies() {
 
-	smallBodyShader = new ModifiedDepthShaderProgram({
+	var smallBodyShader = new ModifiedDepthShaderProgram({
 		vertexPrecision : 'best',
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
@@ -3547,6 +3547,20 @@ void main() {
 }
 */}),
 	});
+
+	smallBodySceneObj = new glutil.SceneObject({
+		geometry : null,	//TODO override on a per-object basis. also override attrs.vertex per-object
+		shader : smallBodyShader,
+		attrs : {},
+		uniforms : {
+			pointSize : smallBodyPointSize,
+			alpha : smallBodyPointAlpha
+		},
+		blend : [gl.SRC_ALPHA, gl.ONE],
+		parent : null,
+		static : true
+	});
+
 
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 	smallBodyFBOTex = new glutil.Texture2D({
@@ -3724,7 +3738,6 @@ void main() {
 					node.points.push(pt[2]);
 				}
 			}
-	
 		};
 		process(smallBodyRootNode);
 
@@ -3732,19 +3745,9 @@ void main() {
 		$.each(allSmallBodyNodes, function(i,node) {
 			//TODO only make one object and swap the buffer in and out
 			node.buffer = new glutil.ArrayBuffer({data : node.points});
-			node.sceneObj = new glutil.SceneObject({
+			node.geometry = new glutil.Geometry({
 				mode : gl.POINTS,
-				shader : smallBodyShader,
-				attrs : {
-					vertex : node.buffer,
-				},
-				uniforms : {
-					pointSize : smallBodyPointSize,
-					alpha : smallBodyPointAlpha
-				},
-				blend : [gl.SRC_ALPHA, gl.ONE],
-				parent : null,
-				static : true
+				vertexes : node.buffer
 			});
 		});
 
