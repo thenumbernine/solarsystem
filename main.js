@@ -3596,6 +3596,7 @@ void main() {
 		500k points ...
 		x4 bytes per float x3 floats = 8mb of data ...
 		I could store another 8mb for velocity data and use those to reconstruct orbits ...
+		...or instead of 6 vars, just store 9 vars, and reconstruct all orbit data
 		*/
 
 		console.log('processing small body points...');
@@ -3629,8 +3630,8 @@ void main() {
 		}
 
 		//8 + 8^2 + 8^3 = 584 nodes
-		//3 nodes deep = 3 digits of resolution
-		for (var i = 0; i < len; ++i) { 
+		//3 node levels = 3 digits of resolution
+		for (var i = 0; i < len; i+=3) { 
 			var x = vtxs[i+0];
 			var y = vtxs[i+1];
 			var z = vtxs[i+2];
