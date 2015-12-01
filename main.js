@@ -883,7 +883,6 @@ var milkyWayDistanceToCenterInKpc = 8.7;
 var interGalacticRenderScale = 100;
 var closestGalaxyDistanceInM = undefined;	//for occlusion of all selection stuff
 
-var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
 var GalaxyField = makeClass({});
 var showGalaxies = true;
 var galaxyField;
@@ -977,6 +976,7 @@ var galaxyCenterInEquatorialCoordsInMpc = [];
 vec3.transformMat3(galaxyCenterInEquatorialCoordsInMpc, galaxyCenterInEclipticalCoordsInMpc, eclipticalToEquatorialTransform);
 
 
+var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
 var cachedGalaxies = {};
 function getCachedGalaxy(index,x,y,z) {
 	if (cachedGalaxies[index]) return cachedGalaxies[index];
@@ -991,6 +991,22 @@ function getCachedGalaxy(index,x,y,z) {
 	cachedGalaxies[index] = galaxy;
 	return galaxy;
 }
+
+var cachedSmallBodies = {};
+function getCachedSmallBody(smallBodyNode,index,x,y,z) {
+	if (cachedSmallBodies[index]) return cachedSmallBodies[index];
+	var buffer = galaxyField.buffer;
+	var smallBody = {
+		name : 'Small Body #'+index,	//galaxyNames[index].id,
+		smallBodyNode : smallBodyNode,
+		index : index,
+		pos : [x,y,z],
+		radius : 1
+	};
+	cachedSmallBodies[index] = smallBody;
+	return smallBody;
+}
+
 
 var overlayTexts = [];
 var overlayTextIndex = 0;
@@ -1147,9 +1163,19 @@ here's my thought: if the galaxies can't be selected / seen then resolve the sea
 otherwise wait til the search is done
 */
 var ChooseNewOrbitObject = makeClass({ 
-	searchGalaxyCurrentSlice : 0,
-	searchGalaxyTotalSlices : 10,
-	
+	init : function() {
+		this.searchGalaxyCurrentSlice = 0;
+		this.searchGalaxyTotalSlices = 10;
+		this.searchSmallBodyCurrentNode = 0;
+
+		this.searchSets = [
+			this.searchPlanets,		//0 calls
+			this.searchSmallBodies,	//up to a lot of calls
+			this.searchStars,		//0 calls
+			this.searchGalaxies		//up to 20 calls
+		];
+	},
+
 	run : function(mouseDir, doChoose) {
 		if (mouseDir) this.mouseDir = mouseDir;
 		//if we get a 'doChoose' command then we want that to fall through to the next end of search
@@ -1160,14 +1186,16 @@ var ChooseNewOrbitObject = makeClass({
 			this.bestDot = Math.cos(Math.deg(10));
 			this.bestDistance = Infinity;
 			this.bestTarget = undefined;
+			this.searchSetIndex = 0;
 			this.searching = true;
 		}
-		
-		this.searchPlanets();	//0 calls
-		this.searchStars();		//0 calls
-		
-		if (this.searchGalaxies()) return;	//up to 20 calls ... returns 'true' if it's still busy 
-		
+	
+		do {
+			var notDoneYet = this.searchSets[this.searchSetIndex].apply(this);
+			if (notDoneYet) return;
+			++this.searchSetIndex;
+		} while (this.searchSetIndex < this.searchSets.length);
+
 		//resolve search
 		this.resolveSearch();
 		this.searching = false;
@@ -1177,6 +1205,50 @@ var ChooseNewOrbitObject = makeClass({
 	searchPlanets : function() {
 		//only check the star system we're in for planet clicks
 		this.processList(orbitStarSystem.planets);
+	},
+
+	//searches the small-body point cloud 
+	searchSmallBodies : function() {
+		if (!smallBodyRootNode) return;
+		var testNodes = [];
+		var node = smallBodyRootNode.find(
+			glutil.view.pos[0] + orbitTarget.pos[0],
+			glutil.view.pos[1] + orbitTarget.pos[1],
+			glutil.view.pos[2] + orbitTarget.pos[2]);
+		for (; node.parent; node = node.parent) {
+			testNodes.push(node);
+			for (var i = 0; i < 8; ++i) {
+				var ch = node.parent.children[i];
+				if (ch !== undefined && ch != node) {
+					testNodes.push(ch);
+				}
+			}
+		}
+		testNodes.push(smallBodyRootNode);
+
+		for (var i = 0; i < testNodes.length; ++i) {
+			var node = testNodes[i];
+			var buffer = node.buffer;
+			for (var index = 0; index < buffer.data.length; index += 3) {
+				var x = buffer.data[3*index+0];
+				var y = buffer.data[3*index+1];
+				var z = buffer.data[3*index+2];
+				var deltaX = x - glutil.view.pos[0] - orbitTarget.pos[0];
+				var deltaY = y - glutil.view.pos[1] - orbitTarget.pos[1];
+				var deltaZ = z - glutil.view.pos[2] - orbitTarget.pos[2];
+				var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);	
+				deltaX /= dist;
+				deltaY /= dist;
+				deltaZ /= dist;
+				var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
+				if (dot > this.bestDot) {// && dist < this.bestDistance) {
+					this.bestDot = dot;
+					this.bestDistance = dist;
+					//there's too many galaxies to store them somewhere (or is there?) so allocate them as we go
+					this.bestTarget = getCachedSmallBody(node,index,x,y,z);
+				}
+			}
+		}
 	},
 
 	searchStars : function() {
@@ -2052,6 +2124,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 				}
 			} else {	//good for selective rendering but bad for all rendering
 				var drawList = [];
+				smallBodyNodesDrawnThisFrame.length = 0;
 				smallBodyRootNode.prepDraw(drawList, tanFovY);
 				for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
 					var node = drawList.splice(drawList.length-1, 1)[0];
@@ -3465,6 +3538,7 @@ var showAllSmallBodiesAtOnce = false;
 var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .5;
 var smallBodySceneObj;
+var smallBodyNodesDrawnThisFrame = []; 
 
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 var smallBodyFBOTexWidth = 2048;
@@ -3492,6 +3566,9 @@ var PointOctreeNode = makeClass({
 		var dy = this.center[1] - glutil.view.pos[1] - orbitTarget.pos[1];
 		var dz = this.center[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 		var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+		
+		//TODO test occlusion
+		
 		this.visRatio = radius / (dist * tanFovY);
 		//insert sorted by visRatio, lowest to highest, starting at the back (optimistic)
 		for (var i = drawList.length-1; i >= 0; --i) {
@@ -3504,6 +3581,7 @@ var PointOctreeNode = makeClass({
 	},
 	drawAndAdd : function(drawList, tanFovY, distInM) {
 		this.draw(distInM);
+		smallBodyNodesDrawnThisFrame.push(this);
 
 		if (this.children !== undefined) {
 			for (var i = 0; i < 8; ++i) {
@@ -3520,6 +3598,21 @@ var PointOctreeNode = makeClass({
 		smallBodySceneObj.geometry = this.geometry;
 		smallBodySceneObj.attrs.vertex = this.buffer;
 		smallBodySceneObj.draw();
+	},
+	find : function(x,y,z) {
+		if (this.children !== undefined) {
+			for (var i = 0; i < 8; ++i) {
+				var ch = this.children[i];
+				if (ch === undefined) continue;
+				if (x >= ch.mins[0] && x <= ch.maxs[0] &&
+					y >= ch.mins[1] && y <= ch.maxs[1] &&
+					z >= ch.mins[2] && z <= ch.maxs[2])
+				{
+					return ch.find(x,y,z);
+				}
+			}
+		}
+		return this;
 	}
 });
 
@@ -3642,11 +3735,6 @@ void main() {
 			maxs[1] - mins[1],
 			maxs[2] - mins[2]];
 
-		for (var i = 0; i < 3; ++i) {
-			assert(mins[i] === mins[i]);
-			assert(maxs[i] === maxs[i]);
-		}
-
 		smallBodyRootNode = new PointOctreeNode();
 		allSmallBodyNodes.push(smallBodyRootNode);
 		for (var j = 0; j < 3; ++j) {
@@ -3673,7 +3761,6 @@ void main() {
 				var ix = x > node.center[0] ? 1 : 0;
 				var iy = y > node.center[1] ? 1 : 0;
 				var iz = z > node.center[2] ? 1 : 0;
-				var is = [ix,iy,iz];
 				var childIndex = ix + 2*(iy + 2*iz);
 				node = node.children[childIndex];
 			};
@@ -3691,6 +3778,7 @@ void main() {
 							var childIndex = ix + 2*(iy + 2*iz);
 							var child = new PointOctreeNode();
 							node.children[childIndex] = child;
+							child.parent = node;
 							allSmallBodyNodes.push(child);
 							for (var j = 0; j < 3; ++j) {
 								child.mins[j] = is[j] ? node.center[j] : node.mins[j];
@@ -3708,7 +3796,6 @@ void main() {
 					var ix = x > node.center[0] ? 1 : 0;
 					var iy = y > node.center[1] ? 1 : 0;
 					var iz = z > node.center[2] ? 1 : 0;
-					var is = [ix,iy,iz];
 					var childIndex = ix + 2*(iy + 2*iz);
 					var child = node.children[childIndex];
 					child.points.push(x);

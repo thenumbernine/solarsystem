@@ -5,6 +5,8 @@ local sunMassInKg = 1.9891e+30	-- kg
 local gravitationalConstant = 6.6738480e-11		-- m^3 / (kg * s^2)
 local julian = assert(loadfile('../horizons/julian.lua'))()
 
+local vec3 = require 'vec.vec3'
+
 local julianDate = julian.fromCalendar(os.date'!*t')
 
 -- and for just outputting a cloud of points ...
@@ -15,7 +17,7 @@ function OutputToPoints:init(args)
 end
 
 function OutputToPoints:staticInit()
-	self.pts = table()
+	self.bodies = table()
 end
 
 function OutputToPoints:processBody(body)
@@ -79,13 +81,13 @@ function OutputToPoints:processBody(body)
 
 	local oneMinusEccentricitySquared = 1 - eccentricity * eccentricity
 	--magnitude of A is a 
-	A = {semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+	A = vec3(semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 		 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-		 semiMajorAxis * sinPericenter * sinInclination}
+		 semiMajorAxis * sinPericenter * sinInclination)
 	--magnitude of B is a * sqrt(|1 - e^2|)
-	B = {semiMajorAxis * math.sqrt(math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+	B = vec3(semiMajorAxis * math.sqrt(math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
 		 semiMajorAxis * math.sqrt(math.abs(oneMinusEccentricitySquared)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-		 semiMajorAxis * math.sqrt(math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination}
+		 semiMajorAxis * math.sqrt(math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination)
 	--inner product: A dot B = 0
 
 	local timeOfPeriapsisCrossing
@@ -185,34 +187,182 @@ function OutputToPoints:processBody(body)
 		coeffA = 0/0
 		coeffB = 0/0
 	end
-	
-	local posX = A[1] * coeffA + B[1] * coeffB
-	local posY = A[2] * coeffA + B[2] * coeffB
-	local posZ = A[3] * coeffA + B[3] * coeffB
 
-	if not math.isfinite(posX) or not math.isfinite(posY) or not math.isfinite(posZ) then
+	local pos = A * coeffA + B * coeffB
+
+	if not math.isfinite(pos[1]) or not math.isfinite(pos[2]) or not math.isfinite(pos[3]) then
 		-- returning early and avoiding bad data is causing our max radius to report a higher value ?!
 		return
 	end
 	
-	local r = math.sqrt(posX*posX + posY*posY + posZ*posZ)
+	local r = pos:length()
 	if not math.isfinite(r) then return end
 	
 	OutputToPoints.maxR = math.max(OutputToPoints.maxR or r, r)
 
-	self.pts:insert(posX)
-	self.pts:insert(posY)
-	self.pts:insert(posZ)
+	body.pos = pos
+
+	self.bodies:insert(body)
+	body.index = #self.bodies
 end
 
 function OutputToPoints:staticDone()
+	print('max radius:',self.maxR)
+
+	local leafPointCount = 1000
+
+	-- [[ writing octree
+	-- now that we're done, construct the octree here
+	-- store the individual node data and load it client-side
+	-- then remotely grab names as leafs are mouse-over'd
+	local mins = vec3(-6e+12, -6e+12, -6e+12)
+	local maxs = vec3(6e+12, 6e+12, 6e+12)
+	local size = maxs - mins
+
+	local PointOctreeNode = class()
+	function PointOctreeNode:init()
+		self.bodies = table()
+		self.mins = vec3()
+		self.maxs = vec3()
+		self.center = vec3()
+	end
+	
+	local allNodes = table()
+
+	local root = PointOctreeNode()
+	allNodes:insert(root)
+	root.index = #allNodes
+	root.mins = vec3(mins:unpack())
+	root.maxs = vec3(maxs:unpack())
+	root.center = (mins + maxs) * .5
+
+	for i=1,#self.bodies do
+		local body = self.bodies[i]
+		local x,y,z = body.pos:unpack()
+		local node = root
+		
+		-- first add to leafmost until it passes a threshold, then split
+		while node.children do
+			local ix = x > node.center[1] and 1 or 0
+			local iy = y > node.center[2] and 1 or 0
+			local iz = z > node.center[3] and 1 or 0
+			local childIndex = 1 + ix + 2 * (iy + 2 * iz)
+			node = node.children[childIndex]
+		end
+	
+		node.bodies:insert(body)
+		if #node.bodies > leafPointCount then
+			node.children = table()
+			for ix=0,1 do
+				for iy=0,1 do
+					for iz=0,1 do
+						local is = vec3(ix,iy,iz)
+						local childIndex = 1 + ix + 2 * (iy + 2 * iz)
+						local child = PointOctreeNode()
+						allNodes:insert(child)
+						child.index = #allNodes
+						node.children[childIndex] = child
+						child.parent = node
+						for j=1,3 do
+							child.mins[j] = is[j] == 1 and node.center[j] or node.mins[j]
+							child.maxs[j] = is[j] == 1 and node.maxs[j] or node.center[j]
+							child.center[j] = .5 * (child.mins[j] + child.maxs[j])
+						end
+					end
+				end
+			end
+			for j=1,#node.bodies do
+				local body = node.bodies[j]
+				local x,y,z = body.pos:unpack()
+				local ix = x > node.center[1] and 1 or 0
+				local iy = y > node.center[2] and 1 or 0
+				local iz = z > node.center[3] and 1 or 0
+				local childIndex = 1 + ix + 2 * (iy + 2 * iz)
+				local child = node.children[childIndex]
+				child.bodies:insert(body)
+			end
+			node.bodies = table()
+		end
+	end
+	
+	-- now push upward based on random sampling of all children ...
+	local function process(node)
+		if not node.children then return end
+		for i=1,leafPointCount do
+			local child = node.children[math.random(8)]
+			if child then
+				if #child.bodies == 0 then
+					process(child)
+				end
+				if #child.bodies > 0 then
+					node.bodies:insert(child.bodies:remove(math.random(#child.bodies)))
+				end
+			end
+		end
+	end
+	process(root)
+	
+	print('num nodes',#allNodes)
+
+	local json = require 'dkjson'
+	local pts = table()
+	for _,node in ipairs(allNodes) do
+		setmetatable(node, nil)
+		if node.parent then node.parent = node.parent.index end
+		if node.children then
+			for i=1,8 do
+				if node.children[i] then
+					node.children[i] = node.children[i].index
+				else
+					node.children[i] = -1	-- empty value -- for the sake of making the array dense
+				end
+			end
+		end
+		-- now repackage points continuously with all nodes
+		-- and store in each node the range information
+		node.bodyStartIndex = #pts/3
+		for _,body in ipairs(node.bodies) do
+			for j=1,3 do
+				pts:insert(body.pos[j])
+			end
+		end
+		node.bodyEndIndex = #pts/3
+
+		node.bodies = node.bodies:map(function(body)
+			return {
+				name = body.name,
+				index = body.index,	-- index in the total list 
+			}
+		end)
+		file['nodes/'..node.index..'.json'] = json.encode(node.bodies,{indent=true})
+		node.bodies = nil
+	end
+	for _,node in ipairs(allNodes) do
+		node.index = nil	-- don't need this anymore
+	end
+	file['octree.json'] = json.encode(setmetatable(allNodes, nil), {indent=true})
+
+	local ffi = require 'ffi'
+	local buffer = ffi.new('float[?]', #pts, pts)
+	file['output.f32'] = ffi.string(ffi.cast('char*', buffer), ffi.sizeof(buffer))
+
+	--]]
+
+	--[[ writing all at once:
 	local ffi = require 'ffi'
 	require 'ffi.c.stdio'
 	local fh = ffi.C.fopen('output.f32', 'wb')
-	ffi.C.fwrite(ffi.new('float[?]', #self.pts, self.pts), #self.pts * 4, 1, fh)
+	local v = ffi.new('float[3]')
+	for i=1,#self.bodies do
+		local p = self.bodies[i].pos
+		v[0] = p[1]
+		v[1] = p[2]
+		v[2] = p[3]
+		ffi.C.fwrite(v, ffi.sizeof(v), 1, fh)
+	end
 	ffi.C.fclose(fh)
+	--]]
 
-	print('max radius:',self.maxR)
 end
 
 return OutputToPoints
