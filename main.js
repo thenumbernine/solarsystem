@@ -2145,7 +2145,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 						orbitPathSceneObj.uniforms.eccentricity = planet.keplerianOrbitalElements.eccentricity;
 						orbitPathSceneObj.uniforms.eccentricAnomaly = planet.keplerianOrbitalElements.eccentricAnomaly;
 						orbitPathSceneObj.uniforms.orbitType = orbitPathIndexForType[planet.keplerianOrbitalElements.orbitType];
-						orbitPathSceneObj.uniforms.fractionOffset = planet.keplerianOrbitalElements.fractionOffset;
+						orbitPathSceneObj.uniforms.fractionOffset = planet.keplerianOrbitalElements.fractionOffset || 0;
 
 						orbitPathSceneObj.draw();
 						
