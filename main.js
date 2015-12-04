@@ -978,9 +978,12 @@ vec3.transformMat3(galaxyCenterInEquatorialCoordsInMpc, galaxyCenterInEcliptical
 
 var Galaxy = makeClass({init:function(args){for(k in args){this[k]=args[k];}}});
 var cachedGalaxies = {};
-function getCachedGalaxy(index,x,y,z) {
+function getCachedGalaxy(index) {
 	if (cachedGalaxies[index]) return cachedGalaxies[index];
 	var buffer = galaxyField.buffer;
+	var x = buffer.data[3*index+0] * interGalacticRenderScale;
+	var y = buffer.data[3*index+1] * interGalacticRenderScale;
+	var z = buffer.data[3*index+2] * interGalacticRenderScale;
 	var galaxy = new Galaxy({
 		name : galaxyNames[index].id,
 		galaxyField : galaxyField,
@@ -993,12 +996,14 @@ function getCachedGalaxy(index,x,y,z) {
 }
 
 var cachedSmallBodies = {};
-function getCachedSmallBody(smallBodyNode,index,x,y,z) {
+function getCachedSmallBody(index,x,y,z) {
 	if (cachedSmallBodies[index]) return cachedSmallBodies[index];
-	var buffer = galaxyField.buffer;
+	var buffer = allSmallBodyPointsBuffer;
+	var x = buffer.data[3*index+0];
+	var y = buffer.data[3*index+1];
+	var z = buffer.data[3*index+2];
 	var smallBody = {
 		name : 'Small Body #'+index,	//galaxyNames[index].id,
-		smallBodyNode : smallBodyNode,
 		index : index,
 		pos : [x,y,z],
 		radius : 1
@@ -1164,12 +1169,12 @@ otherwise wait til the search is done
 */
 var PickObject = makeClass({ 
 	init : function() {
-		this.fboTexWidth = 8;
-		this.fboTexHeight = 8;
+		this.fboTexWidth = 32;
+		this.fboTexHeight = 32;
 		this.fboTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,
 			format : gl.RGBA,
-			type : gl.UNSIGNED_BYTE,
+			type : gl.FLOAT,
 			width : this.fboTexWidth,
 			height : this.fboTexHeight,
 			magFilter : gl.NEAREST,
@@ -1193,7 +1198,6 @@ var PickObject = makeClass({
 		//this is the shader to use with point clouds 
 		//point sets pass 'vertexID' as a sequential list of numbers
 		this.pickPointShader = new ModifiedDepthShaderProgram({
-			vertexPrecision : 'best',
 			vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 
@@ -1210,11 +1214,14 @@ void main() {
 		mod(vertexIDCh0, 256.), //first 8 bits of ch0
 		floor(vertexIDCh0 / 256.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
+
+	//TODO point size override for each point field
+	gl_PointSize = 4.;
+	
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
 	gl_Position.z = depthfunction(gl_Position); 
 }
 */}),
-			fragmentPrecision : 'best',
 			fragmentCode : mlstr(function(){/*
 uniform vec3 startID;
 varying vec3 vertexIDv;
@@ -1224,7 +1231,6 @@ void main() {
 	v.xyz = floor(v.xyz - 256. * carry);
 	v.yzw = floor(v.yzw + carry);
 	gl_FragColor = vec4(v.xyz, 1.);
-gl_FragColor = vec4(0., 1., 0., 1.);
 }
 */}),
 			uniforms : {
@@ -1233,7 +1239,6 @@ gl_FragColor = vec4(0., 1., 0., 1.);
 		});
 
 		this.pickPlanetShader = new ModifiedDepthShaderProgram({
-			vertexPrecision : 'best',
 			vertexCode : mlstr(function(){/*
 attribute vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
@@ -1251,12 +1256,10 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
-			fragmentPrecision : 'best',
 			fragmentCode : mlstr(function(){/*
 uniform vec3 id;
 void main() {
 	gl_FragColor = vec4(id, 1.);
-gl_FragColor = vec4(1., 0., 0., 1.);
 }
 */}),
 			uniforms : {
@@ -1279,46 +1282,95 @@ gl_FragColor = vec4(1., 0., 0., 1.);
 		}
 		this.vertexIDCh0Buffer = new glutil.ArrayBuffer({data : vertexIDCh0, dim : 1});
 		this.vertexIDCh1Buffer = new glutil.ArrayBuffer({data : vertexIDCh1, dim : 1});
-
-		this.searchGalaxyCurrentSlice = 0;
-		this.searchGalaxyTotalSlices = 10;
-		this.searchSmallBodyCurrentNode = 0;
-
-		this.searchSets = [
-			this.searchPlanets,		//0 calls
-			//this.searchSmallBodies,	//up to a lot of calls
-			this.searchStars,		//0 calls
-			this.searchGalaxies		//up to 20 calls
-		];
+	
+		this.callbacks = [];
 	},
-
-	pick : function() {
+	
+	pick : function(doChoose) {
+		var viewport = gl.getParameter(gl.VIEWPORT);
+		
 		//pick window size
-		var sizeX = 5;
-		var sizeY = 5;
-		var x = mouse.pageX - (sizeX-1) / 2;
-		var y = (canvas.height - mouse.pageY - 1) - (sizeY-1) / 2; 
+		var sizeX = this.fboTexWidth;
+		var sizeY = this.fboTexHeight;
+		var x = mouse.lastX;
+		var y = canvas.height - mouse.lastY - 1;
+		
 		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
 		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
 		mat4.identity(this.pickProjMat);
 		mat4.translate(this.pickProjMat, this.pickProjMat, [(canvas.width - 2 * x) / sizeX, (canvas.height - 2 * y) / sizeY, 0]);
 		mat4.scale(this.pickProjMat, this.pickProjMat, [canvas.width / sizeX, canvas.height / sizeY, 1]);
 		mat4.multiply(this.pickProjMat, this.pickProjMat, glutil.scene.projMat);
-	
-		this.pickID = 127<<8;
-	
-		// run the render loop
-		// set the scene to 'picking'
-		// change the projection matrix to be a pick-matrix
-		drawScene(true);
+
+		this.startPickID = 127<<8;
+		this.pickID = this.startPickID;
+		this.callbacks.length = 0;
+		
+		var foundIndex = 0;
+		gl.viewport(0, 0, sizeX, sizeY);
+		this.fbo.draw({
+			callback : function() {
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
+				
+				// run the render loop
+				// set the scene to 'picking'
+				// change the projection matrix to be a pick-matrix
+				drawScene(true);
+
+				var pixels = new Float32Array(sizeX * sizeY * 4);
+				gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
+				for (var j = 0; j < sizeY; ++j) {
+					for (var i = 0; i < sizeX; ++i) {
+						var r = pixels[0 + 4 * (i + sizeX * j)];
+						var g = pixels[1 + 4 * (i + sizeX * j)];
+						var b = pixels[2 + 4 * (i + sizeX * j)];
+						var a = pixels[3 + 4 * (i + sizeX * j)];
+						foundIndex = r | (g << 8) | (b << 16);
+						if (foundIndex) break;
+					}
+					if (foundIndex) break;
+				}
+			}
+		});
+
+		var body = undefined;
+		for (var i = 0; i < this.callbacks.length; ++i) {
+			var cb = this.callbacks[i];
+			if (foundIndex >= cb.start && foundIndex < cb.end) {
+				if (cb.callbackObj.isa && cb.callbackObj.isa(Planet)) {
+					body = cb.callbackObj;
+				} else {
+					body = cb.callbackObj(foundIndex - cb.start);
+				}
+				break;
+			}
+		}
+		
+		mouseOverTarget = undefined;
+		if (body !== undefined) {
+			mouseOverTarget = body;
+			if (body !== orbitTarget && doChoose) {
+				setOrbitTarget(body);
+				refreshMeasureText();
+			}
+		}
+
+		gl.viewport.apply(gl, viewport);
 	},
 
-	getPickIDVec3 : function() {
+	registerBody : function(callbackObj, count) {
 		var i = this.pickID;
+		this.callbacks.push({
+			start : this.pickID,
+			end : this.pickID + count,
+			callbackObj : callbackObj
+		});
+		this.pickID += count;
 		return [i & 255, (i >> 8) & 255, (i >> 16) & 255];
 	},
 
-	drawPoints : function(sceneObj) {
+	drawPoints : function(sceneObj, callbackObj) {
+		var count = sceneObj.attrs.vertex.count || (sceneObj.attrs.vertex.length / sceneObj.attrs.vertex.dim);
 		this.pickPointShader.use();
 		this.pickPointShader.setAttrs({
 			vertex : assert(sceneObj.attrs.vertex),
@@ -1329,14 +1381,13 @@ gl_FragColor = vec4(1., 0., 0., 1.);
 		this.pickPointShader.setUniforms({
 			projMat : this.pickProjMat,
 			mvMat : sceneObj.uniforms.mvMat,
-			startID : this.getPickIDVec3()
+			startID : this.registerBody(callbackObj, count)
 		});
 		sceneObj.geometry.draw();
 		this.pickPointShader.useNone();
-		this.pickID = this.pickID + (sceneObj.attrs.vertex.count || (sceneObj.attrs.vertex.length / sceneObj.attrs.vertex.dim));
 	},
 
-	drawPlanet : function(sceneObj) {
+	drawPlanet : function(sceneObj, callbackObj) {
 		this.pickPlanetShader.use();
 		this.pickPlanetShader.setAttrs({
 			vertex : sceneObj.attrs.vertex
@@ -1350,189 +1401,10 @@ gl_FragColor = vec4(1., 0., 0., 1.);
 			equatorialRadius : sceneObj.uniforms.equatorialRadius,
 			inverseFlattening : sceneObj.uniforms.inverseFlattening,
 			scaleExaggeration : sceneObj.uniforms.scaleExaggeration,
-			id : this.getPickIDVec3()
+			id : this.registerBody(callbackObj, 1)
 		});
 		sceneObj.geometry.draw();
 		this.pickPlanetShader.useNone();
-		++this.pickID;
-	},
-
-	run : function(mouseDir, doChoose) {
-		if (mouseDir) this.mouseDir = mouseDir;
-		//if we get a 'doChoose' command then we want that to fall through to the next end of search
-		if (doChoose) this.doChoose = true;
-	
-		//init search	
-		if (!this.searching) {
-			this.bestDot = Math.cos(Math.deg(10));
-			this.bestDistance = Infinity;
-			this.bestTarget = undefined;
-			this.searchSetIndex = 0;
-			this.searching = true;
-		}
-	
-		do {
-			var notDoneYet = this.searchSets[this.searchSetIndex].apply(this);
-			if (notDoneYet) return;
-			++this.searchSetIndex;
-		} while (this.searchSetIndex < this.searchSets.length);
-
-		//resolve search
-		this.resolveSearch();
-		this.searching = false;
-		this.doChoose = false;
-	},
-
-	searchPlanets : function() {
-		//only check the star system we're in for planet clicks
-		this.processList(orbitStarSystem.planets);
-	},
-
-	//searches the small-body point cloud 
-	searchSmallBodies : function() {
-		if (!smallBodyRootNode) return;
-		var testNodes = [];
-		var node = smallBodyRootNode.find(
-			glutil.view.pos[0] + orbitTarget.pos[0],
-			glutil.view.pos[1] + orbitTarget.pos[1],
-			glutil.view.pos[2] + orbitTarget.pos[2]);
-		for (; node.parent; node = node.parent) {
-			testNodes.push(node);
-			for (var i = 0; i < 8; ++i) {
-				var ch = node.parent.children[i];
-				if (ch !== undefined && ch != node) {
-					testNodes.push(ch);
-				}
-			}
-		}
-		testNodes.push(smallBodyRootNode);
-
-		for (var i = 0; i < testNodes.length; ++i) {
-			var node = testNodes[i];
-			var buffer = node.buffer;
-			for (var index = 0; index < buffer.data.length; index += 3) {
-				var x = buffer.data[3*index+0];
-				var y = buffer.data[3*index+1];
-				var z = buffer.data[3*index+2];
-				var deltaX = x - glutil.view.pos[0] - orbitTarget.pos[0];
-				var deltaY = y - glutil.view.pos[1] - orbitTarget.pos[1];
-				var deltaZ = z - glutil.view.pos[2] - orbitTarget.pos[2];
-				var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);	
-				deltaX /= dist;
-				deltaY /= dist;
-				deltaZ /= dist;
-				var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
-				if (dot > this.bestDot) {// && dist < this.bestDistance) {
-					this.bestDot = dot;
-					this.bestDistance = dist;
-					//there's too many galaxies to store them somewhere (or is there?) so allocate them as we go
-					this.bestTarget = getCachedSmallBody(node,index,x,y,z);
-				}
-			}
-		}
-	},
-
-	searchStars : function() {
-		//for larger-scale clicks, use the starfield
-		// gets annoying, trying to click on a planet and catching a star.  just use the side menu for selecting new stars. 
-		if (!allowSelectStars) return;
-		if (!showStars) return;
-		this.processList(starSystems);
-	},
-
-	searchGalaxies : function() {
-		// if we want to consider galaxies then we have to search through 20000 additional points
-		if (!allowSelectGalaxies) return;
-		if (!showGalaxies) return;
-		if (!galaxyField) return;
-		
-		if (closestGalaxyDistanceInM > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) return;
-		
-		//there's 20,000 galaxies.  that's a lot.  how about we chop that up by 20 and only search 1000 per frame?
-		var buffer = galaxyField.buffer;
-		var searchGalaxyPerFrame = 1000;
-		var searchStart = parseInt(buffer.count * this.searchGalaxyCurrentSlice / this.searchGalaxyTotalSlices); 
-		var searchEnd = parseInt(buffer.count * (this.searchGalaxyCurrentSlice+1) / this.searchGalaxyTotalSlices); 
-		for (var index = searchStart; index < searchEnd; ++index) {
-			var x = buffer.data[3*index+0] * interGalacticRenderScale;
-			var y = buffer.data[3*index+1] * interGalacticRenderScale;
-			var z = buffer.data[3*index+2] * interGalacticRenderScale;
-			var deltaX = x - glutil.view.pos[0] - orbitTarget.pos[0];
-			var deltaY = y - glutil.view.pos[1] - orbitTarget.pos[1];
-			var deltaZ = z - glutil.view.pos[2] - orbitTarget.pos[2];
-			var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-			
-			//TODO occlude based on apparent magnitude since some distant bright objects can still be seen
-			//if this dist from orbit target is over 100x the orbit distance then assume it's too far away to select 
-			if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
-			
-			deltaX /= dist;
-			deltaY /= dist;
-			deltaZ /= dist;
-			var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
-			if (dot > this.bestDot) {// && dist < this.bestDistance) {
-				this.bestDot = dot;
-				this.bestDistance = dist;
-				//there's too many galaxies to store them somewhere (or is there?) so allocate them as we go
-				this.bestTarget = getCachedGalaxy(index,x,y,z);
-			}
-		}
-		this.searchGalaxyCurrentSlice++;
-		this.searchGalaxyCurrentSlice %= this.searchGalaxyTotalSlices;
-		return this.searchGalaxyCurrentSlice != 0;
-	},
-
-	/*
-	list contains:
-	.length
-	[i]
-		.hide
-		.pos[j]
-	*/
-	processList : function(list) {
-		//easy way to prioritize planets over moons: search in reverse
-		for (var i = list.length-1; i >= 0; --i) {
-			var target = list[i];
-
-			//no need to select in starfield the system we're already orbitting
-			if (list === starfield && target == orbitStarSystem) continue;
-
-			//if we're selecting an orbitting planet
-			// and its orbit is small 
-			//  then don't bother select it (so we can get the parent instead)
-			if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue;	
-
-			if (target.hide) continue;
-			var deltaX = target.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
-			var deltaY = target.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
-			var deltaZ = target.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
-			var dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-			
-			//TODO occlude based on apparent magnitude since some distant bright objects can still be seen
-			//if this dist from orbit target is over 100x the orbit distance then assume it's too far away to select 
-			//if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
-			
-			deltaX /= dist;
-			deltaY /= dist;
-			deltaZ /= dist;
-			var dot = deltaX * this.mouseDir[0] + deltaY * this.mouseDir[1] + deltaZ * this.mouseDir[2];
-			if (dot > this.bestDot) {// && dist < this.bestDistance) {
-				this.bestDot = dot;
-				this.bestDistance = dist;
-				this.bestTarget = target;
-			}
-		}
-	},
-
-	resolveSearch : function() {
-		mouseOverTarget = undefined;
-		if (this.bestTarget !== undefined) {				
-			mouseOverTarget = this.bestTarget;
-			if (this.bestTarget !== orbitTarget && this.doChoose) {
-				setOrbitTarget(this.bestTarget);
-				refreshMeasureText();
-			}
-		}
 	}
 });
 var pickObject;
@@ -1717,6 +1589,8 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 					flags = [true, true, true, true];
 					break;
 				}
+		
+				var viewport = gl.getParameter(gl.VIEWPORT);
 
 				fbo.setColorAttachmentTex2D(0, planet.tideTex);
 				gl.viewport(0, 0, tideTexWidth, tideTexHeight);
@@ -1809,7 +1683,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 planet.forceMin = planet.measureMax;
 planet.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + planet.measureMax;
 
-				gl.viewport(0, 0, glutil.canvas.width, glutil.canvas.height);
+				gl.viewport.apply(gl, viewport);
 				gl.enable(gl.DEPTH_TEST);
 				gl.enable(gl.CULL_FACE);
 				
@@ -1955,7 +1829,7 @@ var showFPS = false;
 					//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
 					//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 					//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
-					pickObject.drawPoints(starfield.sceneObj);
+					//pickObject.drawPoints(starfield.sceneObj, function(i) { return starSystems[i] });
 				}
 				gl.enable(gl.DEPTH_TEST);
 			}
@@ -2095,9 +1969,7 @@ var showFPS = false;
 			if (planet.hide) continue;
 
 			if (planet.sceneObj && planet.visRatio >= planetPointVisRatio) {
-				if (!picking) {
-					updatePlanetClassSceneObj(planet);
-				}
+				updatePlanetClassSceneObj(planet);
 						
 				//update scene object
 				//don't forget one is shared among all planets
@@ -2152,7 +2024,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
 				
 				if (picking) {
-					pickObject.drawPlanet(planet.sceneObj);
+					pickObject.drawPlanet(planet.sceneObj, planet);
 				} else {
 					planet.sceneObj.draw();
 					addOverlayText(planet);
@@ -2243,7 +2115,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				if (picking) {
 					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
 					pointObj.attrs.vertex.updateData();
-					pickObject.drawPoints(pointObj);
+					pickObject.drawPoints(pointObj, planet);
 				} else if (showPlanetsAsDistantPoints) {
 					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
 					pointObj.attrs.vertex.updateData();
@@ -2288,8 +2160,9 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 
 		//draw milky way if we're far enough out
 		if (milkyWayObj) {
-			if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
-			
+			if (!picking &&
+				distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr)
+			{
 				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
 					milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
 					milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
@@ -2299,12 +2172,8 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				//apply milky way local transforms to mpc mv mat
 				gl.disable(gl.CULL_FACE);
 				gl.depthMask(false);
-				if (picking) {
-					pickObject.drawPoints(milkyWayObj);
-				} else {
-					milkyWayObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
-					milkyWayObj.draw();
-				}
+				milkyWayObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+				milkyWayObj.draw();
 				gl.enable(gl.CULL_FACE);
 				gl.depthMask(true);
 			}
@@ -2324,7 +2193,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				}
 
 				if (picking) {
-					pickObject.drawPoints(galaxyField.sceneObj);
+					//pickObject.drawPoints(galaxyField.sceneObj, function(i) { return getCachedGalaxy(i); });
 				} else {
 					galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
 					galaxyField.sceneObj.draw();
@@ -2357,6 +2226,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		}
 } else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 		if (!picking) {
+			var viewport = gl.getParameter(gl.VIEWPORT);
 			gl.viewport(0, 0, Math.min(canvas.width, smallBodyFBOTexWidth), Math.min(canvas.height, smallBodyFBOTexHeight));
 			smallBodyFBO.draw({
 				callback : function() {
@@ -2370,7 +2240,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			//smallBodyFBOTex.bind();
 			//gl.generateMipmap(gl.TEXTURE_2D);
 			//smallBodyFBOTex.unbind();
-			gl.viewport(0, 0, this.glutil.canvas.width, this.glutil.canvas.height);
+			gl.viewport.apply(gl, viewport);
 			gl.disable(gl.DEPTH_TEST);
 			hsvTex
 				.bind()
@@ -3759,6 +3629,7 @@ function initStars() {
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
+var allSmallBodyPointsBuffer;
 var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
@@ -3828,7 +3699,7 @@ var PointOctreeNode = makeClass({
 		smallBodySceneObj.attrs.vertex = this.buffer;
 		
 		if (picking) {
-			pickObject.drawPoints(smallBodySceneObj);
+			//pickObject.drawPoints(smallBodySceneObj, function(i) { return getCachedSmallBody(i);  });
 		} else {
 			smallBodySceneObj.draw();
 		}
@@ -3853,7 +3724,6 @@ var PointOctreeNode = makeClass({
 function initSmallBodies() {
 
 	var smallBodyShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -3866,7 +3736,6 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
-		fragmentPrecision : 'best',
 		fragmentCode : mlstr(function(){/*
 uniform float alpha;
 void main() {
@@ -3962,6 +3831,7 @@ void main() {
 		for (var i = 0; i < len; ++i) {
 			vtxs[i] = data.getFloat32(i * Float32Array.BYTES_PER_ELEMENT, true);
 		}
+		allSmallBodyPointsBuffer = vtxs;
 		
 		//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
 		var mins = [-6e+12, -6e+12, -6e+12];
@@ -4136,7 +4006,6 @@ function initGalaxies() {
 		galaxyField.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			shader : new ModifiedDepthShaderProgram({
-				vertexPrecision : 'best',
 				vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -4149,7 +4018,6 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
-				fragmentPrecision : 'best',
 				fragmentCode : mlstr(function(){/*
 uniform sampler2D tex;
 void main() {
@@ -4860,7 +4728,6 @@ void main() {
 
 	//renders a heat map from the float values of the 'tide' texture 
 	planetHeatMapTexShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCode : mlstr(function(){/*
 attribute vec2 vertex;		//lat/lon pairs
 uniform mat4 mvMat;
@@ -4884,7 +4751,6 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
-		fragmentPrecision : 'best',
 		fragmentCode : mlstr(function(){/*
 precision highp sampler2D;
 
@@ -4914,7 +4780,6 @@ void main() {
 	// (possibly need double precision in GLSL ... )
 	// ( use https://thasler.com/blog/?p=93 for emulated double precision in GLSL code)
 	planetSurfaceCalculationShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCode : mlstr(function(){/*
 attribute vec2 vertex;
 attribute vec2 texCoord;
@@ -4924,7 +4789,6 @@ void main() {
 	gl_Position = vec4(vertex, 0., 1.);
 }
 		*/}),
-		fragmentPrecision : 'best',
 		fragmentCode : mlstr(function(){/*
 precision highp sampler2D;
 
@@ -7118,7 +6982,6 @@ void main() {
 //init the "sky" cubemap (the galaxy background) once the texture for it loads
 function initSkyCube(skyTex) {
 	var cubeShader = new ModifiedDepthShaderProgram({
-		vertexPrecision : 'best',
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 varying vec3 vertexv;
@@ -7129,7 +6992,6 @@ void main() {
 	gl_Position = projMat * vec4(vertex, 1.);
 }
 */}),
-		fragmentPrecision : 'best',
 		fragmentCode : mlstr(function(){/*
 varying vec3 vertexv;
 uniform samplerCube skyTex;
@@ -7324,6 +7186,7 @@ function setOrbitTarget(newTarget) {
 }
 
 //TODO use glutil.mouseDir?
+/*
 function mouseRay() {
 	var viewX = glutil.view.pos[0];
 	var viewY = glutil.view.pos[1];
@@ -7347,6 +7210,7 @@ function mouseRay() {
 	var mouseDirLength = Math.sqrt(mouseDirX * mouseDirX + mouseDirY * mouseDirY + mouseDirZ * mouseDirZ);
 	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
+*/
 
 function initScene() {
 	//gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
@@ -7383,10 +7247,6 @@ function initScene() {
 			quat.multiply(glutil.view.angle, glutil.view.angle, tmpQ);
 			quat.normalize(glutil.view.angle, glutil.view.angle);
 		},
-		passiveMove : function() {
-			mouseDir = mouseRay();
-			pickObject.run(mouseDir, false);
-		},
 		zoom : function(zoomChange) {
 			var scale = Math.exp(-orbitZoomFactor * zoomChange);
 		
@@ -7399,10 +7259,12 @@ function initScene() {
 			
 			refreshOrbitTargetDistanceText();
 		},
+		passiveMove : function() {
+			pickObject.pick(false);
+		},
 		click : function() {
 			if (mouse.isDragging) return;
-			mouseDir = mouseRay();
-			pickObject.run(mouseDir, true);
+			pickObject.pick(true);
 		}
 	});
 
@@ -7421,9 +7283,6 @@ function update() {
 	//TODO instead of always showing the orbit target, show what it collapses into (moon -> earth -> solar system -> milky way)
 	// but this would mean unifying all the overlay text show/hide conditions ...
 	if (orbitTarget && orbitTarget.name && orbitTarget.pos) addOverlayText(orbitTarget);
-
-	//finish any searches
-	if (pickObject.searching) pickObject.run();
 	
 	/* converage angle on target planet * /
 	
