@@ -1162,18 +1162,199 @@ this is really the job of a separate thread, but I haven't taken the time to lea
 here's my thought: if the galaxies can't be selected / seen then resolve the search in one frame
 otherwise wait til the search is done
 */
-var ChooseNewOrbitObject = makeClass({ 
+var PickObject = makeClass({ 
 	init : function() {
+		this.fboTexWidth = 8;
+		this.fboTexHeight = 8;
+		this.fboTex = new glutil.Texture2D({
+			internalFormat : gl.RGBA,
+			format : gl.RGBA,
+			type : gl.UNSIGNED_BYTE,
+			width : this.fboTexWidth,
+			height : this.fboTexHeight,
+			magFilter : gl.NEAREST,
+			minFilter : gl.NEAREST,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			}
+		});	
+		
+		//do we need our own fbo?  this one needs depth info, so maybe
+		this.fbo = new glutil.Framebuffer({
+			width : this.fboTexWidth,
+			height : this.fboTexHeight,
+			useDepth : true
+		});
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTex.obj, 0);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		//this is the shader to use with point clouds 
+		//point sets pass 'vertexID' as a sequential list of numbers
+		this.pickPointShader = new ModifiedDepthShaderProgram({
+			vertexPrecision : 'best',
+			vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
+
+//there is no gl_VertexID in webgl ... so I'll just have to allocate 500k of sequential values
+//ch0 holds the first 11 bytes, ch1 holds the next 11
+attribute float vertexIDCh0;
+attribute float vertexIDCh1;
+
+uniform mat4 mvMat, projMat;
+varying vec3 vertexIDv;	
+
+void main() {
+	vertexIDv = vec3(
+		mod(vertexIDCh0, 256.), //first 8 bits of ch0
+		floor(vertexIDCh0 / 256.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
+		floor(vertexIDCh1 / 32.));	//last 6 of ch1
+	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
+	gl_Position.z = depthfunction(gl_Position); 
+}
+*/}),
+			fragmentPrecision : 'best',
+			fragmentCode : mlstr(function(){/*
+uniform vec3 startID;
+varying vec3 vertexIDv;
+void main() {
+	vec4 v = vec4(startID + vertexIDv, 0.);
+	vec3 carry = floor(v.xyz / 256.);
+	v.xyz = floor(v.xyz - 256. * carry);
+	v.yzw = floor(v.yzw + carry);
+	gl_FragColor = vec4(v.xyz, 1.);
+gl_FragColor = vec4(0., 1., 0., 1.);
+}
+*/}),
+			uniforms : {
+				startID : [0,0,0]
+			}
+		});
+
+		this.pickPlanetShader = new ModifiedDepthShaderProgram({
+			vertexPrecision : 'best',
+			vertexCode : mlstr(function(){/*
+attribute vec2 vertex;	//lat/lon pairs
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform vec3 pos;
+uniform vec4 angle;
+uniform float equatorialRadius;
+uniform float inverseFlattening;
+uniform float scaleExaggeration;
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
+void main() {
+	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
+	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
+	gl_Position = projMat * (mvMat * vec4(vtx3, 1.));
+	gl_Position.z = depthfunction(gl_Position);
+}
+*/}),
+			fragmentPrecision : 'best',
+			fragmentCode : mlstr(function(){/*
+uniform vec3 id;
+void main() {
+	gl_FragColor = vec4(id, 1.);
+gl_FragColor = vec4(1., 0., 0., 1.);
+}
+*/}),
+			uniforms : {
+				id : [0,0,0]
+			}
+		});
+
+		this.pickProjMat = mat4.create();
+
+		var maxPickID = 600000;	//max point size
+		//http://stackoverflow.com/questions/27874983/webgl-how-to-use-integer-attributes-in-glsl/27884245#27884245
+		var bitsPerChannel = 11;
+		var vertexIDCh0 = new Float32Array(maxPickID);
+		var vertexIDCh1 = new Float32Array(maxPickID);
+		//as big as our largest point buffer
+		for (var i = 0; i < maxPickID; ++i) {
+			var mask = (1 << (bitsPerChannel - 1)) - 1;
+			vertexIDCh0[i] = i & mask;
+			vertexIDCh1[i] = (i >> bitsPerChannel) & mask;
+		}
+		this.vertexIDCh0Buffer = new glutil.ArrayBuffer({data : vertexIDCh0, dim : 1});
+		this.vertexIDCh1Buffer = new glutil.ArrayBuffer({data : vertexIDCh1, dim : 1});
+
 		this.searchGalaxyCurrentSlice = 0;
 		this.searchGalaxyTotalSlices = 10;
 		this.searchSmallBodyCurrentNode = 0;
 
 		this.searchSets = [
 			this.searchPlanets,		//0 calls
-			this.searchSmallBodies,	//up to a lot of calls
+			//this.searchSmallBodies,	//up to a lot of calls
 			this.searchStars,		//0 calls
 			this.searchGalaxies		//up to 20 calls
 		];
+	},
+
+	pick : function() {
+		//pick window size
+		var sizeX = 5;
+		var sizeY = 5;
+		var x = mouse.pageX - (sizeX-1) / 2;
+		var y = (canvas.height - mouse.pageY - 1) - (sizeY-1) / 2; 
+		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
+		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
+		mat4.identity(this.pickProjMat);
+		mat4.translate(this.pickProjMat, this.pickProjMat, [(canvas.width - 2 * x) / sizeX, (canvas.height - 2 * y) / sizeY, 0]);
+		mat4.scale(this.pickProjMat, this.pickProjMat, [canvas.width / sizeX, canvas.height / sizeY, 1]);
+		mat4.multiply(this.pickProjMat, this.pickProjMat, glutil.scene.projMat);
+	
+		this.pickID = 127<<8;
+	
+		// run the render loop
+		// set the scene to 'picking'
+		// change the projection matrix to be a pick-matrix
+		drawScene(true);
+	},
+
+	getPickIDVec3 : function() {
+		var i = this.pickID;
+		return [i & 255, (i >> 8) & 255, (i >> 16) & 255];
+	},
+
+	drawPoints : function(sceneObj) {
+		this.pickPointShader.use();
+		this.pickPointShader.setAttrs({
+			vertex : assert(sceneObj.attrs.vertex),
+			vertexIDCh0 : assert(this.vertexIDCh0Buffer),
+			vertexIDCh1 : assert(this.vertexIDCh1Buffer)
+		});
+		sceneObj.setupMatrices();
+		this.pickPointShader.setUniforms({
+			projMat : this.pickProjMat,
+			mvMat : sceneObj.uniforms.mvMat,
+			startID : this.getPickIDVec3()
+		});
+		sceneObj.geometry.draw();
+		this.pickPointShader.useNone();
+		this.pickID = this.pickID + (sceneObj.attrs.vertex.count || (sceneObj.attrs.vertex.length / sceneObj.attrs.vertex.dim));
+	},
+
+	drawPlanet : function(sceneObj) {
+		this.pickPlanetShader.use();
+		this.pickPlanetShader.setAttrs({
+			vertex : sceneObj.attrs.vertex
+		});
+		sceneObj.setupMatrices();
+		this.pickPlanetShader.setUniforms({
+			projMat : this.pickProjMat,
+			mvMat : sceneObj.uniforms.mvMat,
+			pos : sceneObj.uniforms.pos,
+			angle : sceneObj.uniforms.angle,
+			equatorialRadius : sceneObj.uniforms.equatorialRadius,
+			inverseFlattening : sceneObj.uniforms.inverseFlattening,
+			scaleExaggeration : sceneObj.uniforms.scaleExaggeration,
+			id : this.getPickIDVec3()
+		});
+		sceneObj.geometry.draw();
+		this.pickPlanetShader.useNone();
+		++this.pickID;
 	},
 
 	run : function(mouseDir, doChoose) {
@@ -1354,13 +1535,12 @@ var ChooseNewOrbitObject = makeClass({
 		}
 	}
 });
-var chooseNewOrbitObject = new ChooseNewOrbitObject();
+var pickObject;
 
 function refreshMeasureText() {
 	$('#measureMin').text(orbitTarget.measureMin === undefined ? '' : (orbitTarget.measureMin.toExponential() + ' m/s^2'));
 	$('#measureMax').text(orbitTarget.measureMax === undefined ? '' : (orbitTarget.measureMax.toExponential() + ' m/s^2'));
 }
-
 
 
 var updatePlanetClassSceneObj;
@@ -1660,17 +1840,20 @@ var showFPS = false;
 	//used for new gpu update of tide tex
 	var updatePlanetStateBuffer = new Float32Array(1);
 
-	drawScene = function() {
+	drawScene = function(picking) {
 
-		frames++;
-		var thisTime = Date.now();
-		if (thisTime - lastFPSTime > 1000) {
-			var fps = frames * 1000 / (thisTime - lastFPSTime);
-			if (showFPS) {
-				console.log('fps '+fps);
+		//should picking count towards fps? nah
+		if (!picking) {
+			frames++;
+			var thisTime = Date.now();
+			if (thisTime - lastFPSTime > 1000) {
+				var fps = frames * 1000 / (thisTime - lastFPSTime);
+				if (showFPS) {
+					console.log('fps '+fps);
+				}
+				frames = 0;
+				lastFPSTime = thisTime;	
 			}
-			frames = 0;
-			lastFPSTime = thisTime;	
 		}
 
 
@@ -1679,7 +1862,7 @@ var showFPS = false;
 		//1) only update it if tide calcs are on
 		//2) only include planets that are enabled for tide calcs
 		// more discernment later when i make it general purpose
-		if (displayMethod != 'None') {
+		if (!(displayMethod == 'None' || picking)) {
 		
 			var targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
 			
@@ -1738,61 +1921,70 @@ var showFPS = false;
 		var distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
 		var distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
-		if (skyCubeObj) {
-			if (distFromSolarSystemInLyr < skyCubeFadeOutEndDistInLyr) {
-				var brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
-				
-				gl.disable(gl.DEPTH_TEST);
-				skyCubeObj.uniforms.brightness = brightness;
-				skyCubeObj.draw();
-				gl.enable(gl.DEPTH_TEST);
-			}
+		if (skyCubeObj &&
+			!picking &&
+			distFromSolarSystemInLyr < skyCubeFadeOutEndDistInLyr)
+		{
+			var brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
+			
+			gl.disable(gl.DEPTH_TEST);
+			skyCubeObj.uniforms.brightness = brightness;
+			skyCubeObj.draw();
+			gl.enable(gl.DEPTH_TEST);
 		}
 
 		if (showStars) {
 			vec3.scale(viewPosInv, glutil.view.pos, -1/starFieldRenderScale);
 			mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 			
-			if (distFromSolarSystemInLyr < starfieldMaxDistInLyr) {
-				if (starfield !== undefined && starfield.sceneObj !== undefined) {
-					gl.disable(gl.DEPTH_TEST);
+			if (distFromSolarSystemInLyr < starfieldMaxDistInLyr &&
+				starfield !== undefined &&
+				starfield.sceneObj !== undefined && 
+				orbitTarget !== undefined &&
+				orbitTarget.pos !== undefined)
+			{
+				gl.disable(gl.DEPTH_TEST);
+				if (!picking) {
 					starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
-					
-					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-						starfield.sceneObj.pos[0] = -orbitTarget.pos[0] / starFieldRenderScale;
-						starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
-						starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
-					}
-if (window.asdf === undefined) window.asdf = 1e-2;
-					starfield.sceneObj.uniforms.pointSize = asdf * canvas.width;// * Math.sqrt(distFromSolarSystemInPc);
-					
+					starfield.sceneObj.pos[0] = -orbitTarget.pos[0] / starFieldRenderScale;
+					starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
+					starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
+					starfield.sceneObj.uniforms.pointSize = 1e-2 * canvas.width;// * Math.sqrt(distFromSolarSystemInPc);
 					starfield.sceneObj.draw();
-					gl.enable(gl.DEPTH_TEST);
+				} else {
+					//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
+					//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
+					//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
+					pickObject.drawPoints(starfield.sceneObj);
 				}
+				gl.enable(gl.DEPTH_TEST);
 			}
-		
-			for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
-				var starSystem = starSystems[starSystemIndex];
-				
-				var withinSolarSystem = false;
-				for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
-					if (starSystem.planets[planetIndex].orbitVisRatio > 1) {
-						withinSolarSystem = true;
-						break;
+	
+			//add overlay text
+			if (!picking) {
+				for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
+					var starSystem = starSystems[starSystemIndex];
+					
+					var withinSolarSystem = false;
+					for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
+						if (starSystem.planets[planetIndex].orbitVisRatio > 1) {
+							withinSolarSystem = true;
+							break;
+						}
 					}
-				}
-				if (withinSolarSystem) continue;
-				
-				//if the star system is close enough
-				//TODO use luminance
-				var deltaX = starSystem.pos[0] - orbitTarget.pos[0];
-				var deltaY = starSystem.pos[1] - orbitTarget.pos[1];
-				var deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
-				var dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
-				//TODO if the dist is lower than the max radius of the star system then don't draw it
-				var ratio = dist / orbitTargetDistance
-				if (0.1 < ratio && ratio < 10) {
-					addOverlayText(starSystem);
+					if (withinSolarSystem) continue;
+					
+					//if the star system is close enough
+					//TODO use luminance
+					var deltaX = starSystem.pos[0] - orbitTarget.pos[0];
+					var deltaY = starSystem.pos[1] - orbitTarget.pos[1];
+					var deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
+					var dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
+					//TODO if the dist is lower than the max radius of the star system then don't draw it
+					var ratio = dist / orbitTargetDistance
+					if (0.1 < ratio && ratio < 10) {
+						addOverlayText(starSystem);
+					}
 				}
 			}
 		}
@@ -1800,22 +1992,28 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			var planet = orbitStarSystem.planets[planetIndex];
-			if (planet.hide) continue;
-			if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
-			if (orbitTarget.pos === undefined) continue;
-		
-			/*
-			if (planet.isComet) continue;
-			if (planet.isAsteroid) continue;
-			if (planet.parent !== solarSystem.planets[solarSystem.indexes.Sun] &&
-				planet !== solarSystem.planets[solarSystem.indexes.Sun] &&
-				planet !== solarSystem.planets[solarSystem.indexes.Moon]) continue;
-			*/
+		//draw debug lines 
+		if (!picking) {
+			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				var planet = orbitStarSystem.planets[planetIndex];
+				if (planet.hide) continue;
+				if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
+				if (orbitTarget.pos === undefined) continue;
+			
+				/*
+				if (planet.isComet) continue;
+				if (planet.isAsteroid) continue;
+				if (planet.parent !== solarSystem.planets[solarSystem.indexes.Sun] &&
+					planet !== solarSystem.planets[solarSystem.indexes.Sun] &&
+					planet !== solarSystem.planets[solarSystem.indexes.Moon]) continue;
+				*/
 
-			if (showLinesToOtherPlanets && orbitStarSystem == solarSystem) {
-				if (orbitTarget !== planet && (!planet.parent || planet.parent.index == 0)) {
+				//draw lines to other planets
+				if (showLinesToOtherPlanets &&
+					orbitStarSystem == solarSystem &&
+					orbitTarget !== planet &&
+					(!planet.parent || planet.parent.index == 0))
+				{
 					//while here, update lines
 
 					vec3.sub(delta, planet.pos, orbitTarget.pos);
@@ -1833,47 +2031,52 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 					lineObj.attrs.vertex.updateData();
 					lineObj.draw({uniforms : { color : planet.color }});
 				}
-			}
 
-			if (showVelocityVectors) {
-				vec3.sub(delta, planet.pos, orbitTarget.pos);
-				lineObj.attrs.vertex.data[0] = delta[0];
-				lineObj.attrs.vertex.data[1] = delta[1];
-				lineObj.attrs.vertex.data[2] = delta[2];
-				lineObj.attrs.vertex.data[3] = delta[0] + planet.vel[0] * velocityVectorScale;
-				lineObj.attrs.vertex.data[4] = delta[1] + planet.vel[1] * velocityVectorScale;
-				lineObj.attrs.vertex.data[5] = delta[2] + planet.vel[2] * velocityVectorScale;
-				lineObj.attrs.vertex.updateData();
-				lineObj.draw({uniforms : { color : planet.color }});
-			}
+				//show velocity vectors
+				if (showVelocityVectors) {
+					vec3.sub(delta, planet.pos, orbitTarget.pos);
+					lineObj.attrs.vertex.data[0] = delta[0];
+					lineObj.attrs.vertex.data[1] = delta[1];
+					lineObj.attrs.vertex.data[2] = delta[2];
+					lineObj.attrs.vertex.data[3] = delta[0] + planet.vel[0] * velocityVectorScale;
+					lineObj.attrs.vertex.data[4] = delta[1] + planet.vel[1] * velocityVectorScale;
+					lineObj.attrs.vertex.data[5] = delta[2] + planet.vel[2] * velocityVectorScale;
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : { color : planet.color }});
+				}
 
-			if (showRotationAxis) {
-				vec3.sub(delta, planet.pos, orbitTarget.pos);
-				var axis = [0,0,1];
-				vec3.quatZAxis(axis, planet.angle);
-				lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[3] = delta[0] + axis[0] * -2 * planet.radius;
-				lineObj.attrs.vertex.data[4] = delta[1] + axis[1] * -2 * planet.radius;
-				lineObj.attrs.vertex.data[5] = delta[2] + axis[2] * -2 * planet.radius;
-				lineObj.attrs.vertex.updateData();
-				lineObj.draw({uniforms : { color : planet.color }});
-			}
+				//show rotation axis
+				if (showRotationAxis) {
+					vec3.sub(delta, planet.pos, orbitTarget.pos);
+					var axis = [0,0,1];
+					vec3.quatZAxis(axis, planet.angle);
+					lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[2] = delta[2] + axis[2] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[3] = delta[0] + axis[0] * -2 * planet.radius;
+					lineObj.attrs.vertex.data[4] = delta[1] + axis[1] * -2 * planet.radius;
+					lineObj.attrs.vertex.data[5] = delta[2] + axis[2] * -2 * planet.radius;
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : { color : planet.color }});
+				}
 
-			if (showOrbitAxis && planet.orbitAxis) {
-				vec3.sub(delta, planet.pos, orbitTarget.pos);
-				lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[2] = delta[2] + planet.orbitAxis[2] * 2 * planet.radius;
-				lineObj.attrs.vertex.data[3] = delta[0] + planet.orbitAxis[0] * -2 * planet.radius;
-				lineObj.attrs.vertex.data[4] = delta[1] + planet.orbitAxis[1] * -2 * planet.radius;
-				lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
-				lineObj.attrs.vertex.updateData();
-				lineObj.draw({uniforms : { color : planet.color }});
+				//show orbit axis
+				if (showOrbitAxis && planet.orbitAxis) {
+					vec3.sub(delta, planet.pos, orbitTarget.pos);
+					lineObj.attrs.vertex.data[0] = delta[0] + planet.orbitAxis[0] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[1] = delta[1] + planet.orbitAxis[1] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[2] = delta[2] + planet.orbitAxis[2] * 2 * planet.radius;
+					lineObj.attrs.vertex.data[3] = delta[0] + planet.orbitAxis[0] * -2 * planet.radius;
+					lineObj.attrs.vertex.data[4] = delta[1] + planet.orbitAxis[1] * -2 * planet.radius;
+					lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : { color : planet.color }});
+				}
 			}
 		}
 
+		//update planet vis ratio
+		//for picking do we need to? TODO make sure the view doesn't change between the last render and a pick
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
@@ -1891,9 +2094,11 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 
-			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
-				updatePlanetClassSceneObj(planet);
-
+			if (planet.sceneObj && planet.visRatio >= planetPointVisRatio) {
+				if (!picking) {
+					updatePlanetClassSceneObj(planet);
+				}
+						
 				//update scene object
 				//don't forget one is shared among all planets
 				vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitTarget.pos);
@@ -1917,11 +2122,13 @@ if (window.asdf === undefined) window.asdf = 1e-2;
 				}
 
 				//webkit bug
-				planet.sceneObj.shader.use();
-				gl.uniform3fv(
-					gl.getUniformLocation(
-						planet.sceneObj.shader.obj, 'sunDir[0]'
-					), planet.sceneObj.uniforms.sunDir);
+				if (!picking) {
+					planet.sceneObj.shader.use();
+					gl.uniform3fv(
+						gl.getUniformLocation(
+							planet.sceneObj.shader.obj, 'sunDir[0]'
+						), planet.sceneObj.uniforms.sunDir);
+				}
 
 				//update ellipsoid parameters
 				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
@@ -1936,18 +2143,23 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				planet.sceneObj.attrs.tide = planet.tideBuffer;
 }
 
-//something is overriding this between the update calc and here 
-// making me need to re-assign it ...
-planet.sceneObj.uniforms.forceMin = planet.forceMin;
-planet.sceneObj.uniforms.forceMax = planet.forceMax;
+				//TODO FIXME something is overriding this between the update calc and here 
+				// making me need to re-assign it ...
+				planet.sceneObj.uniforms.forceMin = planet.forceMin;
+				planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
 				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
+				
+				if (picking) {
+					pickObject.drawPlanet(planet.sceneObj);
+				} else {
+					planet.sceneObj.draw();
+					addOverlayText(planet);
+				}
 
-				planet.sceneObj.draw();
-addOverlayText(planet);
-
-				if (showLatAndLonLines) {
+				//show latitude and longitude lines
+				if (showLatAndLonLines && !picking) {
 					vec3.copy(planetLatLonObj.pos, planet.sceneObj.uniforms.pos);
 					quat.copy(planetLatLonObj.angle, planet.sceneObj.uniforms.angle);
 					planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
@@ -1961,12 +2173,15 @@ addOverlayText(planet);
 		//draw rings and transparent objects last
 		//disable depth writing so orbits are drawn in front and behind them
 		//do this last so (without depth writing) other planets in the background don't show up in front of the rings
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			var planet = orbitStarSystem.planets[planetIndex];
-			if (planet.hide) continue;
+		if (!picking) {
+			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				var planet = orbitStarSystem.planets[planetIndex];
+				if (planet.hide) continue;
 
-			if (planet.sceneObj && (planet.visRatio >= planetPointVisRatio)) {
-				if (planet.ringObj !== undefined) {
+				if (planet.sceneObj &&
+					planet.visRatio >= planetPointVisRatio &&
+					planet.ringObj !== undefined)
+				{
 					gl.disable(gl.CULL_FACE);
 					gl.depthMask(false);
 					//to provide to the ring shader:
@@ -1986,7 +2201,6 @@ addOverlayText(planet);
 					planet.ringObj.uniforms.lookingAtLitSide = Math.clamp(.5 + .5 * lookingAtLitSide, 0, 1);
 					var viewDotSun = vec3.dot(viewfwd, sunDir);
 					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;	//clamp(sqrt(sqrt(dot( normalize(sun.pos - planet.pos), axis ) * dot( viewfwd, axis ))), 0., 1.) * -.5 + .5
-
 
 					//have to recalculate these because the uniforms are shared, so they've been overwritten
 					//...and the ring objs have to be drawn last for transparency reasons...
@@ -2010,7 +2224,6 @@ addOverlayText(planet);
 							planet.ringObj.shader.obj, 'sunDir[0]'
 						), planet.ringObj.uniforms.sunDir);
 
-
 					planet.ringObj.draw();
 
 					gl.depthMask(true);
@@ -2027,7 +2240,11 @@ addOverlayText(planet);
 			if (planet.hide) continue;
 
 			if (!planet.sceneObj || planet.visRatio < planetPointVisRatio) {
-				if (showPlanetsAsDistantPoints) {
+				if (picking) {
+					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
+					pointObj.attrs.vertex.updateData();
+					pickObject.drawPoints(pointObj);
+				} else if (showPlanetsAsDistantPoints) {
 					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
 					pointObj.attrs.vertex.updateData();
 					pointObj.draw({
@@ -2070,41 +2287,47 @@ addOverlayText(planet);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		//draw milky way if we're far enough out
-		{
-			if (milkyWayObj) {
-				if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
-					var alpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
-				
-					if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-						milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
-						milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
-						milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
-					}
-				
-					//apply milky way local transforms to mpc mv mat
-					gl.disable(gl.CULL_FACE);
-					gl.depthMask(false);
-					milkyWayObj.uniforms.fadeInAlpha = alpha;
-					milkyWayObj.draw();
-					gl.enable(gl.CULL_FACE);
-					gl.depthMask(true);
+		if (milkyWayObj) {
+			if (distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr) {
+			
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
+					milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
+					milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
 				}
-				
-				//wait for the milky way obj to load and grab its texture
-				//TODO work out loading and what a mess it has become
-				if (showGalaxies && galaxyField) {
-					if (galaxyField.sceneObj) {
-						galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
-					
-						if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-							galaxyField.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
-							galaxyField.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
-							galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
-						}
+			
+				//apply milky way local transforms to mpc mv mat
+				gl.disable(gl.CULL_FACE);
+				gl.depthMask(false);
+				if (picking) {
+					pickObject.drawPoints(milkyWayObj);
+				} else {
+					milkyWayObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+					milkyWayObj.draw();
+				}
+				gl.enable(gl.CULL_FACE);
+				gl.depthMask(true);
+			}
+			
+			//wait for the milky way obj to load and grab its texture
+			//TODO work out loading and what a mess it has become
+			if (showGalaxies &&
+				galaxyField &&
+				galaxyField.sceneObj)
+			{
+				galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
+			
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					galaxyField.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
+					galaxyField.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
+					galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+				}
 
-						galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
-						galaxyField.sceneObj.draw();
-					}
+				if (picking) {
+					pickObject.drawPoints(galaxyField.sceneObj);
+				} else {
+					galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
+					galaxyField.sceneObj.draw();
 				}
 			}
 		}
@@ -2120,7 +2343,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			if (showAllSmallBodiesAtOnce) {
 				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
 					var node = allSmallBodyNodes[i];
-					node.draw(distFromSolarSystemInM);
+					node.draw(distFromSolarSystemInM, picking);
 				}
 			} else {	//good for selective rendering but bad for all rendering
 				var drawList = [];
@@ -2128,39 +2351,44 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 				smallBodyRootNode.prepDraw(drawList, tanFovY);
 				for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
 					var node = drawList.splice(drawList.length-1, 1)[0];
-					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM);
+					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
 				}
 			}
 		}
 } else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
-		gl.viewport(0, 0, smallBodyFBOTexWidth, smallBodyFBOTexHeight);
-		smallBodyFBO.draw({
-			callback : function() {
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-				for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
-					var node = allSmallBodyNodes[i];
-					node.draw(distFromSolarSystemInM);
+		if (!picking) {
+			gl.viewport(0, 0, Math.min(canvas.width, smallBodyFBOTexWidth), Math.min(canvas.height, smallBodyFBOTexHeight));
+			smallBodyFBO.draw({
+				callback : function() {
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+					for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
+						var node = allSmallBodyNodes[i];
+						node.draw(distFromSolarSystemInM);
+					}
 				}
-			}
-		});
-		//smallBodyFBOTex.bind();
-		//gl.generateMipmap(gl.TEXTURE_2D);
-		//smallBodyFBOTex.unbind();
-		gl.viewport(0, 0, this.glutil.canvas.width, this.glutil.canvas.height);
-		gl.disable(gl.DEPTH_TEST);
-		hsvTex
-			.bind()
-			.setWrap({s : gl.REPEAT, t : gl.REPEAT})
-			.unbind();
-		glutil.unitQuad.draw({
-			shader : smallBodyOverlayShader,
-			uniforms : {
-				logBase : smallBodyOverlayLogBase
-			},
-			texs : [smallBodyFBOTex, hsvTex],
-			blend : [gl.SRC_ALPHA, gl.ONE]
-		});
-		gl.enable(gl.DEPTH_TEST);
+			});
+			//smallBodyFBOTex.bind();
+			//gl.generateMipmap(gl.TEXTURE_2D);
+			//smallBodyFBOTex.unbind();
+			gl.viewport(0, 0, this.glutil.canvas.width, this.glutil.canvas.height);
+			gl.disable(gl.DEPTH_TEST);
+			hsvTex
+				.bind()
+				.setWrap({s : gl.REPEAT, t : gl.REPEAT})
+				.unbind();
+			glutil.unitQuad.draw({
+				shader : smallBodyOverlayShader,
+				uniforms : {
+					logBase : smallBodyOverlayLogBase,
+					texSize : [
+						Math.min(canvas.width / smallBodyFBOTexWidth, 1),
+						Math.min(canvas.height / smallBodyFBOTexHeight, 1)]
+				},
+				texs : [smallBodyFBOTex, hsvTex],
+				blend : [gl.SRC_ALPHA, gl.ONE]
+			});
+			gl.enable(gl.DEPTH_TEST);
+		}
 } //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 } //SHOW_ALL_SMALL_BODIES_AT_ONCE
 		
@@ -2168,27 +2396,28 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		//draw mouse-over highlight
-		if (mouseOverTarget !== undefined) {
-			var planet = mouseOverTarget;
-			if (planet !== undefined) {
-				gl.disable(gl.DEPTH_TEST);
-				pointObj.attrs.vertex.data[0] = planet.pos[0] - orbitTarget.pos[0];
-				pointObj.attrs.vertex.data[1] = planet.pos[1] - orbitTarget.pos[1];
-				pointObj.attrs.vertex.data[2] = planet.pos[2] - orbitTarget.pos[2];
-				pointObj.attrs.vertex.updateData();
-				pointObj.draw({
-					uniforms : {
-						color : [0,1,0,1],
-						pointSize : 8
-					},
-					blend : [gl.SRC_ALPHA, gl.ONE]
-				});
-				gl.enable(gl.DEPTH_TEST);
-			}
+		if (mouseOverTarget !== undefined &&
+			!picking)
+		{
+			gl.disable(gl.DEPTH_TEST);
+			pointObj.attrs.vertex.data[0] = mouseOverTarget.pos[0] - orbitTarget.pos[0];
+			pointObj.attrs.vertex.data[1] = mouseOverTarget.pos[1] - orbitTarget.pos[1];
+			pointObj.attrs.vertex.data[2] = mouseOverTarget.pos[2] - orbitTarget.pos[2];
+			pointObj.attrs.vertex.updateData();
+			pointObj.draw({
+				uniforms : {
+					color : [0,1,0,1],
+					pointSize : 8
+				},
+				blend : [gl.SRC_ALPHA, gl.ONE]
+			});
+			gl.enable(gl.DEPTH_TEST);
 		}
 
 		//draw orbits
-		if (showOrbits) {
+		if (showOrbits &&
+			!picking)
+		{
 			window.orbitPathsDrawn = 0;
 			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 				var planet = orbitStarSystem.planets[planetIndex];
@@ -2232,7 +2461,9 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			}
 		}
 
-		if (showGravityWell) {
+		if (showGravityWell &&
+			!picking)
+		{
 			//do transformation math in double
 			//TODO just give gl-matrix a type param in its init
 			var glMvMat = [];
@@ -2310,8 +2541,6 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 	};
 })();
 
-//quad of tris
-var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
 var latitudeMin = -90;
 var latitudeMax = 90;
 var latitudeStep = 5;
@@ -3536,7 +3765,7 @@ var allSmallBodyNodes = [];
 var maxSmallBodyNodesToDraw = 400;
 var showAllSmallBodiesAtOnce = false;
 var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
-var smallBodyPointAlpha = .5;
+var smallBodyPointAlpha = .75;
 var smallBodySceneObj;
 var smallBodyNodesDrawnThisFrame = []; 
 
@@ -3579,8 +3808,8 @@ var PointOctreeNode = makeClass({
 		}
 		drawList.splice(0, 0, this);
 	},
-	drawAndAdd : function(drawList, tanFovY, distInM) {
-		this.draw(distInM);
+	drawAndAdd : function(drawList, tanFovY, distInM, picking) {
+		this.draw(distInM, picking);
 		smallBodyNodesDrawnThisFrame.push(this);
 
 		if (this.children !== undefined) {
@@ -3592,12 +3821,17 @@ var PointOctreeNode = makeClass({
 			}
 		}
 	},
-	draw : function(distInM) {
+	draw : function(distInM, picking) {
 		smallBodySceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM);
 		smallBodySceneObj.uniforms.alpha = smallBodyPointAlpha;
 		smallBodySceneObj.geometry = this.geometry;
 		smallBodySceneObj.attrs.vertex = this.buffer;
-		smallBodySceneObj.draw();
+		
+		if (picking) {
+			pickObject.drawPoints(smallBodySceneObj);
+		} else {
+			smallBodySceneObj.draw();
+		}
 	},
 	find : function(x,y,z) {
 		if (this.children !== undefined) {
@@ -3628,7 +3862,7 @@ uniform float pointSize;
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / gl_Position.w;
-	gl_PointSize = clamp(gl_PointSize, .25, 10.);
+	gl_PointSize = clamp(gl_PointSize, .25, 5.);
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -3636,7 +3870,7 @@ void main() {
 		fragmentCode : mlstr(function(){/*
 uniform float alpha;
 void main() {
-	gl_FragColor = vec4(1., 1., 1., alpha);
+	gl_FragColor = vec4(.75, .75, .75, alpha);
 }
 */}),
 	});
@@ -3649,7 +3883,7 @@ void main() {
 			pointSize : smallBodyPointSize,
 			alpha : smallBodyPointAlpha
 		},
-		blend : [gl.SRC_ALPHA, gl.ONE],
+		blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 		parent : null,
 		static : true
 	});
@@ -3688,9 +3922,10 @@ void main() {
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
 uniform float logBase;
+uniform vec2 texSize;
 varying vec2 tc;
 void main() {
-	float alpha = texture2D(tex, tc).x;
+	float alpha = texture2D(tex, tc * texSize).x;
 	alpha = log(alpha + 1.) / logBase;
 	gl_FragColor = texture2D(hsvTex, vec2(alpha, .5));
 	gl_FragColor.a = min(alpha * 100., 1.);
@@ -3699,7 +3934,8 @@ void main() {
 		uniforms : {
 			tex : 0,
 			hsvTex : 1,
-			logBase : 1
+			logBase : 1,
+			texSize : [1,1]
 		}
 	});
 } //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
@@ -4300,6 +4536,12 @@ vec3 geodeticPosition(vec2 latLon) {
 }
 */});
 
+var quatRotateCode = mlstr(function(){/*
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+*/});
+
 var coordinateSystemCode = 
 'const mat3 eclipticalToGalactic = '+mat3ToGLSL(eclipticalToGalacticTransform)+';\n'
 +'const mat3 equatorialToEcliptical = '+mat3ToGLSL(equatorialToEclipticalTransform)+';\n';
@@ -4329,11 +4571,7 @@ uniform float scaleExaggeration;	//exhaggerate planet sizes
 varying vec3 lightDir[NUM_STARS];		//light position
 varying vec3 normal;		//surface normal
 
-*/}) + geodeticPositionCode + mlstr(function(){/*
-
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -4386,11 +4624,7 @@ varying vec2 texCoordv;
 varying vec3 lightDir[NUM_STARS];
 varying vec3 normal;
 
-*/}) + geodeticPositionCode + mlstr(function(){/*
-
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -4444,11 +4678,8 @@ varying vec3 modelVertexv;
 varying vec3 normal;
 varying vec2 texCoordv;
 varying vec3 lightDir[NUM_STARS];
-*/}) + geodeticPositionCode + mlstr(function(){/*
 
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -4464,8 +4695,9 @@ void main() {
 }
 */}),
 		fragmentCode :
-'#define NUM_STARS '+numberOfStars+'\n'+
-		mlstr(function(){/*
+'#define NUM_STARS '+numberOfStars+'\n'
+		+ quatRotateCode
+		+ mlstr(function(){/*
 varying vec2 texCoordv;
 varying vec3 lightDir[NUM_STARS];
 varying vec3 normal;
@@ -4476,10 +4708,6 @@ uniform float ambient;
 uniform float ringMinRadius;
 uniform float ringMaxRadius;
 uniform vec4 angle;
-
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
 
 float ringIntersect(vec3 startPos, vec3 dir) {
 	if (dot(startPos, dir) < 0.) return -1.;	//occluded by planet
@@ -4559,11 +4787,7 @@ uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
 
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-
-		*/}) + geodeticPositionCode + mlstr(function(){/*
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
@@ -4601,11 +4825,7 @@ uniform float scaleExaggeration;
 varying float tidev;
 varying vec2 texCoordv;
 
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-
-*/}) + geodeticPositionCode + mlstr(function(){/*
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -4652,11 +4872,7 @@ uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;
 varying vec2 texCoordv;
 
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-
-*/}) + geodeticPositionCode + mlstr(function(){/*
+*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -4734,12 +4950,9 @@ uniform bvec4 flags;
 
 */}) 
 + 'const float gravitationalConstant = '+(gravitationalConstant*1e+11)+';	// m^3 / (kg * s^2)\n'
-+ geodeticPositionCode + mlstr(function(){/*
-
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-
++ geodeticPositionCode 
++ quatRotateCode 
++ mlstr(function(){/*
 
 //while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
 //1e+19 is still an upper bound for our floating point numbers
@@ -5501,6 +5714,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 
 	//init our planet shaders
 
+	var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
 	(function(){
 		var triIndexArray = [];
 		var latLonIndexArray = [];
@@ -5687,6 +5901,10 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		parent : null,
 		static : true
 	});	
+	
+	//initialize here after webgl canvas is up	
+	pickObject = new PickObject();
+	
 	var planetsDone = 0;
 
 	for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { (function(){
@@ -5762,23 +5980,19 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	(function(){
 		var jupiterRingShader = new ModifiedDepthShaderProgram({
 			//vertex code matches Saturn
-			vertexCode : mlstr(function(){/*
+			vertexCode :
+quatRotateCode
++ mlstr(function(){/*
 #define M_PI 3.1415926535897931
 attribute vec2 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float ringMinRadius;
 uniform float ringMaxRadius;
-
 uniform vec3 pos;
 uniform vec4 angle;
-
 varying vec2 texCoordv;
 varying vec3 worldPosv;	//varying in world coordinates
-
-vec3 quatRotate( vec4 q, vec3 v ){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
 
 void main() {
 	texCoordv = vertex;
@@ -5914,7 +6128,9 @@ void main() {
 	//Saturn's rings
 	(function(){
 		var saturnRingShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
+			vertexCode : 
+quatRotateCode
++ mlstr(function(){/*
 #define M_PI 3.1415926535897931
 attribute vec2 vertex;
 uniform mat4 mvMat;
@@ -5930,10 +6146,6 @@ uniform vec4 angle;
 
 varying vec2 texCoordv;
 varying vec3 worldPosv;	//varying in world coordinates
-
-vec3 quatRotate( vec4 q, vec3 v ){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
 
 void main() {
 	texCoordv = vertex;
@@ -6922,13 +7134,11 @@ void main() {
 varying vec3 vertexv;
 uniform samplerCube skyTex;
 uniform float brightness;
-
 //uniform vec4 angle;
 uniform vec4 viewAngle;
-vec3 quatRotate( vec4 q, vec3 v ){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-*/}) + coordinateSystemCode + mlstr(function(){/*
+
+*/}) + coordinateSystemCode + quatRotateCode + mlstr(function(){/*
+
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
@@ -7175,7 +7385,7 @@ function initScene() {
 		},
 		passiveMove : function() {
 			mouseDir = mouseRay();
-			chooseNewOrbitObject.run(mouseDir, false);
+			pickObject.run(mouseDir, false);
 		},
 		zoom : function(zoomChange) {
 			var scale = Math.exp(-orbitZoomFactor * zoomChange);
@@ -7192,7 +7402,7 @@ function initScene() {
 		click : function() {
 			if (mouse.isDragging) return;
 			mouseDir = mouseRay();
-			chooseNewOrbitObject.run(mouseDir, true);
+			pickObject.run(mouseDir, true);
 		}
 	});
 
@@ -7213,7 +7423,7 @@ function update() {
 	if (orbitTarget && orbitTarget.name && orbitTarget.pos) addOverlayText(orbitTarget);
 
 	//finish any searches
-	if (chooseNewOrbitObject.searching) chooseNewOrbitObject.run();
+	if (pickObject.searching) pickObject.run();
 	
 	/* converage angle on target planet * /
 	
@@ -7371,7 +7581,7 @@ function update() {
 
 	glutil.scene.setupMatrices();
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	drawScene();
+	drawScene(false);
 	glutil.clearAlpha();
 
 	requestAnimFrame(update);
