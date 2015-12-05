@@ -1219,14 +1219,17 @@ void main() {
 		mod(vertexIDCh0, 256.), //first 8 bits of ch0
 		floor(vertexIDCh0 / 256.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
+	
+	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
 
 	gl_PointSize = pointSize;
 	if (pointSizeScaleWithDist) gl_PointSize /= gl_Position.w;
+	
 	//if a point is too small then discard it by throwing it offscreen
-	if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., 100.);
+	if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., -2.);
+	
 	gl_PointSize = clamp(gl_PointSize, pointSizeMin, pointSizeMax);
 
-	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
 	gl_Position.z = depthfunction(gl_Position); 
 }
 */}),
@@ -3780,7 +3783,7 @@ var PointOctreeNode = makeClass({
 		}
 	},
 	draw : function(distInM, tanFovY, picking) {
-		var pointSize = smallBodyPointSize * (!picking ? canvas.width : pickObject.fboTexWidth) * Math.sqrt(distInM) / tanFovY;
+		var pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM) / tanFovY;
 		smallBodySceneObj.uniforms.pointSize = pointSize;
 		smallBodySceneObj.uniforms.alpha = smallBodyPointAlpha;
 		smallBodySceneObj.geometry = this.geometry;
