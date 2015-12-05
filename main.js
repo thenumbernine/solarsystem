@@ -3755,6 +3755,8 @@ var PointOctreeNode = makeClass({
 		//TODO test occlusion
 		
 		this.visRatio = radius / (dist * tanFovY);
+		if (this.visRatio < .03) return;	//too-small threshold
+		
 		//insert sorted by visRatio, lowest to highest, starting at the back (optimistic)
 		for (var i = drawList.length-1; i >= 0; --i) {
 			if (drawList[i].visRatio < this.visRatio) {
