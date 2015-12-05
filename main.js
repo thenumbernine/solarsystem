@@ -996,19 +996,19 @@ function getCachedGalaxy(index) {
 }
 
 var cachedSmallBodies = {};
-function getCachedSmallBody(index,x,y,z) {
-	if (cachedSmallBodies[index]) return cachedSmallBodies[index];
-	var buffer = allSmallBodyPointsBuffer;
-	var x = buffer.data[3*index+0];
-	var y = buffer.data[3*index+1];
-	var z = buffer.data[3*index+2];
+function getCachedSmallBody(node,localIndex) {
+	var buffer = node.buffer;
+	var x = buffer.data[3*localIndex+0];
+	var y = buffer.data[3*localIndex+1];
+	var z = buffer.data[3*localIndex+2];
+	var globalIndex = node.indexes[localIndex];
+	if (cachedSmallBodies[globalIndex]) return cachedSmallBodies[globalIndex];
 	var smallBody = {
-		name : 'Small Body #'+index,	//galaxyNames[index].id,
-		index : index,
+		name : 'Small Body Node #'+node.index+' Pt.#'+localIndex+' Gid#'+globalIndex,
 		pos : [x,y,z],
 		radius : 1
 	};
-	cachedSmallBodies[index] = smallBody;
+	cachedSmallBodies[globalIndex] = smallBody;
 	return smallBody;
 }
 
@@ -1207,6 +1207,11 @@ attribute float vertexIDCh0;
 attribute float vertexIDCh1;
 
 uniform mat4 mvMat, projMat;
+uniform float pointSize;
+uniform float pointSizeMin;
+uniform float pointSizeMax;
+uniform bool pointSizeScaleWithDist;
+
 varying vec3 vertexIDv;	
 
 void main() {
@@ -1215,9 +1220,12 @@ void main() {
 		floor(vertexIDCh0 / 256.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
 
-	//TODO point size override for each point field
-	gl_PointSize = 4.;
-	
+	gl_PointSize = pointSize;
+	if (pointSizeScaleWithDist) gl_PointSize /= gl_Position.w;
+	//if a point is too small then discard it by throwing it offscreen
+	if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., 100.);
+	gl_PointSize = clamp(gl_PointSize, pointSizeMin, pointSizeMax);
+
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
 	gl_Position.z = depthfunction(gl_Position); 
 }
@@ -1234,7 +1242,11 @@ void main() {
 }
 */}),
 			uniforms : {
-				startID : [0,0,0]
+				startID : [0,0,0],
+				pointSize : 1,
+				pointSizeMin : 0,
+				pointSizeMax : 1,
+				pointSizeScaleWithDist : true
 			}
 		});
 
@@ -1286,7 +1298,7 @@ void main() {
 		this.callbacks = [];
 	},
 	
-	pick : function(doChoose) {
+	pick : function(doChoose, skipProjection) {
 		var viewport = gl.getParameter(gl.VIEWPORT);
 		
 		//pick window size
@@ -1298,40 +1310,49 @@ void main() {
 		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
 		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
 		mat4.identity(this.pickProjMat);
+if (!skipProjection) {
 		mat4.translate(this.pickProjMat, this.pickProjMat, [(canvas.width - 2 * x) / sizeX, (canvas.height - 2 * y) / sizeY, 0]);
 		mat4.scale(this.pickProjMat, this.pickProjMat, [canvas.width / sizeX, canvas.height / sizeY, 1]);
+}
 		mat4.multiply(this.pickProjMat, this.pickProjMat, glutil.scene.projMat);
 
-		this.startPickID = 127<<8;
+		this.startPickID = 1;
 		this.pickID = this.startPickID;
 		this.callbacks.length = 0;
 		
 		var foundIndex = 0;
+if (!skipProjection) {
 		gl.viewport(0, 0, sizeX, sizeY);
-		this.fbo.draw({
-			callback : function() {
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
-				
-				// run the render loop
-				// set the scene to 'picking'
-				// change the projection matrix to be a pick-matrix
-				drawScene(true);
+}
+		var fboCallback = function() {
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
+			
+			// run the render loop
+			// set the scene to 'picking'
+			// change the projection matrix to be a pick-matrix
+			drawScene(true);
 
-				var pixels = new Float32Array(sizeX * sizeY * 4);
-				gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
-				for (var j = 0; j < sizeY; ++j) {
-					for (var i = 0; i < sizeX; ++i) {
-						var r = pixels[0 + 4 * (i + sizeX * j)];
-						var g = pixels[1 + 4 * (i + sizeX * j)];
-						var b = pixels[2 + 4 * (i + sizeX * j)];
-						var a = pixels[3 + 4 * (i + sizeX * j)];
-						foundIndex = r | (g << 8) | (b << 16);
-						if (foundIndex) break;
-					}
+if (!skipProjection) {
+			var pixels = new Float32Array(sizeX * sizeY * 4);
+			gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
+			for (var j = 0; j < sizeY; ++j) {
+				for (var i = 0; i < sizeX; ++i) {
+					var r = pixels[0 + 4 * (i + sizeX * j)];
+					var g = pixels[1 + 4 * (i + sizeX * j)];
+					var b = pixels[2 + 4 * (i + sizeX * j)];
+					var a = pixels[3 + 4 * (i + sizeX * j)];
+					foundIndex = r | (g << 8) | (b << 16);
 					if (foundIndex) break;
 				}
+				if (foundIndex) break;
 			}
-		});
+}
+		};
+if (skipProjection) {
+	fboCallback();
+} else {
+	this.fbo.draw({callback : fboCallback});
+}
 
 		var body = undefined;
 		for (var i = 0; i < this.callbacks.length; ++i) {
@@ -1358,7 +1379,7 @@ void main() {
 		gl.viewport.apply(gl, viewport);
 	},
 
-	registerBody : function(callbackObj, count) {
+	registerCallback : function(callbackObj, count) {
 		var i = this.pickID;
 		this.callbacks.push({
 			start : this.pickID,
@@ -1369,8 +1390,23 @@ void main() {
 		return [i & 255, (i >> 8) & 255, (i >> 16) & 255];
 	},
 
-	drawPoints : function(sceneObj, callbackObj) {
-		var count = sceneObj.attrs.vertex.count || (sceneObj.attrs.vertex.length / sceneObj.attrs.vertex.dim);
+	drawPoints : function(args) {
+		var sceneObj = assertExists(args, 'sceneObj');
+		var callbackObj = assertExists(args, 'targetCallback');
+		var pointSize = assertExists(args, 'pointSize');
+		var pointSizeMin = args.pointSizeMin !== undefined ? args.pointSizeMin : -Infinity;
+		var pointSizeMax = args.pointSizeMax !== undefined ? args.pointSizeMax : Infinity;
+		var pointSizeScaleWithDist = !!args.pointSizeScaleWithDist;
+		var vertexAttr = sceneObj.attrs.vertex;
+		assertExists(vertexAttr, 'isa');
+		var vertexBuffer = undefined;
+		if (vertexAttr.isa(glutil.Attribute)) {
+			vertexBuffer = vertexAttr.buffer;
+		} else if (vertexAttr.isa(glutil.ArrayBuffer)) {
+			vertexBuffer = vertexAttr;
+		}
+		
+		var count = vertexBuffer.count || (vertexBuffer.data.length / vertexBuffer.dim);
 		this.pickPointShader.use();
 		this.pickPointShader.setAttrs({
 			vertex : assert(sceneObj.attrs.vertex),
@@ -1381,7 +1417,11 @@ void main() {
 		this.pickPointShader.setUniforms({
 			projMat : this.pickProjMat,
 			mvMat : sceneObj.uniforms.mvMat,
-			startID : this.registerBody(callbackObj, count)
+			startID : this.registerCallback(callbackObj, count),
+			pointSize : pointSize,
+			pointSizeMin : pointSizeMin,
+			pointSizeMax : pointSizeMax,
+			pointSizeScaleWithDist : pointSizeScaleWithDist
 		});
 		sceneObj.geometry.draw();
 		this.pickPointShader.useNone();
@@ -1401,7 +1441,7 @@ void main() {
 			equatorialRadius : sceneObj.uniforms.equatorialRadius,
 			inverseFlattening : sceneObj.uniforms.inverseFlattening,
 			scaleExaggeration : sceneObj.uniforms.scaleExaggeration,
-			id : this.registerBody(callbackObj, 1)
+			id : this.registerCallback(callbackObj, 1)
 		});
 		sceneObj.geometry.draw();
 		this.pickPlanetShader.useNone();
@@ -1818,18 +1858,38 @@ var showFPS = false;
 				orbitTarget.pos !== undefined)
 			{
 				gl.disable(gl.DEPTH_TEST);
+				var pointSize = 1000 * canvas.width * Math.sqrt(distFromSolarSystemInMpc) * metersPerUnits.pc / starFieldRenderScale / tanFovY;
 				if (!picking) {
 					starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
 					starfield.sceneObj.pos[0] = -orbitTarget.pos[0] / starFieldRenderScale;
 					starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
 					starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
-					starfield.sceneObj.uniforms.pointSize = 1e-2 * canvas.width;// * Math.sqrt(distFromSolarSystemInPc);
+					starfield.sceneObj.uniforms.pointSize = pointSize;
 					starfield.sceneObj.draw();
 				} else {
 					//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
 					//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 					//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
-					//pickObject.drawPoints(starfield.sceneObj, function(i) { return starSystems[i] });
+					if (allowSelectStars &&
+					//also TODO:
+					//if (list === starfield && target == orbitStarSystem) continue;
+					//if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue
+					//if (target.hide) continue;
+					//...and then there's the fact that the old ray code only checked the exoplanets
+					// whereas this is rendering all hyg stars ...
+					//so I'll turn it off for now
+						false)
+					{
+						pickObject.drawPoints({
+							sceneObj : starfield.sceneObj,
+							targetCallback : function(i) { return starSystems[i]; },
+							pointSize : pointSize,
+							pointSizeScaleWithDist : true,
+							//defined in shader
+							pointSizeMin : .25,
+							pointSizeMax : 5
+						});
+					}
 				}
 				gl.enable(gl.DEPTH_TEST);
 			}
@@ -2113,9 +2173,17 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 
 			if (!planet.sceneObj || planet.visRatio < planetPointVisRatio) {
 				if (picking) {
-					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
-					pointObj.attrs.vertex.updateData();
-					pickObject.drawPoints(pointObj, planet);
+					//condition to skip moons ...
+					if (planet.orbitVisRatio === undefined || planet.orbitVisRatio >= .03) { 
+						vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
+						pointObj.attrs.vertex.updateData();
+						pickObject.drawPoints({
+							sceneObj : pointObj,
+							targetCallback : planet,
+							pointSize : 4,
+							pointSizeScaleWithDist : false
+						});
+					}
 				} else if (showPlanetsAsDistantPoints) {
 					vec3.sub(pointObj.attrs.vertex.data, planet.pos, orbitTarget.pos);
 					pointObj.attrs.vertex.updateData();
@@ -2192,10 +2260,25 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 					galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
 				}
 
+				var pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width * metersPerUnits.Mpc / interGalacticRenderScale / tanFovY;
 				if (picking) {
-					//pickObject.drawPoints(galaxyField.sceneObj, function(i) { return getCachedGalaxy(i); });
+					if (allowSelectGalaxies &&
+						closestGalaxyDistanceInM < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance)
+					//TODO per-galaxy ...
+					//if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
+					{
+						pickObject.drawPoints({
+							sceneObj : galaxyField.sceneObj,
+							targetCallback : getCachedGalaxy,
+							pointSize : pointSize,
+							pointSizeScaleWithDist : true,
+							//defined in shader:
+							pointSizeMin : 1,
+							pointSizeMax : Infinity
+						});
+					}
 				} else {
-					galaxyField.sceneObj.uniforms.pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width;
+					galaxyField.sceneObj.uniforms.pointSize = pointSize;
 					galaxyField.sceneObj.draw();
 				}
 			}
@@ -2208,7 +2291,7 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		//TODO adjust based on LOD node depth
-		if (smallBodyRootNode) {
+		if (smallBodyRootNode && showSmallBodies) {
 			if (showAllSmallBodiesAtOnce) {
 				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
 					var node = allSmallBodyNodes[i];
@@ -3629,6 +3712,7 @@ function initStars() {
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
+var showSmallBodies = true;
 var allSmallBodyPointsBuffer;
 var pointsPerNode = 1000;
 var smallBodyRootNode;
@@ -3652,6 +3736,7 @@ var smallBodyOverlayShader;
 var PointOctreeNode = makeClass({
 	init : function() {
 		this.points = [];
+		this.indexes = [];	//mapping back to the original point array.  possibly used for indexes and one giant buffer...
 		this.mins = [];
 		this.maxs = [];
 		this.center = [];
@@ -3680,7 +3765,7 @@ var PointOctreeNode = makeClass({
 		drawList.splice(0, 0, this);
 	},
 	drawAndAdd : function(drawList, tanFovY, distInM, picking) {
-		this.draw(distInM, picking);
+		this.draw(distInM, tanFovY, picking);
 		smallBodyNodesDrawnThisFrame.push(this);
 
 		if (this.children !== undefined) {
@@ -3692,14 +3777,26 @@ var PointOctreeNode = makeClass({
 			}
 		}
 	},
-	draw : function(distInM, picking) {
-		smallBodySceneObj.uniforms.pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM);
+	draw : function(distInM, tanFovY, picking) {
+		var pointSize = smallBodyPointSize * (!picking ? canvas.width : pickObject.fboTexWidth) * Math.sqrt(distInM) / tanFovY;
+		smallBodySceneObj.uniforms.pointSize = pointSize;
 		smallBodySceneObj.uniforms.alpha = smallBodyPointAlpha;
 		smallBodySceneObj.geometry = this.geometry;
 		smallBodySceneObj.attrs.vertex = this.buffer;
 		
 		if (picking) {
-			//pickObject.drawPoints(smallBodySceneObj, function(i) { return getCachedSmallBody(i);  });
+			var thiz = this;
+			pickObject.drawPoints({
+				sceneObj : smallBodySceneObj,
+				targetCallback : function(i) {
+					return getCachedSmallBody(thiz, i);
+				},
+				pointSize : pointSize,
+				pointSizeScaleWithDist : true,
+				//defined in shader
+				pointSizeMin : .25,
+				pointSizeMax : 5
+			});
 		} else {
 			smallBodySceneObj.draw();
 		}
@@ -3843,6 +3940,7 @@ void main() {
 
 		smallBodyRootNode = new PointOctreeNode();
 		allSmallBodyNodes.push(smallBodyRootNode);
+		smallBodyRootNode.index = allSmallBodyNodes.length;	//1-based?
 		for (var j = 0; j < 3; ++j) {
 			smallBodyRootNode.mins[j] = mins[j];
 			smallBodyRootNode.maxs[j] = maxs[j];
@@ -3874,8 +3972,9 @@ void main() {
 			node.points.push(vtxs[i+0]);
 			node.points.push(vtxs[i+1]);
 			node.points.push(vtxs[i+2]);
+			node.indexes.push(i/3);
 
-			if (node.points.length > 3000) {
+			if (node.indexes.length > 1000) {
 				node.children = [];
 				for (var ix = 0; ix < 2; ++ix) {
 					for (var iy = 0; iy < 2; ++iy) {
@@ -3886,6 +3985,7 @@ void main() {
 							node.children[childIndex] = child;
 							child.parent = node;
 							allSmallBodyNodes.push(child);
+							child.index = allSmallBodyNodes.length;	//1-based?
 							for (var j = 0; j < 3; ++j) {
 								child.mins[j] = is[j] ? node.center[j] : node.mins[j];
 								child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
@@ -3894,10 +3994,11 @@ void main() {
 						}
 					}
 				}
-				for (var j = 0; j < node.points.length; j += 3) {
-					var x = node.points[j+0];
-					var y = node.points[j+1];
-					var z = node.points[j+2];
+				for (var j = 0; j < node.indexes.length; ++j) {
+					var x = node.points[0+3*j];
+					var y = node.points[1+3*j];
+					var z = node.points[2+3*j];
+					var index = node.indexes[j];
 					
 					var ix = x > node.center[0] ? 1 : 0;
 					var iy = y > node.center[1] ? 1 : 0;
@@ -3907,8 +4008,10 @@ void main() {
 					child.points.push(x);
 					child.points.push(y);
 					child.points.push(z);
+					child.indexes.push(index);
 				}
 				node.points.length = 0;
+				node.indexes.length = 0;
 			}
 		}
 
@@ -3924,11 +4027,13 @@ void main() {
 				}
 
 				if (child.points.length > 0) {
-					var j = parseInt(Math.random()*child.points.length/3);
+					var j = parseInt(Math.random()*child.points.length/4);
 					var pt = child.points.splice(3*j, 3);
 					node.points.push(pt[0]);
 					node.points.push(pt[1]);
 					node.points.push(pt[2]);
+					var index = child.indexes.splice(j, 1);
+					node.indexes.push(index[0]);
 				}
 			}
 		};
@@ -3940,7 +4045,7 @@ void main() {
 			node.buffer = new glutil.ArrayBuffer({data : node.points});
 			node.geometry = new glutil.Geometry({
 				mode : gl.POINTS,
-				vertexes : node.buffer
+				vertexes : node.buffer,
 			});
 		});
 
@@ -4013,7 +4118,7 @@ uniform mat4 projMat;
 uniform float pointSize;	// = constant sprite width / screen width, though I have a tapering function that changes size with scale
 void main() {
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
-	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.Mpc / interGalacticRenderScale) + mlstr(function(){/* );
+	gl_PointSize = pointSize / gl_Position.w;
 	gl_PointSize = max(1., gl_PointSize);
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -4026,7 +4131,11 @@ void main() {
 */})
 			}),
 			attrs : {
-				vertex : new glutil.Attribute({buffer : buffer, size : 3, stride : 3 * Float32Array.BYTES_PER_ELEMENT}),
+				vertex : new glutil.Attribute({
+					buffer : buffer,
+					size : 3,
+					stride : 3 * Float32Array.BYTES_PER_ELEMENT
+				}),
 			},
 			uniforms : {
 				tex : 0
@@ -5464,7 +5573,6 @@ if (true) {
 	colorIndexShader = new ModifiedDepthShaderProgram({
 		vertexCode :
 '#define M_LOG_10 '+floatToGLSL(Math.log(10))+'\n'+
-'#define _10_5TH_ROOT 1.58489319246111359795747830503387376666069030761719\n'+
 '#define COLOR_INDEX_MIN '+floatToGLSL(colorIndexMin)+'\n'+
 '#define COLOR_INDEX_MAX '+floatToGLSL(colorIndexMax)+'\n'+
 		mlstr(function(){/*
@@ -5502,8 +5610,9 @@ void main() {
 	gl_Position = projMat * vtx4;
 	
 	//TODO point sprite / point spread function?
-	gl_PointSize = pointSize / (gl_Position.w / */}) + floatToGLSL(metersPerUnits.pc / starFieldRenderScale) + mlstr(function(){/* );
-	gl_PointSize = clamp(gl_PointSize, 1., 10.);
+	gl_PointSize = pointSize / gl_Position.w;
+	gl_PointSize = clamp(gl_PointSize, .25, 5.);
+	
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -7055,7 +7164,7 @@ function setOrbitTarget(newTarget) {
 	if (newTarget === undefined) {
 		newTarget = orbitStarSystem.stars[0];
 	}
-	if (newTarget.isa(StarSystem)) {
+	if (newTarget.isa && newTarget.isa(StarSystem)) {
 		var targetSystem = newTarget;
 		var i = 0;
 		for (; i < targetSystem.planets.length; ++i) {
@@ -7071,7 +7180,7 @@ function setOrbitTarget(newTarget) {
 			console.log("failed to find a planet in the system to select!");
 		}
 	}
-	if (newTarget.isa(Planet)) {
+	if (newTarget.isa && newTarget.isa(Planet)) {
 		//if we're changing star systems...
 		if (newTarget.starSystem !== orbitStarSystem) {
 			selectingNewSystem = true;
@@ -7440,11 +7549,14 @@ function update() {
 
 	glutil.scene.setupMatrices();
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	drawScene(false);
+	if (window.showPickScene) {
+		pickObject.pick(false, true);
+	} else {
+		drawScene(false);
+	}
 	glutil.clearAlpha();
 
 	requestAnimFrame(update);
 	
 	overlayTexts_updateEnd();
 }
-
