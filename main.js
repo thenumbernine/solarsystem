@@ -1241,7 +1241,7 @@ void main() {
 	vec3 carry = floor(v.xyz / 256.);
 	v.xyz = floor(v.xyz - 256. * carry);
 	v.yzw = floor(v.yzw + carry);
-	gl_FragColor = vec4(v.xyz, 1.);
+	gl_FragColor = vec4(v.xyz / 256., 1.);
 }
 */}),
 			uniforms : {
@@ -1274,7 +1274,7 @@ void main() {
 			fragmentCode : mlstr(function(){/*
 uniform vec3 id;
 void main() {
-	gl_FragColor = vec4(id, 1.);
+	gl_FragColor = vec4(id / 256., 1.);
 }
 */}),
 			uniforms : {
@@ -1298,6 +1298,20 @@ void main() {
 		this.vertexIDCh0Buffer = new glutil.ArrayBuffer({data : vertexIDCh0, dim : 1});
 		this.vertexIDCh1Buffer = new glutil.ArrayBuffer({data : vertexIDCh1, dim : 1});
 	
+		//because i'm lazy ...
+		//and it's more flexible to non-LInf metrics
+		this.pixelOrder = [];
+		for (var j = 0; j < this.fboTexHeight; ++j) {
+			var y = j - this.fboTexHeight/2;
+			for (var i = 0; i < this.fboTexWidth; ++i) {
+				var x = i - this.fboTexWidth/2;
+				this.pixelOrder.push([i,j,x*x + y*y]);
+			}
+		}
+		this.pixelOrder.sort(function(a,b) {
+			return a[2] - b[2];
+		});
+
 		this.callbacks = [];
 	},
 	
@@ -1327,6 +1341,7 @@ if (!skipProjection) {
 if (!skipProjection) {
 		gl.viewport(0, 0, sizeX, sizeY);
 }
+		var thiz = this;
 		var fboCallback = function() {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
 			
@@ -1338,15 +1353,15 @@ if (!skipProjection) {
 if (!skipProjection) {
 			var pixels = new Float32Array(sizeX * sizeY * 4);
 			gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
-			for (var j = sizeY-1; j >= 0; --j) {
-				for (var i = 0; i < sizeX; ++i) {
-					var r = pixels[0 + 4 * (i + sizeX * j)];
-					var g = pixels[1 + 4 * (i + sizeX * j)];
-					var b = pixels[2 + 4 * (i + sizeX * j)];
-					var a = pixels[3 + 4 * (i + sizeX * j)];
-					foundIndex = r | (g << 8) | (b << 16);
-					if (foundIndex) break;
-				}
+			for (var e = 0; e < thiz.pixelOrder.length; ++e) {
+				var p = thiz.pixelOrder[e];
+				var i = p[0];
+				var j = p[1];
+				var r = 256 * pixels[0 + 4 * (i + sizeX * j)];
+				var g = 256 * pixels[1 + 4 * (i + sizeX * j)];
+				var b = 256 * pixels[2 + 4 * (i + sizeX * j)];
+				var a = 256 * pixels[3 + 4 * (i + sizeX * j)];
+				foundIndex = r | (g << 8) | (b << 16);
 				if (foundIndex) break;
 			}
 }
