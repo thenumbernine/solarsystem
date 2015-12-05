@@ -306,6 +306,11 @@ function OutputToPoints:staticDone()
 
 	local json = require 'dkjson'
 	local pts = table()
+	for _,body in ipairs(self.bodies) do
+		for j=1,3 do
+			pts:insert(body.pos[j])
+		end
+	end	
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)
 		if node.parent then node.parent = node.parent.index end
@@ -318,6 +323,8 @@ function OutputToPoints:staticDone()
 				end
 			end
 		end
+		
+		--[[
 		-- now repackage points continuously with all nodes
 		-- and store in each node the range information
 		node.bodyStartIndex = #pts/3
@@ -327,20 +334,22 @@ function OutputToPoints:staticDone()
 			end
 		end
 		node.bodyEndIndex = #pts/3
+		--]]
 
 		node.bodies = node.bodies:map(function(body)
 			return {
 				name = body.name,
+				-- either need one or the other : (a) repackage and keep range, or (b) keep individual node mapping
 				index = body.index,	-- index in the total list 
 			}
 		end)
-		file['nodes/'..node.index..'.json'] = json.encode(node.bodies,{indent=true})
+		file['nodes/'..node.index..'.json'] = json.encode(node.bodies):gsub('},{','},\n{')
 		node.bodies = nil
 	end
 	for _,node in ipairs(allNodes) do
 		node.index = nil	-- don't need this anymore
 	end
-	file['octree.json'] = json.encode(setmetatable(allNodes, nil), {indent=true})
+	file['octree.json'] = json.encode(setmetatable(allNodes, nil)):gsub('},{','},\n{')
 
 	local ffi = require 'ffi'
 	local buffer = ffi.new('float[?]', #pts, pts)

@@ -1335,7 +1335,7 @@ if (!skipProjection) {
 if (!skipProjection) {
 			var pixels = new Float32Array(sizeX * sizeY * 4);
 			gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
-			for (var j = 0; j < sizeY; ++j) {
+			for (var j = sizeY-1; j >= 0; --j) {
 				for (var i = 0; i < sizeX; ++i) {
 					var r = pixels[0 + 4 * (i + sizeX * j)];
 					var g = pixels[1 + 4 * (i + sizeX * j)];
@@ -3972,7 +3972,7 @@ void main() {
 			node.points.push(vtxs[i+0]);
 			node.points.push(vtxs[i+1]);
 			node.points.push(vtxs[i+2]);
-			node.indexes.push(i/3);
+			node.indexes.push(i/3+1);
 
 			if (node.indexes.length > 1000) {
 				node.children = [];

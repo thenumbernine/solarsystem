@@ -13,7 +13,7 @@ local function readCache(filename, url)
 	if io.fileexists(filename) then return file[filename] end
 	local http = require 'socket.http'
 	local results = {http.request(url)}
-	print(unpack(results))
+	print(table.unpack(results))
 	local data = results[1]
 	file[filename] = data
 	return data
@@ -62,7 +62,7 @@ local function processToFile(args)
 end
 
 --local outputMethod = require 'output_json' 
---local outputMethod = require 'output_sqlite'
+--local outputMethod = require 'output_sqlite3'
 local outputMethod = require 'output_points'
 
 outputMethod:staticInit()
