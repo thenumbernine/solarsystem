@@ -1006,13 +1006,43 @@ function getCachedSmallBody(node,localIndex) {
 	var y = buffer.data[3*localIndex+1];
 	var z = buffer.data[3*localIndex+2];
 	var globalIndex = node.indexes[localIndex];
-	if (cachedSmallBodies[globalIndex]) return cachedSmallBodies[globalIndex];
+
+	//TODO toggle on/off orbit data if we're selecting on/off a small body
+
+	if (cachedSmallBodies[globalIndex]) {
+		return cachedSmallBodies[globalIndex];
+	}
+	
 	var smallBody = {
 		name : 'Small Body #'+globalIndex,
 		pos : [x,y,z],
 		radius : 1
 	};
 	cachedSmallBodies[globalIndex] = smallBody;
+	
+	//while we're here
+	//query the server for this small body's orbit data
+	//the globalIndex will match the database's pk id
+	//TODO only do this upon selecting a small body object (which this function returns)
+	// and upon deselecting it, remove the body (unless the body was added from querying the database)
+	// (then how do you get it to stick around if you had clicked on it to begin with?)
+	$.ajax({
+		url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+		dataType : 'json',
+		data : {
+			id : globalIndex
+		},
+		cache : false,
+		timeout : 5000
+	}).done(function(results) {
+		//don't forget to save planet.sourceData for compatability with local small body searches
+		if (!result.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
+		if (result.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
+		var row = results.rows[0];
+		
+		addSmallBody(row);	
+	});
+	
 	return smallBody;
 }
 
@@ -2724,6 +2754,68 @@ function calendarToJulian(d) {
 	return jdn;
 }
 
+function addSmallBody(row) {
+	var name = row.name;
+	if (row.idNumber) {
+		name = row.idNumber+'/'+name;
+	}
+
+	//only remove if it's already there
+	if (solarSystem.indexes[name] === undefined) return;
+		
+	var index = solarSystem.indexes[name];
+	var planet = solarSystem.planets[index];
+	solarSystem.initPlanets.splice(index, 1);
+	solarSystem.planets.splice(index, 1);
+	//now remap indexes
+	for (var i = index; i < solarSystem.planets.length; ++i) {
+		solarSystem.planets[index].index = i;
+	}
+	if (orbitTarget === planet) {
+		setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
+	}
+	//TODO destruct WebGL geometry?  or is it gc'd automatically?
+	//now rebuild indexes
+	solarSystem.indexes = {};
+	for (var i = 0; i < solarSystem.planets.length; ++i) {
+		solarSystem.indexes[solarSystem.planets[i].name] = i;
+	}
+}
+
+function removeSmallBody(row) {
+	var name = row.name;
+	if (row.idNumber) {
+		name = row.idNumber+'/'+name;
+	}
+
+	//only add if it's not there
+	if (solarSystem.indexes[name] !== undefined) return;
+
+	//add the row to the bodies
+
+	var index = solarSystem.planets.length;
+	var planet = mergeInto(new Planet(), {
+		name : name,
+		isComet : row.bodyType == 'comet',
+		isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+		sourceData : row,
+		parent : solarSystem.planets[solarSystem.indexes.Sun],
+		starSystem : solarSystem,
+		index : index
+	});
+
+	solarSystem.planets.push(planet);
+
+	//add copy to initPlanets for when we get reset() working
+	solarSystem.initPlanets[index] = planet.clone();
+
+	solarSystem.indexes[planet.name] = index;
+
+	initPlanetColorSchRadiusAngle(planet);
+	initPlanetSceneLatLonLineObjs(planet);
+	calcKeplerianOrbitalElements(planet, false);
+}
+
 function init1() {
 	allSidePanelIDs = [
 		'mainSidePanel',
@@ -3256,62 +3348,11 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 				var checkbox = $('<input>', {
 					type : 'checkbox',
 					change : function() {
-
 						if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
-
-							//only remove if it's already there
-							if (solarSystem.indexes[name] !== undefined) {
-								var index = solarSystem.indexes[name];
-								var planet = solarSystem.planets[index];
-								solarSystem.initPlanets.splice(index, 1);
-								solarSystem.planets.splice(index, 1);
-								//now remap indexes
-								for (var i = index; i < solarSystem.planets.length; ++i) {
-									solarSystem.planets[index].index = i;
-								}
-								if (orbitTarget === planet) {
-									setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
-								}
-								//TODO destruct WebGL geometry?  or is it gc'd automatically?
-								//now rebuild indexes
-								solarSystem.indexes = {};
-								for (var i = 0; i < solarSystem.planets.length; ++i) {
-									solarSystem.indexes[solarSystem.planets[i].name] = i;
-								}
-							}
-
+							addSmallBody(row);
 							titleSpan.css({textDecoration:'', cursor:''});
-
 						} else {	//check checkbox => add planet
-
-							//only add if it's not there
-							if (solarSystem.indexes[name] === undefined) {
-
-								//add the row to the bodies
-
-								var index = solarSystem.planets.length;
-								var planet = mergeInto(new Planet(), {
-									name : name,
-									isComet : row.bodyType == 'comet',
-									isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
-									sourceData : row,
-									parent : solarSystem.planets[solarSystem.indexes.Sun],
-									starSystem : solarSystem,
-									index : index
-								});
-
-								solarSystem.planets.push(planet);
-
-								//add copy to initPlanets for when we get reset() working
-								solarSystem.initPlanets[index] = planet.clone();
-
-								solarSystem.indexes[planet.name] = index;
-
-								initPlanetColorSchRadiusAngle(planet);
-								initPlanetSceneLatLonLineObjs(planet);
-								calcKeplerianOrbitalElements(planet, false);
-							}
-
+							removeSmallBody(row);
 							titleSpan.css({textDecoration:'underline', cursor:'pointer'});
 						}
 					}
