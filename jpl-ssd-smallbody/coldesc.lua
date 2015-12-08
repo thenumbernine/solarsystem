@@ -10,7 +10,7 @@ return {
 	{name='inclination', type='number'},
 	{name='argumentOfPeriapsis', type='number'},
 	{name='longitudeOfAscendingNode', type='number'},
-	{name='meanAnomaly', type='number'},	-- asteroids
+	{name='meanAnomalyAtEpoch', type='number'},	-- asteroids
 	{name='absoluteMagnitude', type='number'},	-- asteroids
 	{name='magnitudeSlopeParameter', type='number'},	-- asteroids
 	{name='timeOfPerihelionPassage', type='number'},	-- comets

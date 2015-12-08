@@ -111,7 +111,12 @@ function OutputToPoints:processBody(body)
 			local timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing
 			meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * math.pi / orbitalPeriod
 		elseif isAsteroid then
-			meanAnomaly = body.meanAnomaly
+			-- https://en.wikipedia.org/wiki/Mean_anomaly
+			-- M = M0 + n (t - t0)
+			-- M0 = mean anomaly at epoch
+			-- t0 = epoch
+			-- n = 2 pi / orbitalPeriod
+			meanAnomaly = body.meanAnomalyAtEpoch + 2 * math.pi / orbitalPeriod * (julianDate - body.epoch)
 		else
 		--	error 'here'
 		end
