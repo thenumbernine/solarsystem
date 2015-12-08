@@ -84,13 +84,14 @@ void main() {
 });
 
 var metersPerUnits = {
-	Mpc :	648000/Math.PI*149597870700*1000000,
-	Kpc :	648000/Math.PI*149597870700*1000,
-	pc :	648000/Math.PI*149597870700,
-	lyr :	9460730472580800,
-	AU :	149597870700,
-	km :	1000,
-	m :		1
+	Mpc :	648000/Math.PI*149597870700*1000000,	//megaparsec
+	Kpc :	648000/Math.PI*149597870700*1000,	//kiloparsec
+	pc :	648000/Math.PI*149597870700,	//parsec
+	lyr :	9460730472580800,	//light year
+	AU :	149597870700,	//astronomical unit
+	ls :	299792458,	//light second
+	km :	1000,	//kilometer
+	m :		1,		//meter
 };
 
 function setCSSRotation(obj, degrees) {
@@ -600,14 +601,14 @@ var glMaxCubeMapTextureSize;
 
 var resetDistanceOnSelect = true;
 
-var speedOfLight = 299792458;	// m/s
+var speedOfLight = metersPerUnits.ls;	// m/s
 var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
 
-//1 = c m/s <-> c = s/m
-var secondsPerMeter = speedOfLight;
+//1 = c m/s  <-> c m = 1 s
+var metersPerSecond = speedOfLight;
 
 //1 = G m^3 / (kg s^2) <=> G m^3 / (c m)^2 = kg <=> G/c^2 = kg/m
-var kilogramsPerMeter = gravitationalConstant / (speedOfLight * speedOfLight);
+var kilogramsPerMeter = gravitationalConstant / (metersPerSecond * metersPerSecond);
 
 var Metric = makeClass();
 
@@ -728,7 +729,7 @@ var SchwarzschildMetric = makeClass({
 			
 			var R = 2. * planet.mass * kilogramsPerMeter;
 			var scale = R * (r - R) / (2 * r2 * r2);
-			scale *= secondsPerMeter * secondsPerMeter;
+			scale *= metersPerUnits.ls * metersPerUnits.ls;
 			
 			accel[0] += x * scale;
 			accel[1] += y * scale;
@@ -785,7 +786,7 @@ var SchwarzschildMetric = makeClass({
 
 			var R = 2. * planet.mass * kilogramsPerMeter;
 			var scale = R * (R - r) / (2 * r2 * r2);
-			scale *= secondsPerMeter * secondsPerMeter;
+			scale *= metersPerUnits.ls * metersPerUnits.ls;
 		
 			var nDotR = nx * x + ny * y + nz * z;
 			accel[0] += scale * (nx - 3 * nDotR * x / r2);
@@ -880,7 +881,10 @@ var milkyWayFadeMinDistInLyr = 50;
 var milkyWayFadeMaxDistInLyr = 1000;
 var milkyWayDistanceToCenterInKpc = 8.7;
 
-var interGalacticRenderScale = 100;
+//too small (1e+3) and the depth buffer precision gets destroyed - which is important for color-picking
+//too big (1e+20) and the scene gets zfar clipped away
+var interGalacticRenderScale = 1e+15;
+
 var closestGalaxyDistanceInM = undefined;	//for occlusion of all selection stuff
 
 var GalaxyField = makeClass({});
@@ -1042,7 +1046,7 @@ function addOverlayText(target) {
 		var div = document.createElement('div');
 		div.style.position = 'absolute';
 		div.style.pointerEvents = 'none';
-		div.style.zIndex = 3;
+		div.style.zIndex = 1;
 		overlayText = {div:div};
 		overlayTexts.push(overlayText); 
 	}
@@ -1226,7 +1230,7 @@ void main() {
 	if (pointSizeScaleWithDist) gl_PointSize /= gl_Position.w;
 	
 	//if a point is too small then discard it by throwing it offscreen
-	if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., -2.);
+	//if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., -2.);
 	
 	gl_PointSize = clamp(gl_PointSize, pointSizeMin, pointSizeMax);
 
@@ -1239,8 +1243,8 @@ varying vec3 vertexIDv;
 void main() {
 	vec4 v = vec4(startID + vertexIDv, 0.);
 	vec3 carry = floor(v.xyz / 256.);
-	v.xyz = floor(v.xyz - 256. * carry);
-	v.yzw = floor(v.yzw + carry);
+	v.xyz = v.xyz - 256. * carry;
+	v.yzw = v.yzw + carry;
 	gl_FragColor = vec4(v.xyz / 256., 1.);
 }
 */}),
@@ -1333,7 +1337,7 @@ if (!skipProjection) {
 }
 		mat4.multiply(this.pickProjMat, this.pickProjMat, glutil.scene.projMat);
 
-		this.startPickID = 1;
+		this.startPickID = 0xbf0000;
 		this.pickID = this.startPickID;
 		this.callbacks.length = 0;
 		
@@ -1360,7 +1364,6 @@ if (!skipProjection) {
 				var r = 256 * pixels[0 + 4 * (i + sizeX * j)];
 				var g = 256 * pixels[1 + 4 * (i + sizeX * j)];
 				var b = 256 * pixels[2 + 4 * (i + sizeX * j)];
-				var a = 256 * pixels[3 + 4 * (i + sizeX * j)];
 				foundIndex = r | (g << 8) | (b << 16);
 				if (foundIndex) break;
 			}
@@ -1891,8 +1894,6 @@ var showFPS = false;
 					if (allowSelectStars &&
 					//also TODO:
 					//if (list === starfield && target == orbitStarSystem) continue;
-					//if (target.orbitVisRatio !== undefined && target.orbitVisRatio < .03) continue
-					//if (target.hide) continue;
 					//...and then there's the fact that the old ray code only checked the exoplanets
 					// whereas this is rendering all hyg stars ...
 					//so I'll turn it off for now
@@ -1900,7 +1901,10 @@ var showFPS = false;
 					{
 						pickObject.drawPoints({
 							sceneObj : starfield.sceneObj,
-							targetCallback : function(i) { return starSystems[i]; },
+							targetCallback : function(i) {
+								//ERROR - starSystems[] is indexed by a separate vertex buffer, and is only 1000 points long (not 120,000)
+								return starSystems[i];
+							},
 							pointSize : pointSize,
 							pointSizeScaleWithDist : true,
 							//defined in shader
@@ -2282,8 +2286,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 				if (picking) {
 					if (allowSelectGalaxies &&
 						closestGalaxyDistanceInM < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance)
-					//TODO per-galaxy ...
-					//if (dist > ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance) continue;
+					//	&& dist < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance
 					{
 						pickObject.drawPoints({
 							sceneObj : galaxyField.sceneObj,
@@ -2319,7 +2322,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 				var drawList = [];
 				smallBodyNodesDrawnThisFrame.length = 0;
 				smallBodyRootNode.prepDraw(drawList, tanFovY);
-				for (var i = 0; i < maxSmallBodyNodesToDraw && drawList.length > 0; ++i) {
+				for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
 					var node = drawList.splice(drawList.length-1, 1)[0];
 					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
 				}
@@ -2332,15 +2335,12 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 			smallBodyFBO.draw({
 				callback : function() {
 					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-					for (var i = 0; i < maxSmallBodyNodesToDraw && i < allSmallBodyNodes.length; ++i) {
+					for (var i = 0; i < smallBodyMaxDrawnNodes && i < allSmallBodyNodes.length; ++i) {
 						var node = allSmallBodyNodes[i];
 						node.draw(distFromSolarSystemInM);
 					}
 				}
 			});
-			//smallBodyFBOTex.bind();
-			//gl.generateMipmap(gl.TEXTURE_2D);
-			//smallBodyFBOTex.unbind();
 			gl.viewport.apply(gl, viewport);
 			gl.disable(gl.DEPTH_TEST);
 			hsvTex
@@ -3735,7 +3735,7 @@ var allSmallBodyPointsBuffer;
 var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
-var maxSmallBodyNodesToDraw = 400;
+var smallBodyMaxDrawnNodes = 400;
 var showAllSmallBodiesAtOnce = false;
 var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .75;
@@ -3949,7 +3949,9 @@ void main() {
 			vtxs[i] = data.getFloat32(i * Float32Array.BYTES_PER_ELEMENT, true);
 		}
 		allSmallBodyPointsBuffer = vtxs;
-		
+	
+		var startTime = Date.now();
+
 		//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
 		var mins = [-6e+12, -6e+12, -6e+12];
 		var maxs = [6e+12, 6e+12, 6e+12];
@@ -4069,7 +4071,9 @@ void main() {
 			});
 		});
 
-		console.log('loaded small bodies');
+		var endTime = Date.now();
+
+		console.log('loaded small bodies ', endTime - startTime, ' ms');
 	};
 	xhr.send();
 }
@@ -4112,7 +4116,6 @@ function initGalaxies() {
 			x += galaxyCenterInEquatorialCoordsInMpc[j%3];
 			//units converted to intergalactic render units
 			x *= metersPerUnits.Mpc;
-			floatBuffer[j] = x / interGalacticRenderScale;
 			pos[j%3] = x;
 			if (j%3 == 2) {
 				var len = vec3.length(pos);
@@ -4122,6 +4125,7 @@ function initGalaxies() {
 					closestGalaxyDistanceInM = Math.min(len, closestGalaxyDistanceInM); 
 				}
 			}
+			floatBuffer[j] = x / interGalacticRenderScale;
 		}
 
 		//now that we have the float buffer ...

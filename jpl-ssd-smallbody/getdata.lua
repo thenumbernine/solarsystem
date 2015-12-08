@@ -62,8 +62,8 @@ local function processToFile(args)
 end
 
 --local outputMethod = require 'output_json' 
---local outputMethod = require 'output_sqlite3'
-local outputMethod = require 'output_points'
+local outputMethod = require 'output_sqlite3'
+--local outputMethod = require 'output_points'
 
 outputMethod:staticInit()
 

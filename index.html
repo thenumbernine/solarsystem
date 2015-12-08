@@ -91,7 +91,7 @@ a:active {
 .sidePanel {
 	overflow:scroll;
 	position:absolute;
-	z-index:1;
+	z-index:2;
 	padding:10px;
 	width:280px;
 	left:-300px;
@@ -108,7 +108,7 @@ a:active {
 	
 	</head>
 	<body style='margin:0px; overflow:hidden'>
-		<div id='timeDiv' style='padding:5px; z-index:1; position:absolute; top:0px; right:0px; display:none'>
+		<div id='timeDiv' style='padding:5px; z-index:2; position:absolute; top:0px; right:0px; display:none'>
 			<span id='currentTimeText'></span><br>
 			<!-- this is inaccurate. hide this until I 
 				(a) enable the RK45 adaptive integrator, or something more accurate 
@@ -125,7 +125,7 @@ a:active {
 			</div>
 		</div>
 
-		<div id='infoPanel' style='padding:5px; z-index:1; position:absolute; bottom:-25px; right:5px; text-align:right; display:none; height:104px'>
+		<div id='infoPanel' style='padding:5px; z-index:2; position:absolute; bottom:-25px; right:5px; text-align:right; display:none; height:104px'>
 			<img id='toggleBodyInfo' src='play.png' style='padding:5px'/><br>
 			<!-- Hover Distance From Orbit: <span id='hoverTargetDistanceText'></span><br> -->
 			Orbitting: <span id='orbitTargetText'></span><br>
@@ -133,11 +133,11 @@ a:active {
 			<div id='infoDiv' style='pointer-events:none'></div>
 		</div>
 		
-		<div id='loadingDiv' style='padding:5px' style='position:absolute; left:100px; top:0px; z-index:3'>Loading Textures... 
+		<div id='loadingDiv' style='padding:5px' style='position:absolute; left:100px; top:0px; z-index:-1; display:none'>Loading Textures... 
 			<progress id='loading' value='0' max='100'></progress><br>
 		</div>
 
-		<img id='menu' src='play.png' style='padding:5px; position:absolute; z-index:1; left:0px; top:0px;'/>
+		<img id='menu' src='play.png' style='padding:5px; position:absolute; z-index:2; left:0px; top:0px;'/>
 		<div id='mainSidePanel' class='sidePanel'>
 			<div style='padding-top:15px'></div>
 			<button class='mainSidePanelButton' id='mainButtonOverlay'>Calculations</button><br>

@@ -190,15 +190,10 @@ function OutputToPoints:processBody(body)
 
 	local pos = A * coeffA + B * coeffB
 
-	if not math.isfinite(pos[1]) or not math.isfinite(pos[2]) or not math.isfinite(pos[3]) then
-		-- returning early and avoiding bad data is causing our max radius to report a higher value ?!
-		return
-	end
-	
 	local r = pos:length()
-	if not math.isfinite(r) then return end
-	
-	OutputToPoints.maxR = math.max(OutputToPoints.maxR or r, r)
+	if math.isfinite(r) then 
+		OutputToPoints.maxR = math.max(OutputToPoints.maxR or r, r)
+	end
 
 	body.pos = pos
 
@@ -351,27 +346,12 @@ function OutputToPoints:staticDone()
 	end
 	file['octree.json'] = json.encode(setmetatable(allNodes, nil)):gsub('},{','},\n{')
 
+	-- writing all at once
 	local ffi = require 'ffi'
 	local buffer = ffi.new('float[?]', #pts, pts)
 	file['output.f32'] = ffi.string(ffi.cast('char*', buffer), ffi.sizeof(buffer))
 
 	--]]
-
-	--[[ writing all at once:
-	local ffi = require 'ffi'
-	require 'ffi.c.stdio'
-	local fh = ffi.C.fopen('output.f32', 'wb')
-	local v = ffi.new('float[3]')
-	for i=1,#self.bodies do
-		local p = self.bodies[i].pos
-		v[0] = p[1]
-		v[1] = p[2]
-		v[2] = p[3]
-		ffi.C.fwrite(v, ffi.sizeof(v), 1, fh)
-	end
-	ffi.C.fclose(fh)
-	--]]
-
 end
 
 return OutputToPoints
