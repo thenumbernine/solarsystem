@@ -25,12 +25,16 @@ run = function(env)
 	local req = wsapi_request.new(env)
 	local get = req.GET
 
+	local id
 	local isComet = false
 	local isNumbered = false
 	local isUnnumbered = false
 	local searchText = ''
 	local searchPage = 1
 	if get then
+		-- either this
+		id = get.id
+		-- or this
 		isComet = get.comet ~= '0'
 		isNumbered = get.numbered ~= '0'
 		isUnnumbered = get.unnumbered ~= '0'
@@ -58,23 +62,28 @@ run = function(env)
 			local luasql = require 'luasql.sqlite3'
 			env = luasql.sqlite3()
 			conn = assert(env:connect('database.sqlite3'))
-			
-			local bodyTypeCond = table()
-			if isComet then bodyTypeCond:insert('bodyType == 0') end
-			if isNumbered then bodyTypeCond:insert('bodyType == 1') end
-			if isUnnumbered then bodyTypeCond:insert('bodyType == 2') end
-	
-			local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
-			
-			local cmd = 'select count() from '..fromStmt
-			cur = assert(conn:execute(cmd))
 
-			local row = cur:fetch({}, 'a')
-			local count = row['count()']
-			cur:close()
+			local cmd
+			if id then
+				cmd = 'select * from data where id == '..id
+			else
+				local bodyTypeCond = table()
+				if isComet then bodyTypeCond:insert('bodyType == 0') end
+				if isNumbered then bodyTypeCond:insert('bodyType == 1') end
+				if isUnnumbered then bodyTypeCond:insert('bodyType == 2') end
+		
+				local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
+				
+				local cmd = 'select count() from '..fromStmt
+				cur = assert(conn:execute(cmd))
 
-			local limitStmt = ' limit '..offset..', '..pageSize
-			local cmd = 'select * from '..fromStmt..limitStmt
+				local row = cur:fetch({}, 'a')
+				local count = row['count()']
+				cur:close()
+
+				local limitStmt = ' limit '..offset..', '..pageSize
+				cmd = 'select * from '..fromStmt..limitStmt
+			end
 			cur = assert(conn:execute(cmd))
 
 			local rows = {}
