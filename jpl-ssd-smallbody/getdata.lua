@@ -8,6 +8,7 @@ require 'ext'
 
 local julian = assert(loadfile('../horizons/julian.lua'))()
 local json = require 'dkjson'
+local mjdOffset = 2400000.5
 
 local function readCache(filename, url)
 	if io.fileexists(filename) then return file[filename] end
@@ -61,8 +62,8 @@ local function processToFile(args)
 end
 
 --local outputMethod = require 'output_json' 
---local outputMethod = require 'output_sqlite3'
-local outputMethod = require 'output_points'
+local outputMethod = require 'output_sqlite3'
+--local outputMethod = require 'output_points'
 
 outputMethod:staticInit()
 
@@ -79,7 +80,7 @@ processToFile{
 		local numberAndName = row['Num  Name']
 		body.idNumber = numberAndName:sub(1,4):trim()
 		body.name = numberAndName:sub(6,43):trim()
-		body.epoch = assert(tonumber(row.Epoch:trim()))
+		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.perihelionDistance = assert(tonumber(row.q:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))	-- wrt J2000 ecliptic plane
@@ -113,7 +114,7 @@ processToFile{
 		local body = {}
 		body.idNumber = row.Num:trim()
 		body.name = row.Name:trim()
-		body.epoch = assert(tonumber(row.Epoch:trim()))
+		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))
@@ -138,7 +139,7 @@ processToFile{
 	processRow = function(row)
 		local body = {}
 		body.name = row.Designation:trim()
-		body.epoch = assert(tonumber(row.Epoch:trim()))
+		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))
