@@ -1040,7 +1040,13 @@ function getCachedSmallBody(node,localIndex) {
 		if (result.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
 		var row = results.rows[0];
 		
-		addSmallBody(row);	
+		var planet = addSmallBody(row);
+
+		//honestly at this point we can fully replace the orbit target of 'smallBody' with 'planet'
+		smallBody.name = planet.name;
+		if (orbitTarget == smallBody) {
+			orbitTarget = planet;
+		}
 	});
 	
 	return smallBody;
@@ -2754,13 +2760,17 @@ function calendarToJulian(d) {
 	return jdn;
 }
 
-function addSmallBody(row) {
+function getSmallBodyNameFromRow(row) {
 	var name = row.name;
 	if (row.idNumber) {
 		name = row.idNumber+'/'+name;
 	}
+}
 
-	//only remove if it's already there
+function removeSmallBody(row) {
+	var name = getSmallBodyNameFromRow(row);
+
+	//only add if it's already there
 	if (solarSystem.indexes[name] === undefined) return;
 		
 	var index = solarSystem.indexes[name];
@@ -2782,14 +2792,11 @@ function addSmallBody(row) {
 	}
 }
 
-function removeSmallBody(row) {
-	var name = row.name;
-	if (row.idNumber) {
-		name = row.idNumber+'/'+name;
-	}
+function addSmallBody(row) {
+	var name = getSmallBodyNameFromRow(row);
 
 	//only add if it's not there
-	if (solarSystem.indexes[name] !== undefined) return;
+	if (solarSystem.indexes[name] !== undefined) return solarSystem.planets[solarSystem.indexes[name]];
 
 	//add the row to the bodies
 
@@ -2814,6 +2821,8 @@ function removeSmallBody(row) {
 	initPlanetColorSchRadiusAngle(planet);
 	initPlanetSceneLatLonLineObjs(planet);
 	calcKeplerianOrbitalElements(planet, false);
+
+	return planet;
 }
 
 function init1() {
@@ -3349,10 +3358,10 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 					type : 'checkbox',
 					change : function() {
 						if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
-							addSmallBody(row);
+							removeSmallBody(row);
 							titleSpan.css({textDecoration:'', cursor:''});
 						} else {	//check checkbox => add planet
-							removeSmallBody(row);
+							addSmallBody(row);
 							titleSpan.css({textDecoration:'underline', cursor:'pointer'});
 						}
 					}
