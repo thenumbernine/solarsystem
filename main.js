@@ -999,6 +999,8 @@ function getCachedGalaxy(index) {
 	return galaxy;
 }
 
+var SmallBody = makeClass({});
+
 var cachedSmallBodies = {};
 function getCachedSmallBody(node,localIndex) {
 	var buffer = node.buffer;
@@ -1013,41 +1015,13 @@ function getCachedSmallBody(node,localIndex) {
 		return cachedSmallBodies[globalIndex];
 	}
 	
-	var smallBody = {
+	var smallBody = mergeInto(new SmallBody(), {
 		name : 'Small Body #'+globalIndex,
 		pos : [x,y,z],
-		radius : 1
-	};
-	cachedSmallBodies[globalIndex] = smallBody;
-	
-	//while we're here
-	//query the server for this small body's orbit data
-	//the globalIndex will match the database's pk id
-	//TODO only do this upon selecting a small body object (which this function returns)
-	// and upon deselecting it, remove the body (unless the body was added from querying the database)
-	// (then how do you get it to stick around if you had clicked on it to begin with?)
-	$.ajax({
-		url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-		dataType : 'json',
-		data : {
-			id : globalIndex
-		},
-		cache : false,
-		timeout : 5000
-	}).done(function(results) {
-		//don't forget to save planet.sourceData for compatability with local small body searches
-		if (!result.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
-		if (result.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
-		var row = results.rows[0];
-		
-		var planet = addSmallBody(row);
-
-		//honestly at this point we can fully replace the orbit target of 'smallBody' with 'planet'
-		smallBody.name = planet.name;
-		if (orbitTarget == smallBody) {
-			orbitTarget = planet;
-		}
+		radius : 1,
+		smallBodyID : globalIndex
 	});
+	cachedSmallBodies[globalIndex] = smallBody;
 	
 	return smallBody;
 }
@@ -2765,6 +2739,7 @@ function getSmallBodyNameFromRow(row) {
 	if (row.idNumber) {
 		name = row.idNumber+'/'+name;
 	}
+	return name;
 }
 
 function removeSmallBody(row) {
@@ -7263,6 +7238,26 @@ function setOrbitTarget(newTarget) {
 			selectingNewSystem = true;
 			orbitStarSystem = newTarget.starSystem;
 		}
+	}
+
+	//query the server for this small body's orbit data
+	if (newTarget.isa && newTarget.isa(SmallBody)) {
+		$.ajax({
+			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+			dataType : 'json',
+			data : {
+				id : newTarget.smallBodyID
+			},
+			cache : false,
+			timeout : 5000
+		}).done(function(results) {
+			if (!results.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
+			if (results.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
+			var row = results.rows[0];
+			//TODO why doesn't this match up with the point location?  float error?
+			var planet = addSmallBody(row);
+			setOrbitTarget(planet);
+		});
 	}
 
 	if (selectingNewSystem) {

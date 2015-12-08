@@ -74,7 +74,7 @@ run = function(env)
 		
 				local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
 				
-				local cmd = 'select count() from '..fromStmt
+				cmd = 'select count() from '..fromStmt
 				cur = assert(conn:execute(cmd))
 
 				local row = cur:fetch({}, 'a')
