@@ -1878,32 +1878,35 @@ var showFPS = false;
 				orbitTarget !== undefined &&
 				orbitTarget.pos !== undefined)
 			{
-				gl.disable(gl.DEPTH_TEST);
 				var pointSize = 1000 * canvas.width * Math.sqrt(distFromSolarSystemInMpc) * metersPerUnits.pc / starFieldRenderScale / tanFovY;
 				if (!picking) {
+					gl.disable(gl.DEPTH_TEST);
 					starfield.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
 					starfield.sceneObj.pos[0] = -orbitTarget.pos[0] / starFieldRenderScale;
 					starfield.sceneObj.pos[1] = -orbitTarget.pos[1] / starFieldRenderScale;
 					starfield.sceneObj.pos[2] = -orbitTarget.pos[2] / starFieldRenderScale;
 					starfield.sceneObj.uniforms.pointSize = pointSize;
 					starfield.sceneObj.draw();
+					gl.enable(gl.DEPTH_TEST);
 				} else {
 					//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
 					//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 					//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
-					if (allowSelectStars &&
+					if (allowSelectStars) {
 					//also TODO:
 					//if (list === starfield && target == orbitStarSystem) continue;
 					//...and then there's the fact that the old ray code only checked the exoplanets
 					// whereas this is rendering all hyg stars ...
 					//so I'll turn it off for now
-						false)
-					{
 						pickObject.drawPoints({
 							sceneObj : starfield.sceneObj,
-							targetCallback : function(i) {
-								//ERROR - starSystems[] is indexed by a separate vertex buffer, and is only 1000 points long (not 120,000)
-								return starSystems[i];
+							targetCallback : function(index) {
+								for (var i = 0; i < namedStars.length; ++i) {
+									if (namedStars[i].index == index) {	//namedStars[i].index is the index in the hyg 120,000 star buffer
+										//if (orbitStarSystem == starSystems[whatever starsystem index matches]) return
+										return starSystems[i];
+									}
+								}
 							},
 							pointSize : pointSize,
 							pointSizeScaleWithDist : true,
@@ -1913,7 +1916,6 @@ var showFPS = false;
 						});
 					}
 				}
-				gl.enable(gl.DEPTH_TEST);
 			}
 	
 			//add overlay text
