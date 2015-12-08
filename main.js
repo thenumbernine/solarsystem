@@ -999,6 +999,8 @@ function getCachedGalaxy(index) {
 	return galaxy;
 }
 
+var SmallBody = makeClass({});
+
 var cachedSmallBodies = {};
 function getCachedSmallBody(node,localIndex) {
 	var buffer = node.buffer;
@@ -1013,35 +1015,13 @@ function getCachedSmallBody(node,localIndex) {
 		return cachedSmallBodies[globalIndex];
 	}
 	
-	var smallBody = {
+	var smallBody = mergeInto(new SmallBody(), {
 		name : 'Small Body #'+globalIndex,
 		pos : [x,y,z],
-		radius : 1
-	};
-	cachedSmallBodies[globalIndex] = smallBody;
-	
-	//while we're here
-	//query the server for this small body's orbit data
-	//the globalIndex will match the database's pk id
-	//TODO only do this upon selecting a small body object (which this function returns)
-	// and upon deselecting it, remove the body (unless the body was added from querying the database)
-	// (then how do you get it to stick around if you had clicked on it to begin with?)
-	$.ajax({
-		url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-		dataType : 'json',
-		data : {
-			id : globalIndex
-		},
-		cache : false,
-		timeout : 5000
-	}).done(function(results) {
-		//don't forget to save planet.sourceData for compatability with local small body searches
-		if (!result.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
-		if (result.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
-		var row = results.rows[0];
-		
-		addSmallBody(row);	
+		radius : 1,
+		smallBodyID : globalIndex
 	});
+	cachedSmallBodies[globalIndex] = smallBody;
 	
 	return smallBody;
 }
@@ -2344,19 +2324,21 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		//TODO adjust based on LOD node depth
-		if (smallBodyRootNode && showSmallBodies) {
-			if (showAllSmallBodiesAtOnce) {
-				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
-					var node = allSmallBodyNodes[i];
-					node.draw(distFromSolarSystemInM, picking);
-				}
-			} else {	//good for selective rendering but bad for all rendering
-				var drawList = [];
-				smallBodyNodesDrawnThisFrame.length = 0;
-				smallBodyRootNode.prepDraw(drawList, tanFovY);
-				for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
-					var node = drawList.splice(drawList.length-1, 1)[0];
-					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
+		if (!picking || allowSelectSmallBodies) {
+			if (smallBodyRootNode && showSmallBodies) {
+				if (showAllSmallBodiesAtOnce) {
+					for (var i = 0; i < allSmallBodyNodes.length; ++i) {
+						var node = allSmallBodyNodes[i];
+						node.draw(distFromSolarSystemInM, picking);
+					}
+				} else {	//good for selective rendering but bad for all rendering
+					var drawList = [];
+					smallBodyNodesDrawnThisFrame.length = 0;
+					smallBodyRootNode.prepDraw(drawList, tanFovY);
+					for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
+						var node = drawList.splice(drawList.length-1, 1)[0];
+						node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
+					}
 				}
 			}
 		}
@@ -2754,13 +2736,18 @@ function calendarToJulian(d) {
 	return jdn;
 }
 
-function addSmallBody(row) {
+function getSmallBodyNameFromRow(row) {
 	var name = row.name;
 	if (row.idNumber) {
 		name = row.idNumber+'/'+name;
 	}
+	return name;
+}
 
-	//only remove if it's already there
+function removeSmallBody(row) {
+	var name = getSmallBodyNameFromRow(row);
+
+	//only add if it's already there
 	if (solarSystem.indexes[name] === undefined) return;
 		
 	var index = solarSystem.indexes[name];
@@ -2782,14 +2769,11 @@ function addSmallBody(row) {
 	}
 }
 
-function removeSmallBody(row) {
-	var name = row.name;
-	if (row.idNumber) {
-		name = row.idNumber+'/'+name;
-	}
+function addSmallBody(row) {
+	var name = getSmallBodyNameFromRow(row);
 
 	//only add if it's not there
-	if (solarSystem.indexes[name] !== undefined) return;
+	if (solarSystem.indexes[name] !== undefined) return solarSystem.planets[solarSystem.indexes[name]];
 
 	//add the row to the bodies
 
@@ -2814,6 +2798,8 @@ function removeSmallBody(row) {
 	initPlanetColorSchRadiusAngle(planet);
 	initPlanetSceneLatLonLineObjs(planet);
 	calcKeplerianOrbitalElements(planet, false);
+
+	return planet;
 }
 
 function init1() {
@@ -3198,9 +3184,11 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showGravityWell',
 		'showNames',
 		'showOrbits',
+		'showSmallBodies',
+		'allowSelectSmallBodies',
 		'showStars',
-		'showGalaxies',
 		'allowSelectStars',
+		'showGalaxies',
 		'allowSelectGalaxies',
 		'showPlanetsAsDistantPoints',
 		'gravityWellScaleNormalized',
@@ -3349,10 +3337,10 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 					type : 'checkbox',
 					change : function() {
 						if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
-							addSmallBody(row);
+							removeSmallBody(row);
 							titleSpan.css({textDecoration:'', cursor:''});
 						} else {	//check checkbox => add planet
-							removeSmallBody(row);
+							addSmallBody(row);
 							titleSpan.css({textDecoration:'underline', cursor:'pointer'});
 						}
 					}
@@ -3774,6 +3762,7 @@ function initStars() {
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
 var showSmallBodies = true;
+var allowSelectSmallBodies = true;
 var allSmallBodyPointsBuffer;
 var pointsPerNode = 1000;
 var smallBodyRootNode;
@@ -7254,6 +7243,26 @@ function setOrbitTarget(newTarget) {
 			selectingNewSystem = true;
 			orbitStarSystem = newTarget.starSystem;
 		}
+	}
+
+	//query the server for this small body's orbit data
+	if (newTarget.isa && newTarget.isa(SmallBody)) {
+		$.ajax({
+			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
+			dataType : 'json',
+			data : {
+				id : newTarget.smallBodyID
+			},
+			cache : false,
+			timeout : 5000
+		}).done(function(results) {
+			if (!results.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
+			if (results.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
+			var row = results.rows[0];
+			//TODO why doesn't this match up with the point location?  float error?
+			var planet = addSmallBody(row);
+			setOrbitTarget(planet);
+		});
 	}
 
 	if (selectingNewSystem) {

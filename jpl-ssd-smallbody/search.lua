@@ -65,7 +65,7 @@ run = function(env)
 
 			local cmd
 			if id then
-				cmd = 'select * from data where id == '..id
+				cmd = 'select * from data where pk == '..id
 			else
 				local bodyTypeCond = table()
 				if isComet then bodyTypeCond:insert('bodyType == 0') end
@@ -74,7 +74,7 @@ run = function(env)
 		
 				local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
 				
-				local cmd = 'select count() from '..fromStmt
+				cmd = 'select count() from '..fromStmt
 				cur = assert(conn:execute(cmd))
 
 				local row = cur:fetch({}, 'a')
