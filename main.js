@@ -1221,7 +1221,7 @@ varying vec3 vertexIDv;
 void main() {
 	vertexIDv = vec3(
 		mod(vertexIDCh0, 256.), //first 8 bits of ch0
-		floor(vertexIDCh0 / 256.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
+		mod(floor(vertexIDCh0 / 256.), 8.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
 	
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
@@ -3807,6 +3807,7 @@ var PointOctreeNode = makeClass({
 		smallBodySceneObj.attrs.vertex = this.buffer;
 		
 		if (picking) {
+			if (this.visRatio < .1) return;	//extra tough too-small threshold for picking
 			var thiz = this;
 			pickObject.drawPoints({
 				sceneObj : smallBodySceneObj,
