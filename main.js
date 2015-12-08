@@ -2324,19 +2324,21 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	
 if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		//TODO adjust based on LOD node depth
-		if (smallBodyRootNode && showSmallBodies) {
-			if (showAllSmallBodiesAtOnce) {
-				for (var i = 0; i < allSmallBodyNodes.length; ++i) {
-					var node = allSmallBodyNodes[i];
-					node.draw(distFromSolarSystemInM, picking);
-				}
-			} else {	//good for selective rendering but bad for all rendering
-				var drawList = [];
-				smallBodyNodesDrawnThisFrame.length = 0;
-				smallBodyRootNode.prepDraw(drawList, tanFovY);
-				for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
-					var node = drawList.splice(drawList.length-1, 1)[0];
-					node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
+		if (!picking || allowSelectSmallBodies) {
+			if (smallBodyRootNode && showSmallBodies) {
+				if (showAllSmallBodiesAtOnce) {
+					for (var i = 0; i < allSmallBodyNodes.length; ++i) {
+						var node = allSmallBodyNodes[i];
+						node.draw(distFromSolarSystemInM, picking);
+					}
+				} else {	//good for selective rendering but bad for all rendering
+					var drawList = [];
+					smallBodyNodesDrawnThisFrame.length = 0;
+					smallBodyRootNode.prepDraw(drawList, tanFovY);
+					for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
+						var node = drawList.splice(drawList.length-1, 1)[0];
+						node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
+					}
 				}
 			}
 		}
@@ -3182,9 +3184,11 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showGravityWell',
 		'showNames',
 		'showOrbits',
+		'showSmallBodies',
+		'allowSelectSmallBodies',
 		'showStars',
-		'showGalaxies',
 		'allowSelectStars',
+		'showGalaxies',
 		'allowSelectGalaxies',
 		'showPlanetsAsDistantPoints',
 		'gravityWellScaleNormalized',
@@ -3758,6 +3762,7 @@ function initStars() {
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
 var showSmallBodies = true;
+var allowSelectSmallBodies = true;
 var allSmallBodyPointsBuffer;
 var pointsPerNode = 1000;
 var smallBodyRootNode;
