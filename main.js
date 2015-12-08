@@ -1008,7 +1008,7 @@ function getCachedSmallBody(node,localIndex) {
 	var globalIndex = node.indexes[localIndex];
 	if (cachedSmallBodies[globalIndex]) return cachedSmallBodies[globalIndex];
 	var smallBody = {
-		name : 'Small Body Node #'+node.index+' Pt.#'+localIndex+' Gid#'+globalIndex,
+		name : 'Small Body #'+globalIndex,
 		pos : [x,y,z],
 		radius : 1
 	};

@@ -204,6 +204,7 @@ end
 function OutputToPoints:staticDone()
 	print('max radius:',self.maxR)
 
+	print('building octree leafs')
 	local leafPointCount = 1000
 
 	-- [[ writing octree
@@ -235,51 +236,57 @@ function OutputToPoints:staticDone()
 		local body = self.bodies[i]
 		local x,y,z = body.pos:unpack()
 		local node = root
-		
-		-- first add to leafmost until it passes a threshold, then split
-		while node.children do
-			local ix = x > node.center[1] and 1 or 0
-			local iy = y > node.center[2] and 1 or 0
-			local iz = z > node.center[3] and 1 or 0
-			local childIndex = 1 + ix + 2 * (iy + 2 * iz)
-			node = node.children[childIndex]
-		end
-	
-		node.bodies:insert(body)
-		if #node.bodies > leafPointCount then
-			node.children = table()
-			for ix=0,1 do
-				for iy=0,1 do
-					for iz=0,1 do
-						local is = vec3(ix,iy,iz)
-						local childIndex = 1 + ix + 2 * (iy + 2 * iz)
-						local child = PointOctreeNode()
-						allNodes:insert(child)
-						child.index = #allNodes
-						node.children[childIndex] = child
-						child.parent = node
-						for j=1,3 do
-							child.mins[j] = is[j] == 1 and node.center[j] or node.mins[j]
-							child.maxs[j] = is[j] == 1 and node.maxs[j] or node.center[j]
-							child.center[j] = .5 * (child.mins[j] + child.maxs[j])
-						end
-					end
-				end
-			end
-			for j=1,#node.bodies do
-				local body = node.bodies[j]
-				local x,y,z = body.pos:unpack()
+
+		if math.isfinite(x)
+		and math.isfinite(y)
+		and math.isfinite(z)
+		then
+			-- first add to leafmost until it passes a threshold, then split
+			while node.children do
 				local ix = x > node.center[1] and 1 or 0
 				local iy = y > node.center[2] and 1 or 0
 				local iz = z > node.center[3] and 1 or 0
 				local childIndex = 1 + ix + 2 * (iy + 2 * iz)
-				local child = node.children[childIndex]
-				child.bodies:insert(body)
+				node = node.children[childIndex]
 			end
-			node.bodies = table()
+		
+			node.bodies:insert(body)
+			if #node.bodies > leafPointCount then
+				node.children = table()
+				for ix=0,1 do
+					for iy=0,1 do
+						for iz=0,1 do
+							local is = vec3(ix,iy,iz)
+							local childIndex = 1 + ix + 2 * (iy + 2 * iz)
+							local child = PointOctreeNode()
+							allNodes:insert(child)
+							child.index = #allNodes
+							node.children[childIndex] = child
+							child.parent = node
+							for j=1,3 do
+								child.mins[j] = is[j] == 1 and node.center[j] or node.mins[j]
+								child.maxs[j] = is[j] == 1 and node.maxs[j] or node.center[j]
+								child.center[j] = .5 * (child.mins[j] + child.maxs[j])
+							end
+						end
+					end
+				end
+				for j=1,#node.bodies do
+					local body = node.bodies[j]
+					local x,y,z = body.pos:unpack()
+					local ix = x > node.center[1] and 1 or 0
+					local iy = y > node.center[2] and 1 or 0
+					local iz = z > node.center[3] and 1 or 0
+					local childIndex = 1 + ix + 2 * (iy + 2 * iz)
+					local child = node.children[childIndex]
+					child.bodies:insert(body)
+				end
+				node.bodies = table()
+			end
 		end
 	end
-	
+
+	print('pushing points rootward')
 	-- now push upward based on random sampling of all children ...
 	local function process(node)
 		if not node.children then return end
@@ -306,6 +313,7 @@ function OutputToPoints:staticDone()
 			pts:insert(body.pos[j])
 		end
 	end	
+	print('writing out nodes')
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)
 		if node.parent then node.parent = node.parent.index end
@@ -341,16 +349,19 @@ function OutputToPoints:staticDone()
 		file['nodes/'..node.index..'.json'] = json.encode(node.bodies):gsub('},{','},\n{')
 		node.bodies = nil
 	end
+	print('writing octree info')
 	for _,node in ipairs(allNodes) do
 		node.index = nil	-- don't need this anymore
 	end
 	file['octree.json'] = json.encode(setmetatable(allNodes, nil)):gsub('},{','},\n{')
 
+	print('writing point buffer')
 	-- writing all at once
 	local ffi = require 'ffi'
 	local buffer = ffi.new('float[?]', #pts, pts)
 	file['output.f32'] = ffi.string(ffi.cast('char*', buffer), ffi.sizeof(buffer))
 
+	print('done')
 	--]]
 end
 
