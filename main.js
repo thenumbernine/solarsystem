@@ -6456,7 +6456,7 @@ function calcKeplerianOrbitalElements(body, useVectorState) {
 				var timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
 				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 			} else if (body.isAsteroid) {
-				meanAnomaly = body.sourceData.meanAnomalyAtEpoch * 2 * Math.PI / orbitalPeriod * (julianDate - body.sourceData.epoch);
+				meanAnomaly = body.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (julianDate - body.sourceData.epoch);
 			} else if (body.isExoplanet) {
 				meanAnomaly = body.sourceData.meanAnomaly !== undefined ? body.sourceData.meanAnomaly : 0;
 			} else {
