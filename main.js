@@ -599,7 +599,7 @@ var skyTexFilenamePrefixes = [
 
 var glMaxCubeMapTextureSize;
 
-var resetDistanceOnSelect = true;
+var resetDistanceOnSelectingNewSystem = false;
 
 var speedOfLight = metersPerUnits.ls;	// m/s
 var gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
@@ -1903,11 +1903,13 @@ var showFPS = false;
 					//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 					//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
 					if (allowSelectStars) {
-					//also TODO:
-					//if (list === starfield && target == orbitStarSystem) continue;
-					//...and then there's the fact that the old ray code only checked the exoplanets
-					// whereas this is rendering all hyg stars ...
-					//so I'll turn it off for now
+					
+						/* TODO render via buffer?
+						//also TODO:
+						//if (list === starfield && target == orbitStarSystem) continue;
+						//...and then there's the fact that the old ray code only checked the exoplanets
+						// whereas this is rendering all hyg stars ...
+						//so I'll turn it off for now
 						pickObject.drawPoints({
 							sceneObj : starfield.sceneObj,
 							targetCallback : function(index) {
@@ -1924,6 +1926,25 @@ var showFPS = false;
 							pointSizeMin : .25,
 							pointSizeMax : 5
 						});
+						*/
+						/* until then ... manually? */
+						$.each(starSystems, function(i,starSystem) {
+							if (starSystem !== orbitStarSystem) {
+								pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - orbitTarget.pos[0]) / starFieldRenderScale;
+								pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - orbitTarget.pos[1]) / starFieldRenderScale;
+								pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - orbitTarget.pos[2]) / starFieldRenderScale;
+								pointObj.attrs.vertex.updateData();
+								pickObject.drawPoints({
+									sceneObj : pointObj,
+									targetCallback : function() { return starSystem; },
+									pointSize : pointSize,
+									pointSizeScaleWithDist : true,
+									pointSizeMin : .25,
+									pointSizeMax : 5
+								});
+							}
+						});
+						/**/
 					}
 				}
 			}
@@ -3630,8 +3651,6 @@ function init2() {
 			var infoDivTop = $('#infoPanel').offset().top;
 			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
 			$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
-			console.log('fixing body info top at', infoDivTop);
-			console.log('interpolating to dest top', infoDivDestTop);
 
 			$('#infoPanel')
 				//go from bottom-aligned to top-algined
@@ -3658,8 +3677,6 @@ function init2() {
 			$('#infoPanel').css('height', '104px');
 			var infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
 			var infoDivDestBottom = -25;
-			console.log('fixing body info bottom at', infoDivBottom);
-			console.log('interpolating to dest bottom ', infoDivDestBottom);
 
 			$('#infoPanel')
 				//go from bottom-aligned to top-algined
@@ -4199,6 +4216,7 @@ void main() {
 				tex : 0
 			},
 			texs : [],
+			useDepth : false,
 			blend : [gl.SRC_ALPHA, gl.ONE],
 			pos : [0,0,0],
 			parent : null,
@@ -7270,7 +7288,7 @@ function setOrbitTarget(newTarget) {
 	}
 
 	if (selectingNewSystem) {
-		if (resetDistanceOnSelect) {
+		if (resetDistanceOnSelectingNewSystem) {
 			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
 			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
 				var planet = orbitStarSystem.planets[i];
@@ -7505,7 +7523,8 @@ function update() {
 	}
 
 	//if we are close enough to the planet then rotate with it
-	var fixViewToSurface = orbitTargetDistance < orbitTarget.radius * .1;
+	var fixViewToSurface = orbitTargetDistance < orbitTarget.radius * .1 &&
+		(!orbitTarget.isa || !orbitTarget.isa(Galaxy));	//don't allow perspetive from galaxy "surfaces"
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
 		var pos = [];
 		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
