@@ -2798,6 +2798,7 @@ function addSmallBody(row) {
 	initPlanetColorSchRadiusAngle(planet);
 	initPlanetSceneLatLonLineObjs(planet);
 	calcKeplerianOrbitalElements(planet, false);
+	recomputePlanetAlongOrbit(planet);
 
 	return planet;
 }
@@ -6453,10 +6454,10 @@ function calcKeplerianOrbitalElements(body, useVectorState) {
 
 			if (body.isComet) {
 				timeOfPeriapsisCrossing = body.sourceData.timeOfPerihelionPassage;	//julian day
-				var timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
+				var timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
 				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 			} else if (body.isAsteroid) {
-				meanAnomaly = body.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (julianDate - body.sourceData.epoch);
+				meanAnomaly = body.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (initJulianDate - body.sourceData.epoch);
 			} else if (body.isExoplanet) {
 				meanAnomaly = body.sourceData.meanAnomaly !== undefined ? body.sourceData.meanAnomaly : 0;
 			} else {
@@ -6785,73 +6786,76 @@ if (body.orbitalPeriod !== undefined) orbitalPeriod = body.orbitalPeriod;
 	*/
 }
 
-function recomputePlanetsAlongOrbit() {
+function recomputePlanetAlongOrbit(planet) {
 	var timeAdvanced = julianDate - initJulianDate;
+	if (!planet.parent) return;
+	var ke = planet.keplerianOrbitalElements;
+	var orbitType = ke.orbitType;
+
+	var meanMotion = undefined;
+	if (ke.orbitalPeriod !== undefined) {	//elliptical
+		meanMotion = 2 * Math.PI / ke.orbitalPeriod;
+	} else if (ke.timeOfPeriapsisCrossing !== undefined) {	//hyperbolic ... shouldn't be using mean motion?
+		meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
+	} else {
+		throw 'here';
+	}
+
+	//TODO don't use meanMotion for hyperbolic orbits
+	var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
+	var theta = timeAdvanced * meanMotion;
+	var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
+	var A = ke.A;
+	var B = ke.B;
+
+	//matches above
+	var dt_dE;
+	var semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
+	if (orbitType == 'parabolic') {
+		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 + pathEccentricAnomaly * pathEccentricAnomaly);
+	} else if (orbitType == 'elliptic') {
+		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 - ke.eccentricity * Math.cos(pathEccentricAnomaly));
+	} else if (orbitType == 'hyperbolic') {
+		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (ke.eccentricity * Math.cosh(pathEccentricAnomaly) - 1);
+	}
+	var dE_dt = 1/dt_dE;
+	var coeffA, coeffB;
+	var coeffDerivA, coeffDerivB;
+	if (orbitType == 'parabolic') {
+		//...?
+	} else if (orbitType == 'elliptic') { 
+		coeffA = Math.cos(pathEccentricAnomaly) - ke.eccentricity;
+		coeffB = Math.sin(pathEccentricAnomaly);
+		coeffDerivA = -Math.sin(pathEccentricAnomaly) * dE_dt;
+		coeffDerivB = Math.cos(pathEccentricAnomaly) * dE_dt;
+	} else if (orbitType == 'hyperbolic') {
+		coeffA = ke.eccentricity - Math.cosh(pathEccentricAnomaly);
+		coeffB = Math.sinh(pathEccentricAnomaly);
+		coeffDerivA = -Math.sinh(pathEccentricAnomaly) * dE_dt;
+		coeffDerivB = Math.cosh(pathEccentricAnomaly) * dE_dt;
+	}
+	var posX = A[0] * coeffA + B[0] * coeffB;
+	var posY = A[1] * coeffA + B[1] * coeffB;
+	var posZ = A[2] * coeffA + B[2] * coeffB;
+	var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
+	var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
+	var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
+	
+	planet.pos[0] = posX + planet.parent.pos[0];
+	planet.pos[1] = posY + planet.parent.pos[1];
+	planet.pos[2] = posZ + planet.parent.pos[2];
+	planet.vel[0] = velX + planet.parent.vel[0];
+	planet.vel[1] = velY + planet.parent.vel[1];
+	planet.vel[2] = velZ + planet.parent.vel[2];
+	
+	planet.keplerianOrbitalElements.fractionOffset = fractionOffset;
+}
+
+function recomputePlanetsAlongOrbit() {
 	var starSystem = orbitStarSystem;
 	for (var i = 0; i < starSystem.planets.length; ++i) {	//or do it for all systems?
 		var planet = starSystem.planets[i];
-		if (planet.parent) {
-			var ke = planet.keplerianOrbitalElements;
-			var orbitType = ke.orbitType;
-
-			var meanMotion = undefined;
-			if (ke.orbitalPeriod !== undefined) {	//elliptical
-				meanMotion = 2 * Math.PI / ke.orbitalPeriod;
-			} else if (ke.timeOfPeriapsisCrossing !== undefined) {	//hyperbolic ... shouldn't be using mean motion?
-				meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
-			} else {
-				throw 'here';
-			}
-		
-			//TODO don't use meanMotion for hyperbolic orbits
-			var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
-			var theta = timeAdvanced * meanMotion;
-			var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
-			var A = ke.A;
-			var B = ke.B;
-		
-			//matches above
-			var dt_dE;
-			var semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
-			if (orbitType == 'parabolic') {
-				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 + pathEccentricAnomaly * pathEccentricAnomaly);
-			} else if (orbitType == 'elliptic') {
-				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 - ke.eccentricity * Math.cos(pathEccentricAnomaly));
-			} else if (orbitType == 'hyperbolic') {
-				dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (ke.eccentricity * Math.cosh(pathEccentricAnomaly) - 1);
-			}
-			var dE_dt = 1/dt_dE;
-			var coeffA, coeffB;
-			var coeffDerivA, coeffDerivB;
-			if (orbitType == 'parabolic') {
-				//...?
-			} else if (orbitType == 'elliptic') { 
-				coeffA = Math.cos(pathEccentricAnomaly) - ke.eccentricity;
-				coeffB = Math.sin(pathEccentricAnomaly);
-				coeffDerivA = -Math.sin(pathEccentricAnomaly) * dE_dt;
-				coeffDerivB = Math.cos(pathEccentricAnomaly) * dE_dt;
-			} else if (orbitType == 'hyperbolic') {
-				coeffA = ke.eccentricity - Math.cosh(pathEccentricAnomaly);
-				coeffB = Math.sinh(pathEccentricAnomaly);
-				coeffDerivA = -Math.sinh(pathEccentricAnomaly) * dE_dt;
-				coeffDerivB = Math.cosh(pathEccentricAnomaly) * dE_dt;
-			}
-			var posX = A[0] * coeffA + B[0] * coeffB;
-			var posY = A[1] * coeffA + B[1] * coeffB;
-			var posZ = A[2] * coeffA + B[2] * coeffB;
-			var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
-			var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
-			var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
-			
-			planet.pos[0] = posX + planet.parent.pos[0];
-			planet.pos[1] = posY + planet.parent.pos[1];
-			planet.pos[2] = posZ + planet.parent.pos[2];
-			planet.vel[0] = velX + planet.parent.vel[0];
-			planet.vel[1] = velY + planet.parent.vel[1];
-			planet.vel[2] = velZ + planet.parent.vel[2];
-			
-			planet.keplerianOrbitalElements.fractionOffset = fractionOffset;
-		}
+		recomputePlanetAlongOrbit(planet);
 	}
 }
 
