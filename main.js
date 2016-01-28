@@ -1849,6 +1849,8 @@ var showFPS = false;
 			
 			orbitStarSystem.planetStateTex.unbind();
 		}
+
+		//get our calculations for orientation
 		
 		quat.conjugate(viewAngleInv, glutil.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
@@ -1866,6 +1868,12 @@ var showFPS = false;
 		var distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
 		var distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
+		
+		//draw from furthest to nearest, so the varying-scaled objects don't get conflicting depth information
+		// be sure to clear the depth buffer between each scale
+		
+		//first comes the sky cube (with no depth information)
+
 		if (skyCubeObj &&
 			!picking &&
 			distFromSolarSystemInLyr < skyCubeFadeOutEndDistInLyr)
@@ -1878,7 +1886,75 @@ var showFPS = false;
 			gl.enable(gl.DEPTH_TEST);
 		}
 
+		//next comes galaxies
+
+		//next comes the milky way
+		//render the milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
+		// set up Mpc scaled view
+		vec3.scale(viewPosInv, glutil.view.pos, -1/interGalacticRenderScale);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
+
+		//draw milky way if we're far enough out
+		if (milkyWayObj) {
+			if (!picking &&
+				distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr)
+			{
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
+					milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
+					milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
+				}
+			
+				//apply milky way local transforms to mpc mv mat
+				gl.disable(gl.CULL_FACE);
+				gl.depthMask(false);
+				milkyWayObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
+				milkyWayObj.draw();
+				gl.enable(gl.CULL_FACE);
+				gl.depthMask(true);
+			}
+			
+			//wait for the milky way obj to load and grab its texture
+			//TODO work out loading and what a mess it has become
+			if (showGalaxies &&
+				galaxyField &&
+				galaxyField.sceneObj)
+			{
+				galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
+			
+				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+					galaxyField.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
+					galaxyField.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
+					galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+				}
+
+				var pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width * metersPerUnits.Mpc / interGalacticRenderScale / tanFovY;
+				if (picking) {
+					if (allowSelectGalaxies &&
+						closestGalaxyDistanceInM < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance)
+					//	&& dist < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance
+					{
+						pickObject.drawPoints({
+							sceneObj : galaxyField.sceneObj,
+							targetCallback : getCachedGalaxy,
+							pointSize : pointSize,
+							pointSizeScaleWithDist : true,
+							//defined in shader:
+							pointSizeMin : 1,
+							pointSizeMax : Infinity
+						});
+					}
+				} else {
+					galaxyField.sceneObj.uniforms.pointSize = pointSize;
+					galaxyField.sceneObj.draw();
+				}
+			}
+		}
+
+		//next comes local stars of the milky way
+
 		if (showStars) {
+			gl.clear(gl.DEPTH_BUFFER_BIT)
 			vec3.scale(viewPosInv, glutil.view.pos, -1/starFieldRenderScale);
 			mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 			
@@ -1977,7 +2053,10 @@ var showFPS = false;
 				}
 			}
 		}
-		
+	
+		//last is planets
+
+		gl.clear(gl.DEPTH_BUFFER_BIT)
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
@@ -2276,67 +2355,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 			}
 		}
 		
-		//render milkyWayObj in Mpc units rather than meters (because it's hitting the limit of fp accuracy)
-		// set up Mpc scaled view
-		vec3.scale(viewPosInv, glutil.view.pos, -1/interGalacticRenderScale);
-		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-
-		//draw milky way if we're far enough out
-		if (milkyWayObj) {
-			if (!picking &&
-				distFromSolarSystemInLyr > milkyWayFadeMinDistInLyr)
-			{
-				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-					milkyWayObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
-					milkyWayObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
-					milkyWayObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
-				}
-			
-				//apply milky way local transforms to mpc mv mat
-				gl.disable(gl.CULL_FACE);
-				gl.depthMask(false);
-				milkyWayObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - milkyWayFadeMinDistInLyr) / (milkyWayFadeMaxDistInLyr - milkyWayFadeMinDistInLyr), 0, 1);
-				milkyWayObj.draw();
-				gl.enable(gl.CULL_FACE);
-				gl.depthMask(true);
-			}
-			
-			//wait for the milky way obj to load and grab its texture
-			//TODO work out loading and what a mess it has become
-			if (showGalaxies &&
-				galaxyField &&
-				galaxyField.sceneObj)
-			{
-				galaxyField.sceneObj.texs[0] = milkyWayObj.texs[0];	
-			
-				if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-					galaxyField.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
-					galaxyField.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
-					galaxyField.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
-				}
-
-				var pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width * metersPerUnits.Mpc / interGalacticRenderScale / tanFovY;
-				if (picking) {
-					if (allowSelectGalaxies &&
-						closestGalaxyDistanceInM < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance)
-					//	&& dist < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance
-					{
-						pickObject.drawPoints({
-							sceneObj : galaxyField.sceneObj,
-							targetCallback : getCachedGalaxy,
-							pointSize : pointSize,
-							pointSizeScaleWithDist : true,
-							//defined in shader:
-							pointSizeMin : 1,
-							pointSizeMax : Infinity
-						});
-					}
-				} else {
-					galaxyField.sceneObj.uniforms.pointSize = pointSize;
-					galaxyField.sceneObj.draw();
-				}
-			}
-		}
+		//show small bodies in the solar system
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
