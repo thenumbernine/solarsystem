@@ -731,9 +731,9 @@ var SchwarzschildMetric = makeClass({
 			var scale = R * (r - R) / (2 * r2 * r2);
 			scale *= metersPerUnits.ls * metersPerUnits.ls;
 			
-			accel[0] += x * scale;
-			accel[1] += y * scale;
-			accel[2] += z * scale;
+			accel[0] -= x * scale;
+			accel[1] -= y * scale;
+			accel[2] -= z * scale;
 		}
 	},
 	
