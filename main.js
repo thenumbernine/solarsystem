@@ -829,8 +829,8 @@ var KerrMetric = makeClass({
 
 var metricInfos = [
 	{name:'Newtonian', classObj:NewtonApproximateMetric},
-	{name:'Schwarzschild', classObj:SchwarzschildMetric},
-	{name:'Kerr', classObj:KerrMetric},
+	{name:'Schwarzschild', classObj:SchwarzschildMetric}
+	//{name:'Kerr', classObj:KerrMetric}
 ];
 
 //var metric = new NewtonApproximateMetric();
