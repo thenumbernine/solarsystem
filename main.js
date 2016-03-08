@@ -801,6 +801,12 @@ var KerrMetric = makeClass({
 	super : Metric
 });
 
+var metricInfos = [
+	{name:'Newtonian', classObj:NewtonApproximateMetric},
+	{name:'Schwarzschild', classObj:SchwarzschildMetric},
+	//{name:'Kerr', classObj:KerrMetric},
+];
+
 //var metric = new NewtonApproximateMetric();
 var metric = new SchwarzschildMetric();
 
@@ -3000,6 +3006,24 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 	// overlay side panel
 
+
+	var overlaySidePanelMetric = $('#overlaySidePanelMetric');
+	$.each(metricInfos, function(metricIndex, metricInfo) {
+		var radio = $('<input>', {
+			type : 'radio',
+			name : 'calculationMetric',
+			value : metricIndex,
+			click : function() {
+				metric = new metricInfo.classObj();
+				invalidateForces();
+			}
+		})
+			.attr('name', 'metric')
+			.appendTo(overlaySidePanelMetric);
+		if (metric.isa(metricInfo.classObj)) radio.attr('checked', 'checked');
+		$('<span>', {text:metricInfo.name}).appendTo(overlaySidePanelMetric);
+		$('<br>').appendTo(overlaySidePanelMetric);
+	});
 
 	var overlaySidePanelContents = $('#overlaySidePanelContents');
 	$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanelContents);
