@@ -796,15 +796,41 @@ var SchwarzschildMetric = makeClass({
 	}
 });
 
-//uncharged, rotating spherical body
+/*
+uncharged, rotating spherical body
+using cartesian implementation from http://arxiv.org/pdf/0706.0622.pdf
+ds^2 = -dt^2 + dx^2 + dy^2 + dz^2 + (2mr^3)/(r^4 + a^2 z^2) (
+	dt + r(x dx + y dy) / (a^2 + r^2) + a(y dx - x dy)/(a^2 + r^2) + z/r dz
+)^2
+for x^2 + y^2 + z^2 = r^2 + a^2(1 - z^2/r^2)
+r^4 + r^2(a^2 - x^2 - y^2 - z^2) - a^2 z^2 = 0
+r^2 = 1/2( -(a^2 - x^2 - y^2 - z^2) +- sqrt((a^2 - x^2 - y^2 - z^2)^2 - 4(-a^2 z^2)))
+*/
 var KerrMetric = makeClass({
-	super : Metric
+	super : Metric,
+	calcGravity : function(accel, pos) {
+		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			if (!planetInfluences[planetIndex]) continue;
+			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.mass === undefined) continue;
+		
+			var x = pos[0] - planet.pos[0];
+			var y = pos[1] - planet.pos[1];
+			var z = pos[2] - planet.pos[2];
+			var a = J/M;
+
+			var nqb = x*x + y*y + z*z - a*a;
+			var rSqP = .5 * (nqb + Math.sqrt(nqb*nqb + 4 * a*a * z*z));
+			var rSqM = .5 * (nqb - Math.sqrt(nqb*nqb + 4 * a*a * z*z));
+			var rSq = rSqP;
+		}
+	},
 });
 
 var metricInfos = [
 	{name:'Newtonian', classObj:NewtonApproximateMetric},
 	{name:'Schwarzschild', classObj:SchwarzschildMetric},
-	//{name:'Kerr', classObj:KerrMetric},
+	{name:'Kerr', classObj:KerrMetric},
 ];
 
 //var metric = new NewtonApproximateMetric();
