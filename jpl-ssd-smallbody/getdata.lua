@@ -11,10 +11,15 @@ local json = require 'dkjson'
 local mjdOffset = 2400000.5
 
 local function readCache(filename, url)
-	if io.fileexists(filename) then return file[filename] end
+	if io.fileexists(filename) then
+		print('already have file '..filename..', so skipping the download and using the cached version')
+		return file[filename]
+	end
 	local http = require 'socket.http'
-	local results = assert(http.request(url))
-	local data = results[1]
+	print('downloading url '..url..' ...')
+	local results = {assert(http.request(url))}
+	local data = assert(results[1], "didn't get any data back from our request")
+	print('writing file '..filename..' with this much data: '..#data)
 	file[filename] = data
 	return data
 end
@@ -39,7 +44,7 @@ local function processToFile(args)
 	local outputMethod = assert(args.outputMethod)
 
 	local lastTime = os.time()
-	local lines = file[inputFilename]:split('\n')
+	local lines = assert(file[inputFilename], "failed to read file "..inputFilename):split('\n')
 	local cols = Columns(lines)
 	for i=3,#lines do	-- skip headers and ---- line
 		local line = lines[i]
