@@ -239,7 +239,7 @@ var Planet = makeClass({
 	
 	//no longer used for mesh construction -- that all goes on in the shader
 	//this is only used for getting positions for updating the tidal array calculations
-	// and for (geosynchronously) orbitting geodetic locations (which is currently disabled)
+	// and for (geosynchronously) orbiting geodetic locations (which is currently disabled)
 	geodeticPosition : function(destX, lat, lon, height) {
 		var phi = Math.rad(lat);
 		var lambda = Math.rad(lon);
@@ -577,7 +577,7 @@ var orbitOffset = [0,0,0];
 var orbitTargetDistance;
 var orbitZoomFactor = .0003;	// upon mousewheel
 
-//if we're orbitting at 1AU then we can only click things at 1000 AU
+//if we're orbiting at 1AU then we can only click things at 1000 AU
 var ratioOfOrbitDistanceToAllowSelection = 10000;
 
 var mouse;
@@ -962,6 +962,9 @@ var gravityWellScaleFixed = false;
 var gravityWellScaleFixedValue = 2000;
 var gravityWellRadialMinLog100 = -1;
 var gravityWellRadialMaxLog100 = 2;
+
+var overlayShowOrbitTarget = true;
+var overlayShowCurrentPosition = false;
 
 var showNames = true;
 
@@ -1518,17 +1521,79 @@ function refreshMeasureText() {
 }
 
 
+var calcMetricForce;
+(function(){
+	var accel = [];
+	var norm = [];
+	calcMetricForce = function(x, planet) {
+		accel[0] = accel[1] = accel[2] = 0;
+		switch (displayMethod) {
+		case 'Tangent Tidal':
+		case 'Normal Tidal':
+		case 'Total Tidal':
+			metric.calcTidal(accel, x, planet);
+			break;
+		case 'Tangent Gravitational':
+		case 'Normal Gravitational':
+		case 'Total Gravitational':
+			metric.calcGravity(accel, x);
+			break;
+		case 'Tangent Total':
+		case 'Normal Total':
+		case 'Total':
+			metric.calcTidal(accel, x, planet);
+			metric.calcGravity(accel, x);
+			break;
+		}
+
+		norm[0] = x[0] - planet.pos[0];
+		norm[1] = x[1] - planet.pos[1];
+		norm[2] = x[2] - planet.pos[2];
+		var normLen = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
+		norm[0] /= normLen;
+		norm[1] /= normLen;
+		norm[2] /= normLen;
+
+		//var toTheMoon = (solarSystem.planets[solarSystem.indexes.Moon].pos - x):normalize()
+		//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
+		//var tangentTowardsMoon = normCrossMoon:cross(norm)
+		//var tidalAccel = accel:dot(tangentTowardsMoon)
+		//var tidalAccel = accel:dot(toTheMoon)	// moonward component
+
+		var t;
+		switch (displayMethod) {
+		case 'Tangent Tidal':
+		case 'Tangent Gravitational':
+		case 'Tangent Total':
+			var dot = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
+			var dx = accel[0] - norm[0] * dot;
+			var dy = accel[1] - norm[1] * dot;
+			var dz = accel[2] - norm[2] * dot;
+			t = Math.sqrt(dx * dx + dy * dy + dz * dz);
+			break;
+		case 'Normal Tidal':
+		case 'Normal Gravitational':
+		case 'Normal Total':
+			t = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
+			break;
+		case 'Total Tidal':
+		case 'Total Gravitational':
+		case 'Total':
+			t = Math.sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
+			break;
+		}
+		return t;
+	};
+})();
+
 var updatePlanetClassSceneObj;
 (function(){
 	var x = [];
-	var accel = [];
-	var norm = [];
-	var proj = [];
 	updatePlanetClassSceneObj = function(planet) {
 		var planetShaders = getPlanetShadersForNumberOfStars(planet.starSystem.stars.length);
 
 		//update tide attributes
-		var useOverlay = displayMethod != 'None';
+		var useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
 		if (!useOverlay) {
 			if (planet.tex === undefined) {
 				planet.sceneObj.shader = planetShaders.colorShader;
@@ -1579,62 +1644,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 					var lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
 					planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 
-					accel[0] = accel[1] = accel[2] = 0;
-					switch (displayMethod) {
-					case 'Tangent Tidal':
-					case 'Normal Tidal':
-					case 'Total Tidal':
-						metric.calcTidal(accel, x, planet);
-						break;
-					case 'Tangent Gravitational':
-					case 'Normal Gravitational':
-					case 'Total Gravitational':
-						metric.calcGravity(accel, x);
-						break;
-					case 'Tangent Total':
-					case 'Normal Total':
-					case 'Total':
-						metric.calcTidal(accel, x, planet);
-						metric.calcGravity(accel, x);
-						break;
-					}
-
-					norm[0] = x[0] - planet.pos[0];
-					norm[1] = x[1] - planet.pos[1];
-					norm[2] = x[2] - planet.pos[2];
-					var normLen = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
-					norm[0] /= normLen;
-					norm[1] /= normLen;
-					norm[2] /= normLen;
-
-					//var toTheMoon = (solarSystem.planets[solarSystem.indexes.Moon].pos - x):normalize()
-					//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
-					//var tangentTowardsMoon = normCrossMoon:cross(norm)
-					//var tidalAccel = accel:dot(tangentTowardsMoon)
-					//var tidalAccel = accel:dot(toTheMoon)	// moonward component
-
-					var t;
-					switch (displayMethod) {
-					case 'Tangent Tidal':
-					case 'Tangent Gravitational':
-					case 'Tangent Total':
-						var dot = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
-						var dx = accel[0] - norm[0] * dot;
-						var dy = accel[1] - norm[1] * dot;
-						var dz = accel[2] - norm[2] * dot;
-						t = Math.sqrt(dx * dx + dy * dy + dz * dz);
-						break;
-					case 'Normal Tidal':
-					case 'Normal Gravitational':
-					case 'Normal Total':
-						t = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
-						break;
-					case 'Total Tidal':
-					case 'Total Gravitational':
-					case 'Total':
-						t = Math.sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
-						break;
-					}
+					var t = calcMetricForce(x, planet);
 
 					if (measureMin === undefined || t < measureMin) measureMin = t;
 					if (measureMax === undefined || t > measureMax) measureMax = t;
@@ -1833,13 +1843,23 @@ var showFPS = false;
 			}
 		}
 
-
+		if (overlayShowCurrentPosition && orbitTarget.isa(Planet)) {
+			//update the min and max to reflect the current position
+			var x = glutil.view.pos[0] + orbitTarget.pos[0];
+			var y = glutil.view.pos[1] + orbitTarget.pos[1];
+			var z = glutil.view.pos[2] + orbitTarget.pos[2];
+			var t = calcMetricForce([x,y,z], orbitTarget);
+			$('#measureMin').text(t === undefined ? '' : t.toExponential() + ' m/s^2');
+			$('#measureMax').text(t === undefined ? '' : t.toExponential() + ' m/s^2');
+		}
+		
 		//update the planet state texture
 		// right now it's only used for tide calcs so
 		//1) only update it if tide calcs are on
 		//2) only include planets that are enabled for tide calcs
 		// more discernment later when i make it general purpose
-		if (!(displayMethod == 'None' || picking)) {
+		var useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
+		if (useOverlay && !picking) {
 		
 			var targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
 			
@@ -2495,7 +2515,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 					planet.orbitVisRatio = distPeriapsis / (deltaLength * tanFovY);
 
 					if (planet.orbitVisRatio > planetPointVisRatio) {
-						//recenter around orbitting planet
+						//recenter around orbiting planet
 						vec3.sub(orbitPathSceneObj.pos, planet.parent.pos, orbitTarget.pos);
 
 						orbitPathSceneObj.uniforms.color = planet.color;
@@ -3265,6 +3285,10 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 	// display options side panel
 
+	var radioGroups = [
+		['gravityWellScaleNormalized', 'gravityWellScaleFixed'],
+		['overlayShowOrbitTarget', 'overlayShowCurrentPosition']
+	];
 
 	$.each([
 		'showLinesToOtherPlanets',
@@ -3282,19 +3306,34 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showGalaxies',
 		'allowSelectGalaxies',
 		'showPlanetsAsDistantPoints',
+		//radio
 		'gravityWellScaleNormalized',
-		'gravityWellScaleFixed'
+		'gravityWellScaleFixed',
+		//radio
+		'overlayShowOrbitTarget',
+		'overlayShowCurrentPosition'
 	], function(_, toggle) {
-		(function(){
-			var checkbox = $('#'+toggle);
-			if (window[toggle]) checkbox.attr('checked', 'checked');
-			checkbox.change(function() {
-				window[toggle] = checkbox.is(':checked');
-				//TODO generalize for radius?
-				if (toggle == 'gravityWellScaleNormalized' && gravityWellScaleNormalized) gravityWellScaleFixed = false;
-				if (toggle == 'gravityWellScaleFixed' && gravityWellScaleFixed) gravityWellScaleNormalized = false;
-			});
-		})();
+		var checkbox = $('#'+toggle);
+		if (window[toggle]) checkbox.attr('checked', 'checked');
+		checkbox.change(function() {
+			window[toggle] = checkbox.is(':checked');
+			
+			var found = false;
+			for (var i = 0; i < radioGroups.length; ++i) {
+				var group = radioGroups[i];
+				for (var j = 0; j < group.length; ++j) {
+					if (group[j] == toggle) {
+						for (var k = 0; k < group.length; ++k) {
+							if (k == j) continue;
+							window[group[k]] = false;
+						}
+						found = true;
+						break;
+					}
+				}
+				if (found) break;
+			}
+		});
 	});
 
 	$.each([
@@ -6713,7 +6752,7 @@ r^2 = a^2 (cos(E)
 
 		orbitType = 'elliptic';	//better be ...
 
-		//consider position relative to orbitting parent
+		//consider position relative to orbiting parent
 		// should I be doing the same thing with the velocity?  probably...
 		var posX = body.pos[0] - parentBody.pos[0];
 		var posY = body.pos[1] - parentBody.pos[1];
@@ -7148,7 +7187,7 @@ void main() {
 				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
 				// I could approximate that if I knew the approximate plane of orbit of most all the planets ...
 				// from there, take samples based on radial distance within that plane between planets ...
-				// I could remap planes on a per-planet basis depending on which you are orbitting ...
+				// I could remap planes on a per-planet basis depending on which you are orbiting ...
 				// or I could always try for something 3D ... exxhagerated pinch lattice vectors ...
 				// to do this it might be best to get the chebyshev interval calculations working, or somehow calculate the ellipses of rotation of each planet
 				//TODO also: recalculate the gravity well mesh when the planets change, to watch it in realtime
@@ -7363,7 +7402,7 @@ function setOrbitTarget(newTarget) {
 				var planet = orbitStarSystem.planets[i];
 		
 				//zoom out past orbit for planets
-				//TODO don't do this for stars orbitting the milky way
+				//TODO don't do this for stars orbiting the milky way
 				if (planet.sourceData !== undefined && planet.sourceData.semiMajorAxis !== undefined) {
 					orbitTargetDistance = Math.max(orbitTargetDistance, planet.sourceData.semiMajorAxis);
 				}
@@ -7496,7 +7535,7 @@ function initScene() {
 	gl.depthFunc(gl.LEQUAL);
 	gl.clearColor(0,0,0,0);
 
-	//assign our initial orbitting solar system
+	//assign our initial orbiting solar system
 	orbitStarSystem = solarSystem;
 
 	var trackPlanetName = 'Earth';

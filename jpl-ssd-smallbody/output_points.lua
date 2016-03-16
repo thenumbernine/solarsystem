@@ -17,6 +17,9 @@ function OutputToPoints:init(args)
 end
 
 function OutputToPoints:staticInit()
+	-- TODO: automatically make dirs for file[] access?
+	os.execute('mkdir nodes')
+
 	self.bodies = table()
 end
 
@@ -204,11 +207,24 @@ function OutputToPoints:processBody(body)
 
 	self.bodies:insert(body)
 	body.index = #self.bodies
+
+	body.semiMajorAxis = semiMajorAxis
+	body.eccentricity = eccentricity
+	body.eccentricAnomaly = eccentricAnomaly
+	body.longitudeOfAscendingNode = longitudeOfAscendingNode
+	body.argumentOfPeriapsis = argumentOfPeriapsis
+	body.inclination = inclination
+	body.timeOfPeriapsisCrossing = timeOfPeriapsisCrossing
+	body.meanAnomaly = meanAnomaly
+	body.orbitType = orbitType
+	body.orbitalPeriod = orbitalPeriod	--only exists for elliptical orbits
+	body.A = A
+	body.B = B
 end
 
 function OutputToPoints:staticDone()
 	print('max radius:',self.maxR)
-
+	
 	print('building octree leafs')
 	local leafPointCount = 1000
 
@@ -344,6 +360,7 @@ function OutputToPoints:staticDone()
 		node.bodyEndIndex = #pts/3
 		--]]
 
+-- [[ 
 		node.bodies = node.bodies:map(function(body)
 			return {
 				name = body.name,
@@ -351,6 +368,7 @@ function OutputToPoints:staticDone()
 				index = body.index,	-- index in the total list 
 			}
 		end)
+--]]
 		file['nodes/'..node.index..'.json'] = json.encode(node.bodies):gsub('},{','},\n{')
 		node.bodies = nil
 	end

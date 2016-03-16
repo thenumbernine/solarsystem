@@ -6,6 +6,14 @@ either JSON or SQLite3 at the moment
 
 require 'ext'
 
+local outputMethod = ... or 'points'
+print('outputMethod = '..outputMethod)
+
+--local outputClass = require 'output_json' 
+--local outputClass = require 'output_sqlite3'
+--local outputClass = require 'output_points'
+local outputClass = require('output_'..outputMethod)
+
 local julian = assert(loadfile('../horizons/julian.lua'))()
 local json = require 'dkjson'
 local mjdOffset = 2400000.5
@@ -36,12 +44,12 @@ local Columns = require 'columns'
 args:
 	inputFile (text)
 	processRow = function(line)
-	outputMethod
+	outputObj
 --]]
 local function processToFile(args)
 	local inputFilename = assert(args.inputFilename)
 	local processRow = assert(args.processRow)
-	local outputMethod = assert(args.outputMethod)
+	local outputObj = assert(args.outputObj)
 
 	local lastTime = os.time()
 	local lines = assert(file[inputFilename], "failed to read file "..inputFilename):split('\n')
@@ -50,7 +58,7 @@ local function processToFile(args)
 		local line = lines[i]
 		if #line:trim() > 0 then
 			xpcall(function()
-				outputMethod:processBody(assert(processRow(cols(line))))
+				outputObj:processBody(assert(processRow(cols(line))))
 			end, function(err)
 				io.stderr:write('failed on file '..inputFilename..' line '..i..'\n')
 				io.stderr:write(err..'\n'..debug.traceback()..'\n')
@@ -63,19 +71,15 @@ local function processToFile(args)
 			lastTime = thisTime
 		end
 	end
-	outputMethod:done()
+	outputObj:done()
 end
 
---local outputMethod = require 'output_json' 
-local outputMethod = require 'output_sqlite3'
---local outputMethod = require 'output_points'
+outputClass:staticInit()
 
-outputMethod:staticInit()
-
--- process comets
+-- [[ process comets
 processToFile{
 	inputFilename = 'ELEMENTS.COMET',
-	outputMethod = outputMethod{
+	outputObj = outputClass{
 		filename = 'comets.json',
 		variableName = 'cometData',
 		bodyType = 0,
@@ -106,11 +110,12 @@ processToFile{
 		return body
 	end,
 }
+--]]
 
--- process numbered bodies 
+-- [[ process numbered bodies 
 processToFile{
 	inputFilename = 'ELEMENTS.NUMBR',
-	outputMethod = outputMethod{
+	outputObj = outputClass{
 		filename = 'smallbodies-numbered.json',
 		variableName = 'numberedSmallBodyData',
 		bodyType = 1,
@@ -132,11 +137,12 @@ processToFile{
 		return body
 	end,
 }
+--]]
 
--- process unnumbered bodies 
+-- [[ process unnumbered bodies 
 processToFile{
 	inputFilename = 'ELEMENTS.UNNUM',
-	outputMethod = outputMethod{
+	outputObj = outputClass{
 		filename = 'smallbodies-unnumbered.json',
 		variableName = 'unnumberedSmallBodyData',
 		bodyType = 2,
@@ -157,5 +163,6 @@ processToFile{
 		return body
 	end,
 }
+--]]
 
-outputMethod:staticDone()
+outputClass:staticDone()

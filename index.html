@@ -128,7 +128,7 @@ a:active {
 		<div id='infoPanel' style='padding:5px; z-index:2; position:absolute; bottom:-25px; right:5px; text-align:right; display:none; height:104px'>
 			<img id='toggleBodyInfo' src='play.png' style='padding:5px'/><br>
 			<!-- Hover Distance From Orbit: <span id='hoverTargetDistanceText'></span><br> -->
-			Orbitting: <span id='orbitTargetText'></span><br>
+			Orbiting: <span id='orbitTargetText'></span><br>
 			Distance To Orbit: <span id='orbitTargetDistance'></span><br>
 			<div id='infoDiv' style='pointer-events:none'></div>
 		</div>
@@ -158,7 +158,7 @@ a:active {
 			<div style='padding-left:10px'>
 				<input id='gravityWellScaleNormalized' type='radio' name='gravityWellScale' checked='checked'/>Normalized Scale<br>
 				<input id='gravityWellScaleFixed' type='radio' name='gravityWellScale'/>Fixed Scale
-				<input id='gravityWellScaleFixedValue' value='2000'/>
+				<input id='gravityWellScaleFixedValue' value='2000'/><br>
 			</div>
 			<input id='showNames' type='checkbox'/>Show Names<br>
 			<input id='showPlanetsAsDistantPoints' type='checkbox'/>Show Planets as Points in Distance<br>
@@ -176,13 +176,19 @@ a:active {
 		</div>
 
 		<div id='overlaySidePanel' class='sidePanel'>
-			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
-			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
-			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
+			Measure From:
+			<div>
+				<input id='overlayShowOrbitTarget' type='radio' name='overlayShow' checked='checked'>Orbiting Planet Surface<br>
+				<input id='overlayShowCurrentPosition' type='radio' name='overlayShow'>Current Position<br>
+			</div>
+			<br>
 			Metric:
 			<div id='overlaySidePanelMetric'>
 			</div>
 			<br>
+			<span style='color:rgb(127,127,255)'>Min:</span> <span id='measureMin'></span><br>
+			<span style='color:rgb(255,0,0)'>Max:</span> <span id='measureMax'></span><br>
+			<span style='font-size:.8em'>Normal forces are negative when directed inwards (i.e. gravity) and positive when directed outwards.</span><br><br>
 			<div id='overlaySidePanelContents'>
 			</div>
 			Transparency:<br>
