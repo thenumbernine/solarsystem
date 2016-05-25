@@ -100,7 +100,6 @@ local function run()
 	local majorBodies = getMajorBodies(readUntil(': '))		-- list major bodies
 	send('')			-- end final prompt
 	readUntil('Horizons>')
-
 -- NOTICE planet Hartley 2 has no orbit data past 2012-MAR-16 
 
 	local first = true
@@ -150,22 +149,57 @@ local function run()
 		send('n')	-- exit sun ephemeris query
 		readUntil('Horizons>')
 		first = false
+	
+		if body.id == 999 then -- pluto
+			break
+		end
 	end
 
 	send('q')	-- quit
 	readUntil('forever')
 end
+local failed
 xpcall(run, function(err)
-	if err == 'closed' then return end
+	if err:match': closed$' then return end
 	io.stderr:write(err..'\n'..debug.traceback()..'\n')
+	failed = true
 end)
-
+-- finally code:
 f:close()
 conn:close()
+if failed then return end
 
-entries = {
+local newDynamicVars = {
 	coords = entries,
 	julianDate = julianDate,
 }
-file['dynamic-vars.json'] = 'horizonsDynamicData = '..json.encode(entries, {indent=true})..';'
+-- keep here just in case
+local datestr = os.date'!%Y_%m_%d-%H_%m_%S' 
+local jsonData = 'horizonsDynamicData = '..json.encode(newDynamicVars, {indent=true})..';'
+file[datestr..'-dynamic-vars.json'] = jsonData
 
+local oldJsonData = file['dynamic-vars.json']
+local oldDynamicVars = json.decode(oldJsonData:sub(oldJsonData:find('=')+1))
+-- assert the old and the new have the same # of entries each with the same fields
+assert(newDynamicVars.julianDate and tonumber(newDynamicVars.julianDate), "new dynamic vars have bad julianDate")
+assert(newDynamicVars.coords and type(newDynamicVars.coords) == 'table', "new dynamic vars have bad coords")
+assert(#newDynamicVars.coords == #oldDynamicVars.coords, "new dynamic vars has "..#newDynamicVars.coords.." coords, different from old, which had "..#oldDynamicVars.coords.." coords")
+local function assertIsVector(v, title)
+	assert(type(v) == 'table', title.." is not a table")
+	assert(#v == 3, title.." does not have 3 elements")
+	for j=1,3 do
+		assert(tonumber(v[j]), title.." element "..j.." is not a valid number")
+	end
+end
+for i=1,#newDynamicVars.coords do
+	local old = oldDynamicVars.coords[i]
+	local new = newDynamicVars.coords[i]
+	assert(old.id == new.id, "coords #"..i.." has old id "..old.id..", new id "..new.id)
+	assert(old.name == new.name, "coords #"..i.." has old name "..old.name..", new name "..new.name)
+	assertIsVector(new.pos, "coords #"..i.." pos")
+	assertIsVector(new.vel, "coords #"..i.." vel")
+end
+assert(#oldDynamicVars == #newDynamicVars, "number of new dynamic entries do not match number of old dynamic entries")
+
+print('ALL OK, OVERWRITING DYNAMIC VARS')
+file['dynamic-vars.json'] = jsonData
