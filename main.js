@@ -635,10 +635,10 @@ var NewtonApproximateMetric = makeClass({
 			var z = pos[2] - planet.pos[2];
 			r = Math.sqrt(x * x + y * y + z * z);
 			var r2 = r * r;
-			var r3 = r * r2;
-			accel[0] -= x * (gravitationalConstant * planet.mass / r3);
-			accel[1] -= y * (gravitationalConstant * planet.mass / r3);
-			accel[2] -= z * (gravitationalConstant * planet.mass / r3);
+			var accelMagn = gravitationalConstant * planet.mass / r2;
+			accel[0] -= x/r * accelMagn;
+			accel[1] -= y/r * accelMagn;
+			accel[2] -= z/r * accelMagn;
 		}
 	},
 
@@ -726,14 +726,14 @@ var SchwarzschildMetric = makeClass({
 			var z = pos[2] - planet.pos[2];
 			var r2 = x*x + y*y + z*z;
 			var r = Math.sqrt(r2);
-			
+			var r3 = r * r2;
 			var R = 2. * planet.mass * kilogramsPerMeter;
-			var scale = R * (r - R) / (2 * r2 * r2);
-			scale *= metersPerUnits.ls * metersPerUnits.ls;
+			var accelMagn = R * (r - R) / (2 * r3);
+			accelMagn *= metersPerUnits.ls * metersPerUnits.ls;
 			
-			accel[0] -= x * scale;
-			accel[1] -= y * scale;
-			accel[2] -= z * scale;
+			accel[0] -= x/r * accelMagn;
+			accel[1] -= y/r * accelMagn;
+			accel[2] -= z/r * accelMagn;
 		}
 	},
 	
@@ -805,6 +805,17 @@ ds^2 = -dt^2 + dx^2 + dy^2 + dz^2 + (2mr^3)/(r^4 + a^2 z^2) (
 for x^2 + y^2 + z^2 = r^2 + a^2(1 - z^2/r^2)
 r^4 + r^2(a^2 - x^2 - y^2 - z^2) - a^2 z^2 = 0
 r^2 = 1/2( -(a^2 - x^2 - y^2 - z^2) +- sqrt((a^2 - x^2 - y^2 - z^2)^2 - 4(-a^2 z^2)))
+
+
+theta = pi/2.										# polar angle
+angularVelocity = 2. * pi / (60. * 60. * 24.) / c	# angular velocity, in m^-1
+inertia = 2. / 5. * M * R**2						# moment of inertia about a sphere, in m^3
+angularMomentum = inertia * angularVelocity			# angular momentum in m^2
+a = angularMomentum / M			
+Delta(r) = r**2 - 2.*m(r) * r + a**2
+Sigma(r) = r**2 + a**2 * cos(theta)**2
+kerr_gravity(r) = -2.*m(r) * Delta(r) * (r**2 - a**2 * cos(theta)**2) / (2 * Sigma(r)**3) * c**2
+
 */
 var KerrMetric = makeClass({
 	super : Metric,
@@ -813,24 +824,43 @@ var KerrMetric = makeClass({
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
 			if (planet.mass === undefined) continue;
-		
+
 			var x = pos[0] - planet.pos[0];
 			var y = pos[1] - planet.pos[1];
 			var z = pos[2] - planet.pos[2];
-			var a = J/M;
+			var r2DSq = x*x + y*y;
+			var r2D = Math.sqrt(r2DSq);
+			var rSq = r2DSq + z*z;
+			var r = Math.sqrt(rSq);
+			var cosTheta = r2D / r;
 
-			var nqb = x*x + y*y + z*z - a*a;
-			var rSqP = .5 * (nqb + Math.sqrt(nqb*nqb + 4 * a*a * z*z));
-			var rSqM = .5 * (nqb - Math.sqrt(nqb*nqb + 4 * a*a * z*z));
-			var rSq = rSqP;
+			var M = planet.mass * gravitationalConstant / metersPerUnits.ls / metersPerUnits.ls;	//mass, in m
+
+			var rotationPeriod = planet.rotationPeriod !== undefined ? planet.rotationPeriod : 0;
+			var angularVelocity = 2. * Math.PI / ( rotationPeriod * (60. * 60. * 24.)) / metersPerUnits.ls;	// angular velocity, in 1/m
+			var inertia = 2./5. * M * planet.radius * planet.radius;					// moment of inertia about a sphere, in m^3
+			var angularMomentum = inertia * angularVelocity;						// angular momentum in m^2
+			var a = M == 0 ? 0 : angularMomentum / M;											// m
+
+			var Delta = r * r - 2 * M * r + a * a;
+			var Sigma = r * r + a * a * cosTheta * cosTheta;
+			var accelMagn = 2 * M * Delta * (r * r - a * a * cosTheta * cosTheta) / (2 * Sigma * Sigma * Sigma);
+			accelMagn *= metersPerUnits.ls * metersPerUnits.ls;
+
+			accel[0] -= x/r * accelMagn;
+			accel[1] -= y/r * accelMagn;
+			accel[2] -= z/r * accelMagn;
 		}
 	},
+	
+	//haven't got this yet
+	calcTidal : function(accel, pos, srcPlanet) {}
 });
 
 var metricInfos = [
 	{name:'Newtonian', classObj:NewtonApproximateMetric},
-	{name:'Schwarzschild', classObj:SchwarzschildMetric}
-	//{name:'Kerr', classObj:KerrMetric}
+	{name:'Schwarzschild', classObj:SchwarzschildMetric},
+	{name:'Kerr', classObj:KerrMetric}
 ];
 
 //var metric = new NewtonApproximateMetric();
