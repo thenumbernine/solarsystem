@@ -2,6 +2,10 @@
 require 'ext'
 local json = require 'dkjson'
 local htmlparser = require 'htmlparser'
+local htmlparser_common = require 'htmlparser.common'
+local findattr = htmlparser_common.findattr
+local findtags = htmlparser_common.findtags
+local findchilds = htmlparser_common.findchilds
 require 'htmlparser.xpath'
 htmlparser.htmlnonclosing = {}
 local tree = htmlparser.parse(file['systems.xml'])
@@ -160,6 +164,10 @@ function processPlanet(node, resultSystem)
 			setField(resultBody, 'positionAngle', math.rad(getNumber(child)))	-- no documentation, guessing degrees -> radians
 		elseif tag == 'image' then
 		elseif tag == 'imagedescription' then
+		elseif tag == 'maximumrvtime' then
+		elseif tag == 'impactparameter' then
+		elseif tag == 'metallicity' then
+		elseif tag == 'new' then
 		else
 			error('unknown parameter '..tag..' for planet')
 		end
