@@ -1648,6 +1648,7 @@ var updatePlanetClassSceneObj;
 			}
 		} else {
 if (!CALCULATE_TIDES_WITH_GPU) {
+			//TODO what if planet.tex === undefined?
 			planet.sceneObj.shader = planetHeatMapAttrShader;
 			planet.sceneObj.texs.length = 2;
 			planet.sceneObj.texs[0] = planet.tex;
@@ -2241,81 +2242,133 @@ var showFPS = false;
 
 		//draw sphere planets
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+		(function() {
 			var planet = orbitStarSystem.planets[planetIndex];
-			if (planet.hide) continue;
 
-			if (planet.sceneObj && planet.visRatio >= planetPointVisRatio) {
-				updatePlanetClassSceneObj(planet);
-						
-				//update scene object
-				//don't forget one is shared among all planets
-				vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitTarget.pos);
-				quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
+			if (planet.sceneObj) {
+			
+				var canSee = !planet.hide && planet.visRatio >= planetPointVisRatio;
 
-				//only allow ring obj if there's a radii and a sphere
-				//... this way i can just copy over the pos and angle
-				if (planet.ringObj !== undefined) {
-					vec3.sub(planet.ringObj.pos, planet.pos, orbitTarget.pos);
-					quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);
+				//if the planet is visible then
+				// if there is no texture then
+				//  load the texture and bind it
+				if (canSee) {
+					//if we have no image ... then load it 
+					if (!planet.img) {
+						if (planet.imgURL) {
+							planet.imgIsLoading = true;
+							planet.img = new Image();
+							planet.img.onload = function() {
+								//console.log('finished loading tex for planet '+planet.name);
+								planet.imgIsLoading = undefined;
+								delete planet.imgIsLoading;
+							};
+							planet.img.onerror = function() {
+								console.log('failed to find texture for planet '+planet.name);
+								planet.imgIsLoading = undefined;
+							};
+							//console.log('loading planet '+planet.name+' tex '+planet.imgURL);
+							planet.img.src = planet.imgURL; 
+						}
+					//if we do have an image ... see if it's done yet
+					} else if (planet.imgIsLoading) {
+					//if it's done ... use it
+					} else if (!planet.tex) {
+						//console.log('done loading planet '+planet.name+', now uploading to GPU');
+						planet.tex = new glutil.Texture2D({
+							flipY : true,
+							data : planet.img,
+							minFilter : gl.LINEAR_MIPMAP_LINEAR,
+							magFilter : gl.LINEAR,
+							generateMipmap : true
+						});
+					}
+				} else {
+				//if the planet isn't visible then
+				// if there is a texture then
+				//  unload it
+					if (planet.tex) {
+						//console.log('unloading planet '+planet.name+' from the GPU');
+						gl.deleteTexture(planet.tex.obj);
+						planet.tex = undefined;
+						delete planet.tex;
+					}
 				}
+				
+				if (canSee) {
+					updatePlanetClassSceneObj(planet);
+							
+					//update scene object
+					//don't forget one is shared among all planets
+					vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, orbitTarget.pos);
+					quat.copy(planet.sceneObj.uniforms.angle, planet.angle);
 
-				//calculate sun position for lighting
-				for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
-					var star = orbitStarSystem.stars[starIndex];
-					var tmp = [];
-					vec3.sub(tmp, star.pos, planet.pos);
-					planet.sceneObj.uniforms.sunDir[0+3*starIndex] = tmp[0];
-					planet.sceneObj.uniforms.sunDir[1+3*starIndex] = tmp[1];
-					planet.sceneObj.uniforms.sunDir[2+3*starIndex] = tmp[2];
-				}
+					//only allow ring obj if there's a radii and a sphere
+					//... this way i can just copy over the pos and angle
+					if (planet.ringObj !== undefined) {
+						vec3.sub(planet.ringObj.pos, planet.pos, orbitTarget.pos);
+						quat.copy(planet.ringObj.angle, planet.sceneObj.uniforms.angle);
+					}
 
-				//webkit bug
-				if (!picking) {
-					planet.sceneObj.shader.use();
-					gl.uniform3fv(
-						gl.getUniformLocation(
-							planet.sceneObj.shader.obj, 'sunDir[0]'
-						), planet.sceneObj.uniforms.sunDir);
-				}
+					//calculate sun position for lighting
+					for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
+						var star = orbitStarSystem.stars[starIndex];
+						var tmp = [];
+						vec3.sub(tmp, star.pos, planet.pos);
+						planet.sceneObj.uniforms.sunDir[0+3*starIndex] = tmp[0];
+						planet.sceneObj.uniforms.sunDir[1+3*starIndex] = tmp[1];
+						planet.sceneObj.uniforms.sunDir[2+3*starIndex] = tmp[2];
+					}
 
-				//update ellipsoid parameters
-				planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
-				planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
-				if (planet.ringObj !== undefined) {
-					planet.sceneObj.uniforms.ringMinRadius = planet.ringRadiusRange[0];
-					planet.sceneObj.uniforms.ringMaxRadius = planet.ringRadiusRange[1];
-				}
-				planet.sceneObj.uniforms.color = planet.color;
+					//webkit bug
+					if (!picking) {
+						planet.sceneObj.shader.use();
+						gl.uniform3fv(
+							gl.getUniformLocation(
+								planet.sceneObj.shader.obj, 'sunDir[0]'
+							), planet.sceneObj.uniforms.sunDir);
+					}
+
+					//update ellipsoid parameters
+					planet.sceneObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
+					planet.sceneObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
+					if (planet.ringObj !== undefined) {
+						planet.sceneObj.uniforms.ringMinRadius = planet.ringRadiusRange[0];
+						planet.sceneObj.uniforms.ringMaxRadius = planet.ringRadiusRange[1];
+					}
+					planet.sceneObj.uniforms.color = planet.color;
 
 if (!CALCULATE_TIDES_WITH_GPU) {
-				planet.sceneObj.attrs.tide = planet.tideBuffer;
+					planet.sceneObj.attrs.tide = planet.tideBuffer;
 }
 
-				//TODO FIXME something is overriding this between the update calc and here 
-				// making me need to re-assign it ...
-				planet.sceneObj.uniforms.forceMin = planet.forceMin;
-				planet.sceneObj.uniforms.forceMax = planet.forceMax;
+					//TODO FIXME something is overriding this between the update calc and here 
+					// making me need to re-assign it ...
+					planet.sceneObj.uniforms.forceMin = planet.forceMin;
+					planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
-				planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
-				planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
-				
-				if (picking) {
-					pickObject.drawPlanet(planet.sceneObj, planet);
-				} else {
-					planet.sceneObj.draw();
-					addOverlayText(planet);
-				}
+					planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
+					planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
+					
+					if (picking) {
+						pickObject.drawPlanet(planet.sceneObj, planet);
+					} else {
+						planet.sceneObj.draw();
+						addOverlayText(planet);
+					}
 
-				//show latitude and longitude lines
-				if (showLatAndLonLines && !picking) {
-					vec3.copy(planetLatLonObj.pos, planet.sceneObj.uniforms.pos);
-					quat.copy(planetLatLonObj.angle, planet.sceneObj.uniforms.angle);
-					planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
-					planetLatLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
-					planetLatLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
-					planetLatLonObj.draw();
+					//show latitude and longitude lines
+					if (showLatAndLonLines && !picking) {
+						vec3.copy(planetLatLonObj.pos, planet.sceneObj.uniforms.pos);
+						quat.copy(planetLatLonObj.angle, planet.sceneObj.uniforms.angle);
+						planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
+						planetLatLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
+						planetLatLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
+						planetLatLonObj.draw();
+					}
 				}
 			}
+		})();
 		}
 
 		//draw rings and transparent objects last
@@ -3986,6 +4039,9 @@ var PointOctreeNode = makeClass({
 		}
 	},
 	draw : function(distInM, tanFovY, picking) {
+		//no geometry and no buffer if the points buffer is size zero
+		if (!this.geometry) return;
+		
 		var pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM) / tanFovY;
 		smallBodySceneObj.uniforms.pointSize = pointSize;
 		smallBodySceneObj.uniforms.alpha = smallBodyPointAlpha;
@@ -4062,7 +4118,6 @@ void main() {
 		parent : null,
 		static : true
 	});
-
 
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 	smallBodyFBOTex = new glutil.Texture2D({
@@ -4253,11 +4308,13 @@ void main() {
 		//now create scene objects
 		$.each(allSmallBodyNodes, function(i,node) {
 			//TODO only make one object and swap the buffer in and out
-			node.buffer = new glutil.ArrayBuffer({data : node.points});
-			node.geometry = new glutil.Geometry({
-				mode : gl.POINTS,
-				vertexes : node.buffer,
-			});
+			if (node.points.length) {
+				node.buffer = new glutil.ArrayBuffer({data : node.points});
+				node.geometry = new glutil.Geometry({
+					mode : gl.POINTS,
+					vertexes : node.buffer,
+				});
+			}
 		});
 
 		var endTime = Date.now();
@@ -4401,7 +4458,7 @@ function initExoplanets() {
 			//distance
 			var distance = systemInfo.distance;
 			if (distance === undefined) {
-				console.log('failed to find distance for system '+systemName);
+//				console.log('failed to find distance for system '+systemName);
 				return;
 			}
 			pos[0] *= distance;
@@ -5898,7 +5955,6 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 		},
 		parent : null
 	});
-
 	//init our planet shaders
 
 	var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
@@ -5954,7 +6010,6 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 			parent : null,
 			static : true
 		});
-
 		planetLatLonObj = new glutil.SceneObject({
 			mode : gl.LINES,
 			indexes : new glutil.ElementArrayBuffer({
@@ -6041,7 +6096,6 @@ void main() {
 		};
 		img.onerror = function() {
 			console.log('failed to find texture for milky way');
-			//checkDone();
 		};
 		img.src = 'textures/milkyway.png';
 	})();
@@ -6072,7 +6126,6 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		parent : null,
 		static : true
 	});
-
 	quadObj = new glutil.SceneObject({
 		mode : gl.TRIANGLE_STRIP,
 		attrs : {
@@ -6088,26 +6141,13 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		parent : null,
 		static : true
 	});	
-	
 	//initialize here after webgl canvas is up	
 	pickObject = new PickObject();
 	
-	var planetsDone = 0;
-
 	for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { (function(){
 		var planetIndex = planetIndex_;
 		var planet = solarSystem.planets[planetIndex];
 		initPlanetColorSchRadiusAngle(planet);
-
-		var checkDone = function() {
-
-			initPlanetSceneLatLonLineObjs(planet);
-
-			++planetsDone;
-			if (planetsDone == solarSystem.planets.length) {
-				initOrbitPaths();
-			}
-		};
 
 		// load texture
 		if (planet.name in {
@@ -6138,29 +6178,13 @@ if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 			Pluto:1,
 				Charon:1
 		}) {
-			var img = new Image();
-			img.onload = function() {
-				planet.tex = new glutil.Texture2D({
-					flipY : true,
-					data : img,
-					minFilter : gl.LINEAR_MIPMAP_LINEAR,
-					magFilter : gl.LINEAR,
-					generateMipmap : true
-				});
-				//checkDone();
-			};
-			img.onerror = function() {
-				console.log('failed to find texture for planet '+planet.name);
-				//checkDone();
-			};
-			img.src = 'textures/'+planet.name.toLowerCase()+'.png';
-		} else {
-			//checkDone();
+			planet.imgURL = 'textures/'+planet.name.toLowerCase()+'.png';
 		}
 
-		//or... don't wait for textures
-		checkDone();
+		initPlanetSceneLatLonLineObjs(planet);
 	})(); }
+				
+	initOrbitPaths();
 
 	//ring texture for Jupiter
 	//http://www.celestiamotherlode.net/catalog/jupiter.php
