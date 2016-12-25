@@ -1,4 +1,4 @@
-#!/usr/bin/env luajit
+#!/usr/bin/env lua
 require 'ext'
 local json = require 'dkjson'
 local htmlparser = require 'htmlparser'
