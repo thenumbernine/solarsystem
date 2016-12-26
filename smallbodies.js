@@ -310,9 +310,6 @@ void main() {
 		//holds the data used tree-wide
 		smallBodyOctreeData = {};
 
-		//holds the nodes, indexed by geometric position
-		smallBodyNodeForID = {};
-
 		var processSmallBodyOctree = function(data) {
 			console.log('processing small body points...');
 			var startTime = Date.now();
@@ -345,7 +342,6 @@ void main() {
 			}
 			
 			allSmallBodyNodes.push(smallBodyRootNode);
-			smallBodyNodeForID[0] = smallBodyRootNode;
 
 			var process;
 			process = function(node) {
@@ -401,7 +397,7 @@ void main() {
 				cache : false,
 				timeout : 30000
 			}).error(function() {
-				console.log('failed to get small body nodes from '+smallBodyNodeURL+' , trying again...');
+				console.log('failed to get small body nodes from '+smallBodyOctreeURL+' , trying again...');
 				setTimeout(function() {
 					loadSmallBodyOctree();
 				}, 5000);

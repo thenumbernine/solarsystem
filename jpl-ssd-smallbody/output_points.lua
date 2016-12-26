@@ -499,7 +499,35 @@ childDepth 	start	end	size
 	local function tostringnum(x)
 		return (tostring(x):match('(%d+)'))
 	end	
-	
+
+	do
+		print('building node dict...')
+		local nodeDict = table()
+		for _,node in ipairs(allNodes) do
+			for localIndex,body in ipairs(node.bodies) do
+				nodeDict:insert{
+					name = ffi.string(body.name),
+					nodeID = node.nodeID,
+					index = localIndex,
+				}
+			end
+		end
+		print('sorting...')
+		nodeDict:sort(function(a,b)
+			return assert(a.name) < assert(b.name)
+		end)
+		print('serializing and writing...')
+		local f = assert(io.open('node-dict.csv', 'w'))
+		f:write'#name,nodeID,index\n'
+		for i=1,#nodeDict do
+			local entry = nodeDict[i]
+			f:write('"'..entry.name..'",'..tostringnum(entry.nodeID)..','..entry.index..'\n')
+		end
+		f:close()
+		
+		print'done with node dictionary!'
+	end
+
 	print('writing out nodes')
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)

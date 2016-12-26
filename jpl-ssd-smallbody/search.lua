@@ -42,72 +42,69 @@ run = function(env)
 		searchPage = math.max(1, tonumber(get.page) or 1)
 	end
 
-	if #searchText == 0 then
-		searchText = '%'
-	else
-		searchText = '%'..searchText..'%'
-	end
+	searchText = searchText:lower()
 
 	local pageSize = 20
 	local offset = (searchPage - 1) * pageSize	-- offset is 0-based
 
 	local function text()
 		local env, conn, cur
+		local json = require 'dkjson'
 		if not isComet and not isNumbered and not isUnnumbered then
-			local json = require 'dkjson'
 			coroutine.yield(json.encode{rows={}, count=0})
 			return
 		end
 		local results = select(2, xpcall(function()
-			local luasql = require 'luasql.sqlite3'
-			env = luasql.sqlite3()
-			conn = assert(env:connect('database.sqlite3'))
 
-			local cmd
-			if id then
-				cmd = 'select * from data where pk == '..id
-			else
-				local bodyTypeCond = table()
-				if isComet then bodyTypeCond:insert('bodyType == 0') end
-				if isNumbered then bodyTypeCond:insert('bodyType == 1') end
-				if isUnnumbered then bodyTypeCond:insert('bodyType == 2') end
-		
-				local fromStmt = 'data where name like '..('%q'):format(searchText)..' collate nocase and ('..bodyTypeCond:concat(' or ')..')'
-				
-				cmd = 'select count() from '..fromStmt
-				cur = assert(conn:execute(cmd))
-
-				local row = cur:fetch({}, 'a')
-				local count = row['count()']
-				cur:close()
-
-				local limitStmt = ' limit '..offset..', '..pageSize
-				cmd = 'select * from '..fromStmt..limitStmt
-			end
-			cur = assert(conn:execute(cmd))
+			local allNodeIDs = json.decode(file['octree.json']).nodes
+			local nodes = {}
 
 			local rows = {}
-
-			-- TODO only collect what we need? convert to Lua types?
-			local row = cur:fetch({}, 'a')
-			while row do
-				-- collect results
-				local body = {}
-				for k,v in pairs(row) do
-					if k == 'pk' then	-- don't return PK
-						v = nil
-					elseif k == 'bodyType' then
-						v = bodyTypeForEnum[v]
+			for line in io.lines('node-dict.csv') do
+				if line:sub(1,1) ~= '#' then
+					local name, nodeIDStr, localIndexStr = line:match('^"([^"]*)",([^,]*),([^,]*)$')
+					--assert(name and nodeIDStr and localIndexStr)
+					local nodeID = tonumber(nodeIDStr)
+					--assert(tostring(nodeID) == nodeIDStr)
+					--assert(table.find(allNodeIDs, nodeID))
+					local localIndex = tonumber(localIndexStr)
+					--assert(tostring(localIndex) == localIndexStr)
+					if name:lower():find(searchText,1,true) then
+						local node = nodes[nodeID]
+						if not node then
+							node = json.decode(file['nodes/'..nodeID..'.json'])
+							nodes[nodeID] = node
+						end
+						local row = assert(node[localIndex])
+						local bodyType = row[17]
+						if (isComet and bodyType == 0)
+						or (isNumbered and bodyType == 1)
+						or (isUnnumbered and bodyType == 2)
+						then
+							table.insert(rows, {
+								pk = row[4],
+								bodyType = bodyTypeForEnum[bodyType],
+								idNumber = row[19],
+								name = name,
+								epoch = row[13],
+								perihelionDistance = row[14],
+								semiMajorAxis = row[5],
+								eccentricity = row[9],
+								inclination = row[8],
+								argumentOfPeriapsis = row[7],
+								longitudeOfAscendingNode = row[6],
+								meanAnomalyAtEpoch = row[12],
+								absoluteMagnitude =row[15],
+								magnitudeOfSlopeParameter = row[16],
+								timeOfPerihelionPassage = row[10],
+								orbitSolutionReference = row[21],
+							})
+						end				
 					end
-					body[k] = v
 				end
-				table.insert(rows, body)
-				
-				row = cur:fetch(row, 'a')
 			end
-			cur:close()
-
-			local json = require 'dkjson'
+			
+			local count = #rows
 			local results = {rows=rows, count=count}
 			return json.encode(results)
 		end, function(err)
