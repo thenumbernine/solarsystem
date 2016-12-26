@@ -512,7 +512,7 @@ childDepth 	start	end	size
 				body.pos[1],
 				body.pos[2],
 				-- either need one or the other : (a) repackage and keep range, or (b) keep individual node mapping
-				--index = tonumber(body.index),	-- index in the total list 
+				tonumber(body.index),	-- index in the total list 
 				-- TODO the index is only useful if you have the whole buffer available
 				-- maybe I should provide the individual points?
 				body.semiMajorAxis,

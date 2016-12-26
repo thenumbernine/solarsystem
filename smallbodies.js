@@ -5,15 +5,12 @@ var SmallBody = makeClass({});
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
-var allSmallBodyPointsBuffer;
-var pointsPerNode = 1000;
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
-var smallBodyMaxDrawnNodes = 400;
+var smallBodyMaxDrawnNodes = 400;	//there are 2185 for the small bodies
 var showAllSmallBodiesAtOnce = false;
 var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
 var smallBodyPointAlpha = .75;
-var smallBodySceneObj;
 var smallBodyNodesDrawnThisFrame = []; 
 var smallBodyShader;
 var smallBodyOctreeData;
@@ -38,7 +35,6 @@ var PointOctreeNode = makeClass({
 		this.loadingData = true;
 		var thiz = this;
 		var url = 'jpl-ssd-smallbody/nodes/'+this.nodeID+'.json';
-console.log('loading point data for small body '+this.nodeID+' from '+url);
 		$.ajax({
 			url : url,
 			dataType : 'json',
@@ -46,12 +42,10 @@ console.log('loading point data for small body '+this.nodeID+' from '+url);
 		}).error(function() {
 			console.log('failed to get small body '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
-console.log('loaded point data for small body '+thiz.nodeID+' from '+url);
 			thiz.processData(data);
 		});
 	},
 	processData : function(data) {
-console.log('processing data for small body '+this.nodeID);		
 		//hold all parameters for each body
 		var len = data.length;
 		if (!len) return;
@@ -67,21 +61,23 @@ console.log('processing data for small body '+this.nodeID);
 		var meanAnomalyAtEpochArray = new Float32Array(len);
 		var epochArray = new Float32Array(len);
 		var orbitTypeArray = new Float32Array(len);
-		
+		this.smallBodyIDs = new Int32Array(len);
+
 		for (var i = 0; i < data.length; ++i) {
 			this.vertexBuffer[0+3*i] = data[i][0];
 			this.vertexBuffer[1+3*i] = data[i][1];
 			this.vertexBuffer[2+3*i] = data[i][2];
-			semiMajorAxisArray[i] = data[i][3];
-			longitudeOfAscendingNodeArray[i] = data[i][4];
-			argumentOfPeriapsisArray[i] = data[i][5];
-			inclinationArray[i] = data[i][6];
-			eccentricityArray[i] = data[i][7];
-			timeOfPerihelionPassageArray[i] = data[i][8];
-			orbitalPeriodArray[i] = data[i][9];
-			meanAnomalyAtEpochArray[i] = data[i][10];
-			epochArray[i] = data[i][11];
-			orbitTypeArray[i] = data[i][12];
+			this.smallBodyIDs[i] = data[i][3]; 
+			semiMajorAxisArray[i] = data[i][4];
+			longitudeOfAscendingNodeArray[i] = data[i][5];
+			argumentOfPeriapsisArray[i] = data[i][6];
+			inclinationArray[i] = data[i][7];
+			eccentricityArray[i] = data[i][8];
+			timeOfPerihelionPassageArray[i] = data[i][9];
+			orbitalPeriodArray[i] = data[i][10];
+			meanAnomalyAtEpochArray[i] = data[i][11];
+			epochArray[i] = data[i][12];
+			orbitTypeArray[i] = data[i][13];
 		}
 		
 		this.sceneObj = new glutil.SceneObject({
@@ -165,7 +161,6 @@ console.log('processing data for small body '+this.nodeID);
 		this.sceneObj.uniforms.julianDate = julianDate;
 		
 		if (picking) {
-/* TODO node.indexes to map back to a global buffer for some reason 
 			if (this.visRatio < .1) return;	//extra tough too-small threshold for picking
 			var thiz = this;
 			pickObject.drawPoints({
@@ -179,7 +174,6 @@ console.log('processing data for small body '+this.nodeID);
 				pointSizeMin : .25,
 				pointSizeMax : 5
 			});
-/**/		
 		} else {
 			this.sceneObj.draw();
 		}
@@ -497,13 +491,17 @@ throw 'here';
 
 var cachedSmallBodies = {};
 function getCachedSmallBody(node, localIndex) {
-	var buffer = node.vertexBuffer;
-	var x = buffer.data[3*localIndex+0];
-	var y = buffer.data[3*localIndex+1];
-	var z = buffer.data[3*localIndex+2];
-	var globalIndex = node.indexes[localIndex];
+	var x = node.vertexBuffer[3*localIndex+0];
+	var y = node.vertexBuffer[3*localIndex+1];
+	var z = node.vertexBuffer[3*localIndex+2];
+	var globalIndex = node.smallBodyIDs[localIndex];
 
 	//TODO toggle on/off orbit data if we're selecting on/off a small body
+	//TODO even more - don't query this, but instead use the local keplar orbital elements
+	//TODO even more - GPU update using keplar orbital elements to small body position
+	//TODO even more - correct the eccentric anomaly but and update it every change in julian date
+	//TODO even more - unify KOE systems of planets and small bodies
+	//TODO even more - unify point cloud octree system of small bodies and starfields
 
 	if (cachedSmallBodies[globalIndex]) {
 		return cachedSmallBodies[globalIndex];
