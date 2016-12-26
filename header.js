@@ -3,9 +3,6 @@
 //I might try worker threads later...
 var CALCULATE_TIDES_WITH_GPU = false;
 
-var SHOW_ALL_SMALL_BODIES_AT_ONCE = true;
-var SHOW_ALL_SMALL_BODIES_WITH_DENSITY = false;
-
 //TODO put this in js/gl-util-kernel.js
 
 var glutil;

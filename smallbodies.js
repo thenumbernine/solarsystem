@@ -1,9 +1,9 @@
+var SHOW_ALL_SMALL_BODIES_WITH_DENSITY = false;
+
 var showSmallBodies = true;
 var allowSelectSmallBodies = true;
 
 var SmallBody = makeClass({});
-
-if (SHOW_ALL_SMALL_BODIES_AT_ONCE) { 
 
 var smallBodyRootNode;
 var allSmallBodyNodes = [];
@@ -32,6 +32,7 @@ var PointOctreeNode = makeClass({
 	},
 	loadData : function() {
 		if (this.loadingData) return;
+		this.unloaded = false;
 		this.loadingData = true;
 		var thiz = this;
 		var url = 'jpl-ssd-smallbody/nodes/'+this.nodeID+'.json';
@@ -42,10 +43,13 @@ var PointOctreeNode = makeClass({
 		}).error(function() {
 			console.log('failed to get small body '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
+			if (thiz.unloaded) return;
 			thiz.processData(data);
 		});
 	},
 	processData : function(data) {
+		assert(!this.sceneObj);	//TODO use this.sceneObj instead of this.loaded
+
 		//hold all parameters for each body
 		var len = data.length;
 		if (!len) return;
@@ -122,6 +126,20 @@ var PointOctreeNode = makeClass({
 			static : true
 		});
 	},
+	unloadData : function() {
+		if (!this.sceneObj) return;
+		this.unloaded = true;	//tell any loading operations to stop
+		this.loadedData = undefined;
+		this.loadingData = undefined;
+
+		if (this.sceneObj.attrs !== undefined) {
+			$.each(this.sceneObj.attrs, function(k,attr) {
+				gl.deleteBuffer(attr.buffer.obj);
+			});
+		}
+		delete this.sceneObj;
+		this.sceneObj = undefined;
+	},
 	prepDraw : function(drawList, tanFovY) {
 		var radius = Math.max(
 			this.maxs[0] - this.mins[0],
@@ -138,6 +156,7 @@ var PointOctreeNode = makeClass({
 		this.visRatio = radius / (dist * tanFovY);
 		if (this.visRatio < .03) {//too-small threshold
 			//TODO remove any cached geometry
+			this.unloadData();
 			return;	
 		}
 
@@ -181,7 +200,7 @@ var PointOctreeNode = makeClass({
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
-					return getCachedSmallBody(thiz, i);
+					return smallBodies.getCached(thiz, i);
 				},
 				pointSize : pointSize,
 				pointSizeScaleWithDist : true,
@@ -210,10 +229,12 @@ var PointOctreeNode = makeClass({
 	}
 });
 
-function initSmallBodies() {
+
+var smallBodies = new function() {
+	this.init = function() {
 	
-	smallBodyShader = new ModifiedDepthShaderProgram({
-		vertexCode : mlstr(function(){/*
+		smallBodyShader = new ModifiedDepthShaderProgram({
+			vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
@@ -225,36 +246,36 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
-		fragmentCode : mlstr(function(){/*
+			fragmentCode : mlstr(function(){/*
 uniform float alpha;
 void main() {
 	gl_FragColor = vec4(.75, .75, .75, alpha);
 }
 */}),
-	});
+		});
 
 
 if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-	smallBodyFBOTex = new glutil.Texture2D({
-		internalFormat : gl.RGBA,
-		format : gl.RGBA,
-		type : gl.FLOAT,
-		width : smallBodyFBOTexWidth,
-		height : smallBodyFBOTexHeight,
-		magFilter : gl.LINEAR,
-		minFilter : gl.LINEAR,
-		wrap : {
-			s : gl.CLAMP_TO_EDGE,
-			t : gl.CLAMP_TO_EDGE
-		}
-	});
-	smallBodyFBO = new glutil.Framebuffer();
-	gl.bindFramebuffer(gl.FRAMEBUFFER, smallBodyFBO.obj);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, smallBodyFBOTex.obj, 0);
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-	smallBodyOverlayShader = new glutil.ShaderProgram({
-		vertexPrecision : 'best',
-		vertexCode : mlstr(function(){/*
+		smallBodyFBOTex = new glutil.Texture2D({
+			internalFormat : gl.RGBA,
+			format : gl.RGBA,
+			type : gl.FLOAT,
+			width : smallBodyFBOTexWidth,
+			height : smallBodyFBOTexHeight,
+			magFilter : gl.LINEAR,
+			minFilter : gl.LINEAR,
+			wrap : {
+				s : gl.CLAMP_TO_EDGE,
+				t : gl.CLAMP_TO_EDGE
+			}
+		});
+		smallBodyFBO = new glutil.Framebuffer();
+		gl.bindFramebuffer(gl.FRAMEBUFFER, smallBodyFBO.obj);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, smallBodyFBOTex.obj, 0);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		smallBodyOverlayShader = new glutil.ShaderProgram({
+			vertexPrecision : 'best',
+			vertexCode : mlstr(function(){/*
 attribute vec2 vertex;
 varying vec2 tc;
 void main() {
@@ -262,8 +283,8 @@ void main() {
 	gl_Position = vec4(vertex * 2. - 1., 0., 1.);
 }
 */}),
-		fragmentPrecision : 'best',
-		fragmentCode : mlstr(function(){/*
+			fragmentPrecision : 'best',
+			fragmentCode : mlstr(function(){/*
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
 uniform float logBase;
@@ -276,191 +297,121 @@ void main() {
 	gl_FragColor.a = min(alpha * 100., 1.);
 }
 */}),
-		uniforms : {
-			tex : 0,
-			hsvTex : 1,
-			logBase : 1,
-			texSize : [1,1]
-		}
-	});
+			uniforms : {
+				tex : 0,
+				hsvTex : 1,
+				logBase : 1,
+				texSize : [1,1]
+			}
+		});
 } //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 
 
-	//holds the data used tree-wide
-	smallBodyOctreeData = {};
+		//holds the data used tree-wide
+		smallBodyOctreeData = {};
 
-	//holds the nodes, indexed by geometric position
-	smallBodyNodeForID = {};
+		//holds the nodes, indexed by geometric position
+		smallBodyNodeForID = {};
 
-	var processSmallBodyOctree = function(data) {
-		console.log('processing small body points...');
-		var startTime = Date.now();
-		/*
-		holds
-			mins
-			maxs
-			indexes (all valid child nodes)
-		*/
-		smallBodyOctreeData = data;
+		var processSmallBodyOctree = function(data) {
+			console.log('processing small body points...');
+			var startTime = Date.now();
+			/*
+			holds
+				mins
+				maxs
+				indexes (all valid child nodes)
+			*/
+			smallBodyOctreeData = data;
+			
+			var nodeExists = {};
+			$.each(smallBodyOctreeData.nodes, function(i,nodeID) {
+				nodeExists[nodeID] = true;
+			});
 		
-		var nodeExists = {};
-		$.each(smallBodyOctreeData.nodes, function(i,nodeID) {
-			nodeExists[nodeID] = true;
-		});
-	
-		//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
-		var mins = smallBodyOctreeData.mins;
-		var maxs = smallBodyOctreeData.maxs;
+			//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
+			var mins = smallBodyOctreeData.mins;
+			var maxs = smallBodyOctreeData.maxs;
 
-		smallBodyRootNode = new PointOctreeNode();
-		smallBodyRootNode.nodeID = 0;
-		smallBodyRootNode.depth = 0;
-		smallBodyRootNode.levelID = 0;
+			smallBodyRootNode = new PointOctreeNode();
+			smallBodyRootNode.nodeID = 0;
+			smallBodyRootNode.depth = 0;
+			smallBodyRootNode.levelID = 0;
 
-		for (var j = 0; j < 3; ++j) {
-			smallBodyRootNode.mins[j] = mins[j];
-			smallBodyRootNode.maxs[j] = maxs[j];
-			smallBodyRootNode.center[j] = .5 * (mins[j] + maxs[j]);
-		}
-		
-		allSmallBodyNodes.push(smallBodyRootNode);
-		smallBodyNodeForID[0] = smallBodyRootNode;
+			for (var j = 0; j < 3; ++j) {
+				smallBodyRootNode.mins[j] = mins[j];
+				smallBodyRootNode.maxs[j] = maxs[j];
+				smallBodyRootNode.center[j] = .5 * (mins[j] + maxs[j]);
+			}
+			
+			allSmallBodyNodes.push(smallBodyRootNode);
+			smallBodyNodeForID[0] = smallBodyRootNode;
 
-		var process;
-		process = function(node) {
-			//node.nodeID includes offsets into each level
+			var process;
+			process = function(node) {
+				//node.nodeID includes offsets into each level
 
-			for (var ix = 0; ix < 2; ++ix) {
-				for (var iy = 0; iy < 2; ++iy) {
-					for (var iz = 0; iz < 2; ++iz) {
-						var is = [ix,iy,iz];
-						var childIndex = ix | ((iy | (iz<<1)) << 1);
+				for (var ix = 0; ix < 2; ++ix) {
+					for (var iy = 0; iy < 2; ++iy) {
+						for (var iz = 0; iz < 2; ++iz) {
+							var is = [ix,iy,iz];
+							var childIndex = ix | ((iy | (iz<<1)) << 1);
 
-						var childDepth = node.depth + 1;
-						var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
-						var childLevelID = node.levelID | (childIndex << 3*node.depth);
-						var childNodeID = childLevelStart + childLevelID;
-						//if we find it in the master list 
-						// then create the node
-						if (!nodeExists[childNodeID]) continue;
-						if (!node.children) node.children = [];
-						var child = new PointOctreeNode();
+							var childDepth = node.depth + 1;
+							var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
+							var childLevelID = node.levelID | (childIndex << 3*node.depth);
+							var childNodeID = childLevelStart + childLevelID;
+							//if we find it in the master list 
+							// then create the node
+							if (!nodeExists[childNodeID]) continue;
+							if (!node.children) node.children = [];
+							var child = new PointOctreeNode();
 
-						child.nodeID = childNodeID;
-						child.depth = childDepth;
-						child.levelID = childLevelID;
-						
-						node.children[childIndex] = child;
-						child.parent = node;
-						allSmallBodyNodes.push(child);
-						for (var j = 0; j < 3; ++j) {
-							child.mins[j] = is[j] ? node.center[j] : node.mins[j];
-							child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
-							child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
+							child.nodeID = childNodeID;
+							child.depth = childDepth;
+							child.levelID = childLevelID;
+							
+							node.children[childIndex] = child;
+							child.parent = node;
+							allSmallBodyNodes.push(child);
+							for (var j = 0; j < 3; ++j) {
+								child.mins[j] = is[j] ? node.center[j] : node.mins[j];
+								child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
+								child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
+							}
+							
+							process(child);
 						}
-						
-						process(child);
 					}
 				}
-			}
+			};
+
+			process(smallBodyRootNode);
+
+			var endTime = Date.now();
+			console.log('done processing small bodies ', endTime - startTime, ' ms');
 		};
-
-		process(smallBodyRootNode);
-
-		var endTime = Date.now();
-		console.log('done processing small bodies ', endTime - startTime, ' ms');
+			
+		var smallBodyOctreeURL = 'jpl-ssd-smallbody/octree.json';
+		var loadSmallBodyOctree;
+		loadSmallBodyOctree = function() {
+			$.ajax({
+				url : smallBodyOctreeURL,
+				dataType : 'json',
+				cache : false,
+				timeout : 30000
+			}).error(function() {
+				console.log('failed to get small body nodes from '+smallBodyNodeURL+' , trying again...');
+				setTimeout(function() {
+					loadSmallBodyOctree();
+				}, 5000);
+			}).done(function(data) {
+				processSmallBodyOctree(data);
+			});
+		};
+		loadSmallBodyOctree();
 	};
-		
-	var smallBodyOctreeURL = 'jpl-ssd-smallbody/octree.json';
-	var loadSmallBodyOctree;
-	loadSmallBodyOctree = function() {
-		$.ajax({
-			url : smallBodyOctreeURL,
-			dataType : 'json',
-			cache : false,
-			timeout : 30000
-		}).error(function() {
-			console.log('failed to get small body nodes from '+smallBodyNodeURL+' , trying again...');
-			setTimeout(function() {
-				loadSmallBodyOctree();
-			}, 5000);
-		}).done(function(data) {
-			processSmallBodyOctree(data);
-		});
-	};
-	loadSmallBodyOctree();
-
-}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
-
-}
-
-
-var cachedSmallBodies = {};
-function getCachedSmallBody(node, localIndex) {
-	var data = node.sceneObj.attrs.vertex.buffer.data;
-	var x = data[3*localIndex+0];
-	var y = data[3*localIndex+1];
-	var z = data[3*localIndex+2];
-	var globalIndex = node.globalIndexArray[localIndex];
-
-	//TODO toggle on/off orbit data if we're selecting on/off a small body
-	//TODO even more - don't query this, but instead use the local keplar orbital elements
-	//TODO even more - GPU update using keplar orbital elements to small body position
-	//TODO even more - correct the eccentric anomaly but and update it every change in julian date
-	//TODO even more - unify KOE systems of planets and small bodies
-	//TODO even more - unify point cloud octree system of small bodies and starfields
-
-	if (cachedSmallBodies[globalIndex]) {
-		return cachedSmallBodies[globalIndex];
-	}
 	
-	var smallBody = mergeInto(new SmallBody(), {
-		name : 'Small Body #'+globalIndex,
-		pos : [x,y,z],
-		radius : 1,
-		smallBodyID : globalIndex
-	});
-	cachedSmallBodies[globalIndex] = smallBody;
-
-	/*
-	Now in setOrbitTarget there is special-case code looking for returned instances
-	of SmallBody.  From there that code does an ajax query of jpl-ssd-smallbody/search.lua.
-	But why bother when we have the info here already?
-	*/
-	//Here I'm convering the node body data to match the sql row returned from search.lua 
-	var fields = [
-		'bodyType',
-		'idNumber',
-		'name',
-		'epoch',
-		'perihelionDistance',
-		'semiMajorAxis',
-		'eccentricity',
-		'inclination',
-		'argumentOfPeriapsis',
-		'longitudeOfAscendingNode',
-		'meanAnomalyAtEpoch',
-		'absoluteMagnitude',
-		'magnitudeSlopeParameter',
-		'timeOfPerihelionPassage',
-		'orbitSolutionReference',
-	];
-	
-	var row = {}
-	for (var i = 0; i < fields.length; ++i) {
-		var field = fields[i];
-assert(node[field+'Array'], "failed to find "+field+"Array");		
-		row[field] = node[field+'Array'][localIndex];
-	}
-	
-	row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
-
-	smallBody.row = row;
-
-	return smallBody;
-}
-
-var smallBodies = new function() {
 	this.draw = function(
 		tanFovY,
 		picking,
@@ -468,7 +419,6 @@ var smallBodies = new function() {
 		invRotMat,
 		distFromSolarSystemInM
 	) {
-if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
@@ -528,6 +478,68 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 } //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-} //SHOW_ALL_SMALL_BODIES_AT_ONCE
 	};
+
+	this.cache = {};
+	this.getCached = function(node, localIndex) {
+		var data = node.sceneObj.attrs.vertex.buffer.data;
+		var x = data[3*localIndex+0];
+		var y = data[3*localIndex+1];
+		var z = data[3*localIndex+2];
+		var globalIndex = node.globalIndexArray[localIndex];
+
+		//TODO toggle on/off orbit data if we're selecting on/off a small body
+		//TODO even more - don't query this, but instead use the local keplar orbital elements
+		//TODO even more - GPU update using keplar orbital elements to small body position
+		//TODO even more - correct the eccentric anomaly but and update it every change in julian date
+		//TODO even more - unify KOE systems of planets and small bodies
+		//TODO even more - unify point cloud octree system of small bodies and starfields
+
+		if (this.cache[globalIndex]) {
+			return this.cache[globalIndex];
+		}
+		
+		var smallBody = mergeInto(new SmallBody(), {
+			name : 'Small Body #'+globalIndex,
+			pos : [x,y,z],
+			radius : 1,
+			smallBodyID : globalIndex
+		});
+		this.cache[globalIndex] = smallBody;
+
+		/*
+		Now in setOrbitTarget there is special-case code looking for returned instances
+		of SmallBody.  From there that code does an ajax query of jpl-ssd-smallbody/search.lua.
+		But why bother when we have the info here already?
+		*/
+		//Here I'm convering the node body data to match the sql row returned from search.lua  (found in coldesc.lua)
+		var fields = [
+			'bodyType',
+			'idNumber',
+			'name',
+			'epoch',
+			'perihelionDistance',
+			'semiMajorAxis',
+			'eccentricity',
+			'inclination',
+			'argumentOfPeriapsis',
+			'longitudeOfAscendingNode',
+			'meanAnomalyAtEpoch',
+			'absoluteMagnitude',
+			'magnitudeSlopeParameter',
+			'timeOfPerihelionPassage',
+			'orbitSolutionReference',
+		];
+		
+		var row = {}
+		for (var i = 0; i < fields.length; ++i) {
+			var field = fields[i];
+			row[field] = node[field+'Array'][localIndex];
+		}
+		row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
+
+		smallBody.row = row;
+
+		return smallBody;
+	}
 };

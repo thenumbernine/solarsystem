@@ -3,6 +3,8 @@ return {
 	{name='bodyType', type='integer'},	-- 0 = comet, 1 = numbered asteroid, 2 = unnumbered asteroid
 	{name='idNumber', type='text'},	-- comets, asteroids
 	{name='name', type='text'},
+	
+	-- these match body_t:
 	{name='epoch', type='number'},
 	{name='perihelionDistance', type='number'},	-- comets
 	{name='semiMajorAxis', type='number'},	-- asteroids

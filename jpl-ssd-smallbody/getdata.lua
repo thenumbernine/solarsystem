@@ -80,21 +80,20 @@ end
 
 outputClass:staticInit()
 
-local numberFields = ([[
-epoch;
-perihelionDistance;		//comets
-semiMajorAxis;			//numbr
-eccentricity;
-inclination;
-argumentOfPeriapsis;
-longitudeOfAscendingNode;
-timeOfPerihelionPassage;	//comets
-meanAnomalyAtEpoch;			//numbr
-absoluteMagnitude;			//numbr
-magnitudeSlopeParameter;	//numbr
-]]):trim():split'\n':map(function(l)
-	return (l:match'(.*);.*')
-end)
+-- these match the fields in coldesc.lua and body_write_t
+local numberFields = table{ 
+	'epoch',
+	'perihelionDistance',		--comets
+	'semiMajorAxis',		--asteroids
+	'eccentricity',
+	'inclination',
+	'argumentOfPeriapsis',
+	'longitudeOfAscendingNode',
+	'meanAnomalyAtEpoch',		--asteroids
+	'absoluteMagnitude',		--asteroids
+	'magnitudeSlopeParameter',		--asteroids
+	'timeOfPerihelionPassage',		--comets
+}
 
 if ffi then
 	local template = require 'template'
@@ -102,12 +101,14 @@ if ffi then
 typedef double real;
 
 typedef struct {
-	char idNumber[4+1];	//add one to strings for null-term because I'm lazy
-	char name[38+1];
 <? for _,field in ipairs(numberFields) do
 ?>	real <?=field?>;
 <? end
-?>	char orbitSolutionReference[10+1];
+?>
+	int bodyType;	// 0=comet, 1=numbered, 2=unnum
+	char idNumber[4+1];	//+1 for null-term because I'm lazy and using string assignment in ffi
+	char name[38+1];
+	char orbitSolutionReference[10+1];
 
 	//computed parameters:
 	long index;
@@ -115,8 +116,7 @@ typedef struct {
 	real eccentricAnomaly;
 	real timeOfPeriapsisCrossing;
 	real meanAnomaly;
-	int orbitType;	// 0=elliptic, 1=hyperbolic, 2=parabolic
-	int bodyType;	// 0=comet, 1=numbered, 2=unnum
+	int orbitType;	// 0=elliptic, 1=hyperbolic, 2=parabolic ... this can be derived from eccentricity
 	real orbitalPeriod;
 } body_t;
 ]], {

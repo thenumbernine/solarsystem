@@ -3788,10 +3788,8 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 	//init stars now that shaders are made
 	starfield.init();
 
-if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	//and small bodies in the solar system
-	initSmallBodies();
-}	//SHOW_ALL_SMALL_BODIES_AT_ONCE
+	smallBodies.init();
 
 	//and galaxies
 	galaxies.init();
