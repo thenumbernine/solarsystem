@@ -17,9 +17,9 @@ var SolarSystem = makeClass({
 			radius : 6.37101e+6,
 			equatorialRadius : 6378.136e+3,
 			inverseFlattening : 298.257223563,
-			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,
+			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,	//sidereal day
 			orbitalPeriod : 365.256363004,
-			rotationOffset : 1.15,
+			rotationOffset : -4/24 * 2*Math.PI,	//looks about 4 hours off
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
@@ -30,7 +30,7 @@ var SolarSystem = makeClass({
 			radius : 1.73753e+6,
 			rotationPeriod : 27.321662,
 			orbitalPeriod : 27.321662,
-			rotationOffset : 1/8 * 2 * Math.PI,
+			rotationOffset : 180 * Math.PI / 360,
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));

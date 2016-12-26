@@ -72,7 +72,7 @@ TODO
 
 Hierarchical structure:
 
-stars = new Stars(); has Star() objects
+starfield = new Starfield(); has Star() objects
 	<- derived from the following:
 		stardata.f32 = float buffer used for rendering stars as a point cloud
 			contains star positions, absolute magnitude, color index, and maybe velocity later

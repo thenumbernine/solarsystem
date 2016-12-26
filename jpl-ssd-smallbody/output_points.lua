@@ -345,10 +345,15 @@ end
 
 			-- childDepth == 21 writes to bits 60..62
 			-- so if depth >= 21 then we are writing past the end
-			assert(depth < 21, "looks like you need a bigger data size, or a cap on the max depth")
+			-- then again, doubles hold 0..52 bits of precision
+			-- then again, javascript bit shifts only work on 32bit integers ...
+			local maxDepth = 9	-- inclusive
+			assert(depth < maxDepth, "looks like you need a bigger data size, or a cap on the max depth")
 
 			node.bodies:insert(body)
-			if #node.bodies > leafPointCount then
+			if #node.bodies > leafPointCount
+			and depth < maxDepth-1
+			then
 				node.children = table()
 				for ix=0,1 do
 					for iy=0,1 do
@@ -500,9 +505,12 @@ childDepth 	start	end	size
 		node.parent = nil
 		node.children = nil
 		node.bodies = setmetatable(node.bodies:map(function(body)
+			-- TODO store max length of idnumber, name in octree.json
+			-- then write out binary data
 			return {
-				ffi.string(body.idNumber),
-				ffi.string(body.name),
+				body.pos[0],
+				body.pos[1],
+				body.pos[2],
 				-- either need one or the other : (a) repackage and keep range, or (b) keep individual node mapping
 				--index = tonumber(body.index),	-- index in the total list 
 				-- TODO the index is only useful if you have the whole buffer available
@@ -519,6 +527,8 @@ childDepth 	start	end	size
 				-- elliptic asteroids:
 				body.meanAnomalyAtEpoch,
 				body.epoch,
+				ffi.string(body.idNumber),
+				ffi.string(body.name),
 			}
 		end), nil)
 --]]

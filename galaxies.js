@@ -1,4 +1,5 @@
 var showGalaxies = true;
+var allowSelectGalaxies = true;
 
 //too small (1e+3) and the depth buffer precision gets destroyed - which is important for color-picking
 //too big (1e+20) and the scene gets zfar clipped away

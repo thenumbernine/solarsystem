@@ -92,8 +92,6 @@ var showLatAndLonLines = false;
 var showGravityWell = false;
 var showPlanetsAsDistantPoints = true;
 var showOrbits = true;
-var allowSelectStars = true;
-var starsVisibleMagnitudeBias = 0;
 var planetScaleExaggeration = 1;
 
 var gravityWellScaleNormalized = true;
@@ -104,8 +102,6 @@ var gravityWellRadialMaxLog100 = 2;
 
 var overlayShowOrbitTarget = true;
 var overlayShowCurrentPosition = false;
-
-var allowSelectGalaxies = true;
 
 var heatAlpha = .5;
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
@@ -527,7 +523,7 @@ var showFPS = false;
 
 		//next comes local stars of the milky way
 
-		stars.draw(
+		starfield.draw(
 			tanFovY,
 			picking,
 			viewPosInv,
@@ -881,7 +877,8 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 						uniforms : {
 							colorIndexTex : 0,
 							starTex : 1,
-							pointSize : 1
+							pointSize : 1,
+							visibleMagnitudeBias : starsVisibleMagnitudeBias
 						},
 						texs : [colorIndexTex, starTex]
 					});
@@ -1725,13 +1722,13 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 		'showOrbitAxis',
 		'showLatAndLonLines',
 		'showGravityWell',
-		'showNames',	//overlays.js
+		'showNames',				//overlays.js
 		'showOrbits',
-		'showSmallBodies',	//smallbodies.js
+		'showSmallBodies',			//smallbodies.js
 		'allowSelectSmallBodies',	//smallbodies.js
-		'showStars',	//in stars.js
-		'allowSelectStars',
-		'showGalaxies',	//in galaxies.js
+		'showStars',				//in starfield.js
+		'allowSelectStars',			//in starfield.js
+		'showGalaxies',				//in galaxies.js
 		'allowSelectGalaxies',
 		'showPlanetsAsDistantPoints',
 		//radio
@@ -1766,7 +1763,7 @@ console.log('glMaxCubeMapTextureSize', glMaxCubeMapTextureSize);
 
 	$.each([
 		'gravityWellScaleFixedValue',
-		'starsVisibleMagnitudeBias',
+		'starsVisibleMagnitudeBias',	//in starfield.js
 		'planetScaleExaggeration'
 	], function(_, toggle) {
 		(function(){
@@ -2422,7 +2419,7 @@ function initExoplanets() {
 		});
 
 		//now that we've built all our star system data ... add it to the star field
-		stars.addStarSystems();
+		starfield.addStarSystems();
 	};
 
 	//just over a meg, so I might as well ajax it
@@ -3592,6 +3589,8 @@ if (true) {
 		}
 	});
 
+	//currently only used by starfield shader
+	//considering use with planet shader
 	colorIndexShader = new ModifiedDepthShaderProgram({
 		vertexCode :
 '#define M_LOG_10 '+floatToGLSL(Math.log(10))+'\n'+
@@ -3617,14 +3616,15 @@ void main() {
 
 	//calculate apparent magnitude, convert to alpha
 	float distanceInParsecs = length(vtx4.xyz) / ( */}) 
-+ floatToGLSL(metersPerUnits.pc / stars.renderScale) 
++ floatToGLSL(metersPerUnits.pc / starfield.renderScale) 
 + mlstr(function(){/*);	//convert distance to parsecs
 	
 	//https://en.wikipedia.org/wiki/Apparent_magnitude
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	
 	//not sure where I got this one from ...
-	alpha = pow(100., -.2*(apparentMagnitude - visibleMagnitudeBias));
+	float log100alpha = -.2*(apparentMagnitude - visibleMagnitudeBias);
+	alpha = pow(100., log100alpha);
 	
 	alpha = clamp(alpha, 0., 1.);
 
@@ -3635,7 +3635,8 @@ void main() {
 	
 	//TODO point sprite / point spread function?
 	gl_PointSize = pointSize / gl_Position.w;
-	gl_PointSize = clamp(gl_PointSize, .25, 5.);
+	//gl_PointSize = clamp(gl_PointSize, .25, 5.);
+	gl_PointSize = min(gl_PointSize, 5.);
 	
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -3785,7 +3786,7 @@ if (!CALCULATE_TIDES_WITH_GPU) {
 	milkyWay.init();
 
 	//init stars now that shaders are made
-	stars.init();
+	starfield.init();
 
 if (SHOW_ALL_SMALL_BODIES_AT_ONCE) {
 	//and small bodies in the solar system

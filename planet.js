@@ -138,6 +138,3 @@ var Planet = makeClass({
 		}
 	}
 });
-
-
-

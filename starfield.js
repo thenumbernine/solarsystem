@@ -4,13 +4,15 @@ TODO OOP this, and make one per galaxy (which we have observed stars within)
 */
 
 var showStars = true;
+var starsVisibleMagnitudeBias = 0;
+var allowSelectStars = true;
 
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
 // and remove StarInField ... make that just StarSystem (even for zero-planet systems)
 //
 //only instanciate these for the named stars.  87 in all.
 
-var stars = new function() {
+var starfield = new function() {
 	this.maxDistInLyr = 5000;
 	this.renderScale = 1e+10;
 	
@@ -52,7 +54,6 @@ var stars = new function() {
 			thiz.sceneObj = new glutil.SceneObject({
 				mode : gl.POINTS,
 				shader : colorIndexShader,
-				texs : [colorIndexTex, starTex],
 				attrs : {
 					vertex : new glutil.Attribute({buffer : thiz.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz abs-mag
 					velocity : new glutil.Attribute({buffer : thiz.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEM, offset : 3 * Float32Array.BYTES_PER_ELEMENT}),	//velocity
@@ -60,12 +61,12 @@ var stars = new function() {
 					colorIndex : new glutil.Attribute({buffer : thiz.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 7 * Float32Array.BYTES_PER_ELEMENT})	//color-index
 				},
 				uniforms : {
-					pointSize : 1,
-					color : [1,1,1,1],
-					visibleMagnitudeBias : starsVisibleMagnitudeBias,
 					colorIndexTex : 0,
-					starTex : 1
+					starTex : 1,
+					pointSize : 1,
+					visibleMagnitudeBias : starsVisibleMagnitudeBias
 				},
+				texs : [colorIndexTex, starTex],
 				blend : [gl.SRC_ALPHA, gl.ONE],
 				pos : [0,0,0],
 				parent : null,
@@ -83,13 +84,13 @@ var stars = new function() {
 
 	//this is called after the exoplanets load
 	this.addStarSystems = function() {
-		if (stars.buffer === undefined) return;
+		if (this.buffer === undefined) return;
 console.log('adding star systems to star fields and vice versa');	
 		assert(starSystems.length > 1);
 
 		//add buffer points
 
-		var array = stars.buffer.data;	//8 fields: x y z vx vy vz absmag colorIndex
+		var array = this.buffer.data;	//8 fields: x y z vx vy vz absmag colorIndex
 		array = Array.prototype.slice.call(array);	//to js array
 
 		for (var i = 0; i < starSystems.length; ++i) {
@@ -105,7 +106,7 @@ console.log('adding star systems to star fields and vice versa');
 			array.push(0);	//color index
 		}
 
-		stars.buffer.setData(array, gl.STATIC_DRAW, true);
+		this.buffer.setData(array, gl.STATIC_DRAW, true);
 
 		//then add named stars to the starSystem array
 		// if they're not there ... and I'm pretty sure they're all not there ...
@@ -123,15 +124,15 @@ console.log('adding star systems to star fields and vice versa');
 
 			starSystem.name = args.name;
 
-			//index in the stars.buffer, stride of stars.buffer.dim
+			//index in the this.buffer, stride of this.buffer.dim
 			//preserved since the original 1000 or however many from the HYG database are not moved
 			starSystem.starfieldIndex = args.index;
 
-			//note stars.buffer holds x y z abs-mag color-index
+			//note this.buffer holds x y z abs-mag color-index
 			starSystem.pos = [
-				stars.buffer.data[0 + starSystem.starfieldIndex * stars.buffer.dim] * this.renderScale,
-				stars.buffer.data[1 + starSystem.starfieldIndex * stars.buffer.dim] * this.renderScale,
-				stars.buffer.data[2 + starSystem.starfieldIndex * stars.buffer.dim] * this.renderScale
+				this.buffer.data[0 + starSystem.starfieldIndex * this.buffer.dim] * this.renderScale,
+				this.buffer.data[1 + starSystem.starfieldIndex * this.buffer.dim] * this.renderScale,
+				this.buffer.data[2 + starSystem.starfieldIndex * this.buffer.dim] * this.renderScale
 			];
 
 			//starSystem.sourceData = ...
@@ -186,19 +187,19 @@ console.log('adding star systems to star fields and vice versa');
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 		
 		if (distFromSolarSystemInLyr < this.maxDistInLyr &&
-			stars.sceneObj !== undefined && 
+			this.sceneObj !== undefined && 
 			orbitTarget !== undefined &&
 			orbitTarget.pos !== undefined)
 		{
 			var pointSize = 1000 * canvas.width * Math.sqrt(distFromSolarSystemInMpc) * metersPerUnits.pc / this.renderScale / tanFovY;
 			if (!picking) {
 				gl.disable(gl.DEPTH_TEST);
-				stars.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
-				stars.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
-				stars.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
-				stars.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
-				stars.sceneObj.uniforms.pointSize = pointSize;
-				stars.sceneObj.draw();
+				this.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+				this.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
+				this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
+				this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
+				this.sceneObj.uniforms.pointSize = pointSize;
+				this.sceneObj.draw();
 				gl.enable(gl.DEPTH_TEST);
 			} else {
 				//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
@@ -208,12 +209,12 @@ console.log('adding star systems to star fields and vice versa');
 				
 					/* TODO render via buffer?
 					//also TODO:
-					//if (list === starfield && target == orbitStarSystem) continue;
+					//if (list === this && target == orbitStarSystem) continue;
 					//...and then there's the fact that the old ray code only checked the exoplanets
 					// whereas this is rendering all hyg stars ...
 					//so I'll turn it off for now
 					pickObject.drawPoints({
-						sceneObj : stars.sceneObj,
+						sceneObj : this.sceneObj,
 						targetCallback : function(index) {
 							for (var i = 0; i < namedStars.length; ++i) {
 								if (namedStars[i].index == index) {	//namedStars[i].index is the index in the hyg 120,000 star buffer

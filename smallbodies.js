@@ -38,21 +38,25 @@ var PointOctreeNode = makeClass({
 		this.loadingData = true;
 		var thiz = this;
 		var url = 'jpl-ssd-smallbody/nodes/'+this.nodeID+'.json';
+console.log('loading point data for small body '+this.nodeID+' from '+url);
 		$.ajax({
 			url : url,
 			dataType : 'json',
 			cache : false
 		}).error(function() {
-			console.log('failed to get small body nodes from '+url);
+			console.log('failed to get small body '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
+console.log('loaded point data for small body '+thiz.nodeID+' from '+url);
 			thiz.processData(data);
 		});
 	},
 	processData : function(data) {
+console.log('processing data for small body '+this.nodeID);		
 		//hold all parameters for each body
 		var len = data.length;
 		if (!len) return;
-		
+	
+		this.vertexBuffer = new Float32Array(3*len);
 		var semiMajorAxisArray = new Float32Array(len);
 		var longitudeOfAscendingNodeArray = new Float32Array(len);
 		var argumentOfPeriapsisArray = new Float32Array(len);
@@ -65,24 +69,26 @@ var PointOctreeNode = makeClass({
 		var orbitTypeArray = new Float32Array(len);
 		
 		for (var i = 0; i < data.length; ++i) {
-			semiMajorAxisArray[i] = data[i][2];
-			longitudeOfAscendingNodeArray[i] = data[i][3];
-			argumentOfPeriapsisArray[i] = data[i][4];
-			inclinationArray[i] = data[i][5];
-			eccentricityArray[i] = data[i][6];
-			timeOfPerihelionPassageArray[i] = data[i][7];
-			orbitalPeriodArray[i] = data[i][8];
-			meanAnomalyAtEpochArray[i] = data[i][9];
-			epochArray[i] = data[i][10];
-			orbitTypeArray[i] = data[i][11];
+			this.vertexBuffer[0+3*i] = data[i][0];
+			this.vertexBuffer[1+3*i] = data[i][1];
+			this.vertexBuffer[2+3*i] = data[i][2];
+			semiMajorAxisArray[i] = data[i][3];
+			longitudeOfAscendingNodeArray[i] = data[i][4];
+			argumentOfPeriapsisArray[i] = data[i][5];
+			inclinationArray[i] = data[i][6];
+			eccentricityArray[i] = data[i][7];
+			timeOfPerihelionPassageArray[i] = data[i][8];
+			orbitalPeriodArray[i] = data[i][9];
+			meanAnomalyAtEpochArray[i] = data[i][10];
+			epochArray[i] = data[i][11];
+			orbitTypeArray[i] = data[i][12];
 		}
 		
 		this.sceneObj = new glutil.SceneObject({
-			geometry : new glutil.Geometry({
-				mode : gl.POINTS,
-				count : len,
-			}),
+			mode : gl.POINTS,
 			attrs : {
+				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : this.vertexBuffer})),
+				/* TODO put these all in *another* geometry object, or texture, and GPU render-to-buffer to update the positions
 				semiMajorAxis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : semiMajorAxisArray})),
 				longitudeOfAscendingNode : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : longitudeOfAscendingNodeArray})),
 				argumentOfPeriapsis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : argumentOfPeriapsisArray})),
@@ -93,6 +99,7 @@ var PointOctreeNode = makeClass({
 				meanAnomalyAtEpoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : meanAnomalyAtEpochArray})),
 				epoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : epochArray})),
 				orbitType : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : orbitTypeArray}))
+				*/
 			},
 			shader : smallBodyShader,
 			uniforms : {
@@ -158,7 +165,7 @@ var PointOctreeNode = makeClass({
 		this.sceneObj.uniforms.julianDate = julianDate;
 		
 		if (picking) {
-/* TODO small body picking ... either use a special shader when rendering, or have small bodies use a kernel shader to write to a vertex buffer 
+/* TODO node.indexes to map back to a global buffer for some reason 
 			if (this.visRatio < .1) return;	//extra tough too-small threshold for picking
 			var thiz = this;
 			pickObject.drawPoints({
@@ -172,7 +179,7 @@ var PointOctreeNode = makeClass({
 				pointSizeMin : .25,
 				pointSizeMax : 5
 			});
-*/		
+/**/		
 		} else {
 			this.sceneObj.draw();
 		}
@@ -198,6 +205,11 @@ function initSmallBodies() {
 	
 	smallBodyShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
+uniform mat4 mvMat;
+uniform mat4 projMat;
+uniform float pointSize;
+
+#if 0
 attribute float semiMajorAxis;
 attribute float longitudeOfAscendingNode;
 attribute float argumentOfPeriapsis;
@@ -209,9 +221,6 @@ attribute float meanAnomalyAtEpoch;
 attribute float epoch;
 attribute float orbitType;
 
-uniform mat4 mvMat;
-uniform mat4 projMat;
-uniform float pointSize;
 uniform float julianDate;
 		
 const float sunMassInKg = 1.9891e+30;	// kg
@@ -220,10 +229,14 @@ const float gravitationalParameter = gravitationalConstant * sunMassInKg;	//assu
 
 float cosh(float x) { return .5 * (exp(x) + exp(-x)); }
 float sinh(float x) { return .5 * (exp(x) - exp(-x)); }
+#else
+attribute vec3 vertex;
+#endif
 
 #define TWO_PI 6.283185307179586231995926937088
 
 void main() {
+#if 0	
 	float cosAscending = cos(longitudeOfAscendingNode);
 	float sinAscending = sin(longitudeOfAscendingNode);
 	float cosPericenter = cos(argumentOfPeriapsis);
@@ -295,6 +308,7 @@ void main() {
 	}
 
 	vec3 vertex = A * coeffA + B * coeffB;
+#endif
 
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / gl_Position.w;
@@ -388,10 +402,6 @@ void main() {
 		//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
 		var mins = smallBodyOctreeData.mins;
 		var maxs = smallBodyOctreeData.maxs;
-		var size = [
-			maxs[0] - mins[0],
-			maxs[1] - mins[1],
-			maxs[2] - mins[2]];
 
 		smallBodyRootNode = new PointOctreeNode();
 		smallBodyRootNode.nodeID = 0;
@@ -418,16 +428,24 @@ void main() {
 						var childIndex = ix | ((iy | (iz<<1)) << 1);
 
 						var childDepth = node.depth + 1;
-						var childLevelID = node.levelID | (childIndex << 3*childDepth);
 						var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
+assert(childLevelStart >= 0);
+						var childLevelID = node.levelID | (childIndex << 3*node.depth);
+assert(childLevelID >= 0);
 						var childNodeID = childLevelStart + childLevelID;
-				
+assert(childNodeID >= 0);
 						//if we find it in the master list 
 						// then create the node
 						if (!nodeExists[childNodeID]) continue;
 						if (!node.children) node.children = [];
 						var child = new PointOctreeNode();
-						
+
+$.each(allSmallBodyNodes, function(i,node) {
+	if (node.nodeID == child.nodeID) {
+console.log("found matching nodes", node, child);
+throw 'here';
+	}
+});
 						child.nodeID = childNodeID;
 						child.depth = childDepth;
 						child.levelID = childLevelID;
@@ -478,8 +496,8 @@ void main() {
 
 
 var cachedSmallBodies = {};
-function getCachedSmallBody(node,localIndex) {
-	var buffer = node.buffer;
+function getCachedSmallBody(node, localIndex) {
+	var buffer = node.vertexBuffer;
 	var x = buffer.data[3*localIndex+0];
 	var y = buffer.data[3*localIndex+1];
 	var z = buffer.data[3*localIndex+2];
@@ -522,7 +540,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 				if (showAllSmallBodiesAtOnce) {
 					for (var i = 0; i < allSmallBodyNodes.length; ++i) {
 						var node = allSmallBodyNodes[i];
-						node.draw(distFromSolarSystemInM, picking);
+						node.draw(distFromSolarSystemInM, tanFovY, picking);
 					}
 				} else {	//good for selective rendering but bad for all rendering
 					var drawList = [];
@@ -544,7 +562,7 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 					for (var i = 0; i < smallBodyMaxDrawnNodes && i < allSmallBodyNodes.length; ++i) {
 						var node = allSmallBodyNodes[i];
-						node.draw(distFromSolarSystemInM);
+						node.draw(distFromSolarSystemInM, tanFovY, picking);
 					}
 				}
 			});
