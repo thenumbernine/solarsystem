@@ -116,6 +116,7 @@ typedef struct {
 	real timeOfPeriapsisCrossing;
 	real meanAnomaly;
 	int orbitType;	// 0=elliptic, 1=hyperbolic, 2=parabolic
+	int bodyType;	// 0=comet, 1=numbered, 2=unnum
 	real orbitalPeriod;
 } body_t;
 ]], {

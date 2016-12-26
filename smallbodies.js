@@ -50,51 +50,66 @@ var PointOctreeNode = makeClass({
 		var len = data.length;
 		if (!len) return;
 	
-		this.vertexBuffer = new Float32Array(3*len);
-		var semiMajorAxisArray = new Float32Array(len);
-		var longitudeOfAscendingNodeArray = new Float32Array(len);
-		var argumentOfPeriapsisArray = new Float32Array(len);
-		var inclinationArray = new Float32Array(len);
-		var eccentricityArray = new Float32Array(len);
-		var timeOfPerihelionPassageArray = new Float32Array(len);
+		var vertexBuffer = new Float32Array(3*len);
+		this.bodyTypeArray = new Uint8Array(len);
+		this.idNumberArray = [];
+		this.nameArray = [];
+		this.semiMajorAxisArray = new Float32Array(len);
+		this.longitudeOfAscendingNodeArray = new Float32Array(len);
+		this.argumentOfPeriapsisArray = new Float32Array(len);
+		this.inclinationArray = new Float32Array(len);
+		this.eccentricityArray = new Float32Array(len);
+		this.timeOfPerihelionPassageArray = new Float32Array(len);
 		var orbitalPeriodArray = new Float32Array(len);
-		var meanAnomalyAtEpochArray = new Float32Array(len);
-		var epochArray = new Float32Array(len);
-		var orbitTypeArray = new Float32Array(len);
-		this.smallBodyIDs = new Int32Array(len);
+		this.meanAnomalyAtEpochArray = new Float32Array(len);
+		this.epochArray = new Float32Array(len);
+		this.perihelionDistanceArray = new Float32Array(len);
+		this.absoluteMagnitudeArray = new Float32Array(len);
+		this.magnitudeSlopeParameterArray = new Float32Array(len);
+		this.orbitTypeArray = new Uint8Array(len);
+		this.globalIndexArray = new Int32Array(len);
+		this.orbitSolutionReferenceArray = [];
 
 		for (var i = 0; i < data.length; ++i) {
-			this.vertexBuffer[0+3*i] = data[i][0];
-			this.vertexBuffer[1+3*i] = data[i][1];
-			this.vertexBuffer[2+3*i] = data[i][2];
-			this.smallBodyIDs[i] = data[i][3]; 
-			semiMajorAxisArray[i] = data[i][4];
-			longitudeOfAscendingNodeArray[i] = data[i][5];
-			argumentOfPeriapsisArray[i] = data[i][6];
-			inclinationArray[i] = data[i][7];
-			eccentricityArray[i] = data[i][8];
-			timeOfPerihelionPassageArray[i] = data[i][9];
-			orbitalPeriodArray[i] = data[i][10];
-			meanAnomalyAtEpochArray[i] = data[i][11];
-			epochArray[i] = data[i][12];
-			orbitTypeArray[i] = data[i][13];
+			var e = 0;
+			vertexBuffer[0+3*i] = data[i][e++];
+			vertexBuffer[1+3*i] = data[i][e++];
+			vertexBuffer[2+3*i] = data[i][e++];
+			this.globalIndexArray[i] = data[i][e++]; 
+			this.semiMajorAxisArray[i] = data[i][e++];
+			this.longitudeOfAscendingNodeArray[i] = data[i][e++];
+			this.argumentOfPeriapsisArray[i] = data[i][e++];
+			this.inclinationArray[i] = data[i][e++];
+			this.eccentricityArray[i] = data[i][e++];
+			this.timeOfPerihelionPassageArray[i] = data[i][e++];
+			orbitalPeriodArray[i] = data[i][e++];
+			this.meanAnomalyAtEpochArray[i] = data[i][e++];
+			this.epochArray[i] = data[i][e++];
+			this.perihelionDistanceArray[i] = data[i][e++];
+			this.absoluteMagnitudeArray [i] = data[i][e++];
+			this.magnitudeSlopeParameterArray[i] = data[i][e++];
+			this.bodyTypeArray[i] = data[i][e++];
+			this.orbitTypeArray[i] = data[i][e++];
+			this.idNumberArray[i] = data[i][e++];
+			this.nameArray[i] = data[i][e++];
+			this.orbitSolutionReferenceArray[i] = data[i][e++]; 
 		}
 		
 		this.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			attrs : {
-				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : this.vertexBuffer})),
+				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : vertexBuffer})),
 				/* TODO put these all in *another* geometry object, or texture, and GPU render-to-buffer to update the positions
-				semiMajorAxis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : semiMajorAxisArray})),
-				longitudeOfAscendingNode : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : longitudeOfAscendingNodeArray})),
-				argumentOfPeriapsis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : argumentOfPeriapsisArray})),
-				inclination : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : inclinationArray})),
-				eccentricity : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : eccentricityArray})),
-				timeOfPerihelionPassage : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : timeOfPerihelionPassageArray})),
+				semiMajorAxis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.semiMajorAxisArray})),
+				longitudeOfAscendingNode : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.longitudeOfAscendingNodeArray})),
+				argumentOfPeriapsis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.argumentOfPeriapsisArray})),
+				inclination : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.inclinationArray})),
+				eccentricity : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.eccentricityArray})),
+				timeOfPerihelionPassage : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.timeOfPerihelionPassageArray})),
 				orbitalPeriod : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : orbitalPeriodArray})),
-				meanAnomalyAtEpoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : meanAnomalyAtEpochArray})),
-				epoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : epochArray})),
-				orbitType : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : orbitTypeArray}))
+				meanAnomalyAtEpoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.meanAnomalyAtEpochArray})),
+				epoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.epochArray})),
+				orbitType : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.orbitTypeArray}))
 				*/
 			},
 			shader : smallBodyShader,
@@ -199,111 +214,11 @@ function initSmallBodies() {
 	
 	smallBodyShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
+attribute vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;
-
-#if 0
-attribute float semiMajorAxis;
-attribute float longitudeOfAscendingNode;
-attribute float argumentOfPeriapsis;
-attribute float inclination;
-attribute float eccentricity;
-attribute float timeOfPerihelionPassage;
-attribute float orbitalPeriod;
-attribute float meanAnomalyAtEpoch;
-attribute float epoch;
-attribute float orbitType;
-
-uniform float julianDate;
-		
-const float sunMassInKg = 1.9891e+30;	// kg
-const float gravitationalConstant = 6.6738480e-11;		// m^3 / (kg * s^2)
-const float gravitationalParameter = gravitationalConstant * sunMassInKg;	//assuming the comet mass is negligible, since the comet mass is not provided
-
-float cosh(float x) { return .5 * (exp(x) + exp(-x)); }
-float sinh(float x) { return .5 * (exp(x) - exp(-x)); }
-#else
-attribute vec3 vertex;
-#endif
-
-#define TWO_PI 6.283185307179586231995926937088
-
 void main() {
-#if 0	
-	float cosAscending = cos(longitudeOfAscendingNode);
-	float sinAscending = sin(longitudeOfAscendingNode);
-	float cosPericenter = cos(argumentOfPeriapsis);
-	float sinPericenter = sin(argumentOfPeriapsis);
-	float cosInclination = cos(inclination);
-	float sinInclination = sin(inclination);
-	float oneMinusEccentricitySquared = 1. - eccentricity * eccentricity;
-	
-	//magnitude of A is a 
-	vec3 A = vec3(
-		semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-		semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-		semiMajorAxis * sinPericenter * sinInclination);
-	
-	//magnitude of B is a * sqrt(|1 - e^2|)
-	vec3 B = vec3(
-		semiMajorAxis * sqrt(abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-		semiMajorAxis * sqrt(abs(oneMinusEccentricitySquared)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-		semiMajorAxis * sqrt(abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination);
-		
-	float meanAnomaly;
-	if (orbitType == 0.) {	//elliptic
-		if (timeOfPerihelionPassage == timeOfPerihelionPassage) { //isComet
-			float timeOfPeriapsisCrossing = timeOfPerihelionPassage;
-			float timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing;
-			meanAnomaly = timeSinceLastPeriapsisCrossing * TWO_PI / orbitalPeriod;
-		} else {	// is asteroid
-			meanAnomaly = meanAnomalyAtEpoch + TWO_PI / orbitalPeriod * (julianDate - epoch);
-		}
-	} else if (orbitType == 1.) { //hyperbolic
-		float timeOfPeriapsisCrossing = timeOfPerihelionPassage;
-		float semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
-		meanAnomaly = sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60.*60.*24.;	//in seconds
-	} else if (orbitType == 2.) { 	//parabolic
-		float eccentricAnomaly = tan(argumentOfPeriapsis / 2.);
-		meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3.;
-	}
-
-	float eccentricAnomaly = meanAnomaly;
-	for (int i = 0; i < 10; ++i) {
-		float func, deriv;
-		if (orbitType == 2.) { //parabolic
-			func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3.;
-			deriv = -1. - eccentricAnomaly * eccentricAnomaly;
-		} else if (orbitType == 0.) { //elliptical
-			func = meanAnomaly - eccentricAnomaly + eccentricity * sin(eccentricAnomaly);
-			deriv = -1. + eccentricity * cos(eccentricAnomaly);	//has zeroes ...
-		} else if (orbitType == 1.) {	//hyperbolic
-			func = meanAnomaly + eccentricAnomaly - eccentricity  * sinh(eccentricAnomaly);
-			deriv = 1. - eccentricity * cosh(eccentricAnomaly);
-		}
-
-		float delta = func / deriv;
-		if (abs(delta) < 1e-15) break;
-		eccentricAnomaly = eccentricAnomaly - delta;
-	}
-
-	float coeffA, coeffB;
-	if (orbitType == 0.) {	//elliptic		
-		coeffA = cos(eccentricAnomaly) - eccentricity;
-		coeffB = sin(eccentricAnomaly);
-	} else if (orbitType == 1.) {	//hyperbolic
-		coeffA = eccentricity - cosh(eccentricAnomaly);
-		coeffB = sinh(eccentricAnomaly);
-	} else if (orbitType == 2.) {	//parabolic
-		//...and I don't know what to do
-		coeffA = 0./0.;
-		coeffB = 0./0.;
-	}
-
-	vec3 vertex = A * coeffA + B * coeffB;
-#endif
-
 	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
 	gl_PointSize = pointSize / gl_Position.w;
 	gl_PointSize = clamp(gl_PointSize, .25, 5.);
@@ -423,23 +338,14 @@ void main() {
 
 						var childDepth = node.depth + 1;
 						var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
-assert(childLevelStart >= 0);
 						var childLevelID = node.levelID | (childIndex << 3*node.depth);
-assert(childLevelID >= 0);
 						var childNodeID = childLevelStart + childLevelID;
-assert(childNodeID >= 0);
 						//if we find it in the master list 
 						// then create the node
 						if (!nodeExists[childNodeID]) continue;
 						if (!node.children) node.children = [];
 						var child = new PointOctreeNode();
 
-$.each(allSmallBodyNodes, function(i,node) {
-	if (node.nodeID == child.nodeID) {
-console.log("found matching nodes", node, child);
-throw 'here';
-	}
-});
 						child.nodeID = childNodeID;
 						child.depth = childDepth;
 						child.levelID = childLevelID;
@@ -491,10 +397,11 @@ throw 'here';
 
 var cachedSmallBodies = {};
 function getCachedSmallBody(node, localIndex) {
-	var x = node.vertexBuffer[3*localIndex+0];
-	var y = node.vertexBuffer[3*localIndex+1];
-	var z = node.vertexBuffer[3*localIndex+2];
-	var globalIndex = node.smallBodyIDs[localIndex];
+	var data = node.sceneObj.attrs.vertex.buffer.data;
+	var x = data[3*localIndex+0];
+	var y = data[3*localIndex+1];
+	var z = data[3*localIndex+2];
+	var globalIndex = node.globalIndexArray[localIndex];
 
 	//TODO toggle on/off orbit data if we're selecting on/off a small body
 	//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -514,7 +421,42 @@ function getCachedSmallBody(node, localIndex) {
 		smallBodyID : globalIndex
 	});
 	cachedSmallBodies[globalIndex] = smallBody;
+
+	/*
+	Now in setOrbitTarget there is special-case code looking for returned instances
+	of SmallBody.  From there that code does an ajax query of jpl-ssd-smallbody/search.lua.
+	But why bother when we have the info here already?
+	*/
+	//Here I'm convering the node body data to match the sql row returned from search.lua 
+	var fields = [
+		'bodyType',
+		'idNumber',
+		'name',
+		'epoch',
+		'perihelionDistance',
+		'semiMajorAxis',
+		'eccentricity',
+		'inclination',
+		'argumentOfPeriapsis',
+		'longitudeOfAscendingNode',
+		'meanAnomalyAtEpoch',
+		'absoluteMagnitude',
+		'magnitudeSlopeParameter',
+		'timeOfPerihelionPassage',
+		'orbitSolutionReference',
+	];
 	
+	var row = {}
+	for (var i = 0; i < fields.length; ++i) {
+		var field = fields[i];
+assert(node[field+'Array'], "failed to find "+field+"Array");		
+		row[field] = node[field+'Array'][localIndex];
+	}
+	
+	row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
+
+	smallBody.row = row;
+
 	return smallBody;
 }
 

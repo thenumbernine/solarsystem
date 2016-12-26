@@ -31,6 +31,7 @@ end
 function OutputToPoints:processBody(body)
 	local isComet = self.currentBodyType == 0
 	local isAsteroid = self.currentBodyType > 0
+	body.bodyType = self.currentBodyType
 
 	local semiMajorAxis
 	local eccentricity
@@ -527,8 +528,15 @@ childDepth 	start	end	size
 				-- elliptic asteroids:
 				body.meanAnomalyAtEpoch,
 				body.epoch,
+				-- extra
+				body.perihelionDistance,
+				body.absoluteMagnitude,
+				body.magnitudeSlopeParameter,
+				body.bodyType,
+				body.orbitType,
 				ffi.string(body.idNumber),
 				ffi.string(body.name),
+				ffi.string(body.orbitSolutionReference),
 			}
 		end), nil)
 --]]

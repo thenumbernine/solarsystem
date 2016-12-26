@@ -5116,22 +5116,10 @@ function setOrbitTarget(newTarget) {
 
 	//query the server for this small body's orbit data
 	if (newTarget.isa && newTarget.isa(SmallBody)) {
-		$.ajax({
-			url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-			dataType : 'json',
-			data : {
-				id : newTarget.smallBodyID
-			},
-			cache : false,
-			timeout : 5000
-		}).done(function(results) {
-			if (!results.rows.length) throw "tried to query a point in the point cloud that wasn't in the database: "+globalIndex;
-			if (results.rows.length>1) throw "queried a point in the point cloud that had multiple database entries: "+globalIndex;
-			var row = results.rows[0];
-			//TODO why doesn't this match up with the point location?  float error?
-			var planet = addSmallBody(row);
-			setOrbitTarget(planet);
-		});
+		var row = newTarget.row;
+		//TODO why doesn't this match up with the point location?  float error?
+		var planet = addSmallBody(row);
+		setOrbitTarget(planet);
 	}
 
 	if (selectingNewSystem) {
