@@ -468,9 +468,8 @@ console.log('adding star systems to star fields and vice versa');
 			orbitTarget.pos !== undefined)
 		{
 			var pointSize = 
-				1000 
-				* canvas.width 
-				* Math.sqrt(distFromSolarSystemInMpc) 
+				canvas.width 
+				/ 100
 				* metersPerUnits.pc 
 				/ this.renderScale 
 				/ tanFovY;
@@ -484,27 +483,33 @@ console.log('adding star systems to star fields and vice versa');
 				this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
 				this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
 				this.sceneObj.uniforms.pointSize = pointSize;
-//				this.sceneObj.draw();
+				this.sceneObj.draw();
 
-		//TODO only draw bubbles around stars once we're out of the star system
+				//only draw bubbles around stars once we're out of the star system
+				//then fade them into display
+				var bubbleStartFadeDistInLyr = .5;
+				var bubbleStopFadeDistInLyr = 1.5;
+				if (distFromSolarSystemInLyr > bubbleStartFadeDistInLyr) {
+					var alpha = (distFromSolarSystemInLyr - bubbleStartFadeDistInLyr) / (bubbleStopFadeDistInLyr - bubbleStartFadeDistInLyr);
+					alpha = Math.clamp(alpha, 0, 1);
 
-				var pointSize = 
-					canvas.width 
-					//* Math.sqrt(distFromSolarSystemInMpc) 
-					* metersPerUnits.pc 
-					/ 10
-					/ this.renderScale 
-					/ tanFovY;
-				this.sceneObj.draw({
-					uniforms : {
-						pointSize : pointSize,
-						pointSizeMax : 500,
-						visibleMagnitudeBias : 10,	//TODO just use a different shader
-						colorScale : 2
-					},
-					texs : [this.colorIndexTex, this.bubbleTex]
-				});
-				
+					var pointSize = 
+						canvas.width 
+						/ 10
+						* metersPerUnits.pc 
+						/ this.renderScale 
+						/ tanFovY;
+					this.sceneObj.draw({
+						uniforms : {
+							pointSize : pointSize,
+							pointSizeMax : 1000,
+							visibleMagnitudeBias : 10,	//TODO just use a different shader
+							colorScale : alpha * 2
+						},
+						texs : [this.colorIndexTex, this.bubbleTex]
+					});
+				}
+
 				gl.enable(gl.DEPTH_TEST);
 			
 			} else {
@@ -558,6 +563,7 @@ console.log('adding star systems to star fields and vice versa');
 			}
 		}
 
+		/*
 		//add overlay text
 		if (!picking) {
 			for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
@@ -585,5 +591,6 @@ console.log('adding star systems to star fields and vice versa');
 				}
 			}
 		}
+		*/
 	};
 };
