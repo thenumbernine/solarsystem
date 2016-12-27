@@ -60,11 +60,16 @@ local nameSeparator = ' / '
 local function setName(obj, name)
 	if not obj.names then obj.names = {} end
 	table.insert(obj.names, name)
+--[[ combine all names?
 	if obj.name then 
 		obj.name = obj.name .. nameSeparator .. name
 	else
 		obj.name = name
 	end
+--]]
+-- [[ just use the first
+	obj.name = obj.name or name
+--]]
 end
 
 --[[
@@ -499,6 +504,8 @@ end), nil)
 - return value+key of fixed name (abbreviations removed) + associated survey
 --]]
 local function parseName(name)
+do return name, '' end	
+	
 	local index = 1
 	local lasttoken = ''
 	local function matches(pattern)
@@ -721,7 +728,8 @@ local function fixnames(names)
 			end
 		end
 	end
-	return newnames, table.concat(newvalues, nameSeparator)
+	--return newnames, table.concat(newvalues, nameSeparator)
+	return newnames, newvalues[1] 
 end
 
 -- fixes a single name
@@ -801,30 +809,37 @@ for _,system in ipairs(resultSystems) do
 end
 
 
--- assert that all names are unique
+-- assert that all star names are unique
 local allNames = {}
 for _,system in ipairs(resultSystems) do
 	for _,body in ipairs(system.bodies) do
-		if allNames[body.name] then 
-			if body.type == 'star' then
-			-- multiple named stars, give them #2, #3 etc suffix
-				if allNames[body.name].type == 'star' then
-					local nextName
-					local counter = 2
-					while true do
-						nextName = body.name..' #'..counter
-						if not allNames[nextName] then break end
-						counter = counter + 1
+		if body.type == 'star' then
+			if allNames[body.name] then 
+				if body.type == 'star' then
+					-- [[ multiple named stars, give them #2, #3 etc suffix
+					-- this is only the case for DP Leo, which has two stars of the same name without an A or B
+					-- other than that there are no duplicate names between stars
+					if allNames[body.name].type == 'star' then
+						local nextName
+						local counter = 2
+						while true do
+							nextName = body.name..' #'..counter
+							if not allNames[nextName] then break end
+							counter = counter + 1
+						end
+						body.name = assert(nextName)
+					else
+					--]] do
+						error('found duplicate name '..body.name..'\n'
+							..'found '..tolua(body, {indent=true})
+							..' and '..tolua(allNames[body.name], {indent=true}))
 					end
-					body.name = assert(nextName)
 				else
-					error('found duplicate name '..body.name) 
+					error('found duplicate name '..('%q'):format(body.name))
 				end
-			else
-				error('found duplicate name '..('%q'):format(body.name))
 			end
+			allNames[body.name] = body 
 		end
-		allNames[body.name] = body 
 	end
 end
 

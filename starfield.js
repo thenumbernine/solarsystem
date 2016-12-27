@@ -300,7 +300,7 @@ void main() {
 			//don't forget velocity is not being rescaled (i'm not using it at the moment)
 			var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
 			var len = floatBuffer.length;
-var numTooClose = 0;			
+var numClose = 0;			
 			for (var j = 0; j < len; ++j) {
 				var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 				if (j % numElem < 3) {
@@ -309,7 +309,7 @@ var numTooClose = 0;
 					}
 					//convert parsecs to meters
 					//and downscale by the starfield render scale
-//					x *= metersPerUnits.pc / thiz.renderScale;
+					x *= metersPerUnits.pc / thiz.renderScale;
 				}
 				floatBuffer[j] = x;
 				if (j%numElem==2) {
@@ -317,12 +317,12 @@ var x = floatBuffer[j-2];
 var y = floatBuffer[j-1];
 var z = floatBuffer[j];
 var dist = Math.sqrt(x*x + y*y + z*z);
-if (dist < 1) { //metersPerUnits.pc / thiz.renderScale) {
-	numTooClose++;
+if (dist < metersPerUnits.pc / thiz.renderScale) {
+	numClose++;
 }
 				}
 			}
-console.log('num stars too close:', numTooClose);
+console.log('num stars within 1pc:', numClose);
 			//now that we have the float buffer ...
 			thiz.buffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
 			thiz.sceneObj = new glutil.SceneObject({
@@ -484,7 +484,9 @@ console.log('adding star systems to star fields and vice versa');
 				this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
 				this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
 				this.sceneObj.uniforms.pointSize = pointSize;
-				this.sceneObj.draw();
+//				this.sceneObj.draw();
+
+		//TODO only draw bubbles around stars once we're out of the star system
 
 				var pointSize = 
 					canvas.width 
