@@ -1,12 +1,10 @@
 1) getdata.lua	- downloads JPL SSD data for comets and asteroids.
-	- generates one of three output methods: JSON, SQLite3, or Points
-	  (you have to uncomment the generation methods from within the program)
+	
+2) parse.lua	
+	- generates one of two output methods: Points or SQLite3
+	  Currently this is set to Points.  I'm not using SQLite3 anymore.
+	  You have to uncomment the generation methods from within the program.
 
-2) search.lua (executed remotely via Xavante)	- queries database for planets and returns orbit parameters. (same notice: source can vary)
+	output_points produces octree.json, node-dict.csv, and nodes/*.json, which is used for generating the small body point cloud
 
-
-output_sqlite3 produces database.sqlite3, which is used by search.lua for querying small-body information
-
-output_points produces output.f32, which is used for generating the small body point cloud
-
-SQLite3 powered via LuaSQL (notice: it isn't too hard to reroute this to a MySQL or PostgreSQL destination)
+3) search.lua (executed remotely via Xavante)	- queries node-dict.csv for planets and returns orbit parameters. (same notice: source can vary)

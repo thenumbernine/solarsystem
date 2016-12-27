@@ -480,16 +480,35 @@ childDepth 	start	end	size
 	-- now push upward based on random sampling of all children ...
 	local function process(node)
 		if not node.children then return end
-		for i=1,leafPointCount do
-			local child = node.children[math.random(8)]
+		for i=1,8 do
+			local child = node.children[i]
 			if child then
-				if #child.bodies == 0 then
-					process(child)
+				if #child.bodies == 0 then 
+					process(child) 
 				end
 				if #child.bodies > 0 then
-					node.bodies:insert(child.bodies:remove(math.random(#child.bodies)))
+					child.bodies:sort(function(a,b)
+						return a.absoluteMagnitude < b.absoluteMagnitude
+					end)
 				end
 			end
+		end
+		for i=1,leafPointCount do
+			local bestAbsoluteMagnitude = math.huge 
+			local bestChild
+			for j=1,8 do
+				local child = node.children[j]
+				if child 
+				and #child.bodies > 0 
+				and child.bodies[1].absoluteMagnitude < bestAbsoluteMagnitude
+				then
+					bestAbsoluteMagnitude = child.bodies[1].absoluteMagnitude
+					bestChild = child
+				end
+			end
+			if not bestChild then break end
+			-- TODO pick the brightest instead of at random
+			node.bodies:insert(bestChild.bodies:remove(1))
 		end
 	end
 	process(root)

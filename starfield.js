@@ -538,7 +538,7 @@ console.log('adding star systems to star fields and vice versa');
 						pointSize : pointSize,
 						pointSizeScaleWithDist : true,
 						//defined in shader
-						pointSizeMin : .25,
+						pointSizeMin : 0,
 						pointSizeMax : 5
 					});
 					/**/
@@ -554,7 +554,7 @@ console.log('adding star systems to star fields and vice versa');
 								targetCallback : function() { return starSystem; },
 								pointSize : pointSize,
 								pointSizeScaleWithDist : true,
-								pointSizeMin : .25,
+								pointSizeMin : 0,
 								pointSizeMax : 5
 							});
 						}

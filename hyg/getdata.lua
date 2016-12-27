@@ -142,7 +142,7 @@ namedStars[1].name = 'Sun'
 file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows)
 file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
 
--- [[ plot dist density map
+--[[ plot dist density map
 local f = io.open('dist-distribution.txt', 'w')
 f:write'#dist_min\tdist_max\tcount\n'
 local bins = 2000
@@ -169,20 +169,4 @@ for bin,count in ipairs(counts) do
 	f:write(distMin,'\t',distMax,'\t',count,'\n')
 end
 f:close()
---]]
---[[ 
-dist binned within 0.5 parsec:
-0	0.4950495	1
-0.4950495	0.990099	0
-0.990099	1.4851485	3
-1.4851485	1.980198	1
-1.980198	2.4752475	1
-
-|x,y,z| binned within 0.5 parsecs:
-0	0.4950495	1
-0.4950495	0.990099	0
-0.990099	1.4851485	3
-1.4851485	1.980198	1
-1.980198	2.4752475	1
-
 --]]
