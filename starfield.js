@@ -473,16 +473,17 @@ console.log('adding star systems to star fields and vice versa');
 				* metersPerUnits.pc 
 				/ this.renderScale 
 				/ tanFovY;
+				
+			this.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
+			this.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
+			this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
+			this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
+			this.sceneObj.uniforms.pointSize = pointSize;
 			
 			if (!picking) {
 				
 				gl.disable(gl.DEPTH_TEST);
 				
-				this.sceneObj.uniforms.visibleMagnitudeBias = starsVisibleMagnitudeBias;
-				this.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
-				this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
-				this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
-				this.sceneObj.uniforms.pointSize = pointSize;
 				this.sceneObj.draw();
 
 				//only draw bubbles around stars once we're out of the star system
@@ -518,7 +519,7 @@ console.log('adding star systems to star fields and vice versa');
 				//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
 				if (allowSelectStars) {
 				
-					/* TODO render via buffer?
+					/* TODO render via buffer? * /
 					//also TODO:
 					//if (list === this && target == orbitStarSystem) continue;
 					//...and then there's the fact that the old ray code only checked the exoplanets
@@ -540,7 +541,7 @@ console.log('adding star systems to star fields and vice versa');
 						pointSizeMin : .25,
 						pointSizeMax : 5
 					});
-					*/
+					/**/
 					/* until then ... manually? */
 					$.each(starSystems, function(i,starSystem) {
 						if (starSystem !== orbitStarSystem) {

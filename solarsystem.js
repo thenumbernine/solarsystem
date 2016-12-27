@@ -19,7 +19,7 @@ var SolarSystem = makeClass({
 			inverseFlattening : 298.257223563,
 			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,	//sidereal day
 			orbitalPeriod : 365.256363004,
-			rotationOffset : -4/24 * 2*Math.PI,	//looks about 4 hours off
+			rotationOffset : -2/24 * 2*Math.PI,	//looks about 2 hours off
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
