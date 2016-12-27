@@ -25,7 +25,8 @@ local sunPos = {
 
 local numRows = #csvdata.rows
 local numElem = 8
-local buffer = ffi.new('float[?]', numElem * numRows)	-- allocate space for data of each planet 
+local bufferType = 'float'
+local buffer = ffi.new(bufferType..'[?]', numElem * numRows)	-- allocate space for data of each planet 
 
 local maxAbs = 0
 local namedStars = {}
@@ -38,7 +39,7 @@ range.mag = {}
 range.colorIndex = {}
 range.dist = {}
 
-local zeroBasedIndex = 0
+local numValidRows = 0
 for i,row in ipairs(csvdata.rows) do
 	for _,col in ipairs(csvdata.columns) do
 		if #row[col] > 0 then
@@ -48,8 +49,8 @@ for i,row in ipairs(csvdata.rows) do
 
 	--[[ this assertion isn't required, I was just curious if it was enforced
 	-- and as of the v3 release it's no longer true
-	if zeroBasedIndex ~= tonumber(row.id) then
-		error("zero-based index "..zeroBasedIndex.." not equal to row id "..row.id)
+	if numValidRows ~= tonumber(row.id) then
+		error("zero-based index "..numValidRows.." not equal to row id "..row.id)
 	end
 	--]]
 
@@ -72,7 +73,7 @@ for i,row in ipairs(csvdata.rows) do
 		-- reconstruct spherical to cartesian and see accurate the xyz is
 		local ra = assert(tonumber(row.ra))
 		local dec = assert(tonumber(row.dec))
-		local dist = assert(tonumber(row.dist or row.distance))
+		local dist = assert(tonumber(row.dist))
 		local rx = dist * math.cos(ra) * math.cos(dec) - sunPos.x
 		local ry = dist * math.sin(ra) * math.cos(dec) - sunPos.y
 		local rz = dist * math.sin(dec) - sunPos.z
@@ -96,29 +97,32 @@ for i,row in ipairs(csvdata.rows) do
 		local vy = assert(tonumber(row.vy))
 		local vz = assert(tonumber(row.vz))
 		
-		buffer[0 + numElem * zeroBasedIndex] = x
-		buffer[1 + numElem * zeroBasedIndex] = y
-		buffer[2 + numElem * zeroBasedIndex] = z
-		buffer[3 + numElem * zeroBasedIndex] = vx
-		buffer[4 + numElem * zeroBasedIndex] = vy
-		buffer[5 + numElem * zeroBasedIndex] = vz
-		buffer[6 + numElem * zeroBasedIndex] = mag
-		buffer[7 + numElem * zeroBasedIndex] = colorIndex 
+		buffer[0 + numElem * numValidRows] = x
+		buffer[1 + numElem * numValidRows] = y
+		buffer[2 + numElem * numValidRows] = z
+		buffer[3 + numElem * numValidRows] = vx
+		buffer[4 + numElem * numValidRows] = vy
+		buffer[5 + numElem * numValidRows] = vz
+		buffer[6 + numElem * numValidRows] = mag
+		buffer[7 + numElem * numValidRows] = colorIndex 
 		
 		maxAbs = math.max(maxAbs, x)
 		maxAbs = math.max(maxAbs, y)
 		maxAbs = math.max(maxAbs, z)
 
-		local properName = row.proper or row.propername
+		local properName = row.proper
 		if properName and #properName > 0 then
-			table.insert(namedStars, {name=properName, index=zeroBasedIndex})
+			table.insert(namedStars, {name=properName, index=numValidRows})
 		end
 		
-		zeroBasedIndex = zeroBasedIndex + 1
+		numValidRows = numValidRows + 1
 	end
 end
 
-print('max reconstruction error',totalErrors/zeroBasedIndex)
+print('rows processed:', numRows)
+print('valid entries:', numValidRows)
+
+print('max reconstruction error',totalErrors/numValidRows)
 
 print('abs max coordinate', maxAbs)
 print('num columns provided:')
@@ -135,6 +139,50 @@ assert(namedStars[1].name == 'Sol')
 namedStars[1].name = 'Sun'
 
 -- write 
-file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(buffer))
+file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows)
 file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
 
+-- [[ plot dist density map
+local f = io.open('dist-distribution.txt', 'w')
+f:write'#dist_min\tdist_max\tcount\n'
+local bins = 2000
+local counts = require 'ext.range'(bins):map(function(i) return 0 end)
+for i,row in ipairs(csvdata.rows) do
+	-- [=[ bin by dist
+	local dist = assert(tonumber(row.dist))
+	--]=]
+	--[=[ bin by xyz dist
+	local x = assert(tonumber(row.x)) - sunPos.x
+	local y = assert(tonumber(row.y)) - sunPos.y
+	local z = assert(tonumber(row.z)) - sunPos.z
+	local dist = math.sqrt(x*x + y*y + z*z)
+	--]=]
+
+	local bin = 1 + math.floor(bins * (dist / range.dist.max))
+	if bin >= 1 and bin <= bins then
+		counts[bin] = counts[bin] + 1
+	end
+end
+for bin,count in ipairs(counts) do
+	local distMin = (bin-1) / bins * range.dist.max
+	local distMax = bin / bins * range.dist.max
+	f:write(distMin,'\t',distMax,'\t',count,'\n')
+end
+f:close()
+--]]
+--[[ 
+dist binned within 0.5 parsec:
+0	0.4950495	1
+0.4950495	0.990099	0
+0.990099	1.4851485	3
+1.4851485	1.980198	1
+1.980198	2.4752475	1
+
+|x,y,z| binned within 0.5 parsecs:
+0	0.4950495	1
+0.4950495	0.990099	0
+0.990099	1.4851485	3
+1.4851485	1.980198	1
+1.980198	2.4752475	1
+
+--]]

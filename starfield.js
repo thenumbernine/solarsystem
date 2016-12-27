@@ -178,10 +178,11 @@ void main() {
 */}),
 			fragmentCode : mlstr(function(){/*
 uniform sampler2D starTex;
+uniform float colorScale;
 varying vec3 color;
 varying float alpha;
 void main() {
-	gl_FragColor = vec4(color, alpha) * texture2D(starTex, gl_PointCoord);
+	gl_FragColor = colorScale * vec4(color, alpha) * texture2D(starTex, gl_PointCoord);
 }
 */})
 		});
@@ -299,6 +300,7 @@ void main() {
 			//don't forget velocity is not being rescaled (i'm not using it at the moment)
 			var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
 			var len = floatBuffer.length;
+var numTooClose = 0;			
 			for (var j = 0; j < len; ++j) {
 				var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 				if (j % numElem < 3) {
@@ -306,11 +308,21 @@ void main() {
 						console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
 					}
 					//convert parsecs to meters
-					x *= metersPerUnits.pc / thiz.renderScale;
+					//and downscale by the starfield render scale
+//					x *= metersPerUnits.pc / thiz.renderScale;
 				}
 				floatBuffer[j] = x;
+				if (j%numElem==2) {
+var x = floatBuffer[j-2];
+var y = floatBuffer[j-1];
+var z = floatBuffer[j];
+var dist = Math.sqrt(x*x + y*y + z*z);
+if (dist < 1) { //metersPerUnits.pc / thiz.renderScale) {
+	numTooClose++;
+}
+				}
 			}
-
+console.log('num stars too close:', numTooClose);
 			//now that we have the float buffer ...
 			thiz.buffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
 			thiz.sceneObj = new glutil.SceneObject({
@@ -326,7 +338,8 @@ void main() {
 					starTex : 1,
 					pointSize : 1,
 					pointSizeMax : 5,
-					visibleMagnitudeBias : starsVisibleMagnitudeBias
+					visibleMagnitudeBias : starsVisibleMagnitudeBias,
+					colorScale : 1
 				},
 				shader : thiz.colorIndexShader,
 				texs : [thiz.colorIndexTex, thiz.starTex],
@@ -454,7 +467,14 @@ console.log('adding star systems to star fields and vice versa');
 			orbitTarget !== undefined &&
 			orbitTarget.pos !== undefined)
 		{
-			var pointSize = 1000 * canvas.width * Math.sqrt(distFromSolarSystemInMpc) * metersPerUnits.pc / this.renderScale / tanFovY;
+			var pointSize = 
+				1000 
+				* canvas.width 
+				* Math.sqrt(distFromSolarSystemInMpc) 
+				* metersPerUnits.pc 
+				/ this.renderScale 
+				/ tanFovY;
+			
 			if (!picking) {
 				
 				gl.disable(gl.DEPTH_TEST);
@@ -470,14 +490,15 @@ console.log('adding star systems to star fields and vice versa');
 					canvas.width 
 					//* Math.sqrt(distFromSolarSystemInMpc) 
 					* metersPerUnits.pc 
-					/ 30
+					/ 10
 					/ this.renderScale 
 					/ tanFovY;
 				this.sceneObj.draw({
 					uniforms : {
 						pointSize : pointSize,
-						pointSizeMax : 50,
-						visibleMagnitudeBias : 10	//TODO just use a different shader
+						pointSizeMax : 500,
+						visibleMagnitudeBias : 10,	//TODO just use a different shader
+						colorScale : 2
 					},
 					texs : [this.colorIndexTex, this.bubbleTex]
 				});
