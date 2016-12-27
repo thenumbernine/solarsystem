@@ -24,6 +24,8 @@ var smallBodyFBOTex;
 var smallBodyOverlayShader;
 } // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
 
+var numRequests = 0;
+
 var PointOctreeNode = makeClass({
 	init : function() {
 		this.mins = [];
@@ -36,13 +38,16 @@ var PointOctreeNode = makeClass({
 		this.loadingData = true;
 		var thiz = this;
 		var url = 'jpl-ssd-smallbody/nodes/'+this.nodeID+'.json';
+++numRequests;
 		$.ajax({
 			url : url,
 			dataType : 'json',
 			cache : false
 		}).error(function() {
+--numRequests;
 			console.log('failed to get small body '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
+--numRequests;
 			if (thiz.unloaded) return;
 			thiz.processData(data);
 		});

@@ -1,8 +1,3 @@
-//tried an experiment of doing surface calculations on the GPU
-//it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
-//I might try worker threads later...
-var CALCULATE_TIDES_WITH_GPU = false;
-
 //TODO put this in js/gl-util-kernel.js
 
 var glutil;
