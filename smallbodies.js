@@ -1,33 +1,13 @@
-var SHOW_ALL_SMALL_BODIES_WITH_DENSITY = false;
 
-var showSmallBodies = true;
-var allowSelectSmallBodies = true;
-
+//used with isa in the orbitTarget detection
+//instanciated when the user selects a node in the tree 
 var SmallBody = makeClass({});
 
-var smallBodyRootNode;
-var allSmallBodyNodes = [];
-var smallBodyMaxDrawnNodes = 400;	//there are 2185 for the small bodies
-var showAllSmallBodiesAtOnce = false;
-var smallBodyPointSize = 500;	//in m ... so maybe convert this to AU
-var smallBodyPointAlpha = .75;
-var smallBodyNodesDrawnThisFrame = []; 
-var smallBodyShader;
-var smallBodyOctreeData;
-
-if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-var smallBodyFBOTexWidth = 2048;
-var smallBodyFBOTexHeight = 2048;
-var smallBodyOverlayLogBase = 1;
-var smallBodyFBO;
-var smallBodyFBOTex;
-var smallBodyOverlayShader;
-} // SHOW_ALL_SMALL_BODIES_WITH_DENSITY
-
-var numRequests = 0;
-
 var PointOctreeNode = makeClass({
-	init : function() {
+	pointSize : 500,	//in m ... so maybe convert this to AU
+	pointAlpha : .75,
+	init : function(tree) {
+		this.tree = tree;
 		this.mins = [];
 		this.maxs = [];
 		this.center = [];
@@ -37,17 +17,14 @@ var PointOctreeNode = makeClass({
 		this.unloaded = false;
 		this.loadingData = true;
 		var thiz = this;
-		var url = 'jpl-ssd-smallbody/nodes/'+this.nodeID+'.json';
-++numRequests;
+		var url = this.tree.urlBase+'/nodes/'+this.nodeID+'.json';
 		$.ajax({
 			url : url,
 			dataType : 'json',
 			cache : false
 		}).error(function() {
---numRequests;
-			console.log('failed to get small body '+thiz.nodeID+' from '+url);
+			console.log('failed to get node '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
---numRequests;
 			if (thiz.unloaded) return;
 			thiz.processData(data);
 		});
@@ -121,10 +98,10 @@ var PointOctreeNode = makeClass({
 				orbitType : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.orbitTypeArray}))
 				*/
 			},
-			shader : smallBodyShader,
+			shader : this.tree.shader,
 			uniforms : {
-				pointSize : smallBodyPointSize,
-				alpha : smallBodyPointAlpha
+				pointSize : this.pointSize,
+				alpha : this.pointAlpha
 			},
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
 			parent : null,
@@ -179,7 +156,7 @@ var PointOctreeNode = makeClass({
 	},
 	drawAndAdd : function(drawList, tanFovY, distInM, picking) {
 		this.draw(distInM, tanFovY, picking);
-		smallBodyNodesDrawnThisFrame.push(this);
+		this.tree.drawnThisFrame.push(this);
 
 		if (this.children !== undefined) {
 			for (var i = 0; i < 8; ++i) {
@@ -194,9 +171,9 @@ var PointOctreeNode = makeClass({
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
 		
-		var pointSize = smallBodyPointSize * canvas.width * Math.sqrt(distInM) / tanFovY;
+		var pointSize = this.pointSize * canvas.width * Math.sqrt(distInM) / tanFovY;
 		this.sceneObj.uniforms.pointSize = pointSize;
-		this.sceneObj.uniforms.alpha = smallBodyPointAlpha;
+		this.sceneObj.uniforms.alpha = this.pointAlpha;
 		this.sceneObj.uniforms.julianDate = julianDate;
 		
 		if (picking) {
@@ -205,7 +182,7 @@ var PointOctreeNode = makeClass({
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
-					return smallBodies.getCached(thiz, i);
+					return thiz.tree.onSelect(thiz, i);
 				},
 				pointSize : pointSize,
 				pointSizeScaleWithDist : true,
@@ -234,11 +211,17 @@ var PointOctreeNode = makeClass({
 	}
 });
 
-
-var smallBodies = new function() {
-	this.init = function() {
-	
-		smallBodyShader = new ModifiedDepthShaderProgram({
+var PointOctree = makeClass({
+	maxDrawnNodes : 400,	//there are 2185 for the small bodies
+	showAllAtOnce : false,
+	showWithDensity : false,	//don't change this after init
+	init : function() {
+		this.allNodes = [];
+		this.drawProcessing = [];
+		this.drawnThisFrame = [];
+		this.cache = {};
+		
+		this.shader = new ModifiedDepthShaderProgram({
 			vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 mvMat;
@@ -260,27 +243,30 @@ void main() {
 		});
 
 
-if (SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-		smallBodyFBOTex = new glutil.Texture2D({
-			internalFormat : gl.RGBA,
-			format : gl.RGBA,
-			type : gl.FLOAT,
-			width : smallBodyFBOTexWidth,
-			height : smallBodyFBOTexHeight,
-			magFilter : gl.LINEAR,
-			minFilter : gl.LINEAR,
-			wrap : {
-				s : gl.CLAMP_TO_EDGE,
-				t : gl.CLAMP_TO_EDGE
-			}
-		});
-		smallBodyFBO = new glutil.Framebuffer();
-		gl.bindFramebuffer(gl.FRAMEBUFFER, smallBodyFBO.obj);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, smallBodyFBOTex.obj, 0);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		smallBodyOverlayShader = new glutil.ShaderProgram({
-			vertexPrecision : 'best',
-			vertexCode : mlstr(function(){/*
+		if (this.showWithDensity) {
+			this.overlayLogBase = 1;
+			this.fboTexWidth = 2048;
+			this.fboTexHeight = 2048;
+			this.fboTex = new glutil.Texture2D({
+				internalFormat : gl.RGBA,
+				format : gl.RGBA,
+				type : gl.FLOAT,
+				width : this.fboTexWidth,
+				height : this.fboTexHeight,
+				magFilter : gl.LINEAR,
+				minFilter : gl.LINEAR,
+				wrap : {
+					s : gl.CLAMP_TO_EDGE,
+					t : gl.CLAMP_TO_EDGE
+				}
+			});
+			this.fbo = new glutil.Framebuffer();
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTex.obj, 0);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			this.overlayShader = new glutil.ShaderProgram({
+				vertexPrecision : 'best',
+				vertexCode : mlstr(function(){/*
 attribute vec2 vertex;
 varying vec2 tc;
 void main() {
@@ -288,8 +274,8 @@ void main() {
 	gl_Position = vec4(vertex * 2. - 1., 0., 1.);
 }
 */}),
-			fragmentPrecision : 'best',
-			fragmentCode : mlstr(function(){/*
+				fragmentPrecision : 'best',
+				fragmentCode : mlstr(function(){/*
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
 uniform float logBase;
@@ -302,192 +288,177 @@ void main() {
 	gl_FragColor.a = min(alpha * 100., 1.);
 }
 */}),
-			uniforms : {
-				tex : 0,
-				hsvTex : 1,
-				logBase : 1,
-				texSize : [1,1]
-			}
-		});
-} //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
-
-
-		//holds the data used tree-wide
-		smallBodyOctreeData = {};
-
-		var processSmallBodyOctree = function(data) {
-			console.log('processing small body points...');
-			var startTime = Date.now();
-			/*
-			holds
-				mins
-				maxs
-				indexes (all valid child nodes)
-			*/
-			smallBodyOctreeData = data;
-			
-			var nodeExists = {};
-			$.each(smallBodyOctreeData.nodes, function(i,nodeID) {
-				nodeExists[nodeID] = true;
-			});
-		
-			//some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
-			var mins = smallBodyOctreeData.mins;
-			var maxs = smallBodyOctreeData.maxs;
-
-			smallBodyRootNode = new PointOctreeNode();
-			smallBodyRootNode.nodeID = 0;
-			smallBodyRootNode.depth = 0;
-			smallBodyRootNode.levelID = 0;
-
-			for (var j = 0; j < 3; ++j) {
-				smallBodyRootNode.mins[j] = mins[j];
-				smallBodyRootNode.maxs[j] = maxs[j];
-				smallBodyRootNode.center[j] = .5 * (mins[j] + maxs[j]);
-			}
-			
-			allSmallBodyNodes.push(smallBodyRootNode);
-
-			var process;
-			process = function(node) {
-				//node.nodeID includes offsets into each level
-
-				for (var ix = 0; ix < 2; ++ix) {
-					for (var iy = 0; iy < 2; ++iy) {
-						for (var iz = 0; iz < 2; ++iz) {
-							var is = [ix,iy,iz];
-							var childIndex = ix | ((iy | (iz<<1)) << 1);
-
-							var childDepth = node.depth + 1;
-							var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
-							var childLevelID = node.levelID | (childIndex << 3*node.depth);
-							var childNodeID = childLevelStart + childLevelID;
-							//if we find it in the master list 
-							// then create the node
-							if (!nodeExists[childNodeID]) continue;
-							if (!node.children) node.children = [];
-							var child = new PointOctreeNode();
-
-							child.nodeID = childNodeID;
-							child.depth = childDepth;
-							child.levelID = childLevelID;
-							
-							node.children[childIndex] = child;
-							child.parent = node;
-							allSmallBodyNodes.push(child);
-							for (var j = 0; j < 3; ++j) {
-								child.mins[j] = is[j] ? node.center[j] : node.mins[j];
-								child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
-								child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
-							}
-							
-							process(child);
-						}
-					}
+				uniforms : {
+					tex : 0,
+					hsvTex : 1,
+					logBase : 1,
+					texSize : [1,1]
 				}
-			};
-
-			process(smallBodyRootNode);
-
-			var endTime = Date.now();
-			console.log('done processing small bodies ', endTime - startTime, ' ms');
-		};
-			
-		var smallBodyOctreeURL = 'jpl-ssd-smallbody/octree.json';
-		var loadSmallBodyOctree;
-		loadSmallBodyOctree = function() {
-			$.ajax({
-				url : smallBodyOctreeURL,
-				dataType : 'json',
-				cache : false,
-				timeout : 30000
-			}).error(function() {
-				console.log('failed to get small body nodes from '+smallBodyOctreeURL+' , trying again...');
-				setTimeout(function() {
-					loadSmallBodyOctree();
-				}, 5000);
-			}).done(function(data) {
-				processSmallBodyOctree(data);
 			});
-		};
-		loadSmallBodyOctree();
-	};
+		} //this.showWithDensity
+		
+		this.load();
+	},
+	load : function() {
+		var url = this.urlBase + '/octree.json';
+		var thiz = this;
+		$.ajax({
+			url : url,
+			dataType : 'json',
+			cache : false,
+			timeout : 10000
+		}).error(function() {
+			console.log('failed to get octree info from '+url+' , trying again...');
+			setTimeout(function() {
+				thiz.load(url);
+			}, 5000);
+		}).done(function(data) {
+			thiz.processData(data);
+		});
+	},
 	
-	this.draw = function(
+	/*
+	data holds
+		mins
+		maxs
+		indexes (all valid child nodes)
+	*/
+	processData : function(data) {
+		this.data = data;
+		this.nodeIDSet = {};
+		for (var i = 0; i < data.nodes.length; ++i) {
+			this.nodeIDSet[data.nodes[i]] = true;
+		}
+
+		this.root = new PointOctreeNode(this);
+		this.root.nodeID = 0;
+		this.root.depth = 0;
+		this.root.levelID = 0;
+
+		for (var j = 0; j < 3; ++j) {
+			this.root.mins[j] = data.mins[j];
+			this.root.maxs[j] = data.maxs[j];
+			this.root.center[j] = .5 * (data.mins[j] + data.maxs[j]);
+		}
+		
+		this.allNodes.push(this.root);
+
+		this.processNode(this.root);
+	},
+	processNode : function(node) {
+		//node.nodeID includes offsets into each level
+
+		for (var ix = 0; ix < 2; ++ix) {
+			for (var iy = 0; iy < 2; ++iy) {
+				for (var iz = 0; iz < 2; ++iz) {
+					var is = [ix,iy,iz];
+					var childIndex = ix | ((iy | (iz<<1)) << 1);
+
+					var childDepth = node.depth + 1;
+					var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
+					var childLevelID = node.levelID | (childIndex << 3*node.depth);
+					var childNodeID = childLevelStart + childLevelID;
+					//if we find it in the master list 
+					// then create the node
+					if (!this.nodeIDSet[childNodeID]) continue;
+					if (!node.children) node.children = [];
+					var child = new PointOctreeNode(this);
+
+					child.nodeID = childNodeID;
+					child.depth = childDepth;
+					child.levelID = childLevelID;
+					
+					node.children[childIndex] = child;
+					child.parent = node;
+					this.allNodes.push(child);
+					for (var j = 0; j < 3; ++j) {
+						child.mins[j] = is[j] ? node.center[j] : node.mins[j];
+						child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
+						child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
+					}
+					
+					this.processNode(child);
+				}
+			}
+		}
+	},
+
+	draw : function(
 		tanFovY,
 		picking,
 		viewPosInv,
 		invRotMat,
 		distFromSolarSystemInM
 	) {
+		var thiz = this;
+
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	
-if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
-		//TODO adjust based on LOD node depth
-		if (!picking || allowSelectSmallBodies) {
-			if (smallBodyRootNode && showSmallBodies) {
-				if (showAllSmallBodiesAtOnce) {
-					for (var i = 0; i < allSmallBodyNodes.length; ++i) {
-						var node = allSmallBodyNodes[i];
+		if (!this.showWithDensity) {
+			//TODO adjust based on LOD node depth
+			if (this.root) {
+				if (this.showAllAtOnce) {
+					for (var i = 0; i < this.allNodes.length; ++i) {
+						var node = this.allNodes[i];
 						node.draw(distFromSolarSystemInM, tanFovY, picking);
 					}
 				} else {	//good for selective rendering but bad for all rendering
-					var drawList = [];
-					smallBodyNodesDrawnThisFrame.length = 0;
-					smallBodyRootNode.prepDraw(drawList, tanFovY);
-					for (var i = 0; i < smallBodyMaxDrawnNodes && drawList.length > 0; ++i) {
+					var drawList = this.drawProcessing;
+					drawList.length = 0;
+					this.drawnThisFrame.length = 0;
+					this.root.prepDraw(drawList, tanFovY);
+					for (var i = 0; i < this.maxDrawnNodes && drawList.length > 0; ++i) {
 						var node = drawList.splice(drawList.length-1, 1)[0];
 						node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
 					}
 				}
 			}
-		}
-} else { //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
-		if (!picking) {
-			var viewport = gl.getParameter(gl.VIEWPORT);
-			gl.viewport(0, 0, Math.min(canvas.width, smallBodyFBOTexWidth), Math.min(canvas.height, smallBodyFBOTexHeight));
-			smallBodyFBO.draw({
-				callback : function() {
-					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-					for (var i = 0; i < smallBodyMaxDrawnNodes && i < allSmallBodyNodes.length; ++i) {
-						var node = allSmallBodyNodes[i];
-						node.draw(distFromSolarSystemInM, tanFovY, picking);
+		} else { //this.showWithDensity
+			if (!picking) {
+				var viewport = gl.getParameter(gl.VIEWPORT);
+				gl.viewport(0, 0, Math.min(canvas.width, this.fboTexWidth), Math.min(canvas.height, this.fboTexHeight));
+				this.fbo.draw({
+					callback : function() {
+						gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+						for (var i = 0; i < thiz.maxDrawnNodes && i < thiz.allNodes.length; ++i) {
+							var node = thiz.allNodes[i];
+							node.draw(distFromSolarSystemInM, tanFovY, picking);
+						}
 					}
-				}
-			});
-			gl.viewport.apply(gl, viewport);
-			gl.disable(gl.DEPTH_TEST);
-			hsvTex
-				.bind()
-				.setWrap({s : gl.REPEAT, t : gl.REPEAT})
-				.unbind();
-			glutil.unitQuad.draw({
-				shader : smallBodyOverlayShader,
-				uniforms : {
-					logBase : smallBodyOverlayLogBase,
-					texSize : [
-						Math.min(canvas.width / smallBodyFBOTexWidth, 1),
-						Math.min(canvas.height / smallBodyFBOTexHeight, 1)]
-				},
-				texs : [smallBodyFBOTex, hsvTex],
-				blend : [gl.SRC_ALPHA, gl.ONE]
-			});
-			gl.enable(gl.DEPTH_TEST);
-		}
-} //SHOW_ALL_SMALL_BODIES_WITH_DENSITY
+				});
+				gl.viewport.apply(gl, viewport);
+				gl.disable(gl.DEPTH_TEST);
+				hsvTex
+					.bind()
+					.setWrap({s : gl.REPEAT, t : gl.REPEAT})
+					.unbind();
+				glutil.unitQuad.draw({
+					shader : this.overlayShader,
+					uniforms : {
+						logBase : this.overlayLogBase,
+						texSize : [
+							Math.min(canvas.width / this.fboTexWidth, 1),
+							Math.min(canvas.height / this.fboTexHeight, 1)]
+					},
+					texs : [this.fboTex, hsvTex],
+					blend : [gl.SRC_ALPHA, gl.ONE]
+				});
+				gl.enable(gl.DEPTH_TEST);
+			}
+		} //this.showWithDensity
+		
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-	};
+	},
 
-	this.cache = {};
-	this.getCached = function(node, localIndex) {
+	onSelect : function(node, nodeLocalIndex) {
 		var data = node.sceneObj.attrs.vertex.buffer.data;
-		var x = data[3*localIndex+0];
-		var y = data[3*localIndex+1];
-		var z = data[3*localIndex+2];
-		var globalIndex = node.globalIndexArray[localIndex];
+		var x = data[3*nodeLocalIndex+0];
+		var y = data[3*nodeLocalIndex+1];
+		var z = data[3*nodeLocalIndex+2];
+		var globalIndex = node.globalIndexArray[nodeLocalIndex];
 
 		//TODO toggle on/off orbit data if we're selecting on/off a small body
 		//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -535,12 +506,39 @@ if (!SHOW_ALL_SMALL_BODIES_WITH_DENSITY) {
 		var row = {}
 		for (var i = 0; i < fields.length; ++i) {
 			var field = fields[i];
-			row[field] = node[field+'Array'][localIndex];
+			row[field] = node[field+'Array'][nodeLocalIndex];
 		}
 		row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
 
 		smallBody.row = row;
-
-		return smallBody;
+		
+		var planet = addSmallBody(row);
+		return planet;
 	}
-};
+});
+
+
+var showSmallBodies = true;
+var allowSelectSmallBodies = true;
+
+var SmallBodies = makeClass({
+	super : PointOctree,
+	urlBase : 'jpl-ssd-smallbody',
+	show : true,
+	init : function() {
+		SmallBodies.superProto.init.apply(this, arguments);
+	},
+	draw : function(
+		tanFovY,
+		picking,
+		viewPosInv,
+		invRotMat,
+		distFromSolarSystemInM
+	) {
+		if (!showSmallBodies) return;
+		if (picking && !allowSelectSmallBodies) return;
+		SmallBodies.superProto.draw.apply(this, arguments);
+	}
+});
+
+var smallBodies;

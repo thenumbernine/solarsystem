@@ -1,8 +1,10 @@
-Solar System in WebGL
+![](https://cdn.rawgit.com/thenumbernine/solarsystem/master/images/screenshot.png)
+
+## Solar System in WebGL
 
 allows you see gravitational / tidal forces of various planets on various other planets
 
- Calculations are done using Newtonian coefficients rewritten in terms of Riemann metric tensor.  See Ch. 12 of "Gravitation" by Misner, Thorne, and Wheeler.
+Calculations are done using Newtonian coefficients rewritten in terms of Riemann metric tensor.  See Ch. 12 of "Gravitation" by Misner, Thorne, and Wheeler.
 This is equivalent to linearized gravity when the velocity is assumed to be purely timelike.  I have a cartesian Schwarzschild metric in black-hole-skymap,
 remind me to use that for this.  Until then, linearized-timelike/Newtonian will just have to do.
 
@@ -34,6 +36,7 @@ Comets and small bodies are from NASA JPL SSD data files at http://ssd.jpl.nasa.
 See horizons/README for how to gather data from NASA Horizons telnet site
 See jpl-ssd-smallbody/README for how to gather data from NASA JPL/SSD
 See simbad/README for how to get intergalactic data from Simbad
+See hyg/README for how to get the HYG star database
 
 TODO
 

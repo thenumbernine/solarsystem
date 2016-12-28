@@ -124,6 +124,7 @@ local function newBody()
 	for _,field in ipairs(numberFields) do
 		body[field] = math.nan
 	end
+	body.absoluteMagnitude = math.huge
 	return body
 end
 

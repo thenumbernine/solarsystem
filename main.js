@@ -2669,7 +2669,7 @@ void main() {
 
 	//and small bodies in the solar system
 	console.log('smallBodies.init...');
-	smallBodies.init();
+	smallBodies = new SmallBodies();
 
 	//and galaxies
 	console.log('galaxies.init...');
@@ -3897,14 +3897,6 @@ function setOrbitTarget(newTarget) {
 			selectingNewSystem = true;
 			orbitStarSystem = newTarget.starSystem;
 		}
-	}
-
-	//query the server for this small body's orbit data
-	if (newTarget.isa && newTarget.isa(SmallBody)) {
-		var row = newTarget.row;
-		//TODO why doesn't this match up with the point location?  float error?
-		var planet = addSmallBody(row);
-		setOrbitTarget(planet);
 	}
 
 	if (selectingNewSystem) {

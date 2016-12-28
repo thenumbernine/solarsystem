@@ -283,6 +283,8 @@ function OutputToPoints:staticDone()
 	for depth=1, add the sum for n=0 
 	
 	--]]
+
+	--some vertexes are infinite, so I'm just going to fix the octree bounds at Pluto's orbit distance
 	local mins = vec3(-6e+12, -6e+12, -6e+12)
 	local maxs = vec3(6e+12, 6e+12, 6e+12)
 	local size = maxs - mins
@@ -495,20 +497,24 @@ childDepth 	start	end	size
 		end
 		for i=1,leafPointCount do
 			local bestAbsoluteMagnitude = math.huge 
-			local bestChild
+			local bestChildren = {}
 			for j=1,8 do
 				local child = node.children[j]
 				if child 
 				and #child.bodies > 0 
-				and child.bodies[1].absoluteMagnitude < bestAbsoluteMagnitude
+				and child.bodies[1].absoluteMagnitude <= bestAbsoluteMagnitude
 				then
-					bestAbsoluteMagnitude = child.bodies[1].absoluteMagnitude
-					bestChild = child
+					if bestAbsoluteMagnitude == child.bodies[1].absoluteMagnitude then
+						table.insert(bestChildren,child)
+					else
+						bestAbsoluteMagnitude = child.bodies[1].absoluteMagnitude
+						bestChildren = {child}
+					end
 				end
 			end
-			if not bestChild then break end
+			if not bestChildren then break end
 			-- TODO pick the brightest instead of at random
-			node.bodies:insert(bestChild.bodies:remove(1))
+			node.bodies:insert(bestChildren[math.random(1,#bestChildren)].bodies:remove(1))
 		end
 	end
 	process(root)
