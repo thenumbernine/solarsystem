@@ -5,12 +5,7 @@ require 'ext'
 
 local ffi = require 'ffi'
 
-local outputMethod = ... or 'points'
-print('outputMethod = '..outputMethod)
-
---local outputClass = require 'output_sqlite3'
---local outputClass = require 'output_points'
-local outputClass = require('output_'..outputMethod)
+local OutputPoints = require 'output_points'
 
 local julian = assert(loadfile('../horizons/julian.lua'))()
 local mjdOffset = 2400000.5
@@ -49,10 +44,9 @@ local function processToFile(args)
 			lastTime = thisTime
 		end
 	end
-	outputObj:done()
 end
 
-outputClass:staticInit()
+OutputPoints:staticInit()
 
 -- these match the fields in coldesc.lua and probably row-desc.json
 local numberFields = table{ 
@@ -131,7 +125,7 @@ end
 -- [[ process comets
 processToFile{
 	inputFilename = 'ELEMENTS.COMET',
-	outputObj = outputClass{
+	outputObj = OutputPoints{
 		filename = 'comets.json',
 		variableName = 'cometData',
 		bodyType = 0,
@@ -167,7 +161,7 @@ processToFile{
 -- [[ process numbered bodies 
 processToFile{
 	inputFilename = 'ELEMENTS.NUMBR',
-	outputObj = outputClass{
+	outputObj = OutputPoints{
 		filename = 'smallbodies-numbered.json',
 		variableName = 'numberedSmallBodyData',
 		bodyType = 1,
@@ -194,7 +188,7 @@ processToFile{
 -- [[ process unnumbered bodies 
 processToFile{
 	inputFilename = 'ELEMENTS.UNNUM',
-	outputObj = outputClass{
+	outputObj = OutputPoints{
 		filename = 'smallbodies-unnumbered.json',
 		variableName = 'unnumberedSmallBodyData',
 		bodyType = 2,
@@ -217,4 +211,4 @@ processToFile{
 }
 --]]
 
-outputClass:staticDone()
+OutputPoints:staticDone()

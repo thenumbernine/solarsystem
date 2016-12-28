@@ -1,5 +1,4 @@
-local class = require 'ext.class'
-local OutputMethod = require 'output'
+require 'ext'
 
 local sunMassInKg = 1.9891e+30	-- kg
 local gravitationalConstant = 6.6738480e-11		-- m^3 / (kg * s^2)
@@ -13,7 +12,7 @@ local ffi = require 'ffi'
 local julianDate = julian.fromCalendar(os.date'!*t')
 
 -- and for just outputting a cloud of points ...
-local OutputToPoints = class(OutputMethod)
+local OutputToPoints = class()
 
 function OutputToPoints:init(args)
 	self.currentBodyType = args.bodyType
