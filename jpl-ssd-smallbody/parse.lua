@@ -80,9 +80,9 @@ typedef struct {
 <? end
 ?>
 	int bodyType;	// 0=comet, 1=numbered, 2=unnum
-	char idNumber[4+1];	//+1 for null-term because I'm lazy and using string assignment in ffi
+	char idNumber[6+1];	//+1 for null-term because I'm lazy and using string assignment in ffi
 	char name[38+1];
-	char orbitSolutionReference[10+1];
+	char orbitSolutionReference[12+1];
 
 	//computed parameters:
 	long index;
@@ -140,7 +140,7 @@ processToFile{
 		local body = newBody()
 		local numberAndName = row['Num  Name']
 		body.idNumber = numberAndName:sub(1,4):trim()
-		body.name = numberAndName:sub(6,43):trim()
+		body.name = numberAndName:sub(6):trim()
 		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.perihelionDistance = assert(tonumber(row.q:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))

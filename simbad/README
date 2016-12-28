@@ -1,2 +1,7 @@
 stealing this right from my universe project
-hoping for a quick and dirty merge of the two
+hoping for a quick and dirty merge of the two.
+
+The galaxies.f32 file comes from offline/datasets/simbad/points/points.f32
+The galaxyNames.json file comes from offline/datasets/simbad/catalog.json
+
+Both files are produced from running convert-simbad.lua in the offline/ folder of the universe project.

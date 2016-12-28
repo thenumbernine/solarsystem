@@ -1,3 +1,25 @@
+var pointOctreeRows = {
+	{name:'vertex', type:'vec3'},
+	{name:'globalIndex', type:'int'},	//index into the dense list of this point cloud. 
+	{name:'semiMajorAxis', type:'double'},
+	{name:'longitudeOfAscendingNode', type:'double'},
+	{name:'argumentOfPeriapsis', type:'double'},
+	{name:'inclination', type:'double'},
+	{name:'eccentricity', type:'double'},
+	{name:'timeOfPerihelionPassage', type:'double'},
+	{name:'orbitalPeriod', type:'double'},
+	{name:'meanAnomalyAtEpoch', type:'double'},
+	{name:'epoch', type:'double'},
+	{name:'perihelionDistance', type:'double'},
+	{name:'absoluteMagnitudeArray [i] = data[i][e++];
+	{name:'magnitudeSlopeParameter', type:'double'},
+	{name:'bodyType', type:'double'},
+	{name:'orbitType', type:'byte'},
+	{name:'idNumber', type:'string'},	//up to 6 bytes.  number in the horizons system.  sometimes a number, sometimes a letter, sometimes both
+	{name:'name', type:'string'},	//up to 38 bytes
+	{name:'orbitSolutionReference', type:'string'},	//up to 10 bytes
+};
+
 var PointOctreeNode = makeClass({
 	pointSize : 500,	//in m ... so maybe convert this to AU
 	pointAlpha : .75,
