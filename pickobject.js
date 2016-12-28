@@ -267,8 +267,8 @@ if (skipProjection) {
 		this.pickPointShader.use();
 		this.pickPointShader.setAttrs({
 			vertex : assert(sceneObj.attrs.vertex),
-			vertexIDCh0 : assert(this.vertexIDCh0Buffer),
-			vertexIDCh1 : assert(this.vertexIDCh1Buffer)
+			vertexIDCh0 : this.vertexIDCh0Buffer,
+			vertexIDCh1 : this.vertexIDCh1Buffer
 		});
 		sceneObj.setupMatrices();
 		this.pickPointShader.setUniforms({

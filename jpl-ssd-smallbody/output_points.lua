@@ -553,6 +553,8 @@ childDepth 	start	end	size
 		print'done with node dictionary!'
 	end
 
+	local rowDesc = json.decode(file['row-desc.json']:match('.-=(.*)'))
+
 	print('writing out nodes')
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)
@@ -561,38 +563,26 @@ childDepth 	start	end	size
 		node.bodies = setmetatable(node.bodies:map(function(body)
 			-- TODO store max length of idnumber, name in octree.json
 			-- then write out binary data
-			return {
-				body.pos[0],
-				body.pos[1],
-				body.pos[2],
-				-- either need one or the other : (a) repackage and keep range, or (b) keep individual node mapping
-				tonumber(body.index),	-- index in the total list 
-				-- TODO the index is only useful if you have the whole buffer available
-				-- maybe I should provide the individual points?
-				body.semiMajorAxis,
-				body.longitudeOfAscendingNode,
-				body.argumentOfPeriapsis,
-				body.inclination,
-				body.eccentricity,
-				-- hyperbolic comets:
-				body.timeOfPerihelionPassage,
-				-- elliptic, comets and asteroids:
-				body.orbitalPeriod,
-				-- elliptic asteroids:
-				body.meanAnomalyAtEpoch,
-				body.epoch,
-				-- extra
-				body.perihelionDistance,
-				body.absoluteMagnitude,
-				body.magnitudeSlopeParameter,
-				body.bodyType,
-				body.orbitType,
-				ffi.string(body.idNumber),
-				ffi.string(body.name),
-				ffi.string(body.orbitSolutionReference),
-			}
+			local row = table()
+			for _,desc in ipairs(rowDesc) do
+				local name = desc.name
+				if desc.type == 'vec3' then
+					row:insert(body[name][0])
+					row:insert(body[name][1])
+					row:insert(body[name][2])
+				elseif desc.type == 'int' 
+				or desc.type == 'byte'
+				or desc.type == 'float'
+				then
+					row:insert(tonumber(body[name]))
+				elseif desc.type == 'string' then
+					row:insert(ffi.string(body[name]))
+				else
+					error("got unknown type "..desc.type)
+				end
+			end
+			return setmetatable(row, nil)
 		end), nil)
---]]
 		file['nodes/'..tostringnum(node.nodeID)..'.json'] = json.encode(node.bodies):gsub('%],%[','%],\n%[')
 		node.bodies = nil
 	end

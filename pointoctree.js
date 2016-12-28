@@ -68,7 +68,7 @@ var PointOctreeNode = makeClass({
 		this.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			attrs : {
-				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : this.vertexArray})),
+				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : this.posArray})),
 			},
 			shader : this.tree.shader,
 			uniforms : {
@@ -195,9 +195,9 @@ var PointOctree = makeClass({
 		assertExists(this, 'urlBase');
 		assertExists(this, 'rows');
 		//I could just have PointOctree provide these two fields:
-		assertEquals(this.rows[0].name, 'vertex');
+		assertEquals(this.rows[0].name, 'pos');
 		assertEquals(this.rows[0].type, 'vec3');
-		assertEquals(this.rows[1].name, 'globalIndex');
+		assertEquals(this.rows[1].name, 'index');
 		assertEquals(this.rows[1].type, 'int');
 		
 		
@@ -440,10 +440,10 @@ void main() {
 
 	onPick : function(node, nodeLocalIndex) {
 		var data = node.sceneObj.attrs.vertex.buffer.data;
-		var x = data[3*nodeLocalIndex+0];
-		var y = data[3*nodeLocalIndex+1];
-		var z = data[3*nodeLocalIndex+2];
-		var globalIndex = node.globalIndexArray[nodeLocalIndex];
+		var x = data[0+3*nodeLocalIndex];
+		var y = data[1+3*nodeLocalIndex];
+		var z = data[2+3*nodeLocalIndex];
+		var index = node.indexArray[nodeLocalIndex];
 
 		//TODO toggle on/off orbit data if we're selecting on/off a small body
 		//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -452,10 +452,10 @@ void main() {
 		//TODO even more - unify KOE systems of planets and small bodies
 		//TODO even more - unify point cloud octree system of small bodies and starfields
 
-		if (this.cache[globalIndex]) {
-			return this.cache[globalIndex];
+		if (this.cache[index]) {
+			return this.cache[index];
 		}
 	
-		return this.createOrbitTarget(node,nodeLocalIndex,x,y,z,globalIndex);
+		return this.createOrbitTarget(node,nodeLocalIndex,x,y,z,index);
 	}
 });

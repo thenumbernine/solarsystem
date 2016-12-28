@@ -54,7 +54,7 @@ end
 
 outputClass:staticInit()
 
--- these match the fields in coldesc.lua and body_write_t
+-- these match the fields in coldesc.lua and probably row-desc.json
 local numberFields = table{ 
 	'epoch',
 	'perihelionDistance',		--comets

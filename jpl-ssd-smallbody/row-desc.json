@@ -1,0 +1,21 @@
+var smallBodyRows = [
+	{"name":"pos", "type":"vec3"},
+	{"name":"index", "type":"int"},
+	{"name":"semiMajorAxis", "type":"float"},
+	{"name":"longitudeOfAscendingNode", "type":"float"},
+	{"name":"argumentOfPeriapsis", "type":"float"},
+	{"name":"inclination", "type":"float"},
+	{"name":"eccentricity", "type":"float"},
+	{"name":"timeOfPerihelionPassage", "type":"float"},
+	{"name":"orbitalPeriod", "type":"float"},
+	{"name":"meanAnomalyAtEpoch", "type":"float"},
+	{"name":"epoch", "type":"float"},
+	{"name":"perihelionDistance", "type":"float"},
+	{"name":"absoluteMagnitude", "type":"float"},
+	{"name":"magnitudeSlopeParameter", "type":"float"},
+	{"name":"bodyType", "type":"byte"},
+	{"name":"orbitType", "type":"byte"},
+	{"name":"idNumber", "type":"string"},
+	{"name":"name", "type":"string"},
+	{"name":"orbitSolutionReference", "type":"string"}
+]

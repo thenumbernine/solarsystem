@@ -7,9 +7,6 @@ local bodyTypeForEnum = {
 	[1] = 'numbered asteroid',
 	[2] = 'unnumbered asteroid',
 }
-		
-local columnForIndex = require 'coldesc'
-local columnForName = table.map(columnForIndex, function(column) return column, column.name end)
 
 --[[
 GET parameters:

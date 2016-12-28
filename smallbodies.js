@@ -6,13 +6,19 @@ var allowSelectSmallBodies = true;
 var SmallBody = makeClass({
 	//callback from setOrbitTarget
 	onSelect : function() {
-		var row = newTarget.row;
-	
 		//add/removeSmallBody works with the UI controls to add/remove rows
-		var planet = addSmallBody(row);
+		var planet = addSmallBody(this.row);
 		
-		//TODO why doesn't this match up with the point location?  float error?
+		//why doesn't this match up with the point location?  float error?
 		setOrbitTarget(planet);
+
+		//hmm, this updates where the picking region goes
+		//but even when mousing over that region, the pick highlight still shows up at the old position
+		var data = this.node.sceneObj.attrs.vertex.buffer.data;
+		data[0+3*this.nodeLocalIndex] = planet.pos[0];
+		data[1+3*this.nodeLocalIndex] = planet.pos[1];
+		data[2+3*this.nodeLocalIndex] = planet.pos[2];
+		this.node.sceneObj.attrs.vertex.buffer.updateData();
 	}
 });
 
@@ -21,29 +27,7 @@ var SmallBodies = makeClass({
 	urlBase : 'jpl-ssd-smallbody',
 
 	//TODO get this from jpl-ssd-smallbody/parse.lua
-	rows : [
-	//these need to be here for the PointOctree to work:
-		{name:'vertex', type:'vec3'},
-		{name:'globalIndex', type:'int'},	//index into the dense list of this point cloud. 
-	//these are specific to SmallBodies
-		{name:'semiMajorAxis', type:'float'},
-		{name:'longitudeOfAscendingNode', type:'float'},
-		{name:'argumentOfPeriapsis', type:'float'},
-		{name:'inclination', type:'float'},
-		{name:'eccentricity', type:'float'},
-		{name:'timeOfPerihelionPassage', type:'float'},
-		{name:'orbitalPeriod', type:'float'},
-		{name:'meanAnomalyAtEpoch', type:'float'},
-		{name:'epoch', type:'float'},
-		{name:'perihelionDistance', type:'float'},
-		{name:'absoluteMagnitudeArray', type:'float'},
-		{name:'magnitudeSlopeParameter', type:'float'},
-		{name:'bodyType', type:'byte'},
-		{name:'orbitType', type:'byte'},
-		{name:'idNumber', type:'string'},	//up to 6 bytes.  number in the horizons system.  sometimes a number, sometimes a letter, sometimes both
-		{name:'name', type:'string'},	//up to 38 bytes
-		{name:'orbitSolutionReference', type:'string'}	//up to 10 bytes
-	],
+	rows : smallBodyRows,
 	
 	show : true,
 	init : function() {
@@ -64,14 +48,17 @@ var SmallBodies = makeClass({
 	//called from PointOctree.onPick when it is creating a new object
 	// either for mouse-over or for click selection
 	// and stored in the cache
-	createOrbitTarget : function(node, nodeLocalIndex, x,y,z,globalIndex) {
+	createOrbitTarget : function(node, nodeLocalIndex, x,y,z,index) {
 		var smallBody = mergeInto(new SmallBody(), {
 			name : node.nameArray[nodeLocalIndex],
 			pos : [x,y,z],
 			radius : 1,
-			smallBodyID : globalIndex
+			smallBodyID : index,
+
+			node : node,
+			nodeLocalIndex : nodeLocalIndex
 		});
-		this.cache[globalIndex] = smallBody;
+		this.cache[index] = smallBody;
 
 		/*
 		Now in setOrbitTarget there is special-case code looking for returned instances
