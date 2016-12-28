@@ -1,25 +1,3 @@
-var pointOctreeRows = {
-	{name:'vertex', type:'vec3'},
-	{name:'globalIndex', type:'int'},	//index into the dense list of this point cloud. 
-	{name:'semiMajorAxis', type:'double'},
-	{name:'longitudeOfAscendingNode', type:'double'},
-	{name:'argumentOfPeriapsis', type:'double'},
-	{name:'inclination', type:'double'},
-	{name:'eccentricity', type:'double'},
-	{name:'timeOfPerihelionPassage', type:'double'},
-	{name:'orbitalPeriod', type:'double'},
-	{name:'meanAnomalyAtEpoch', type:'double'},
-	{name:'epoch', type:'double'},
-	{name:'perihelionDistance', type:'double'},
-	{name:'absoluteMagnitudeArray [i] = data[i][e++];
-	{name:'magnitudeSlopeParameter', type:'double'},
-	{name:'bodyType', type:'double'},
-	{name:'orbitType', type:'byte'},
-	{name:'idNumber', type:'string'},	//up to 6 bytes.  number in the horizons system.  sometimes a number, sometimes a letter, sometimes both
-	{name:'name', type:'string'},	//up to 38 bytes
-	{name:'orbitSolutionReference', type:'string'},	//up to 10 bytes
-};
-
 var PointOctreeNode = makeClass({
 	pointSize : 500,	//in m ... so maybe convert this to AU
 	pointAlpha : .75,
@@ -52,68 +30,45 @@ var PointOctreeNode = makeClass({
 		//hold all parameters for each body
 		var len = data.length;
 		if (!len) return;
-	
-		var vertexBuffer = new Float32Array(3*len);
-		this.bodyTypeArray = new Uint8Array(len);
-		this.idNumberArray = [];
-		this.nameArray = [];
-		this.semiMajorAxisArray = new Float32Array(len);
-		this.longitudeOfAscendingNodeArray = new Float32Array(len);
-		this.argumentOfPeriapsisArray = new Float32Array(len);
-		this.inclinationArray = new Float32Array(len);
-		this.eccentricityArray = new Float32Array(len);
-		this.timeOfPerihelionPassageArray = new Float32Array(len);
-		var orbitalPeriodArray = new Float32Array(len);
-		this.meanAnomalyAtEpochArray = new Float32Array(len);
-		this.epochArray = new Float32Array(len);
-		this.perihelionDistanceArray = new Float32Array(len);
-		this.absoluteMagnitudeArray = new Float32Array(len);
-		this.magnitudeSlopeParameterArray = new Float32Array(len);
-		this.orbitTypeArray = new Uint8Array(len);
-		this.globalIndexArray = new Int32Array(len);
-		this.orbitSolutionReferenceArray = [];
+
+		var rows = this.tree.rows;
+		for (var i = 0; i < rows.length; ++i) {
+			var buffer;
+			switch (rows[i].type) {
+			case 'vec3': buffer = new Float32Array(3*len); break;
+			case 'byte': buffer = new Uint8Array(len); break;
+			case 'int': buffer = new Int32Array(len); break;
+			case 'float': buffer = new Float32Array(len); break;
+			case 'string': buffer = []; break;
+			default:
+				throw "don't know how to create array for type "+type;
+			}
+			this[rows[i].name+'Array'] = buffer;
+		}
 
 		for (var i = 0; i < data.length; ++i) {
 			var e = 0;
-			vertexBuffer[0+3*i] = data[i][e++];
-			vertexBuffer[1+3*i] = data[i][e++];
-			vertexBuffer[2+3*i] = data[i][e++];
-			this.globalIndexArray[i] = data[i][e++]; 
-			this.semiMajorAxisArray[i] = data[i][e++];
-			this.longitudeOfAscendingNodeArray[i] = data[i][e++];
-			this.argumentOfPeriapsisArray[i] = data[i][e++];
-			this.inclinationArray[i] = data[i][e++];
-			this.eccentricityArray[i] = data[i][e++];
-			this.timeOfPerihelionPassageArray[i] = data[i][e++];
-			orbitalPeriodArray[i] = data[i][e++];
-			this.meanAnomalyAtEpochArray[i] = data[i][e++];
-			this.epochArray[i] = data[i][e++];
-			this.perihelionDistanceArray[i] = data[i][e++];
-			this.absoluteMagnitudeArray [i] = data[i][e++];
-			this.magnitudeSlopeParameterArray[i] = data[i][e++];
-			this.bodyTypeArray[i] = data[i][e++];
-			this.orbitTypeArray[i] = data[i][e++];
-			this.idNumberArray[i] = data[i][e++];
-			this.nameArray[i] = data[i][e++];
-			this.orbitSolutionReferenceArray[i] = data[i][e++]; 
+			for (var j = 0; j < rows.length; ++j) {
+				var buffer = this[rows[j].name+'Array'];
+				switch (rows[j].type) {
+				case 'vec3':
+					for (var k = 0; k < 3; ++k) {
+						buffer[k+3*i] = data[i][e++];
+					}
+					break;
+				default:
+					buffer[i] = data[i][e++];
+					break;
+				}
+			}
 		}
 		
+		// TODO put all the other attr arrays in *another* geometry object, or texture, 
+		// and GPU render-to-buffer to update the positions
 		this.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
 			attrs : {
-				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : vertexBuffer})),
-				/* TODO put these all in *another* geometry object, or texture, and GPU render-to-buffer to update the positions
-				semiMajorAxis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.semiMajorAxisArray})),
-				longitudeOfAscendingNode : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.longitudeOfAscendingNodeArray})),
-				argumentOfPeriapsis : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.argumentOfPeriapsisArray})),
-				inclination : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.inclinationArray})),
-				eccentricity : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.eccentricityArray})),
-				timeOfPerihelionPassage : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.timeOfPerihelionPassageArray})),
-				orbitalPeriod : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : orbitalPeriodArray})),
-				meanAnomalyAtEpoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.meanAnomalyAtEpochArray})),
-				epoch : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.epochArray})),
-				orbitType : new glutil.Attribute(new glutil.ArrayBuffer({dim : 1, data : this.orbitTypeArray}))
-				*/
+				vertex : new glutil.Attribute(new glutil.ArrayBuffer({dim : 3, data : this.vertexArray})),
 			},
 			shader : this.tree.shader,
 			uniforms : {
@@ -237,6 +192,15 @@ var PointOctree = makeClass({
 	showAllAtOnce : false,
 	showWithDensity : false,	//don't change this after init
 	init : function() {
+		assertExists(this, 'urlBase'):
+		assertExists(this, 'rows');
+		//I could just have PointOctree provide these two fields:
+		assertEquals(this.rows[0].name, 'vertex');
+		assertEquals(this.rows[0].type, 'vec3');
+		assertEquals(this.rows[1].name, 'globalIndex');
+		assertEquals(this.rows[1].type, 'int');
+		
+		
 		this.allNodes = [];
 		this.drawProcessing = [];
 		this.drawnThisFrame = [];

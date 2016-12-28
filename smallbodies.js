@@ -19,6 +19,32 @@ var SmallBody = makeClass({
 var SmallBodies = makeClass({
 	super : PointOctree,
 	urlBase : 'jpl-ssd-smallbody',
+
+	//TODO get this from jpl-ssd-smallbody/parse.lua
+	rows : [
+	//these need to be here for the PointOctree to work:
+		{name:'vertex', type:'vec3'},
+		{name:'globalIndex', type:'int'},	//index into the dense list of this point cloud. 
+	//these are specific to SmallBodies
+		{name:'semiMajorAxis', type:'float'},
+		{name:'longitudeOfAscendingNode', type:'float'},
+		{name:'argumentOfPeriapsis', type:'float'},
+		{name:'inclination', type:'float'},
+		{name:'eccentricity', type:'float'},
+		{name:'timeOfPerihelionPassage', type:'float'},
+		{name:'orbitalPeriod', type:'float'},
+		{name:'meanAnomalyAtEpoch', type:'float'},
+		{name:'epoch', type:'float'},
+		{name:'perihelionDistance', type:'float'},
+		{name:'absoluteMagnitudeArray', type:'float'},
+		{name:'magnitudeSlopeParameter', type:'float'},
+		{name:'bodyType', type:'byte'},
+		{name:'orbitType', type:'byte'},
+		{name:'idNumber', type:'string'},	//up to 6 bytes.  number in the horizons system.  sometimes a number, sometimes a letter, sometimes both
+		{name:'name', type:'string'},	//up to 38 bytes
+		{name:'orbitSolutionReference', type:'string'}	//up to 10 bytes
+	],
+	
 	show : true,
 	init : function() {
 		SmallBodies.superProto.init.apply(this, arguments);
@@ -52,28 +78,10 @@ var SmallBodies = makeClass({
 		of SmallBody.  From there that code does an ajax query of jpl-ssd-smallbody/search.lua.
 		But why bother when we have the info here already?
 		*/
-		//Here I'm convering the node body data to match the sql row returned from search.lua  (found in coldesc.lua)
-		var fields = [
-			'bodyType',
-			'idNumber',
-			'name',
-			'epoch',
-			'perihelionDistance',
-			'semiMajorAxis',
-			'eccentricity',
-			'inclination',
-			'argumentOfPeriapsis',
-			'longitudeOfAscendingNode',
-			'meanAnomalyAtEpoch',
-			'absoluteMagnitude',
-			'magnitudeSlopeParameter',
-			'timeOfPerihelionPassage',
-			'orbitSolutionReference',
-		];
 		
 		var row = {}
-		for (var i = 0; i < fields.length; ++i) {
-			var field = fields[i];
+		for (var i = 0; i < this.rows.length; ++i) {
+			var field = this.rows[i].name;
 			row[field] = node[field+'Array'][nodeLocalIndex];
 		}
 		row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
