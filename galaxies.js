@@ -103,7 +103,6 @@ void main() {
 		$.ajax({
 			url : url,
 			dataType : 'json',
-			cache : false,
 			timeout : 10000
 		}).error(function() {
 			console.log('failed to load url '+url+', trying again...');

@@ -16,7 +16,6 @@ var PointOctreeNode = makeClass({
 		$.ajax({
 			url : url,
 			dataType : 'json',
-			cache : false
 		}).error(function() {
 			console.log('failed to get node '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
@@ -290,7 +289,6 @@ void main() {
 		$.ajax({
 			url : url,
 			dataType : 'json',
-			cache : false,
 			timeout : 10000
 		}).error(function() {
 			console.log('failed to get octree info from '+url+' , trying again...');

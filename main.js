@@ -2186,7 +2186,6 @@ function initExoplanets() {
 	$.ajax({
 		url : exoplanetURL,
 		dataType : 'json',
-		cache : false,
 		timeout : 30000
 	}).error(function() {
 		console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
