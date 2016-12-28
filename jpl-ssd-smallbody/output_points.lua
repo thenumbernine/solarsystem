@@ -19,9 +19,6 @@ function OutputToPoints:init(args)
 end
 
 function OutputToPoints:staticInit()
-	-- TODO: automatically make dirs for file[] access?
-	os.execute('mkdir nodes')
-
 	self.bodies = table()
 end
 
@@ -554,6 +551,8 @@ childDepth 	start	end	size
 
 	local rowDesc = json.decode(file['row-desc.json']:match('.-=(.*)'))
 
+	-- TODO: automatically make dirs for file[] access?
+	os.execute('mkdir nodes')
 	print('writing out nodes')
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)
