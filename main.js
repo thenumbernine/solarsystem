@@ -3899,6 +3899,11 @@ function setOrbitTarget(newTarget) {
 		}
 	}
 
+	//query the server for this small body's orbit data
+	if (newTarget.isa && newTarget.isa(SmallBody)) {
+		newTarget.onSelect();
+	}
+
 	if (selectingNewSystem) {
 		if (resetDistanceOnSelectingNewSystem) {
 			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
