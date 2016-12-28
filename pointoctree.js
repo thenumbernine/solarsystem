@@ -192,7 +192,7 @@ var PointOctree = makeClass({
 	showAllAtOnce : false,
 	showWithDensity : false,	//don't change this after init
 	init : function() {
-		assertExists(this, 'urlBase'):
+		assertExists(this, 'urlBase');
 		assertExists(this, 'rows');
 		//I could just have PointOctree provide these two fields:
 		assertEquals(this.rows[0].name, 'vertex');
