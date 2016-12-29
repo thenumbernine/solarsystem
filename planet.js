@@ -136,5 +136,72 @@ var Planet = makeClass({
 			var z = Math.sin(phi);
 			return [x, y, z]
 		}
+	},
+
+	initColorSchRadiusAngle : function() {
+		var colors = {
+			Sun:[1,1,0],
+			Mercury:[.7,0,.2],
+			Venus:[0,1,0],
+			Earth:[0,0,1],
+			Moon:[.6,.6,.6],
+			Mars:[1,0,0],
+			Jupiter:[1,.5,0],
+			Saturn:[1,0,.5],
+			Uranus:[0,1,1],
+			Neptune:[1,0,1],
+			Pluto:[0,.5,1]
+		};
+		var color = colors[this.name];
+		if (!color) {
+			//console.log("failed to find color for "+this.name);
+			this.color = [Math.random(), Math.random(), Math.random(), 1];
+			vec3.normalize(this.color, this.color);
+		} else {
+			this.color = [color[0], color[1], color[2], 1];
+		}
+		this.schwarzschildRadius = 2 * this.mass * kilogramsPerMeter;
+	},
+
+	//TODO no more multiple copies of tide array per-planet
+	initSceneLatLonLineObjs : function() {
+		if (this.radius === undefined) {
+			//only/always use a point/basis/etc?
+		} else {
+			this.sceneObj = planetSceneObj;
+			calcTides.initPlanetSceneObj(this);
+		}
+	},
+
+	updateSceneObj : function() {
+		var planetShaders = starSystemsExtra.getPlanetShadersForNumberOfStars(this.starSystem.stars.length);
+
+		//update tide attributes
+		var useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
+		if (!useOverlay) {
+			if (this.tex === undefined) {
+				this.sceneObj.shader = planetShaders.colorShader;
+				this.sceneObj.texs.length = 0;
+			} else {
+				if (this.ringObj) {
+					this.sceneObj.shader = planetShaders.ringShadowShader;
+					this.sceneObj.texs.length = 2;
+					if (this.ringTransparencyTex !== undefined) {
+						this.sceneObj.texs[1] = this.ringTransparencyTex;
+					} else if (this.ringColorTex !== undefined) {
+						this.sceneObj.texs[1] = this.ringColorTex;
+					} else {
+						//...or instead of throwing, should I just assume full-alpha?
+						throw 'planet has a ringObj but no ring texture';
+					}
+				} else {
+					this.sceneObj.shader = planetShaders.texShader;
+					this.sceneObj.texs.length = 1;
+				}
+				this.sceneObj.texs[0] = this.tex;
+			}
+		} else {
+			calcTides.updatePlanetSceneObj(this);
+		}
 	}
 });

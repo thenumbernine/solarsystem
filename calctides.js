@@ -91,7 +91,7 @@ void main() {
 	},
 
 	// old way -- calculate on CPU, upload to vertex buffer 
-	updatePlanetClassSceneObj : function(planet) {
+	updatePlanetSceneObj : function(planet) {
 		//TODO what if planet.tex === undefined?
 		planet.sceneObj.shader = this.planetHeatMapAttrShader;
 		planet.sceneObj.texs.length = 2;
@@ -108,6 +108,7 @@ void main() {
 			for (var tideIndex = 0; tideIndex < planet.tideBuffer.data.length; ++tideIndex) {
 				var lat = planet.sceneObj.attrs.vertex.data[vertexIndex++];
 				var lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
+var x = [];
 				planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 
 				var t = calcMetricForce(x, planet);
@@ -741,7 +742,7 @@ void main() {
 	},
 
 	//new way -- update planet state buffer to reflect position & mass
-	updatePlanetClassSceneObj : function(planet) {
+	updatePlanetSceneObj : function(planet) {
 		planet.sceneObj.shader = this.planetHeatMapTexShader;
 		planet.sceneObj.texs.length = 3;
 		planet.sceneObj.texs[0] = planet.tex;

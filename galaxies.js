@@ -102,8 +102,7 @@ void main() {
 		var url = 'simbad/galaxyNames.json';
 		$.ajax({
 			url : url,
-			dataType : 'json',
-			timeout : 10000
+			dataType : 'json'
 		}).error(function() {
 			console.log('failed to load url '+url+', trying again...');
 			thiz.loadNames();

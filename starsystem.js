@@ -39,7 +39,6 @@ var StarSystem = makeClass({
 	eventually set up a mask tex to hold what planets the user flags on/off
 	*/
 	createPlanetsFBOTex : function() {
-		
 		this.planetStateTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,		//xyz = pos, w = mass.  double this up if you need more precision
 			type : gl.FLOAT,
@@ -98,6 +97,4 @@ var StarSystem = makeClass({
 			dest[i].copy(src[i]);
 		}
 	}
-
 });
-

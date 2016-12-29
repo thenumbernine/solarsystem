@@ -427,8 +427,8 @@ console.log('adding star systems to star fields and vice versa');
 				isExoplanet : true
 			});
 			vec3.add(body.pos, body.pos, starSystem.pos);
-			initPlanetColorSchRadiusAngle(body);
-			initPlanetSceneLatLonLineObjs(body);
+			body.initColorSchRadiusAngle();
+			body.initSceneLatLonLineObjs();
 			calcKeplerianOrbitalElements(body, false);
 			
 			starSystem.planets.push(body);

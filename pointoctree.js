@@ -8,6 +8,7 @@ var PointOctreeNode = makeClass({
 		this.center = [];
 	},
 	loadData : function() {
+if (this.sceneObj) return;		
 		if (this.loadingData) return;
 		this.unloaded = false;
 		this.loadingData = true;
@@ -80,9 +81,9 @@ var PointOctreeNode = makeClass({
 		});
 	},
 	unloadData : function() {
-		if (!this.sceneObj) return;
+//		if (!this.sceneObj) return;
 		this.unloaded = true;	//tell any loading operations to stop
-		this.loadedData = undefined;
+/*		this.loadedData = undefined;
 		this.loadingData = undefined;
 
 		if (this.sceneObj.attrs !== undefined) {
@@ -92,6 +93,7 @@ var PointOctreeNode = makeClass({
 		}
 		delete this.sceneObj;
 		this.sceneObj = undefined;
+*/	
 	},
 	prepDraw : function(drawList, tanFovY) {
 		var radius = Math.max(
@@ -107,7 +109,9 @@ var PointOctreeNode = makeClass({
 		//TODO test occlusion
 		
 		this.visRatio = radius / (dist * tanFovY);
-		if (this.visRatio < .03) {//too-small threshold
+		if (this.visRatio < this.tree.visRatioThreshold 
+|| this.unloaded		
+		) {//too-small threshold
 			//TODO remove any cached geometry
 			this.unloadData();
 			return;	
@@ -152,7 +156,7 @@ var PointOctreeNode = makeClass({
 		this.sceneObj.uniforms.julianDate = julianDate;
 		
 		if (picking) {
-			if (this.visRatio < .1) return;	//extra tough too-small threshold for picking
+			if (this.visRatio < this.tree.visRatioPickThreshold) return;	//extra tough too-small threshold for picking
 			var thiz = this;
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
@@ -190,6 +194,8 @@ var PointOctree = makeClass({
 	maxDrawnNodes : 400,	//there are 2185 for the small bodies
 	showAllAtOnce : false,
 	showWithDensity : false,	//don't change this after init
+	visRatioThreshold : .03,
+	visRatioPickThreshold : .1,
 	init : function() {
 		assertExists(this, 'urlBase');
 		assertExists(this, 'rows');
@@ -288,8 +294,7 @@ void main() {
 		var thiz = this;
 		$.ajax({
 			url : url,
-			dataType : 'json',
-			timeout : 10000
+			dataType : 'json'
 		}).error(function() {
 			console.log('failed to get octree info from '+url+' , trying again...');
 			setTimeout(function() {
