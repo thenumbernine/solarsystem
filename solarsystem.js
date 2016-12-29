@@ -6,9 +6,35 @@ var SolarSystem = makeClass({
 		SolarSystem.super.apply(this, arguments);
 
 		//add our initial planets ...
-		this.planets.push(mergeInto(new Planet(), {id:10, name:'Sun', mass:1.9891e+30, radius:6.960e+8, type:'star'}));
-		this.planets.push(mergeInto(new Planet(), {id:199, name:'Mercury', parent:'Sun', mass:3.302e+23, radius:2.440e+6, equatorialRadius:2440e+3, rotationPeriod:58.6462, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:299, name:'Venus', parent:'Sun', mass:4.8685e+24, radius:6.0518e+6, equatorialRadius:6051.893e+3, rotationPeriod:-243.0185, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 10,
+			name : 'Sun',
+			mass : 1.9891e+30,
+			radius : 6.960e+8,
+			type : 'star'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 199,
+			name : 'Mercury',
+			parent : 'Sun',
+			mass : 3.302e+23,
+			radius : 2.440e+6,
+			equatorialRadius : 2440e+3,
+			rotationPeriod : 58.6462,
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 299,
+			name : 'Venus',
+			parent : 'Sun',
+			mass : 4.8685e+24,
+			radius : 6.0518e+6,
+			equatorialRadius : 6051.893e+3,
+			rotationPeriod : -243.0185,
+			type : 'planet'
+		}));
+		
+		//TODO add earth-moon barycenter
 		this.planets.push(mergeInto(new Planet(), {
 			id : 399,
 			name : 'Earth',
@@ -33,11 +59,59 @@ var SolarSystem = makeClass({
 			rotationOffset : 180 * Math.PI / 360,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {id:499, name:'Mars', parent:'Sun', mass:6.4185e+23, radius:3.3899e+6, equatorialRadius:3397e+3, inverseFlattening:154.409, rotationPeriod:24.622962/24, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:599, name:'Jupiter', parent:'Sun', mass:1.89813e+27, radius:6.9911e+7, equatorialRadius:71492e+3, inverseFlattening:1/0.06487, ringRadiusRange:[102200000,227000000], type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:699, name:'Saturn', parent:'Sun', mass:5.68319e+26, radius:5.8232e+7, equatorialRadius:60268e+3, inverseFlattening:1/0.09796, ringRadiusRange:[74510000,140390000], type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:799, name:'Uranus', parent:'Sun', mass:8.68103e+25, radius:2.5362e+7, equatorialRadius:25559e+3, inverseFlattening:1/0.02293, type:'planet'}));
-		this.planets.push(mergeInto(new Planet(), {id:899, name:'Neptune', parent:'Sun', mass:1.0241e+26, radius:2.4624e+7, equatorialRadius:24766e+3, inverseFlattening:1/0.0171, type:'planet'}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 499,
+			name : 'Mars',
+			parent : 'Sun',
+			mass : 6.4185e+23,
+			radius : 3.3899e+6,
+			equatorialRadius : 3397e+3,
+			inverseFlattening : 154.409,
+			rotationPeriod : 24.622962/24,
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 599,
+			name : 'Jupiter',
+			parent : 'Sun',
+			mass : 1.89813e+27,
+			radius : 6.9911e+7,
+			equatorialRadius : 71492e+3,
+			inverseFlattening : 1/0.06487,
+			ringRadiusRange : [102200000,227000000],
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 699,
+			name : 'Saturn',
+			parent : 'Sun',
+			mass : 5.68319e+26,
+			radius : 5.8232e+7,
+			equatorialRadius : 60268e+3,
+			inverseFlattening : 1/0.09796,
+			ringRadiusRange : [74510000,140390000],
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 799,
+			name : 'Uranus',
+			parent : 'Sun',
+			mass : 8.68103e+25,
+			radius : 2.5362e+7,
+			equatorialRadius : 25559e+3,
+			inverseFlattening : 1/0.02293,
+			type : 'planet'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
+			id : 899,
+			name : 'Neptune',
+			parent : 'Sun',
+			mass : 1.0241e+26,
+			radius : 2.4624e+7,
+			equatorialRadius : 24766e+3,
+			inverseFlattening : 1/0.0171,
+			type : 'planet'
+		}));
 		this.planets.push(mergeInto(new Planet(), {
 			id : 999,
 			name : 'Pluto',
@@ -71,6 +145,7 @@ var SolarSystem = makeClass({
 				//391-395 are Lagrangian points - skip
 			} else if (dynamicData.name.match(/Barycenter$/)) {
 				//1-9 are Barycenter points - skip
+				//TODO or maybe not
 			} else {
 				if (currentIDs[dynamicData.id]) {
 					//if the id already exists then skip it
@@ -126,8 +201,117 @@ var SolarSystem = makeClass({
 				}
 			}
 		}
+		
+		// get texture name 
+		for (var i = 0; i < this.planets.length; ++i) { 
+			var planet = this.planets[i];
+			if (planet.name in {
+				Sun:1,
+				Mercury:1,
+				Venus:1,
+				Earth:1,
+				Moon:1,
+				Mars:1,
+					Phobos:1,
+					Deimos:1,
+				Jupiter:1,
+					Io:1,
+					Europa:1,
+					Ganymede:1,
+					Callisto:1,
+				Saturn:1,
+					Mimas:1,
+					Enceladus:1,
+					Tethys:1,
+					Dione:1,
+					Rhea:1,
+					Titan:1,
+					Iapetus:1,
+					Phoebe:1,
+				Uranus:1,
+				Neptune:1,
+				Pluto:1,
+					Charon:1
+			}) {
+				planet.imgURL = 'textures/'+planet.name.toLowerCase()+'.png';
+			}
+	
+		}
 
 		//once we're done making planets, make a copy of the init
 		this.initPlanets = this.clonePlanets();
+	},
+
+	// interface with smallbodies point cloud picking system
+	// for creating/removing Planet objects into this StarSystem:
+
+	//specific to solarsystem / smallbodies:
+
+	getSmallBodyNameFromRow : function(row) {
+		var name = row.name;
+		if (row.idNumber) {
+			name = row.idNumber+'/'+name;
+		}
+		return name;
+	},
+
+	removeSmallBody : function(row) {
+		var name = this.getSmallBodyNameFromRow(row);
+
+		//only add if it's already there
+		if (solarSystem.indexes[name] === undefined) return;
+			
+		var index = solarSystem.indexes[name];
+		var planet = solarSystem.planets[index];
+		solarSystem.initPlanets.splice(index, 1);
+		solarSystem.planets.splice(index, 1);
+		//now remap indexes
+		for (var i = index; i < solarSystem.planets.length; ++i) {
+			solarSystem.planets[index].index = i;
+		}
+		if (orbitTarget === planet) {
+			setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
+		}
+		//TODO destruct WebGL geometry?  or is it gc'd automatically?
+		//now rebuild indexes
+		solarSystem.indexes = {};
+		for (var i = 0; i < solarSystem.planets.length; ++i) {
+			solarSystem.indexes[solarSystem.planets[i].name] = i;
+		}
+	},
+
+	addSmallBody : function(row) {
+		var name = this.getSmallBodyNameFromRow(row);
+
+		//only add if it's not there
+		if (solarSystem.indexes[name] !== undefined) return solarSystem.planets[solarSystem.indexes[name]];
+
+		//add the row to the bodies
+
+		var index = solarSystem.planets.length;
+		var planet = mergeInto(new Planet(), {
+			name : name,
+			isComet : row.bodyType == 'comet',
+			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+			sourceData : row,
+			parent : solarSystem.planets[solarSystem.indexes.Sun],
+			starSystem : solarSystem,
+			index : index
+		});
+
+		solarSystem.planets.push(planet);
+
+		//add copy to initPlanets for when we get reset() working
+		solarSystem.initPlanets[index] = planet.clone();
+
+		solarSystem.indexes[planet.name] = index;
+
+		planet.initColorSchRadiusAngle();
+		planet.initSceneLatLonLineObjs();
+		calcKeplerianOrbitalElements(planet, false);
+		recomputePlanetAlongOrbit(planet);
+
+		return planet;
 	}
+
 });

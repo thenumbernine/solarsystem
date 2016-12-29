@@ -11,6 +11,15 @@ var solarSystem;	//the one and only.  don't construct until after WebGL init so 
 var planetSceneObj;
 var planetLatLonObj;
 
+var latitudeMin = -90;
+var latitudeMax = 90;
+var latitudeStep = 5;
+var longitudeMin = -180;
+var longitudeMax = 180;
+var longitudeStep = 5;
+var latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
+var longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
+
 //collection of all star systems
 //kind of like starfield, but that's a point cloud
 var StarSystems = makeClass({
@@ -25,43 +34,10 @@ var StarSystems = makeClass({
 	},
 
 	initSolarSystemImgUrls : function() {
-		for (var planetIndex_ = 0; planetIndex_ < solarSystem.planets.length; ++planetIndex_) { 
-			var planetIndex = planetIndex_;
-			var planet = solarSystem.planets[planetIndex];
+		for (var i = 0; i < solarSystem.planets.length; ++i) { 
+			var planet = solarSystem.planets[i];
 			planet.initColorSchRadiusAngle();
 			planet.initSceneLatLonLineObjs();
-
-			// load texture
-			if (planet.name in {
-				Sun:1,
-				Mercury:1,
-				Venus:1,
-				Earth:1,
-				Moon:1,
-				Mars:1,
-					Phobos:1,
-					Deimos:1,
-				Jupiter:1,
-					Io:1,
-					Europa:1,
-					Ganymede:1,
-					Callisto:1,
-				Saturn:1,
-					Mimas:1,
-					Enceladus:1,
-					Tethys:1,
-					Dione:1,
-					Rhea:1,
-					Titan:1,
-					Iapetus:1,
-					Phoebe:1,
-				Neptune:1,
-				Uranus:1,
-				Pluto:1,
-					Charon:1
-			}) {
-				planet.imgURL = 'textures/'+planet.name.toLowerCase()+'.png';
-			}
 		}
 	},
 

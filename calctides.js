@@ -4,6 +4,8 @@
 var CALCULATE_TIDES_WITH_GPU = false;
 
 var colorBarHSVRange = 2/3;	// how much of the rainbow to use
+var tideTexWidth = 128;
+var tideTexHeight = 128;
 
 var CalcTides = makeClass({
 	init3 : function() {

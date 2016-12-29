@@ -7,7 +7,7 @@ var SmallBody = makeClass({
 	//callback from setOrbitTarget
 	onSelect : function() {
 		//add/removeSmallBody works with the UI controls to add/remove rows
-		var planet = addSmallBody(this.row);
+		var planet = solarSystem.addSmallBody(this.row);
 		
 		//why doesn't this match up with the point location?  float error?
 		setOrbitTarget(planet);
