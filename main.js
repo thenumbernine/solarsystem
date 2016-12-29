@@ -824,7 +824,72 @@ var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 
 
 var ModifiedDepthShaderProgram;
 
-$(document).ready(init1);
+
+function floatToGLSL(x) {
+	x = ''+x;
+	if (x.indexOf('.') == -1 && x.indexOf('e') == -1) x += '.';
+	return x;
+}
+
+function mat3ToGLSL(m) {
+	var s = 'mat3(';
+	for (var i = 0; i < 9; ++i) {
+		if (i > 0) s += ',';
+		s += floatToGLSL(m[i]);
+	}
+	s += ')';
+	return s;
+}
+
+//GLSL code generator
+function unravelForLoop(varname, start, end, code) {
+	var lines = [];
+	for (var i = start; i <= end; ++i) {
+		lines.push('#define '+varname+' '+i);
+		lines.push(code);
+		lines.push('#undef '+varname);
+	}
+	return lines.join('\n')+'\n';
+};
+
+var geodeticPositionCode = mlstr(function(){/*
+
+//takes in a vec2 of lat/lon
+//returns the ellipsoid coordinates in the planet's frame of reference
+//I could move the uniforms here, but then the function would be imposing on the shader
+#define M_PI 3.141592653589793115997963468544185161590576171875
+vec3 geodeticPosition(vec2 latLon) {
+	float phi = latLon.x * M_PI / 180.;
+	float lambda = latLon.y * M_PI / 180.;
+	float cosPhi = cos(phi);
+	float sinPhi = sin(phi);
+	float eccentricitySquared = (2. * inverseFlattening - 1.) / (inverseFlattening * inverseFlattening);
+	float sinPhiSquared = sinPhi * sinPhi;
+	float N = equatorialRadius / sqrt(1. - eccentricitySquared * sinPhiSquared);
+	const float height = 0.;
+	float NPlusH = N + height;	//plus height, if you want?  no one is using height at the moment.  heightmaps someday...
+	return vec3(
+		NPlusH * cosPhi * cos(lambda),
+		NPlusH * cosPhi * sin(lambda),
+		(N * (1. - eccentricitySquared) + height) * sinPhi);
+}
+*/});
+
+var quatRotateCode = mlstr(function(){/*
+vec3 quatRotate(vec4 q, vec3 v){
+	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
+}
+*/});
+
+//used by milkyway and skycube
+//which really both do the same thing: display the milky way in the foreground or background
+var coordinateSystemCode = 
+'const mat3 eclipticalToGalactic = '+mat3ToGLSL(eclipticalToGalacticTransform)+';\n'
++'const mat3 equatorialToEcliptical = '+mat3ToGLSL(equatorialToEclipticalTransform)+';\n';
+
+
+
+$(document).ready(init);
 
 function calendarToJulian(d) {
 	var year = d.getUTCFullYear();
@@ -854,7 +919,7 @@ function calendarToJulian(d) {
 	return jdn;
 }
 
-function init1() {
+function init() {
 	ui.init();
 
 	//post-WebGL init:
@@ -910,31 +975,6 @@ uniform float zNear, zFar, depthConstant;
 
 	solarSystem.copyPlanets(solarSystem.initPlanets, solarSystem.planets);
 
-	init2();
-}
-
-//call this once we get back our star data
-function initStarsControls() {
-	//TODO maybe some pages or something for this, like the asteroid/smallbody search?
-	for (var i = 0; i < starSystems.length; ++i) {
-		(function(){
-			var starSystem = starSystems[i];
-			$('<div>', {
-				css : {
-					textDecoration : 'underline',
-					cursor : 'pointer',
-					paddingLeft : '10px'
-				},
-				click : function() {
-					setOrbitTarget(starSystem);
-				},
-				text : starSystem.name
-			}).appendTo($('#starSystemContents'));
-		})();
-	}
-}
-
-function init2() {
 /*
 	var texURLs = [];
 	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
@@ -1030,254 +1070,6 @@ function init2() {
 	$('#timeDiv').show();
 	//$('#infoPanel').show();	//don't show here -- instead show upon first setOrbitTarget, when the css positioning gets fixed
 
-	init3();
-}
-
-function floatToGLSL(x) {
-	x = ''+x;
-	if (x.indexOf('.') == -1 && x.indexOf('e') == -1) x += '.';
-	return x;
-}
-
-function mat3ToGLSL(m) {
-	var s = 'mat3(';
-	for (var i = 0; i < 9; ++i) {
-		if (i > 0) s += ',';
-		s += floatToGLSL(m[i]);
-	}
-	s += ')';
-	return s;
-}
-
-function initExoplanets() {
-	var processResults = function(results) {
-		//process results
-		$.each(results.systems, function(i,systemInfo) {
-			var systemName = assertExists(systemInfo, 'name');
-
-			var rightAscension = systemInfo.rightAscension;
-			if (rightAscension === undefined) {
-				console.log('failed to find right ascension for system '+systemName);
-				return;
-			}
-			var declination = systemInfo.declination;
-			if (declination === undefined) {
-				console.log('failed to find declination for system '+systemName);
-				return;
-			}
-			var cosRA = Math.cos(rightAscension);
-			var sinRA = Math.sin(rightAscension);
-			var cosDec = Math.cos(declination);
-			var sinDec = Math.sin(declination);
-			//convert to coordinates
-			var pos = [];
-			pos[0] = cosRA * cosDec;
-			pos[1] = sinRA * cosDec;
-			pos[2] = sinDec;
-			//rotate for earth's tilt
-			var epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
-			var cosEps = Math.cos(epsilon);
-			var sinEps = Math.sin(epsilon);
-			var yn = cosEps * pos[1] + sinEps * pos[2];
-			pos[2] = -sinEps * pos[1] + cosEps * pos[2];
-			pos[1] = yn;
-			//distance
-			var distance = systemInfo.distance;
-			if (distance === undefined) {
-//				console.log('failed to find distance for system '+systemName);
-				return;
-			}
-			pos[0] *= distance;
-			pos[1] *= distance;
-			pos[2] *= distance;
-
-
-			var starSystem = new StarSystem();
-			starSystem.name = systemName;
-			starSystem.sourceData = systemInfo;
-			vec3.copy(starSystem.pos, pos);
-
-			//TODO absoluate magnitude of the collective system (sum of all parts?)
-
-			var minAbsMag = undefined;
-
-			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
-
-				var name = assertExists(bodyInfo, 'name');
-				var radius = bodyInfo.radius;
-				if (radius === undefined) {
-					if (bodyInfo.type !== 'barycenter') {
-						//console.log('no radius for body '+name);
-						//if planets don't have radii they can be estimated by the planet's mass or distance from sun or both?
-						radius = 7e+7;	// use a jupiter radius
-					}
-				}
-
-				var mass = bodyInfo.mass;
-				if (mass === undefined) {
-					if (bodyInfo.density && bodyInfo.radius) {
-						mass = 4/3 * Math.PI * bodyInfo.density * radius * radius * radius;
-					}
-				}
-				if (mass === undefined) {
-					//this prevents us from an orbit ..
-					//console.log('no mass for body '+name);
-					mass = 2e+27;	//use a jupiter mass
-				}
-
-				var body = mergeInto(new Planet(), {
-					type : assertExists(bodyInfo, 'type'),
-					name : name,
-					mass : mass,
-					radius : radius,	//for planets/suns this is the radius of the planet.  does it exist for barycenters?
-					//visualMagnitude : bodyInfo.visualMagnitude,	// TODO convert to absolute magnitude for star shader?
-					//spectralType : bodyInfo.spectralType,			// or this one?
-					//temperature : bodyInfo.temperature,			// or this one?
-					sourceData : bodyInfo,
-					parent : bodyInfo.parent,
-					starSystem : starSystem,
-					hide : bodyInfo.type === 'barycenter',
-					isExoplanet : true
-				});
-
-				//hacks for orbit
-				bodyInfo.longitudeOfAscendingNode = bodyInfo.longitudeOfAscendingNode || 0;
-				bodyInfo.inclination = bodyInfo.inclination || 0;
-				bodyInfo.eccentricity = bodyInfo.eccentricity || 0;
-				bodyInfo.meanAnomaly = Math.PI * 2 * (j + Math.random()) / systemInfo.bodies.length;
-
-				starSystem.planets.push(body);
-				if (body.type == 'star') starSystem.stars.push(body);
-				
-				if (bodyInfo.visualMagnitude !== undefined) {
-					//absolute magnitude based on visual magnitude
-					body.magnitude = bodyInfo.visualMagnitude - 5 * (Math.log10(distance / metersPerUnits.pc) - 1);
-					//...???
-					minAbsMag = minAbsMag === undefined ? body.magnitude : Math.min(minAbsMag, body.magnitude);
-				}
-			});
-			if (minAbsMag !== undefined) {
-				starSystem.magnitude = minAbsMag;
-			}
-
-			starSystem.doneBuildingPlanets();
-
-			for (var i = 0; i < starSystem.planets.length; ++i) {
-				var body = starSystem.planets[i];
-
-				//further hacks for orbit, now that the parent pointer has been established
-				if (body.sourceData.semiMajorAxis === undefined) {
-					if (body.parent &&
-						body.parent.type === 'barycenter' &&
-						//this is what I don't like about the open exoplanet database:
-						//sometimes 'separation' or 'semimajoraxis' is the distance to the parent
-						// sometimes it's the distance to the children
-						(body.parent.sourceData.separation !== undefined ||
-						body.parent.sourceData.semiMajorAxis !== undefined))
-					{
-						body.sourceData.semiMajorAxis = body.parent.sourceData.semiMajorAxis ||
-							body.parent.sourceData.separation || 0;
-						//TODO also remove semiMajorAxis from barycenter so it doesn't get offset from the planet's center?
-						// also -- do this all in exoplanet file preprocessing?
-					}
-				}
-				//longitude of periapsis = longitude of ascending node + argument of periapsis
-				//argument of periapsis = longitude of periapsis - longitude of ascending node
-				if (body.sourceData.longitudeOfPeriapsis === undefined) {
-					body.sourceData.longitudeOfPeriapsis = 0;
-				}
-				body.sourceData.argumentOfPeriapsis = body.sourceData.longitudeOfPeriapsis - body.sourceData.longitudeOfAscendingNode;
-				if (body.sourceData.argumentOfPeriapsis == 0) {
-					body.sourceData.argumentOfPeriapsis = Math.PI * 2 * i / starSystem.planets.length;
-				}
-
-				vec3.add(body.pos, body.pos, starSystem.pos);
-
-				body.initColorSchRadiusAngle();
-				body.initSceneLatLonLineObjs();
-
-				if (body.pos[0] !== body.pos[0]) {
-					console.log('system '+starSystem.name+' planet '+body.name+' has bad pos');
-				}
-
-				calcKeplerianOrbitalElements(body, false);
-			}
-
-			starSystem.initPlanets = starSystem.clonePlanets();
-			starSystemForNames[starSystem.name] = starSystem;
-			starSystem.index = starSystems.length;
-			starSystems.push(starSystem);
-		});
-
-		//now that we've built all our star system data ... add it to the star field
-		starfield.addStarSystems();
-	};
-
-	//just over a meg, so I might as well ajax it
-	var exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
-	$.ajax({
-		url : exoplanetURL,
-		dataType : 'json'
-	}).error(function() {
-		console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
-		setTimeout(function() {
-			initExoplanets();
-		}, 5000);
-	}).done(function(data) {
-		processResults(data);
-	});
-}
-
-
-
-//GLSL code generator
-function unravelForLoop(varname, start, end, code) {
-	var lines = [];
-	for (var i = start; i <= end; ++i) {
-		lines.push('#define '+varname+' '+i);
-		lines.push(code);
-		lines.push('#undef '+varname);
-	}
-	return lines.join('\n')+'\n';
-};
-
-var geodeticPositionCode = mlstr(function(){/*
-
-//takes in a vec2 of lat/lon
-//returns the ellipsoid coordinates in the planet's frame of reference
-//I could move the uniforms here, but then the function would be imposing on the shader
-#define M_PI 3.141592653589793115997963468544185161590576171875
-vec3 geodeticPosition(vec2 latLon) {
-	float phi = latLon.x * M_PI / 180.;
-	float lambda = latLon.y * M_PI / 180.;
-	float cosPhi = cos(phi);
-	float sinPhi = sin(phi);
-	float eccentricitySquared = (2. * inverseFlattening - 1.) / (inverseFlattening * inverseFlattening);
-	float sinPhiSquared = sinPhi * sinPhi;
-	float N = equatorialRadius / sqrt(1. - eccentricitySquared * sinPhiSquared);
-	const float height = 0.;
-	float NPlusH = N + height;	//plus height, if you want?  no one is using height at the moment.  heightmaps someday...
-	return vec3(
-		NPlusH * cosPhi * cos(lambda),
-		NPlusH * cosPhi * sin(lambda),
-		(N * (1. - eccentricitySquared) + height) * sinPhi);
-}
-*/});
-
-var quatRotateCode = mlstr(function(){/*
-vec3 quatRotate(vec4 q, vec3 v){
-	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
-}
-*/});
-
-//used by milkyway and skycube
-//which really both do the same thing: display the milky way in the foreground or background
-var coordinateSystemCode = 
-'const mat3 eclipticalToGalactic = '+mat3ToGLSL(eclipticalToGalacticTransform)+';\n'
-+'const mat3 equatorialToEcliptical = '+mat3ToGLSL(equatorialToEclipticalTransform)+';\n';
-
-function init3() {
-
 	colorShader = new ModifiedDepthShaderProgram({
 		vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
@@ -1335,7 +1127,7 @@ void main() {
 		}
 	});
 
-	calcTides.init3();
+	calcTides.initGL();
 
 	console.log('init overlay slider...');
 	$('#overlaySlider').slider({
@@ -1439,525 +1231,11 @@ void main() {
 	pickObject = new PickObject();
 	
 	//only do this after the orbit shader is made
-	initExoplanets();
+	starSystemsExtra.initExoplanets();
 
 	skyCube.init();
 
 	initScene();
-}
-
-function calcKeplerianOrbitalElements(body, useVectorState) {
-	var planetIndex = body.index;
-
-	// based on body position and velocity, find plane of orbit
-	var parentBody = body.parent;
-	if (parentBody === undefined) {
-		//console.log(body.name+' has no orbit parent');
-		body.orbitAxis = [0,0,1];
-		body.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
-		return;
-	}
-
-	//calculated variables:
-	var semiMajorAxis = undefined;
-	var eccentricity = undefined;
-	var eccentricAnomaly = undefined;
-	var orbitType = undefined;
-	var meanAnomaly = undefined;
-	var A, B;
-
-	//used by planets to offset reconstructed orbit coordinates to exact position of body
-	var checkPosToPosX = 0;
-	var checkPosToPosY = 0;
-	var checkPosToPosZ = 0;
-
-	//if we're not using vector state then we're using keplerian orbital elements
-	if (!useVectorState) {
-		/*
-		we have:
-			eccentricity
-			semiMajorAxis
-			pericenterDistance
-		we compute:
-		*/
-
-		eccentricity = assertExists(body.sourceData, 'eccentricity');
-
-		var parabolicEccentricityEpsilon = 1e-7;
-		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
-			orbitType = 'parabolic';
-		} else if (eccentricity > 1) {
-			orbitType = 'hyperbolic';
-		} else {
-			orbitType = 'elliptic';
-		}
-
-		var pericenterDistance;
-		if (body.isComet) {
-			pericenterDistance = assert(body.sourceData.perihelionDistance);
-			if (orbitType !== 'parabolic') {
-				semiMajorAxis = pericenterDistance / (1 - eccentricity);
-			}	//otherwise, if it is parabolic, we don't get the semi-major axis ...
-		} else if (body.isAsteroid) {
-			semiMajorAxis = assert(body.sourceData.semiMajorAxis);
-			pericenterDistance = semiMajorAxis * (1 - eccentricity);
-		} else if (body.isExoplanet) {
-			semiMajorAxis = body.sourceData.semiMajorAxis || 0;
-		}
-
-		var gravitationalParameter = gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
-		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
-		
-		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
-		var orbitalPeriod = undefined;
-		if (orbitType === 'elliptic') {
-			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed / gravitationalParameter) / (60*60*24);	//julian day
-		}
-
-		var longitudeOfAscendingNode = assertExists(body.sourceData, 'longitudeOfAscendingNode');
-		var cosAscending = Math.cos(longitudeOfAscendingNode);
-		var sinAscending = Math.sin(longitudeOfAscendingNode);
-
-		var argumentOfPeriapsis = assertExists(body.sourceData, 'argumentOfPeriapsis');
-		var cosPericenter = Math.cos(argumentOfPeriapsis);
-		var sinPericenter = Math.sin(argumentOfPeriapsis);
-
-		var inclination = assertExists(body.sourceData, 'inclination');
-		var cosInclination = Math.cos(inclination);
-		var sinInclination = Math.sin(inclination);
-
-		var oneMinusEccentricitySquared = 1 - eccentricity * eccentricity;
-		//magnitude of A is a 
-		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-			 semiMajorAxis * sinPericenter * sinInclination];
-		//magnitude of B is a * sqrt(|1 - e^2|)
-		B = [semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination];
-		//inner product: A dot B = 0
-
-		var timeOfPeriapsisCrossing;
-		if (body.isComet) {
-			timeOfPeriapsisCrossing = body.sourceData.timeOfPerihelionPassage;	//julian day
-		}
-
-		if (orbitType === 'parabolic') {
-			eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
-			meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
-		} else if (orbitType === 'hyperbolic') {
-			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
-			meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
-		} else if (orbitType === 'elliptic') {
-			//in theory I can say 
-			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPeriapsis)) / (1 + eccentricity * Math.cos(argumentOfPeriapsis)));
-			// ... but Math.acos has a limited range ...
-
-			if (body.isComet) {
-				timeOfPeriapsisCrossing = body.sourceData.timeOfPerihelionPassage;	//julian day
-				var timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
-				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
-			} else if (body.isAsteroid) {
-				meanAnomaly = body.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (initJulianDate - body.sourceData.epoch);
-			} else if (body.isExoplanet) {
-				meanAnomaly = body.sourceData.meanAnomaly !== undefined ? body.sourceData.meanAnomaly : 0;
-			} else {
-			//	throw 'here';
-			}
-		} else {
-			throw 'here';
-		}
-		
-		//solve Newton Rhapson
-		//for elliptical orbits:
-		//	f(E) = M - E + e sin E = 0
-		//	f'(E) = -1 + e cos E
-		//for parabolic oribts:
-		//	f(E) = M - E - E^3 / 3
-		//	f'(E) = -1 - E^2
-		//for hyperbolic orbits:
-		//	f(E) = M - e sinh(E) - E
-		//	f'(E) = -1 - e cosh(E)
-		eccentricAnomaly = meanAnomaly;
-		for (var i = 0; i < 10; ++i) {
-			var func, deriv;
-			if (orbitType === 'parabolic') {	//parabolic
-				func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
-				deriv = -1 - eccentricAnomaly * eccentricAnomaly;
-			} else if (orbitType === 'elliptic') { 	//elliptical
-				func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
-				deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
-			} else if (orbitType === 'hyperbolic') {	//hyperbolic
-				func = meanAnomaly + eccentricAnomaly - eccentricity  * Math.sinh(eccentricAnomaly);
-				deriv = 1 - eccentricity * Math.cosh(eccentricAnomaly);
-			} else {
-				throw 'here';
-			}
-
-			var delta = func / deriv;
-			if (Math.abs(delta) < 1e-15) break;
-			eccentricAnomaly -= delta;
-		}
-
-		var sinEccentricAnomaly = Math.sin(eccentricAnomaly);
-		var cosEccentricAnomaly = Math.cos(eccentricAnomaly);
-		
-		//parabolas and hyperbolas don't define orbitalPeriod
-		// so no need to recalculate it
-		if (orbitalPeriod !== undefined && meanAnomaly !== undefined) {
-			timeOfPeriapsisCrossing = meanAnomaly * orbitalPeriod / (2 * Math.PI); //if it is a comet then we're just reversing the calculation above ...
-		}
-
-/*
-r = radial distance
-a = semi major axis
-E = eccentric anomaly
-nu = true anomaly
-
-r^2 = a^2 (cos(E) - e)^2 + a^2 |1 - e^2| sin(E)^2
-r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + |1 - e^2| sin(E)^2)
-
-=== for eccentric orbits ... e < 1 <=> e^2 < 1 <=> 1 - e^2 > 0
-r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + (1 - e^2) sin(E)^2)
-r^2 = a^2 (cos(E)^2 - 2 e cos(E) + e^2 + sin(E)^2 - e^2 sin(E)^2)
-r^2 = a^2 (1 - 2 e cos(E) + e^2 - e^2 sin(E)^2)
-r^2 = a^2 (1 - 2 e cos(E) + e^2 - e^2 (1 - cos(E)^2))
-r^2 = a^2 (1 - 2 e cos(E) + e^2 cos(E)^2)
-r^2 = a^2 (1 - e cos(E))^2
-r = a (1 - e cos(E))		true according to http://en.wikipedia.org/wiki/Eccentric_anomaly
-
-r = a (1 - e^2) / (1 + e cos(nu)) is stated by http://www.bogan.ca/orbits/kepler/orbteqtn.html
-therefore should be true:
-(1 - e cos(E)) = (1 - e^2) / (1 + e cos(nu))
-1 + e cos(nu) = (1 - e^2) / (1 - e cos(E))
-e cos(nu) = (1 - e^2 - 1 + e cos(E)) / (1 - e cos(E))
-cos(nu) = (cos(E) - e) / (1 - e cos(E))
-...which checks out with Wikipedia: http://en.wikipedia.org/wiki/True_anomaly#From_the_eccentric_anomaly
-
-r = a (1 - e^2) / (1 + e cos(nu))
-r/a = (1 - e^2) / (1 + e cos(nu))
-a/r = (1 + e cos(nu)) / (1 - e^2)
-2 a/r - 1 = (1 + e cos(nu)) / (1 - e^2) - (1 - e^2)/(1 - e^2)
-2 a/r - r/r = e (e + cos(nu)) / (1 - e^2)
-(2 a - r)/(r a) = [e (e + cos(nu))] / [a (1 - e^2)]
-v^2 = mu (2/r - 1/a) = mu (e^2 + e cos(nu)) / (a (1 - e^2))
-the first of these is true: v^2 = mu (2/r - 1/a) according to both bogan.ca and wikipedia 
-
-the second: v^2 = mu e (e + cos(nu)) / (a (1 - e^2)) should match v^2 = mu / (a (1 - e^2)) (1 - 2 cos(nu) + e^2)
-is true only for e^2 + e cos(nu) = 1 - 2 cos(nu) + e^2
-	... e cos(nu) = 1 - 2 cos(nu)
-	... (2 + e) cos(nu) = 1
-	... cos(nu) = 1/(e + 2)	...which doesn't look true ... so maybe that bogan.ca second velocity equation v^2 = (mu/p)(1 - 2 cos(nu) + e^2) is wrong?
-
-=== for hyperbolic orbits ... e > 1 <=> e^2 > 1 <=> 1 - e^2 < 0
-r^2 = a^2 (cos(E) 
-	... we should get to 
-
-*/
-		var dt_dE;
-		if (orbitType == 'parabolic') {
-			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (1 + eccentricAnomaly * eccentricAnomaly);
-		} else if (orbitType == 'elliptic') {
-			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (1 - eccentricity * Math.cos(eccentricAnomaly));
-		} else if (orbitType == 'hyperbolic') {
-			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (eccentricity * Math.cosh(eccentricAnomaly) - 1);
-		}
-		var dE_dt = 1/dt_dE;
-		//finally using http://en.wikipedia.org/wiki/Kepler_orbit like I should've in the first place ...
-		var coeffA, coeffB;
-		var coeffDerivA, coeffDerivB;
-		if (orbitType == 'parabolic') {
-			//...?
-		} else if (orbitType == 'elliptic') { 
-			coeffA = Math.cos(eccentricAnomaly) - eccentricity;
-			coeffB = Math.sin(eccentricAnomaly);
-			coeffDerivA = -Math.sin(eccentricAnomaly) * dE_dt;
-			coeffDerivB = Math.cos(eccentricAnomaly) * dE_dt;
-		} else if (orbitType == 'hyperbolic') {
-			coeffA = eccentricity - Math.cosh(eccentricAnomaly);
-			coeffB = Math.sinh(eccentricAnomaly);
-			coeffDerivA = -Math.sinh(eccentricAnomaly) * dE_dt;
-			coeffDerivB = Math.cosh(eccentricAnomaly) * dE_dt;
-		}
-		
-		var posX = A[0] * coeffA + B[0] * coeffB;
-		var posY = A[1] * coeffA + B[1] * coeffB;
-		var posZ = A[2] * coeffA + B[2] * coeffB;
-		//v^2 = (a^2 sin^2(E) + a^2 |1 - e^2| cos^2(E)) * mu/a^3 / (1 - e cos(E))
-		//v^2 = (sin^2(E) + |1 - e^2| cos^2(E)) * mu/(a (1 - e cos(E)))
-		
-		//v^2 should be = mu/(a(1-e^2)) * (1 + e^2 - 2 cos(nu))	<- for nu = true anomaly
-		//v^2 should also be = mu (2/r - 1/a) = mu (2a - r) / (r a)
-		//... then (2 a - r) / (r a) should = (1 - 2 cos(nu) + e^2) / (a (1 - e^2))
-		//...	2 a/r - 1 should = (1 - 2 cos(nu) + e^2) / ((1 + e) (1 - e))
-		//...	2 a/r should = (1-e^2)/(1-e^2) + (1 - 2 cos(nu) + e^2) / (1-e^2)
-		//...	2 a/r should = (2 - 2 cos(nu)) / (1-e^2)
-		//...	a/r should = (1 - cos(nu)) / (1 - e^2)
-		//...	r/a should = (1 - e^2) / (1 - cos(nu))
-		//...	r should = a (1 - e^2) / (1 - cos(nu))
-		var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
-		var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
-		var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
-		body.pos[0] = posX + parentBody.pos[0];
-		body.pos[1] = posY + parentBody.pos[1];
-		body.pos[2] = posZ + parentBody.pos[2];
-		body.vel[0] = velX + parentBody.vel[0];
-		body.vel[1] = velY + parentBody.vel[1];
-		body.vel[2] = velZ + parentBody.vel[2];
-		vec3.copy(solarSystem.initPlanets[planetIndex].pos, body.pos);
-		vec3.copy(solarSystem.initPlanets[planetIndex].vel, body.vel);
-
-		body.keplerianOrbitalElements = {
-			semiMajorAxis : semiMajorAxis,
-			eccentricity : eccentricity,
-			eccentricAnomaly : eccentricAnomaly,
-			longitudeOfAscendingNode : longitudeOfAscendingNode,
-			argumentOfPeriapsis : argumentOfPeriapsis,
-			inclination : inclination,
-			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			meanAnomaly : meanAnomaly,
-			orbitType : orbitType,
-			orbitalPeriod : orbitalPeriod,	//only exists for elliptical orbits
-			A : A,
-			B : B
-		};
-
-	//using vector state (pos & vel) as provided by Horizons
-	} else {
-
-		orbitType = 'elliptic';	//better be ...
-
-		//consider position relative to orbiting parent
-		// should I be doing the same thing with the velocity?  probably...
-		var posX = body.pos[0] - parentBody.pos[0];
-		var posY = body.pos[1] - parentBody.pos[1];
-		var posZ = body.pos[2] - parentBody.pos[2];
-
-		//convert from m/day to m/s to coincide with the units of our gravitational constant
-		var velX = (body.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
-		var velY = (body.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
-		var velZ = (body.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
-
-		var posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
-
-		var angularMomentumX = posY * velZ - posZ * velY; //m^2/s
-		var angularMomentumY = posZ * velX - posX * velZ;
-		var angularMomentumZ = posX * velY - posY * velX;
-		var angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
-		var angularMomentumMag = Math.sqrt(angularMomentumMagSq);
-		if (angularMomentumMag < 1e-9) {
-			body.orbitAxis = [0,0,1];
-		} else {
-			var axisX = angularMomentumX / angularMomentumMag;
-			var axisY = angularMomentumY / angularMomentumMag;
-			var axisZ = angularMomentumZ / angularMomentumMag;
-			body.orbitAxis = [axisX, axisY, axisZ];
-		}
-
-		var basisX = [0,0,0];
-		var basisY = [0,0,0];
-		var basisZ = body.orbitAxis;
-		//TODO use the inclination and longitudeOfAscendingNode
-		calcBasis(basisX, basisY, basisZ);
-		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
-		body.orbitBasis = [basisX, basisY, basisZ];
-
-		//now decompose the relative position in the coordinates of the orbit basis
-		//i've eliminated all but one of the rotation degrees of freedom ...
-
-		//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
-		//http://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
-
-		var velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
-		var distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-		var gravitationalParameter = gravitationalConstant * ((body.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
-		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
-		semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
-		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
-		eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
-
-		var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-		var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-		eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
-
-		var sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
-		var cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
-		var inclination = Math.atan2(sinInclination, cosInclination);
-
-		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
-		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
-		var argumentOfPeriapsis = Math.atan(sinPericenter, cosPericenter);
-
-		var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
-		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
-		var longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);
-
-		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
-		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
-//override for Earth
-if (body.orbitalPeriod !== undefined) orbitalPeriod = body.orbitalPeriod;
-		
-		var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
-
-		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-				 semiMajorAxis * sinPericenter * sinInclination];
-		B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
-
-		/*
-		to convert back:
-		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
-		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly)
-		*/
-		var checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
-		var checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
-		var checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-
-		checkPosToPosX = checkPosX - posX;
-		checkPosToPosY = checkPosY - posY;
-		checkPosToPosZ = checkPosZ - posZ;
-		var checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
-		var checkPosError = checkPosToPosDist / distanceToParent;
-		if (checkPosError === checkPosError) {
-			if (checkPosError > 1e-5) {	//only report significant error
-				console.log(body.name+' error of reconstructed position '+ checkPosError);
-			}
-		} else {	//NaN? debug!
-
-		/*
-			for (k in body) {
-				var v = body[k];
-				if (k != 'name' && typeof(v) != 'function') {
-					console.log(body.name, k, v);
-				}
-			}
-		*/
-			console.log(body.name+' has no orbit info.  mass: '+body.mass+' radius: '+body.radius);
-		}
-				
-		meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
-
-		body.keplerianOrbitalElements = {
-			relVelSq : velSq,
-			gravitationalParameter : gravitationalParameter,
-			specificOrbitalEnergy : specificOrbitalEnergy,
-			distanceToParent : distanceToParent,
-			semiMajorAxis : semiMajorAxis,
-			semiLatusRectum : semiLatusRectum,
-			inclination : inclination,
-			argumentOfPeriapsis : argumentOfPeriapsis,
-			longitudeOfAscendingNode : longitudeOfAscendingNode,
-			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
-			meanAnomaly : meanAnomaly,
-			orbitalPeriod : orbitalPeriod,
-			//the following are used for the orbit path shader:
-			orbitType : orbitType,
-			eccentricity : eccentricity,
-			eccentricAnomaly : eccentricAnomaly,
-			A : A,
-			B : B,
-			//this is used for drawing but not in the shader
-			fractionOffset : 0
-		};
-
-		//not NaN, we successfully reconstructed the position
-		if (checkPosError !== checkPosError) {
-			return;
-		}
-	}
-
-	//for elliptic orbits,
-	// we can accumulate & store the largest semi major axis of all children
-	//but for parabolic/hyperbolic ...
-	// there is no bound ... so maybe those objects should be stored/rendered separately?
-	if (parentBody !== undefined && orbitType == 'elliptic') {
-		parentBody.maxSemiMajorAxisOfEllipticalSatellites = Math.max(semiMajorAxis, parentBody.maxSemiMajorAxisOfEllipticalSatellites);
-	}
-
-	body.renderOrbit = true;
-
-	/*
-	integration can be simulated along Keplerian orbits using the A and B vectors ...
-		time advanced = simulated date - data snapshot date
-		orbit fraction advanced = time advanced / orbital period
-		body position and velocity can then be computed using A and B's evaluation and derivatives
-		then the alpha of the orbit needs to be updated ...
-	*/
-}
-
-function recomputePlanetAlongOrbit(planet) {
-	var timeAdvanced = julianDate - initJulianDate;
-	if (!planet.parent) return;
-	var ke = planet.keplerianOrbitalElements;
-	var orbitType = ke.orbitType;
-
-	var meanMotion = undefined;
-	if (ke.orbitalPeriod !== undefined) {	//elliptical
-		meanMotion = 2 * Math.PI / ke.orbitalPeriod;
-	} else if (ke.timeOfPeriapsisCrossing !== undefined) {	//hyperbolic ... shouldn't be using mean motion?
-		meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
-	} else {
-		throw 'here';
-	}
-
-	//TODO don't use meanMotion for hyperbolic orbits
-	var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
-	var theta = timeAdvanced * meanMotion;
-	var pathEccentricAnomaly = ke.eccentricAnomaly + theta;
-	var A = ke.A;
-	var B = ke.B;
-
-	//matches above
-	var dt_dE;
-	var semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
-	if (orbitType == 'parabolic') {
-		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 + pathEccentricAnomaly * pathEccentricAnomaly);
-	} else if (orbitType == 'elliptic') {
-		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 - ke.eccentricity * Math.cos(pathEccentricAnomaly));
-	} else if (orbitType == 'hyperbolic') {
-		dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (ke.eccentricity * Math.cosh(pathEccentricAnomaly) - 1);
-	}
-	var dE_dt = 1/dt_dE;
-	var coeffA, coeffB;
-	var coeffDerivA, coeffDerivB;
-	if (orbitType == 'parabolic') {
-		//...?
-	} else if (orbitType == 'elliptic') { 
-		coeffA = Math.cos(pathEccentricAnomaly) - ke.eccentricity;
-		coeffB = Math.sin(pathEccentricAnomaly);
-		coeffDerivA = -Math.sin(pathEccentricAnomaly) * dE_dt;
-		coeffDerivB = Math.cos(pathEccentricAnomaly) * dE_dt;
-	} else if (orbitType == 'hyperbolic') {
-		coeffA = ke.eccentricity - Math.cosh(pathEccentricAnomaly);
-		coeffB = Math.sinh(pathEccentricAnomaly);
-		coeffDerivA = -Math.sinh(pathEccentricAnomaly) * dE_dt;
-		coeffDerivB = Math.cosh(pathEccentricAnomaly) * dE_dt;
-	}
-	var posX = A[0] * coeffA + B[0] * coeffB;
-	var posY = A[1] * coeffA + B[1] * coeffB;
-	var posZ = A[2] * coeffA + B[2] * coeffB;
-	var velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
-	var velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
-	var velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
-	
-	planet.pos[0] = posX + planet.parent.pos[0];
-	planet.pos[1] = posY + planet.parent.pos[1];
-	planet.pos[2] = posZ + planet.parent.pos[2];
-	planet.vel[0] = velX + planet.parent.vel[0];
-	planet.vel[1] = velY + planet.parent.vel[1];
-	planet.vel[2] = velZ + planet.parent.vel[2];
-	
-	planet.keplerianOrbitalElements.fractionOffset = fractionOffset;
-}
-
-function recomputePlanetsAlongOrbit() {
-	var starSystem = orbitStarSystem;
-	for (var i = 0; i < starSystem.planets.length; ++i) {	//or do it for all systems?
-		var planet = starSystem.planets[i];
-		recomputePlanetAlongOrbit(planet);
-	}
 }
 
 function setOrbitTarget(newTarget) {
@@ -2012,7 +1290,7 @@ function setOrbitTarget(newTarget) {
 				refreshOrbitTargetDistanceText();
 			}
 		}
-		recomputePlanetsAlongOrbit();
+		orbitStarSystem.updatePlanetsPos();
 	}
 
 	if (orbitTarget !== undefined) vec3.sub(orbitOffset, orbitTarget.pos, newTarget.pos);
@@ -2287,7 +1565,7 @@ function update() {
 	if (julianDate !== lastJulianDate) {
 		
 		//recompute position by delta since init planets
-		recomputePlanetsAlongOrbit();
+		orbitStarSystem.updatePlanetsPos();
 
 		//recompute angle based on sidereal rotation period
 		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {

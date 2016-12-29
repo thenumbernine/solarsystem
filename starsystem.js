@@ -96,5 +96,11 @@ var StarSystem = makeClass({
 		for (var i = 0; i < src.length; ++i) {
 			dest[i].copy(src[i]);
 		}
+	},
+
+	updatePlanetsPos : function() {
+		for (var i = 0; i < this.planets.length; ++i) {	//or do it for all systems?
+			this.planets[i].updatePos();
+		}
 	}
 });

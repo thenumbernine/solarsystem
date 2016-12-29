@@ -8,7 +8,7 @@ var tideTexWidth = 128;
 var tideTexHeight = 128;
 
 var CalcTides = makeClass({
-	init3 : function() {
+	initGL : function() {
 		this.hsvTex = new glutil.HSVTexture(256);
 	},
 
@@ -26,8 +26,8 @@ var CalcTides = makeClass({
 
 var CalcTidesCPU = makeClass({
 	super : CalcTides,
-	init3 : function() {
-		CalcTidesCPU.superProto.init3.apply(this, arguments);
+	initGL : function() {
+		CalcTidesCPU.superProto.initGL.apply(this, arguments);
 
 		//renders a heat map from the float values of the 'tide' attribute
 		this.planetHeatMapAttrShader = new ModifiedDepthShaderProgram({
@@ -141,8 +141,8 @@ var x = [];
 
 var CalcTidesGPU = makeClass({
 	super : CalcTides,
-	init3 : function() {
-		CalcTidesCPU.superProto.init3.apply(this, arguments);
+	initGL : function() {
+		CalcTidesCPU.superProto.initGL.apply(this, arguments);
 		
 		this.fbo = new glutil.Framebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);

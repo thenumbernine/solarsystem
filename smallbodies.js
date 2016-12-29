@@ -15,9 +15,12 @@ var SmallBody = makeClass({
 		//hmm, this updates where the picking region goes
 		//but even when mousing over that region, the pick highlight still shows up at the old position
 		var data = this.node.sceneObj.attrs.vertex.buffer.data;
-		data[0+3*this.nodeLocalIndex] = planet.pos[0];
-		data[1+3*this.nodeLocalIndex] = planet.pos[1];
-		data[2+3*this.nodeLocalIndex] = planet.pos[2];
+		//data[0+3*this.nodeLocalIndex] = planet.pos[0];
+		//data[1+3*this.nodeLocalIndex] = planet.pos[1];
+		//data[2+3*this.nodeLocalIndex] = planet.pos[2];
+		//instead of matching the pointfield pos to the small body
+		// how about hiding the pointfield pos?
+		//but then you'd have to restore it once the body was hidden
 		this.node.sceneObj.attrs.vertex.buffer.updateData();
 	}
 });
@@ -77,7 +80,6 @@ var SmallBodies = makeClass({
 	
 		return smallBody;
 	}
-
 });
 
 var smallBodies;

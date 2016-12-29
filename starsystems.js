@@ -120,7 +120,7 @@ void main() {
 	var calcOrbitPathStartTime = Date.now();
 	//init solar system planets based on Horizons data
 	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		calcKeplerianOrbitalElements(solarSystem.planets[i], true);
+		solarSystem.planets[i].calcKeplerianOrbitalElements(true);
 	}
 	var calcOrbitPathEndTime = Date.now();
 
@@ -932,6 +932,207 @@ void main() {
 
 		this.planetShadersForNumStars[numberOfStars] = shaders;
 		return shaders;
+	},
+
+	initExoplanets : function() {
+		//just over a meg, so I might as well ajax it
+		var exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
+		var thiz = this;
+		$.ajax({
+			url : exoplanetURL,
+			dataType : 'json'
+		}).error(function() {
+			console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
+			setTimeout(function() {
+				thiz.initExoplanets();
+			}, 5000);
+		}).done(function(data) {
+			thiz.processResults(data);
+		});
+	},
+
+	processResults : function(results) {
+		//process results
+		$.each(results.systems, function(i,systemInfo) {
+			var systemName = assertExists(systemInfo, 'name');
+
+			var rightAscension = systemInfo.rightAscension;
+			if (rightAscension === undefined) {
+				console.log('failed to find right ascension for system '+systemName);
+				return;
+			}
+			var declination = systemInfo.declination;
+			if (declination === undefined) {
+				console.log('failed to find declination for system '+systemName);
+				return;
+			}
+			var cosRA = Math.cos(rightAscension);
+			var sinRA = Math.sin(rightAscension);
+			var cosDec = Math.cos(declination);
+			var sinDec = Math.sin(declination);
+			//convert to coordinates
+			var pos = [];
+			pos[0] = cosRA * cosDec;
+			pos[1] = sinRA * cosDec;
+			pos[2] = sinDec;
+			//rotate for earth's tilt
+			var epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
+			var cosEps = Math.cos(epsilon);
+			var sinEps = Math.sin(epsilon);
+			var yn = cosEps * pos[1] + sinEps * pos[2];
+			pos[2] = -sinEps * pos[1] + cosEps * pos[2];
+			pos[1] = yn;
+			//distance
+			var distance = systemInfo.distance;
+			if (distance === undefined) {
+//				console.log('failed to find distance for system '+systemName);
+				return;
+			}
+			pos[0] *= distance;
+			pos[1] *= distance;
+			pos[2] *= distance;
+
+
+			var starSystem = new StarSystem();
+			starSystem.name = systemName;
+			starSystem.sourceData = systemInfo;
+			vec3.copy(starSystem.pos, pos);
+
+			//TODO absoluate magnitude of the collective system (sum of all parts?)
+
+			var minAbsMag = undefined;
+
+			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
+
+				var name = assertExists(bodyInfo, 'name');
+				var radius = bodyInfo.radius;
+				if (radius === undefined) {
+					if (bodyInfo.type !== 'barycenter') {
+						//console.log('no radius for body '+name);
+						//if planets don't have radii they can be estimated by the planet's mass or distance from sun or both?
+						radius = 7e+7;	// use a jupiter radius
+					}
+				}
+
+				var mass = bodyInfo.mass;
+				if (mass === undefined) {
+					if (bodyInfo.density && bodyInfo.radius) {
+						mass = 4/3 * Math.PI * bodyInfo.density * radius * radius * radius;
+					}
+				}
+				if (mass === undefined) {
+					//this prevents us from an orbit ..
+					//console.log('no mass for body '+name);
+					mass = 2e+27;	//use a jupiter mass
+				}
+
+				var body = mergeInto(new Planet(), {
+					type : assertExists(bodyInfo, 'type'),
+					name : name,
+					mass : mass,
+					radius : radius,	//for planets/suns this is the radius of the planet.  does it exist for barycenters?
+					//visualMagnitude : bodyInfo.visualMagnitude,	// TODO convert to absolute magnitude for star shader?
+					//spectralType : bodyInfo.spectralType,			// or this one?
+					//temperature : bodyInfo.temperature,			// or this one?
+					sourceData : bodyInfo,
+					parent : bodyInfo.parent,
+					starSystem : starSystem,
+					hide : bodyInfo.type === 'barycenter',
+					isExoplanet : true
+				});
+
+				//hacks for orbit
+				bodyInfo.longitudeOfAscendingNode = bodyInfo.longitudeOfAscendingNode || 0;
+				bodyInfo.inclination = bodyInfo.inclination || 0;
+				bodyInfo.eccentricity = bodyInfo.eccentricity || 0;
+				bodyInfo.meanAnomaly = Math.PI * 2 * (j + Math.random()) / systemInfo.bodies.length;
+
+				starSystem.planets.push(body);
+				if (body.type == 'star') starSystem.stars.push(body);
+				
+				if (bodyInfo.visualMagnitude !== undefined) {
+					//absolute magnitude based on visual magnitude
+					body.magnitude = bodyInfo.visualMagnitude - 5 * (Math.log10(distance / metersPerUnits.pc) - 1);
+					//...???
+					minAbsMag = minAbsMag === undefined ? body.magnitude : Math.min(minAbsMag, body.magnitude);
+				}
+			});
+			if (minAbsMag !== undefined) {
+				starSystem.magnitude = minAbsMag;
+			}
+
+			starSystem.doneBuildingPlanets();
+
+			for (var i = 0; i < starSystem.planets.length; ++i) {
+				var body = starSystem.planets[i];
+
+				//further hacks for orbit, now that the parent pointer has been established
+				if (body.sourceData.semiMajorAxis === undefined) {
+					if (body.parent &&
+						body.parent.type === 'barycenter' &&
+						//this is what I don't like about the open exoplanet database:
+						//sometimes 'separation' or 'semimajoraxis' is the distance to the parent
+						// sometimes it's the distance to the children
+						(body.parent.sourceData.separation !== undefined ||
+						body.parent.sourceData.semiMajorAxis !== undefined))
+					{
+						body.sourceData.semiMajorAxis = body.parent.sourceData.semiMajorAxis ||
+							body.parent.sourceData.separation || 0;
+						//TODO also remove semiMajorAxis from barycenter so it doesn't get offset from the planet's center?
+						// also -- do this all in exoplanet file preprocessing?
+					}
+				}
+				//longitude of periapsis = longitude of ascending node + argument of periapsis
+				//argument of periapsis = longitude of periapsis - longitude of ascending node
+				if (body.sourceData.longitudeOfPeriapsis === undefined) {
+					body.sourceData.longitudeOfPeriapsis = 0;
+				}
+				body.sourceData.argumentOfPeriapsis = body.sourceData.longitudeOfPeriapsis - body.sourceData.longitudeOfAscendingNode;
+				if (body.sourceData.argumentOfPeriapsis == 0) {
+					body.sourceData.argumentOfPeriapsis = Math.PI * 2 * i / starSystem.planets.length;
+				}
+
+				vec3.add(body.pos, body.pos, starSystem.pos);
+
+				body.initColorSchRadiusAngle();
+				body.initSceneLatLonLineObjs();
+
+				if (body.pos[0] !== body.pos[0]) {
+					console.log('system '+starSystem.name+' planet '+body.name+' has bad pos');
+				}
+
+				body.calcKeplerianOrbitalElements(false);
+			}
+
+			starSystem.initPlanets = starSystem.clonePlanets();
+			starSystemForNames[starSystem.name] = starSystem;
+			starSystem.index = starSystems.length;
+			starSystems.push(starSystem);
+		});
+
+		//now that we've built all our star system data ... add it to the star field
+		starfield.addStarSystems();
+	},
+
+	//call this once we get back our star data
+	initStarsControls : function() {
+		//TODO maybe some pages or something for this, like the asteroid/smallbody search?
+		for (var i = 0; i < starSystems.length; ++i) {
+			(function(){
+				var starSystem = starSystems[i];
+				$('<div>', {
+					css : {
+						textDecoration : 'underline',
+						cursor : 'pointer',
+						paddingLeft : '10px'
+					},
+					click : function() {
+						setOrbitTarget(starSystem);
+					},
+					text : starSystem.name
+				}).appendTo($('#starSystemContents'));
+			})();
+		}
 	}
 });
 

@@ -20,7 +20,7 @@ if (this.sceneObj) return;
 		}).error(function() {
 			console.log('failed to get node '+thiz.nodeID+' from '+url);
 		}).done(function(data) {
-			if (thiz.unloaded) return;
+//			if (thiz.unloaded) return;
 			thiz.processData(data);
 		});
 	},
@@ -156,7 +156,8 @@ if (this.sceneObj) return;
 		this.sceneObj.uniforms.julianDate = julianDate;
 		
 		if (picking) {
-			if (this.visRatio < this.tree.visRatioPickThreshold) return;	//extra tough too-small threshold for picking
+			//extra tough too-small threshold for picking
+			if (this.visRatio < this.tree.visRatioPickThreshold) return;	
 			var thiz = this;
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
@@ -333,6 +334,7 @@ void main() {
 
 		this.processNode(this.root);
 	},
+	
 	processNode : function(node) {
 		//node.nodeID includes offsets into each level
 

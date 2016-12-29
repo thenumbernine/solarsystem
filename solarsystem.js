@@ -308,8 +308,8 @@ var SolarSystem = makeClass({
 
 		planet.initColorSchRadiusAngle();
 		planet.initSceneLatLonLineObjs();
-		calcKeplerianOrbitalElements(planet, false);
-		recomputePlanetAlongOrbit(planet);
+		planet.calcKeplerianOrbitalElements(false);
+		planet.updatePos();
 
 		return planet;
 	}

@@ -429,7 +429,7 @@ console.log('adding star systems to star fields and vice versa');
 			vec3.add(body.pos, body.pos, starSystem.pos);
 			body.initColorSchRadiusAngle();
 			body.initSceneLatLonLineObjs();
-			calcKeplerianOrbitalElements(body, false);
+			body.calcKeplerianOrbitalElements(false);
 			
 			starSystem.planets.push(body);
 			starSystem.stars.push(body);
@@ -443,7 +443,7 @@ console.log('adding star systems to star fields and vice versa');
 
 		}
 
-		initStarsControls();
+		starSystemsExtra.initStarsControls();
 	};
 
 	this.draw = function(
