@@ -120,7 +120,7 @@ void main() {
 	var calcOrbitPathStartTime = Date.now();
 	//init solar system planets based on Horizons data
 	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		solarSystem.planets[i].calcKeplerianOrbitalElements(true);
+		solarSystem.planets[i].calcKOEFromPosVel();
 	}
 	var calcOrbitPathEndTime = Date.now();
 
@@ -1101,7 +1101,7 @@ void main() {
 					console.log('system '+starSystem.name+' planet '+body.name+' has bad pos');
 				}
 
-				body.calcKeplerianOrbitalElements(false);
+				body.getKOEFromSourceData();
 			}
 
 			starSystem.initPlanets = starSystem.clonePlanets();

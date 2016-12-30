@@ -100,7 +100,7 @@ var StarSystem = makeClass({
 
 	updatePlanetsPos : function() {
 		for (var i = 0; i < this.planets.length; ++i) {	//or do it for all systems?
-			this.planets[i].updatePos();
+			this.planets[i].updatePosVel();
 		}
 	}
 });
