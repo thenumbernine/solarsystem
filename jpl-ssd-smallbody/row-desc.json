@@ -15,7 +15,7 @@ var smallBodyRows = [
 	{"name":"magnitudeSlopeParameter", "type":"float"},
 	{"name":"bodyType", "type":"byte"},
 	{"name":"orbitType", "type":"byte"},
-	{"name":"idNumber", "type":"string"},
+	{"name":"horizonID", "type":"int"},
 	{"name":"name", "type":"string"},
 	{"name":"orbitSolutionReference", "type":"string"}
 ]

@@ -74,8 +74,8 @@ typedef struct {
 <? end
 ?>
 	int bodyType;	// 0=comet, 1=numbered, 2=unnum
-	char idNumber[6+1];	//+1 for null-term because I'm lazy and using string assignment in ffi
-	char name[38+1];
+	int horizonID;	//for numbered asteroids only
+	char name[43+1];
 	char orbitSolutionReference[12+1];
 
 	//computed parameters:
@@ -118,6 +118,7 @@ local function newBody()
 	for _,field in ipairs(numberFields) do
 		body[field] = math.nan
 	end
+	body.horizonID = 0
 	body.absoluteMagnitude = math.huge
 	return body
 end
@@ -133,8 +134,7 @@ processToFile{
 	processRow = function(row)
 		local body = newBody()
 		local numberAndName = row['Num  Name']
-		body.idNumber = numberAndName:sub(1,4):trim()
-		body.name = numberAndName:sub(6):trim()
+		body.name = numberAndName:trim()
 		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.perihelionDistance = assert(tonumber(row.q:trim())) * auInM
 		body.eccentricity = assert(tonumber(row.e:trim()))
@@ -168,7 +168,7 @@ processToFile{
 	},
 	processRow = function(row)
 		local body = newBody()
-		body.idNumber = row.Num:trim()
+		body.horizonID = assert(tonumber(row.Num:trim()))
 		body.name = row.Name:trim()
 		body.epoch = assert(tonumber(row.Epoch:trim())) + mjdOffset
 		body.semiMajorAxis = assert(tonumber(row.a:trim())) * auInM

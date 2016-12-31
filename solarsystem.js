@@ -247,16 +247,8 @@ var SolarSystem = makeClass({
 
 	//specific to solarsystem / smallbodies:
 
-	getSmallBodyNameFromRow : function(row) {
-		var name = row.name;
-		if (row.idNumber) {
-			name = row.idNumber+'/'+name;
-		}
-		return name;
-	},
-
 	removeSmallBody : function(row) {
-		var name = this.getSmallBodyNameFromRow(row);
+		var name = row.name;
 
 		//only add if it's already there
 		if (solarSystem.indexes[name] === undefined) return;
@@ -281,7 +273,7 @@ var SolarSystem = makeClass({
 	},
 
 	addSmallBody : function(row) {
-		var name = this.getSmallBodyNameFromRow(row);
+		var name = row.name;
 
 		//only add if it's not there
 		if (solarSystem.indexes[name] !== undefined) return solarSystem.planets[solarSystem.indexes[name]];

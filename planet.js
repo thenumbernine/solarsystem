@@ -1,3 +1,18 @@
+/*
+http://en.wikipedia.org/wiki/Eccentric_anomaly
+http://en.wikipedia.org/wiki/Kepler%27s_laws_of_planetary_motion#Position_as_a_function_of_time
+http://en.wikipedia.org/wiki/Kepler_orbit
+http://en.wikipedia.org/wiki/Longitude_of_the_periapsis
+http://en.wikipedia.org/wiki/Mean_longitude
+http://en.wikipedia.org/wiki/Orbital_elements
+http://en.wikipedia.org/wiki/True_anomaly#From_the_eccentric_anomaly
+http://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
+http://spaceweather.com/
+http://www.bogan.ca/orbits/kepler/orbteqtn.html
+http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
+https://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
+https://space.stackexchange.com/questions/8911/determining-orbital-position-at-a-future-point-in-time
+*/
 var Planet = makeClass({
 	init : function(args) {
 		if (args !== undefined) {
@@ -293,7 +308,7 @@ var Planet = makeClass({
 		var specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
 		var semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
 		var semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
-		var eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);				//unitless (assuming elliptical orbit)
+		var eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);		//e, unitless (assuming elliptical orbit)
 
 		var orbitType = undefined;
 		var parabolicEccentricityEpsilon = 1e-7;
@@ -307,11 +322,11 @@ var Planet = makeClass({
 
 		var cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
 		var sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-		var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//radians (unitless)
+		var eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//E, in radians (unitless)
 
 		var sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
 		var cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
-		var inclination = Math.atan2(sinInclination, cosInclination);
+		var inclination = Math.atan2(sinInclination, cosInclination);	//i
 
 		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
 		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
@@ -321,20 +336,35 @@ var Planet = makeClass({
 		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
 		var longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);	//Omega
 
-		var longitudeOfPeriapsis = longitudeOfAscendingNode + argumentOfPeriapsis;	//omega-bar
-
-		var meanLongitude = throw 'here';
-		meanAnomaly = meanLongitude - longitudeOfPeriapsis;
-
 		var semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
-		var orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
+		var orbitalPeriod;
+		if (orbitType == 'elliptic') {
+			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
 //override for known planets?  don't forget to factor in the barycenter 
 if (this.orbitalPeriod !== undefined) {
 	console.log('for planet',this.name,'orbitalPeriod calculated',orbitalPeriod,'provided',this.orbitalPeriod);
 	orbitalPeriod = this.orbitalPeriod;
 }
+		}
 
-		var timeOfPeriapsisCrossing = -(eccentricAnomaly - eccentricity * sinEccentricAnomaly) / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
+		var longitudeOfPeriapsis = longitudeOfAscendingNode + argumentOfPeriapsis;	//omega-bar
+		
+		var meanAnomaly;
+		if (orbitType == 'parabolic') {
+			meanAnomaly = eccentricAnomaly + eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
+		} else if (orbitType == 'hyperbolic') {
+			meanAnomaly = eccentricity * Math.sinh(eccentricAnomaly) - eccentricAnomaly;
+		} else if (orbitType == 'elliptic') {
+			meanAnomaly = eccentricAnomaly - eccentricity * sinEccentricAnomaly;
+		}
+
+		var meanLongitude = meanAnomaly + longitudeOfPeriapsis;
+		
+		//can I do this?
+		var epoch = initJulianDate;
+		var meanAnomalyAtEpoch = meanAnomaly;
+
+		var timeOfPeriapsisCrossing = -meanAnomaly / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
 
 		var A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
@@ -364,11 +394,6 @@ if (this.orbitalPeriod !== undefined) {
 		} else {	//NaN? debug!
 			console.log(this.name+' has no orbit info.  mass: '+this.mass+' radius: '+this.radius);
 		}
-				
-		var timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
-		
-		//is this the correct formula to use here?
-		var meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 
 		this.keplerianOrbitalElements = {
 			relVelSq : velSq,
@@ -383,6 +408,9 @@ if (this.orbitalPeriod !== undefined) {
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
 			orbitalPeriod : orbitalPeriod,
+			//should I do this?
+			epoch : epoch,
+			meanAnomalyAtEpoch : meanAnomalyAtEpoch,
 			//the following are used for the orbit path shader:
 			orbitType : orbitType,
 			eccentricity : eccentricity,
@@ -720,6 +748,8 @@ r^2 = a^2 (cos(E)
 		} else {
 			throw 'here';
 		}
+
+		var eccentricity = ke.eccentricity;
 
 		//solve Newton Rhapson
 		//for elliptical orbits:

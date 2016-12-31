@@ -623,9 +623,6 @@ var ui = new function() {
 					rowDiv.appendTo(resultsDiv);
 
 					var name = row.name;
-					if (row.idNumber) {
-						name = row.idNumber+'/'+name;
-					}
 
 					var titleSpan;
 					var checkbox = $('<input>', {
