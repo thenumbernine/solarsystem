@@ -215,7 +215,7 @@ var SolarSystem = makeClass({
 						equatorialRadius:staticData.equatorialRadius,
 						inverseFlattening:staticData.inverseFlattening,
 						magnitude:staticData.magnitude,
-						parent:staticData.parent
+						parent:parentName
 					}));
 					currentIDs[dynamicData.id] = true;
 				}

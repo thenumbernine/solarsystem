@@ -313,7 +313,7 @@ var Planet = makeClass({
 		var orbitType = undefined;
 		var parabolicEccentricityEpsilon = 1e-7;
 //		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
-//console.log("danger! got a parabolic orbit for ",this," based on eccentricity epsilon",Math.abs(eccentricity-1));			
+//console.log("danger! got a parabolic orbit for ",this," based on eccentricity epsilon",Math.abs(eccentricity-1));
 //			orbitType = 'parabolic';
 //		} else 
 		if (eccentricity > 1) {
