@@ -33,12 +33,16 @@ var SolarSystem = makeClass({
 			rotationPeriod : -243.0185,
 			type : 'planet'
 		}));
-		
-		//TODO add earth-moon barycenter
+		this.planets.push(mergeInto(new Planet(), {
+			id : 3,
+			name : 'Earth Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
 		this.planets.push(mergeInto(new Planet(), {
 			id : 399,
 			name : 'Earth',
-			parent : 'Sun',
+			parent : 'Earth Barycenter',
 			mass : 5.9736e+24,
 			radius : 6.37101e+6,
 			equatorialRadius : 6378.136e+3,
@@ -51,7 +55,7 @@ var SolarSystem = makeClass({
 		this.planets.push(mergeInto(new Planet(), {
 			id : 301,
 			name : 'Moon',
-			parent : 'Earth',
+			parent : 'Earth Barycenter',
 			mass : 7.349e+22,
 			radius : 1.73753e+6,
 			rotationPeriod : 27.321662,
@@ -60,9 +64,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 4,
+			name : 'Mars Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 499,
 			name : 'Mars',
-			parent : 'Sun',
+			parent : 'Mars Barycenter',
 			mass : 6.4185e+23,
 			radius : 3.3899e+6,
 			equatorialRadius : 3397e+3,
@@ -71,9 +81,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 5,
+			name : 'Jupiter Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 599,
 			name : 'Jupiter',
-			parent : 'Sun',
+			parent : 'Jupiter Barycenter',
 			mass : 1.89813e+27,
 			radius : 6.9911e+7,
 			equatorialRadius : 71492e+3,
@@ -82,9 +98,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 6,
+			name : 'Saturn Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 699,
 			name : 'Saturn',
-			parent : 'Sun',
+			parent : 'Saturn Barycenter',
 			mass : 5.68319e+26,
 			radius : 5.8232e+7,
 			equatorialRadius : 60268e+3,
@@ -93,9 +115,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 7,
+			name : 'Uranus Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 799,
 			name : 'Uranus',
-			parent : 'Sun',
+			parent : 'Uranus Barycenter',
 			mass : 8.68103e+25,
 			radius : 2.5362e+7,
 			equatorialRadius : 25559e+3,
@@ -103,9 +131,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 8,
+			name : 'Neptune Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 899,
 			name : 'Neptune',
-			parent : 'Sun',
+			parent : 'Neptune Barycenter',
 			mass : 1.0241e+26,
 			radius : 2.4624e+7,
 			equatorialRadius : 24766e+3,
@@ -113,9 +147,15 @@ var SolarSystem = makeClass({
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
+			id : 9,
+			name : 'Pluto Barycenter',
+			parent : 'Sun',
+			type : 'barycenter'
+		}));
+		this.planets.push(mergeInto(new Planet(), {
 			id : 999,
 			name : 'Pluto',
-			parent : 'Sun',
+			parent : 'Pluto Barycenter',
 			mass : 1.314e+22,
 			radius : 1.151e+6,
 			rotationPeriod : -6.387230,
@@ -144,8 +184,7 @@ var SolarSystem = makeClass({
 			if (dynamicData.name.match(/^L[1-5]/)) {
 				//391-395 are Lagrangian points - skip
 			} else if (dynamicData.name.match(/Barycenter$/)) {
-				//1-9 are Barycenter points - skip
-				//TODO or maybe not
+				//1-9 are Barycenter points
 			} else {
 				if (currentIDs[dynamicData.id]) {
 					//if the id already exists then skip it
@@ -160,6 +199,14 @@ var SolarSystem = makeClass({
 					inverseFlattening (all but sun, mercury, venus, moon, pluto)
 					magntidue
 					*/
+					var parentName = staticData.parent;
+					var parentIndex = this.planets.findWithComparator(null, function(planet) {
+						return planet.name == parentName;
+					});
+					var parent = this.planets[parentIndex];
+					if (parent.parent.match(/Barycenter$/g)) {
+						parentName = parent.parent;
+					}
 					this.planets.push(mergeInto(new Planet(), {
 						id:dynamicData.id,
 						name:staticData.name,
@@ -201,7 +248,21 @@ var SolarSystem = makeClass({
 				}
 			}
 		}
-		
+
+		//calculate total mass of barycenter systems
+		for (var i = this.planets.length-1; i >= 0; --i) {
+			var planet = this.planets[i];
+			if (!planet.name.match(/Barycenter$/g)) continue;
+			assert(planet.mass === undefined);
+			planet.mass = 0;
+			$.each(this.planets, function(j, childPlanet) {
+				if (childPlanet.parent != planet.name) return;
+				planet.mass += childPlanet.mass;
+			});
+		}
+
+
+
 		// get texture name 
 		for (var i = 0; i < this.planets.length; ++i) { 
 			var planet = this.planets[i];

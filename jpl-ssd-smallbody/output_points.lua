@@ -153,8 +153,8 @@ function OutputToPoints:processBody(body)
 			func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3
 			deriv = -1 - eccentricAnomaly * eccentricAnomaly
 		elseif orbitType == 'elliptic' then 	--elliptical
-			func = meanAnomaly - eccentricAnomaly + eccentricity * math.sin(eccentricAnomaly)
-			deriv = -1 + eccentricity * math.cos(eccentricAnomaly)	--has zeroes ...
+			func = meanAnomaly - (eccentricAnomaly - eccentricity * math.sin(eccentricAnomaly))
+			deriv = -(1 - eccentricity * math.cos(eccentricAnomaly))	--has zeroes ...
 		elseif orbitType == 'hyperbolic' then	--hyperbolic
 			func = meanAnomaly + eccentricAnomaly - eccentricity  * math.sinh(eccentricAnomaly)
 			deriv = 1 - eccentricity * math.cosh(eccentricAnomaly)

@@ -93,7 +93,7 @@ if (this.sceneObj) return;
 		}
 		delete this.sceneObj;
 		this.sceneObj = undefined;
-*/	
+*/
 	},
 	prepDraw : function(drawList, tanFovY) {
 		var radius = Math.max(

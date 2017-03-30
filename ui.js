@@ -392,12 +392,17 @@ var ui = new function() {
 
 		//TODO add star systems
 		$.each(solarSystem.planets, function(planetIndex, planet) {
+			
 			//if any other planet doesn't have recorded mass then skip it
 			if (planet.mass === undefined) return;
 
 			var parentPlanet = planet.parent;
 			if (parentPlanet !== undefined) {
 				if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
+				//skip past any parent planets that don't have controls (i.e. barycenters)
+				while (parentPlanet && !overlayControlsForPlanets[parentPlanet]) {
+					parentPlanet = parentPlanet.parent;
+				}
 			}
 
 			var controls = new HierarchicalCheckboxControl({
@@ -421,7 +426,6 @@ var ui = new function() {
 			}
 
 			planetInfluences[planetIndex] = true;
-
 			overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
 		});
 
@@ -657,7 +661,6 @@ var ui = new function() {
 						data : row,
 						name : name
 					});
-
 				});
 
 				//and add prev/next/pages if there is

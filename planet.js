@@ -312,9 +312,11 @@ var Planet = makeClass({
 
 		var orbitType = undefined;
 		var parabolicEccentricityEpsilon = 1e-7;
-		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
-			orbitType = 'parabolic';
-		} else if (eccentricity > 1) {
+//		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
+//console.log("danger! got a parabolic orbit for ",this," based on eccentricity epsilon",Math.abs(eccentricity-1));			
+//			orbitType = 'parabolic';
+//		} else 
+		if (eccentricity > 1) {
 			orbitType = 'hyperbolic';
 		} else {
 			orbitType = 'elliptic';
@@ -532,33 +534,43 @@ if (this.orbitalPeriod !== undefined) {
 			timeOfPeriapsisCrossing = this.sourceData.timeOfPerihelionPassage;	//julian day
 		}
 
+		var meanAnomaly = this.sourceData.meanAnomaly;
+		var eccentricAnomaly = this.sourceData.eccentricAnomaly;
 		var epoch = this.sourceData.epoch;
 		if (orbitType === 'parabolic') {
-			eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
-			meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
+			if (eccentricAnomaly === undefined || eccentricAnomaly === null) {
+				eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
+			}
+			if (meanAnomaly === undefined || meanAnomaly === null) {
+				meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
+			}
 		} else if (orbitType === 'hyperbolic') {
 			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
-			meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
+			if (meanAnomaly === undefined || meanAnomaly === null) {
+				meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
+			}
 		} else if (orbitType === 'elliptic') {
 			//in theory I can say 
 			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPeriapsis)) / (1 + eccentricity * Math.cos(argumentOfPeriapsis)));
 			// ... but Math.acos has a limited range ...
 
-			if (this.isComet) {
-				timeOfPeriapsisCrossing = this.sourceData.timeOfPerihelionPassage;	//julian day
-				var timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
-				meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
-			} else if (this.isAsteroid) {
-				meanAnomaly = this.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (initJulianDate - epoch);
-			} else if (this.isExoplanet) {
-				meanAnomaly = this.sourceData.meanAnomaly !== undefined ? this.sourceData.meanAnomaly : 0;
-			} else {
-			//	throw 'here';
+			if (meanAnomaly === undefined || meanAnomaly === null) {
+				if (this.isComet) {
+					timeOfPeriapsisCrossing = this.sourceData.timeOfPerihelionPassage;	//julian day
+					var timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
+					meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
+				} else if (this.isAsteroid) {
+					meanAnomaly = this.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (initJulianDate - epoch);
+				} else if (this.isExoplanet) {
+					meanAnomaly = this.sourceData.meanAnomaly !== undefined ? this.sourceData.meanAnomaly : 0;
+				} else {
+				//	throw 'here';
+				}
 			}
 		} else {
 			throw 'here';
 		}
-		
+
 		//solve Newton Rhapson
 		//for elliptical orbits:
 		//	f(E) = M - E + e sin E = 0
@@ -569,25 +581,27 @@ if (this.orbitalPeriod !== undefined) {
 		//for hyperbolic orbits:
 		//	f(E) = M - e sinh(E) - E
 		//	f'(E) = -1 - e cosh(E)
-		eccentricAnomaly = meanAnomaly;
-		for (var i = 0; i < 10; ++i) {
-			var func, deriv;
-			if (orbitType === 'parabolic') {	//parabolic
-				func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
-				deriv = -1 - eccentricAnomaly * eccentricAnomaly;
-			} else if (orbitType === 'elliptic') { 	//elliptical
-				func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
-				deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
-			} else if (orbitType === 'hyperbolic') {	//hyperbolic
-				func = meanAnomaly + eccentricAnomaly - eccentricity  * Math.sinh(eccentricAnomaly);
-				deriv = 1 - eccentricity * Math.cosh(eccentricAnomaly);
-			} else {
-				throw 'here';
-			}
+		if (eccentricAnomaly === undefined || eccentricAnomaly === null) {
+			eccentricAnomaly = meanAnomaly;
+			for (var i = 0; i < 10; ++i) {
+				var func, deriv;
+				if (orbitType === 'parabolic') {	//parabolic
+					func = meanAnomaly - eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
+					deriv = -1 - eccentricAnomaly * eccentricAnomaly;
+				} else if (orbitType === 'elliptic') { 	//elliptical
+					func = meanAnomaly - eccentricAnomaly + eccentricity * Math.sin(eccentricAnomaly);
+					deriv = -1 + eccentricity * Math.cos(eccentricAnomaly);	//has zeroes ...
+				} else if (orbitType === 'hyperbolic') {	//hyperbolic
+					func = meanAnomaly + eccentricAnomaly - eccentricity  * Math.sinh(eccentricAnomaly);
+					deriv = 1 - eccentricity * Math.cosh(eccentricAnomaly);
+				} else {
+					throw 'here';
+				}
 
-			var delta = func / deriv;
-			if (Math.abs(delta) < 1e-15) break;
-			eccentricAnomaly -= delta;
+				var delta = func / deriv;
+				if (Math.abs(delta) < 1e-15) break;
+				eccentricAnomaly -= delta;
+			}
 		}
 
 		var sinEccentricAnomaly = Math.sin(eccentricAnomaly);
@@ -707,6 +721,7 @@ r^2 = a^2 (cos(E)
 			inclination : inclination,
 			timeOfPeriapsisCrossing : timeOfPeriapsisCrossing,
 			meanAnomaly : meanAnomaly,
+			meanAnomalyAtEpoch : this.sourceData.meanAnomalyAtEpoch,
 			epoch : epoch,
 			orbitType : orbitType,
 			orbitalPeriod : orbitalPeriod,	//only exists for elliptical orbits
@@ -744,6 +759,7 @@ r^2 = a^2 (cos(E)
 			assertExists(ke, 'timeOfPeriapsisCrossing');
 			meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
 		} else if (orbitType == 'parabolic') {
+console.log('parabolic orbit for planet',this);			
 			throw 'got a parabolic orbit';
 		} else {
 			throw 'here';
