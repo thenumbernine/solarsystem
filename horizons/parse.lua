@@ -50,8 +50,11 @@ xpcall(function()
 		if id then
 			mustbe('^ '..id..'$')
 			mustbe('^%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*$')
-			local name = canbe('^ ?Revised ?: ... %d%d, %d%d%d%d%s+(.*)%s+     ')
+			-- four month abbrevs because someone put Junn in one entry
+			-- likewise someone punched in "Oct 11, 2016" as "Oct 11,2 016"
+			local name = canbe('^ ?Revised ?: ....? %d%d, ?%d ?%d%d%d%s+(.*)%s+     ')
 						or canbe('^JPL/HORIZONS%s+(.*)%s+     ')
+			assert(name, "failed to find next name on line "..lineIndex..': '..nextline)
 			name = name:trim()
 			--[[
 			name could be in one of the following forms:

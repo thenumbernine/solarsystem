@@ -1,7 +1,7 @@
 instructions:
 1) getdata.lua	-- gets the pos and vel of all major bodies (planets and moons).  also records extra data of bodies to be parsed later.  writes dynamic-vars.json
 2) parse.lua	-- parses mass, radius, etc variables from the recorded telnet session.  writes static-vars.json
-3) get_from_solarsystem_nasa_gov.lua		-- fills in the blanks that parse didn't using more reliable websites.  modifies static-vars.json
+3) get_from_ssd.lua		-- fills in the blanks that parse didn't using more reliable websites.  modifies static-vars.json
 
 results:
 dynamic-vars.json	- list of dynamic data for each body (position and velocity) and julian timestamp
