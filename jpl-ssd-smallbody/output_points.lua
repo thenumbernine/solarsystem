@@ -11,6 +11,9 @@ local ffi = require 'ffi'
 
 local julianDate = julian.fromCalendar(os.date'!*t')
 
+local writeIndividualNodes = false 
+local writeOneBigFile = true 
+
 -- and for just outputting a cloud of points ...
 local OutputToPoints = class()
 
@@ -552,52 +555,107 @@ childDepth 	start	end	size
 	local rowDesc = json.decode(file['row-desc.json']:match('.-=(.*)'))
 
 	-- TODO: automatically make dirs for file[] access?
-	os.execute('mkdir nodes')
+	if writeIndividualNodes then
+		os.execute('mkdir nodes')
+	end
 	print('writing out nodes')
+
+	local allNodeIDs = setmetatable(allNodes:map(function(node)
+		return node.nodeID
+	end):sort():map(function(nodeID)
+		assert(tostring(tonumber(nodeID)) == tostringnum(nodeID))
+		return tonumber(nodeID)
+	end), nil)
+	
+	local longp = ffi.new('long[1]')
+	local allNodesFile 
+	if writeOneBigFile then	
+		-- I can't json.encode all at once without luajit crapping out, so I will do it piecewise ...
+		--local allNodesFile = io.open('nodes.json', 'w')
+		--allNodesFile:write'{\n' 
+		require 'ffi.c.stdio'
+		-- make sure body_t is defined
+		ffi.sizeof'body_t'
+		allNodesFile = assert(ffi.C.fopen('nodes.raw', 'wb'))
+
+		ffi.cdef[[
+typedef struct header_s {
+	real mins[3];
+	real maxs[3];
+	long numNodes;
+} header_t;
+]]
+		local header = ffi.new('header_t[1]')
+		for i=0,2 do
+			header[0].mins[i] = mins[i+1]
+			header[0].maxs[i] = maxs[i+1]
+		end
+	
+		header[0].numNodes = #allNodeIDs
+		ffi.C.fwrite(header, ffi.sizeof'header_t', 1, allNodesFile)
+		for _,nodeID in ipairs(allNodeIDs) do
+			longp[0] = nodeID
+			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+		end
+	end
+
 	for _,node in ipairs(allNodes) do
 		setmetatable(node, nil)
 		node.parent = nil
 		node.children = nil
-		node.bodies = setmetatable(node.bodies:map(function(body)
-			-- TODO store max length of idnumber, name in octree.json
-			-- then write out binary data
-			local row = table()
-			for _,desc in ipairs(rowDesc) do
-				local name = desc.name
-				if desc.type == 'vec3' then
-					row:insert(body[name][0])
-					row:insert(body[name][1])
-					row:insert(body[name][2])
-				elseif desc.type == 'int' 
-				or desc.type == 'byte'
-				or desc.type == 'float'
-				then
-					row:insert(tonumber(body[name]))
-				elseif desc.type == 'string' then
-					row:insert(ffi.string(body[name]))
-				else
-					error("got unknown type "..desc.type)
+		if writeIndividualNodes then
+			local jsonBodies = setmetatable(node.bodies:map(function(body)
+				-- TODO store max length of idnumber, name in octree.json
+				-- then write out binary data
+				local row = table()
+				for _,desc in ipairs(rowDesc) do
+					local name = desc.name
+					if desc.type == 'vec3' then
+						row:insert(body[name][0])
+						row:insert(body[name][1])
+						row:insert(body[name][2])
+					elseif desc.type == 'int' 
+					or desc.type == 'byte'
+					or desc.type == 'float'
+					then
+						row:insert(tonumber(body[name]))
+					elseif desc.type == 'string' then
+						row:insert(ffi.string(body[name]))
+					else
+						error("got unknown type "..desc.type)
+					end
 				end
+				return setmetatable(row, nil)
+			end), nil)
+			local nodeJSONData = json.encode(jsonBodies):gsub('%],%[','%],\n%[')
+			file['nodes/'..tostringnum(node.nodeID)..'.json'] = nodeJSONData
+		end
+		if writeOneBigFile then
+			--allNodesFile:write('\t"',tostring(node.nodeID),'" = ',nodeJSONData,',\n')
+			longp[0] = node.nodeID
+			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+			longp[0] = #node.bodies
+			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+			for i,body in ipairs(node.bodies) do
+				ffi.C.fwrite(body._ptr, ffi.sizeof'body_t', 1, allNodesFile)
 			end
-			return setmetatable(row, nil)
-		end), nil)
-		file['nodes/'..tostringnum(node.nodeID)..'.json'] = json.encode(node.bodies):gsub('%],%[','%],\n%[')
+		end
 		node.bodies = nil
 	end
-	print('writing octree info')
-	file['octree.json'] = json.encode({
-		mins = {mins:unpack()},
-		maxs = {maxs:unpack()},
-		nodes = setmetatable(allNodes:map(function(node)
-			return node.nodeID
-		end):sort():map(function(nodeID)
-			assert(tostring(tonumber(nodeID)) == tostringnum(nodeID))
-			return tonumber(nodeID)
-		end), nil),
-	}, {indent=true})
+	--allNodesFile:write'}\n'
+	--allNodesFile:close()
+	ffi.C.fclose(allNodesFile)
+
+	if writeIndividualNodes then
+		print('writing octree info')
+		file['octree.json'] = json.encode({
+			mins = {mins:unpack()},
+			maxs = {maxs:unpack()},
+			nodes = allNodeIDs,
+		}, {indent=true})
+	end
 
 	print('done')
-	--]]
 end
 
 return OutputToPoints

@@ -3,9 +3,43 @@
 2) parse.lua	
 	- uses row-desc.json (which is also used by the client)
 	- generates the KOE of each body and produces the following files: 
-		- octree.json	- loaded initially, holds a list of all valid octree node hashes
 		- node-dict.csv	- queryied by search.lua server-side 
-		- nodes/*.json	- holds point data at each octree node 
+		- for file-per-node output (which I'm not convinced is optimal, it requires so many distinct connections...)
+			- octree.json	- loaded initially, holds a list of all valid octree node hashes
+			- nodes/*.json	- holds point data at each octree node 
+		- for one-big-chunk output
+			- nodes.raw, which is of the structure:
+			double mins[3], maxs[3];
+			long numValidNodeIDs;
+			long validNodeIDs[numValidNodeIDs];
+			{
+				long nodeID;
+				long numBodies;
+				{
+					double epoch;
+					double perihelionDistance;
+					double semiMajorAxis;
+					double eccentricity;
+					double inclination;
+					double argumentOfPeriapsis;
+					double longitudeOfAscendingNode;
+					double meanAnomalyAtEpoch;
+					double absoluteMagnitude;
+					double magnitudeSlopeParameter;
+					double timeOfPerihelionPassage;
+					int bodyType;
+					int horizonID;
+					char name[43+1];
+					char orbitSolutionReference[12+1];
+					long index;
+					real pos[3], A[3], B[3];
+					real eccentricAnomaly;
+					real timeOfPeriapsisCrossing;
+					real meanAnomaly;
+					int orbitType;
+					real orbitalPeriod;
+				}[numBodies];
+			}[numNodes];
 
 3) search.lua (executed remotely via Xavante)	
 	- queries node-dict.csv for strings and returns which node and index within that node the matching body is found 

@@ -48,9 +48,11 @@ local function getEphemerisData(data)
 	i = i + 1
 	-- lines[i] has the current date
 	i = i + 1
-	local pos = lines[i]:trim():split('%s+'):map(function(w) return w:lower() end)	-- leave them as strings for now
+	-- keep these as strings
+	-- no point in losing precision deserializing and reserializing data
+	local pos = {lines[i]:match'X =([^Y]+) Y =([^Z]+) Z =(.+)$'}
 	i = i + 1
-	local vel = lines[i]:trim():split('%s+'):map(function(w) return w:lower() end)	-- no point in losing precision deserializing and reserializing data
+	local vel = {lines[i]:match'VX=([^V]+) VY=([^V]+) VZ=(.+)$'}
 	-- next line is the light time, range, and range-rate
 	-- next line should be $$EOE
 	return {pos=pos, vel=vel}
@@ -136,9 +138,11 @@ local function run()
 			readUntil(' :')
 			send('')		-- keep no CSV output format 
 			readUntil(' :')
-			send('')		-- keep no cartesian output labels
+			send('')		-- keep no output delta T 
 			readUntil(' :')
 			send('')		-- keep output table type
+			readUntil(' :')
+			send('')		-- keep no cartesian output labels
 		end
 		ephemerisData = getEphemerisData(readUntil(', ? : '))		-- keep output table type to state vector (pos+vel) + extra stuff
 		local ephemerisData = table(ephemerisData, body)

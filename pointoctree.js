@@ -8,7 +8,7 @@ var PointOctreeNode = makeClass({
 		this.center = [];
 	},
 	loadData : function() {
-if (this.sceneObj) return;		
+		if (this.sceneObj) return;		
 		if (this.loadingData) return;
 		this.unloaded = false;
 		this.loadingData = true;
@@ -117,6 +117,7 @@ if (this.sceneObj) return;
 			return;	
 		}
 
+		//TODO for all-at-once downloading, just look things up in the big binary structure
 		//load data if needed
 		this.loadData();
 

@@ -2,7 +2,7 @@
 -- script to convert text files to another format
 
 require 'ext'
-
+local gcmem = require 'ext.gcmem'
 local ffi = require 'ffi'
 
 local OutputPoints = require 'output_points'
@@ -93,28 +93,31 @@ typedef struct {
 	ffi.cdef(code)
 end
 
-local bodyMT = not ffi and {
-	__index = {
-		getPos = function(self)
-			return unpack(self.pos)
-		end,
-	},
-} or {
-	__index = {
-		getPos = function(self)
-			return self.pos[0], self.pos[1], self.pos[2]
-		end,
-	},
-}
-
-local bodyMetaType
-if ffi then
-	bodyMetaType = ffi.metatype('body_t', bodyMT) 
-end
-
 local function newBody()
-	if not ffi then return setmetatable({}, bodyMT) end
-	local body = bodyMetaType()
+	if not ffi then 
+		return setmetatable({}, {
+			__index = {
+				getPos = function(self)
+					return unpack(self.pos)
+				end,
+			},
+		}) 
+	end
+	local body = setmetatable({
+		_ptr = gcmem.new('body_t',1),
+		getPos = function(self)
+			return self._ptr[0].pos[0], self._ptr[0].pos[1], self._ptr[0].pos[2]
+		end,
+	}, {
+		-- can you use cdata as __index and __newindex values
+		-- similar to how you can use tables?
+		__index = function(self,k)
+			return self._ptr[0][k]
+		end,
+		__newindex = function(self,k,v)
+			self._ptr[0][k] = v
+		end
+	})
 	for _,field in ipairs(numberFields) do
 		body[field] = math.nan
 	end

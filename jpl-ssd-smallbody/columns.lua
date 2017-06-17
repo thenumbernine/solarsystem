@@ -51,4 +51,3 @@ function Columns:__call(line)
 end
 
 return Columns
-
