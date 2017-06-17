@@ -1,10 +1,11 @@
+#!/usr/bin/env lua
 require 'ext'
 local json = require 'dkjson'
 local socket = require 'socket'
-local http = require 'socket.http'
+local https = require 'ssl.https'
 local htmlparser = require 'htmlparser.htmlparser'
-require 'htmlparser.common'
-require 'htmlparser.xpath'
+htmlparser.common = require 'htmlparser.common'
+htmlparser.xpath = require 'htmlparser.xpath'
 
 -- [[
 local planetsFilename = 'static-vars.json'
@@ -48,8 +49,14 @@ local vars = {}
 local cacheFileName = 'ssd_sat_phys_par.html'
 local page = file[cacheFileName]
 if not page then
-	local url = 'http://ssd.jpl.nasa.gov/?sat_phys_par'
-	page = assert(http.request(url))
+	local url = 'https://ssd.jpl.nasa.gov/?sat_phys_par'
+	local t = table()
+	assert(https.request{
+		url = url,
+		sink = require 'ltn12'.sink.table(t),
+		protocol = 'tlsv1',
+	})
+	page = t:concat()
 	file[cacheFileName] = page
 end
 page = page:gsub('\r\n', '\n')
@@ -59,10 +66,10 @@ local tree = htmlparser.parse(page)
 local ps = htmlparser.xpath(tree, '//p')
 for _,p in ipairs(ps) do
 	if p.child then
-		local tabl = findchild(p, 'table')
-		local font = findchild(p, 'font')
+		local tabl = htmlparser.common.findchild(p, 'table')
+		local font = htmlparser.common.findchild(p, 'font')
 		if tabl and tabl.child and font then
-			local parentPlanetName = flattenText(font):match('%w+'):lower()
+			local parentPlanetName = htmlparser.common.flattenText(font):match('%w+'):lower()
 			print(parentPlanetName)
 			parentPlanetName = ({
 				martian = 'mars',
@@ -71,25 +78,25 @@ for _,p in ipairs(ps) do
 				uranian = 'uranus',
 				neptunian = 'neptune',
 			})[parentPlanetName] or parentPlanetName
-			local trs = findchilds(tabl, 'tr')
+			local trs = htmlparser.common.findchilds(tabl, 'tr')
 			for i=2,#trs do	-- trs[1] is the header column ...
 				local tr = trs[i]
-				local tds = findchilds(tr, 'td')
+				local tds = htmlparser.common.findchilds(tr, 'td')
 				for i=#tds,1,-1 do
-					local colspan = tonumber(findattr(tds[i],'colspan') or 1)
+					local colspan = tonumber(htmlparser.common.findattr(tds[i],'colspan') or 1)
 					for i=1,colspan-1 do
 						table.insert(tds,i+1,{})	-- fill empty columns so common column cells are at matching offsets 
 					end
 				end
 				assert(#tds == 10, "found "..#tds.." cols")
 		
-				local name = flattenText(tds[1])
-				local GM = parseFloat(flattenText(tds[2]))
+				local name = htmlparser.common.flattenText(tds[1])
+				local GM = parseFloat(htmlparser.common.flattenText(tds[2]))
 				local mass = GM / G
-				local radius = 1e+3 * parseFloat(flattenText(tds[4])) -- radius in m
-				local density = parseFloat(flattenText(tds[6])) * 1e+12 -- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
-				local meanOppositionMagnitude = parseFloat(flattenText(tds[7]))	-- V0 or R (if has a R suffix)
-				local albedo = parseFloat(flattenText(tds[9]))
+				local radius = 1e+3 * parseFloat(htmlparser.common.flattenText(tds[4])) -- radius in m
+				local density = parseFloat(htmlparser.common.flattenText(tds[6])) * 1e+12 -- density in kg/m^3 = kg/g (cm/m)^3 g/cm^3 = g/cm^3 * 1e+3
+				local meanOppositionMagnitude = parseFloat(htmlparser.common.flattenText(tds[7]))	-- V0 or R (if has a R suffix)
+				local albedo = parseFloat(htmlparser.common.flattenText(tds[9]))
 				
 				if mass == 0 and density ~= 0 then
 					mass = density * (4/3 * math.pi * radius^3)
@@ -158,8 +165,14 @@ end
 local cacheFileName = 'ssd_planet_phys_par.html'
 local page = file[cacheFileName]
 if not page then
-	local url = 'http://ssd.jpl.nasa.gov/?planet_phys_par'
-	page = assert(http.request(url))
+	local url = 'https://ssd.jpl.nasa.gov/?planet_phys_par'
+	local t = table()
+	assert(https.request{
+		url = url,
+		sink = require 'ltn12'.sink.table(t),
+		protocol = 'tlsv1',
+	})
+	page = t:concat()
 	file[cacheFileName] = page
 end
 page = page:gsub('\r\n', '\n')
@@ -171,17 +184,17 @@ local tds = htmlparser.xpath(tree, '//td')
 print('#tds',#tds)
 for _,td in ipairs(tds) do
 	if td.child then
-		local tabls = findchilds(td, 'table')
+		local tabls = htmlparser.common.findchilds(td, 'table')
 		for _,tabl in ipairs(tabls) do
-			local trs = findchilds(tabl, 'tr')
+			local trs = htmlparser.common.findchilds(tabl, 'tr')
 			if trs[1] then
-				local td = findchild(trs[1], 'td')
-				if td and flattenText(td) == 'Planet' then
+				local td = htmlparser.common.findchild(trs[1], 'td')
+				if td and htmlparser.common.flattenText(td) == 'Planet' then
 					for i=3,#trs do	-- trs[1] is the header column ...
 						local tr = trs[i]
-						local tds = findchilds(tr, 'td')
+						local tds = htmlparser.common.findchilds(tr, 'td')
 						local function stupidNasaHTML(s)
-							return flattenText(s):match('(%S+)%.')
+							return htmlparser.common.flattenText(s):match('(%S+)%.')
 						end
 						local name = stupidNasaHTML(tds[1]) 
 						local equatorialRadius = 1e+3 * parseFloat(stupidNasaHTML(tds[2]))

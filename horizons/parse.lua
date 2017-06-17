@@ -1,4 +1,4 @@
-#!/usr/bin/env lua -lluarocks.require
+#!/usr/bin/env lua
 --[[
 I was smart enough to capture the output of the telnet session
 but not smart enough to save the data in individual files per-object
