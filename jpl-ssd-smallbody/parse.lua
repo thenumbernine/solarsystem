@@ -2,8 +2,9 @@
 -- script to convert text files to another format
 
 require 'ext'
-local gcmem = require 'ext.gcmem'
+--local gcmem = require 'ext.gcmem'
 local ffi = require 'ffi'
+local useffi = true
 
 local OutputPoints = require 'output_points'
 
@@ -63,7 +64,7 @@ local numberFields = table{
 	'timeOfPerihelionPassage',		--comets
 }
 
-if ffi then
+if useffi then
 	local template = require 'template'
 	local code = template([[
 typedef double real;
@@ -94,7 +95,7 @@ typedef struct {
 end
 
 local function newBody()
-	if not ffi then 
+	if not useffi then 
 		return setmetatable({}, {
 			__index = {
 				getPos = function(self)
@@ -104,7 +105,7 @@ local function newBody()
 		}) 
 	end
 	local body = setmetatable({
-		_ptr = gcmem.new('body_t',1),
+		_ptr = ffi.new'body_t[1]', --gcmem.new('body_t',1),
 		getPos = function(self)
 			return self._ptr[0].pos[0], self._ptr[0].pos[1], self._ptr[0].pos[2]
 		end,

@@ -6,13 +6,13 @@ local julian = assert(loadfile('../horizons/julian.lua'))()
 
 local vec3 = require 'vec.vec3'
 local json = require 'dkjson'
-local bit = require 'bit'
+local bit = bit32 or require 'bit'
 local ffi = require 'ffi'
 
 local julianDate = julian.fromCalendar(os.date'!*t')
 
-local writeIndividualNodes = false 
-local writeOneBigFile = true 
+local writeIndividualNodes = false
+local writeOneBigFile = true
 
 -- and for just outputting a cloud of points ...
 local OutputToPoints = class()
