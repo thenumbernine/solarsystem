@@ -1,3 +1,13 @@
+BUGS TO FIX:
+- koe should use newton solver each update (based on last update, only takes a few iterations to converge), but it's not ...
+- somehow I messed up the calculations, I think when I added in barycenters for planets
+- remove barycenter labels / remove selectable
+- point cloud viewer.  hierarchical is good for performance but bad for network.  chopping it up into a tree only took a few ms, so go back to doing that on client side.
+	also, the file is big, so only download it optionally / last maybe?
+- the datasets have overlaps and need to be unified ... between the hyg and the exoplanet datasets at least
+	it'd be nice to also add in the sdss3 galaxy data as another point cloud ...
+- same with the gaia 1-billion star map ... this might actually benefit from a hierarchical view ...
+
 currently the solar system visualization is a mess of too many different things:
 1) keplerian orbital element calcluator
 	- based on various sources of incoming data:
