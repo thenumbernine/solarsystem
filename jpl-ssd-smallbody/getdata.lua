@@ -1,6 +1,7 @@
 #!/usr/bin/env lua
-local http = require 'socket.http'
 require 'ext'
+local https = require 'ssl.https'
+local ltn12 = require 'ltn12'
 
 local function download(filename, url)
 	if io.fileexists(filename) then
@@ -8,12 +9,17 @@ local function download(filename, url)
 		return
 	end
 	print('downloading url '..url..' ...')
-	local results = {assert(http.request(url))}
-	local data = assert(results[1], "didn't get any data back from our request")
+	local data = table()
+	assert(https.request{
+		url = url,
+		sink = ltn12.sink.table(data),
+		protocol = 'tlsv1',
+	})
+	data = data:concat()
 	print('writing file '..filename..' with this much data: '..#data)
 	file[filename] = data
 end
 
-download('ELEMENTS.NUMBR', 'http://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')
-download('ELEMENTS.UNNUM', 'http://ssd.jpl.nasa.gov/dat/ELEMENTS.UNNUM')
-download('ELEMENTS.COMET', 'http://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
+download('ELEMENTS.NUMBR', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')
+download('ELEMENTS.UNNUM', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.UNNUM')
+download('ELEMENTS.COMET', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
