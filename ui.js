@@ -395,6 +395,9 @@ var ui = new function() {
 			
 			//if any other planet doesn't have recorded mass then skip it
 			if (planet.mass === undefined) return;
+			
+			//and if it's a barycenter then skip it ... or at least process its children?
+			if (planet.isBarycenter) return;
 
 			var parentPlanet = planet.parent;
 			if (parentPlanet !== undefined) {

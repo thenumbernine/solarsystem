@@ -17,11 +17,13 @@ var NewtonApproximateMetric = makeClass({
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
+			
 			var x = pos[0] - planet.pos[0];
 			var y = pos[1] - planet.pos[1];
 			var z = pos[2] - planet.pos[2];
-			r = Math.sqrt(x * x + y * y + z * z);
+			r = Math.sqrt(x*x + y*y + z*z);
 			var r2 = r * r;
 			var accelMagn = gravitationalConstant * planet.mass / r2;
 			accel[0] -= x/r * accelMagn;
@@ -73,6 +75,7 @@ var NewtonApproximateMetric = makeClass({
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 
@@ -107,6 +110,7 @@ var SchwarzschildMetric = makeClass({
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 			
 			var x = pos[0] - planet.pos[0];
@@ -162,6 +166,7 @@ var SchwarzschildMetric = makeClass({
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 			
@@ -211,6 +216,7 @@ var KerrMetric = makeClass({
 		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
 			var planet = orbitStarSystem.planets[planetIndex];
+			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 
 			var x = pos[0] - planet.pos[0];

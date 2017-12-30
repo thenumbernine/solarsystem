@@ -37,8 +37,13 @@ var SolarSystem = makeClass({
 			id : 3,
 			name : 'Earth Barycenter',
 			parent : 'Sun',
-			type : 'barycenter'
+			type : 'barycenter',
+			orbitalPeriod : 365.256363004
 		}));
+		/*
+		hmm, technically the earth barycenter orbits the sun every 365 days
+		and the earth and moon both orbit the barycenter ever 28 days ...
+		*/
 		this.planets.push(mergeInto(new Planet(), {
 			id : 399,
 			name : 'Earth',
@@ -48,7 +53,7 @@ var SolarSystem = makeClass({
 			equatorialRadius : 6378.136e+3,
 			inverseFlattening : 298.257223563,
 			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,	//sidereal day
-			orbitalPeriod : 365.256363004,
+			orbitalPeriod : 27.321662,	//(tidally locked) moon's rotation period = orbit around barycenter
 			rotationOffset : -2/24 * 2*Math.PI,	//looks about 2 hours off
 			type : 'planet'
 		}));
@@ -252,7 +257,8 @@ var SolarSystem = makeClass({
 		//calculate total mass of barycenter systems
 		for (var i = this.planets.length-1; i >= 0; --i) {
 			var planet = this.planets[i];
-			if (!planet.name.match(/Barycenter$/g)) continue;
+			planet.isBarycenter = planet.name.match(/Barycenter$/g);
+			if (!planet.isBarycenter) continue;
 			assert(planet.mass === undefined);
 			planet.mass = 0;
 			$.each(this.planets, function(j, childPlanet) {
