@@ -7,6 +7,9 @@ var showStars = true;
 var starsVisibleMagnitudeBias = 0;
 var allowSelectStars = true;
 
+var bubbleStartFadeDistInLyr = .25;
+var bubbleStopFadeDistInLyr = 1.25;
+
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
 // and remove StarInField ... make that just StarSystem (even for zero-planet systems)
 //
@@ -488,8 +491,6 @@ console.log('adding star systems to star fields and vice versa');
 
 				//only draw bubbles around stars once we're out of the star system
 				//then fade them into display
-				var bubbleStartFadeDistInLyr = .5;
-				var bubbleStopFadeDistInLyr = 1.5;
 				if (distFromSolarSystemInLyr > bubbleStartFadeDistInLyr) {
 					var alpha = (distFromSolarSystemInLyr - bubbleStartFadeDistInLyr) / (bubbleStopFadeDistInLyr - bubbleStartFadeDistInLyr);
 					alpha = Math.clamp(alpha, 0, 1);

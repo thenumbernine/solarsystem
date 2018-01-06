@@ -1447,7 +1447,7 @@ function initScene() {
 				glutil.view.fovY *= scale;
 				glutil.updateProjection();
 			} else {
-				orbitTargetDistance *= scale;
+				orbitTargetDistance = Math.min(orbitTargetDistance * scale, 4000 * metersPerUnits.Mpc);
 			}
 			
 			refreshOrbitTargetDistanceText();
