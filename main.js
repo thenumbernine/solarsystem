@@ -482,8 +482,10 @@ var showFPS = false;
 					if (picking) {
 						pickObject.drawPlanet(planet.sceneObj, planet);
 					} else {
-						planet.sceneObj.draw();
-						overlayTexts.add(planet);
+						if (planet.type != 'barycenter') {
+							planet.sceneObj.draw();
+							overlayTexts.add(planet);
+						}
 					}
 
 					//show latitude and longitude lines
@@ -691,7 +693,9 @@ var showFPS = false;
 					}
 
 					if (planet.orbitVisRatio > .1) {
-						overlayTexts.add(planet);
+						if (planet.type != 'barycenter') {
+							overlayTexts.add(planet);
+						}
 					}
 				}
 			}

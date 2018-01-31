@@ -3,8 +3,8 @@
 
 require 'ext'
 --local gcmem = require 'ext.gcmem'
-local ffi = require 'ffi'
-local useffi = true
+local result, ffi = pcall(require, 'ffi')
+local useffi = false
 
 local OutputPoints = require 'output_points'
 
