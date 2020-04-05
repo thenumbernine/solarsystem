@@ -15,6 +15,13 @@ var bubbleStopFadeDistInLyr = 1.25;
 //
 //only instanciate these for the named stars.  87 in all.
 
+var drawConstellationPointSizeScalar = 5;
+var drawConstellationColorScalar = 20;
+var drawConstellationPointSizeMax = 10;
+
+
+var indexesForConstellations = [];
+
 var starfield = new function() {
 	this.maxDistInLyr = 5000;
 	this.renderScale = 1e+10;
@@ -294,7 +301,13 @@ void main() {
 			}
 		};
 		*/
-		var numElem = 8;
+		
+		//unnamed is index 0
+		for (var k = 0; k < constellations.length; ++k) {
+			indexesForConstellations[k] = []; 
+		}
+		
+		var numElem = 9;
 		xhr.onload = function(e) {
 			var arrayBuffer = this.response;
 			var data = new DataView(arrayBuffer);
@@ -324,7 +337,20 @@ if (dist < metersPerUnits.pc / thiz.renderScale) {
 	numClose++;
 }
 				}
+			
+			
+				if (j%numElem==8) {	//constellation
+					var constellationIndex = floatBuffer[j];
+					indexesForConstellations[constellationIndex].push( (j-8)/numElem );
+				}
 			}
+
+			for (var j = 0; j < constellations.length; ++j) {
+				indexesForConstellations[j] = new glutil.ElementArrayBuffer({
+					data : indexesForConstellations[j]
+				});
+			}
+
 console.log('num stars within 1pc:', numClose);
 			//now that we have the float buffer ...
 			thiz.buffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
@@ -369,7 +395,7 @@ console.log('adding star systems to star fields and vice versa');
 
 		//add buffer points
 
-		var array = this.buffer.data;	//8 fields: x y z vx vy vz absmag colorIndex
+		var array = this.buffer.data;	//9 fields: x y z vx vy vz absmag colorIndex constellation
 		array = Array.prototype.slice.call(array);	//to js array
 
 		for (var i = 0; i < starSystems.length; ++i) {
@@ -383,12 +409,12 @@ console.log('adding star systems to star fields and vice versa');
 			array.push(0);
 			array.push(5);	//abs mag
 			array.push(0);	//color index
+			array.push(0);	//constellation
 		}
 
 		this.buffer.setData(array, gl.STATIC_DRAW, true);
 
 		//then add named stars to the starSystem array
-		// if they're not there ... and I'm pretty sure they're all not there ...
 
 		for (var i = 0; i < namedStars.length; ++i) {
 			var args = namedStars[i];
@@ -511,6 +537,59 @@ console.log('adding star systems to star fields and vice versa');
 						texs : [this.colorIndexTex, this.bubbleTex]
 					});
 				}
+
+
+				// draw constellations
+
+				for (var k = 0; k < constellations.length; ++k) {
+					if (displayConstellations[k]) {
+						this.sceneObj.geometry.indexes = indexesForConstellations[k];
+						this.sceneObj.draw({
+							uniforms : {
+								pointSize : drawConstellationPointSizeScalar * pointSize,
+								pointSizeMax : drawConstellationPointSizeMax,
+								visibleMagnitudeBias : starsVisibleMagnitudeBias,
+								colorScale : drawConstellationColorScalar,
+							},
+							texs : [this.colorIndexTex, this.bubbleTex]
+						});
+					
+					
+						//and draw some bboxes around it
+						var minmax = ['min', 'max'];
+						var earthPos = solarSystem.planets[solarSystem.indexes.Earth].pos;
+						for (var v1 = 0; v1 < 8; ++v1) {
+							for (var edge = 0; edge < 3; ++edge) {
+								var v2 = v1 ^ (1 << edge);
+								if (v1 > v2) continue;
+
+								var con = constellations[k];
+
+								var ra1 = con.ra[ minmax[v1&1] ];
+								var ra2 = con.ra[ minmax[v2&1] ];
+								var dec1 = con.dec[ minmax[(v1>>1)&1] ];
+								var dec2 = con.dec[ minmax[(v2>>1)&1] ];
+								var dist1 = con.dist[ minmax[(v1>>2)&1] ];
+								var dist2 = con.dist[ minmax[(v2>>2)&1] ];
+
+								dist1 *= metersPerUnits.pc / this.renderScale;
+								dist2 *= metersPerUnits.pc / this.renderScale;
+								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (earthPos[0] - orbitTarget.pos[0]) / this.renderScale;
+								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (earthPos[1] - orbitTarget.pos[1]) / this.renderScale;
+								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (earthPos[2] - orbitTarget.pos[2]) / this.renderScale;
+								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (earthPos[0] - orbitTarget.pos[0]) / this.renderScale;
+								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (earthPos[1] - orbitTarget.pos[1]) / this.renderScale;
+								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (earthPos[2] - orbitTarget.pos[2]) / this.renderScale;
+					
+								lineObj.attrs.vertex.updateData();
+								lineObj.draw({uniforms : { color : [1,1,1,1] }});
+							}
+						}
+					}
+				}
+				this.sceneObj.geometry.indexes = undefined;
+
+
 
 				gl.enable(gl.DEPTH_TEST);
 			

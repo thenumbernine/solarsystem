@@ -1,3 +1,4 @@
+#!/usr/bin/env lua
 require 'ext'
 local querySimbad = require 'query-simbad'
 

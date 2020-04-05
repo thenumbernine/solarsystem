@@ -6,7 +6,14 @@ local julian = assert(loadfile('../horizons/julian.lua'))()
 
 local vec3 = require 'vec.vec3'
 local json = require 'dkjson'
+--<? if _VERSION ~= 'Lua 5.3' ?>
 local bit = bit32 or require 'bit'
+--<? else ?>
+local bit = {
+	bor = function(a,b) return a | b end,
+	lshift = function(a,b) return a << b end,
+}
+--<? end ?>
 local ffi = require 'ffi'
 
 local julianDate = julian.fromCalendar(os.date'!*t')
@@ -327,10 +334,13 @@ end
 				local ix = x > node.center[1] and 1 or 0
 				local iy = y > node.center[2] and 1 or 0
 				local iz = z > node.center[3] and 1 or 0
+
+--<? if _VERSION ~= 'Lua 5.3' then ?>
 				local childIndex = bit.bor(
 					ix,
 					bit.lshift(iy, 1),
 					bit.lshift(iz, 2))
+				
 				node = node.children[childIndex+1]
 			
 				levelID = bit.bor(

@@ -3,6 +3,8 @@ var slideWidth = 300;
 var currentOpenSidePanelID = undefined;
 var showBodyInfo = false;
 var allSidePanelIDs = [];
+var displayConstellations = [];
+var constellationIndexForName = {};
 
 function resize() {
 	canvas.width = window.innerWidth;
@@ -117,6 +119,7 @@ var ui = new function() {
 			'overlaySidePanel',
 			'solarSystemSidePanel',
 			'smallBodiesSidePanel',
+			'constellationsSidePanel',
 			'starSystemsSidePanel',
 			'controlsSidePanel'
 		];
@@ -140,6 +143,7 @@ var ui = new function() {
 			{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
 			{buttonID:'mainButtonSolarSystem', divID:'solarSystemSidePanel'},
 			{buttonID:'mainButtonSmallBodies', divID:'smallBodiesSidePanel'},
+			{buttonID:'mainButtonConstellations', divID:'constellationsSidePanel'},
 			{buttonID:'mainButtonStarSystems', divID:'starSystemsSidePanel'},
 			{buttonID:'mainButtonControls', divID:'controlsSidePanel'},
 		], function(i, info) {
@@ -841,6 +845,39 @@ if (true) {	//recent asteroid passing by
 			);
 		});
 		$('#celestialBodiesSearch').trigger('click');	//fire one off
+
+		
+		// constellations
+
+
+
+		var constellationsResults = $('#constellationsResults');
+		var sortedConstellationNames = [];
+		$.each(constellations, function(i,con) {
+			sortedConstellationNames.push(con.name);
+		});
+		sortedConstellationNames.sort();
+		
+		$.each(constellations, function(i,con) {
+			constellationIndexForName[con.name] = i;
+		});
+		
+		$.each(sortedConstellationNames, function(i,name) {
+			$('<input>', {
+				type : 'checkbox',
+				change : function() {
+					var index = constellationIndexForName[name];
+					displayConstellations[index] = !displayConstellations[index];
+				}
+			})
+				.appendTo(constellationsResults);
+		
+			$('<span>', {
+				text : name,
+			})
+				.appendTo(constellationsResults);
+			$('<br>').appendTo(constellationsResults);
+		});
 
 
 		// rest of the init

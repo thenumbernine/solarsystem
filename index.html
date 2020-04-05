@@ -32,6 +32,7 @@ glMatrix.setMatrixArrayType(Array);	//use double rather than float precision wit
 		<script type='text/javascript' src='horizons/dynamic-vars.json'></script>
 		<script type='text/javascript' src='horizons/static-vars.json'></script>
 		<script type='text/javascript' src='hyg/namedStars.json'></script>
+		<script type='text/javascript' src='hyg/constellations.json'></script>
 
 		<script type='text/javascript' src='units.js'></script>
 		<script type='text/javascript' src='header.js'></script>
@@ -161,6 +162,7 @@ a:active {
 			<button class='mainSidePanelButton' id='mainButtonOverlay'>Calculations</button><br>
 			<button class='mainSidePanelButton' id='mainButtonSolarSystem'>Our Solar System</button><br>
 			<button class='mainSidePanelButton' id='mainButtonSmallBodies'>Comets &amp; Asteroids</button><br>
+			<button class='mainSidePanelButton' id='mainButtonConstellations'>Constellations</button><br>
 			<button class='mainSidePanelButton' id='mainButtonStarSystems'>Exoplanet Systems</button><br>
 			<button class='mainSidePanelButton' id='mainButtonDisplayOptions'>Display Options</button><br>
 			<button class='mainSidePanelButton' id='mainButtonControls'>Controls</button><br>
@@ -231,6 +233,14 @@ a:active {
 			<input id='celestialBodiesSearchUnnumbered' type='checkbox' checked='checked'/>unnumbered asteroids<br>
 			Results: <input id='celestialBodiesSearchToggleAll' type='checkbox'/>Toggle All<br>
 			<div id='celestialBodiesSearchResults' style='white-space:nowrap; overflow-x:scroll'>
+			</div>
+			<br>
+			<br>
+		</div>
+
+		<div id='constellationsSidePanel' class='sidePanel'>
+			Constellations:<br>
+			<div id='constellationsResults' style='white-space:nowrap; overflow-x:scroll'>
 			</div>
 			<br>
 			<br>
