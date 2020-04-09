@@ -1457,6 +1457,7 @@ function initScene() {
 			refreshOrbitTargetDistanceText();
 		},
 		passiveMove : function() {
+			//seems to not always update, but running this every frame is much slower
 			pickObject.pick(false);
 		},
 		click : function() {

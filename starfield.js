@@ -381,6 +381,7 @@ console.log('num stars within 1pc:', numClose);
 			//assign after all prototype buffer stuff is written, so StarField can call Star can use it during ctor
 
 			//now that we've built all our star system data ... add it to the star field
+			//TODO combine these datasets offline, since there is some overlap, and that's causing duplicate stars
 			if (starSystems.length > 1) thiz.addStarSystems();
 
 		};
@@ -557,7 +558,7 @@ console.log('adding star systems to star fields and vice versa');
 					
 						//and draw some bboxes around it
 						var minmax = ['min', 'max'];
-						var earthPos = solarSystem.planets[solarSystem.indexes.Earth].pos;
+						var sunPos = solarSystem.planets[solarSystem.indexes.Sun].pos;	//I store the data wrt the sun's position
 						for (var v1 = 0; v1 < 8; ++v1) {
 							for (var edge = 0; edge < 3; ++edge) {
 								var v2 = v1 ^ (1 << edge);
@@ -574,12 +575,12 @@ console.log('adding star systems to star fields and vice versa');
 
 								dist1 *= metersPerUnits.pc / this.renderScale;
 								dist2 *= metersPerUnits.pc / this.renderScale;
-								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (earthPos[0] - orbitTarget.pos[0]) / this.renderScale;
-								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (earthPos[1] - orbitTarget.pos[1]) / this.renderScale;
-								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (earthPos[2] - orbitTarget.pos[2]) / this.renderScale;
-								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (earthPos[0] - orbitTarget.pos[0]) / this.renderScale;
-								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (earthPos[1] - orbitTarget.pos[1]) / this.renderScale;
-								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (earthPos[2] - orbitTarget.pos[2]) / this.renderScale;
+								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (sunPos[0] - orbitTarget.pos[0]) / this.renderScale;
+								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (sunPos[1] - orbitTarget.pos[1]) / this.renderScale;
+								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (sunPos[2] - orbitTarget.pos[2]) / this.renderScale;
+								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - orbitTarget.pos[0]) / this.renderScale;
+								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - orbitTarget.pos[1]) / this.renderScale;
+								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - orbitTarget.pos[2]) / this.renderScale;
 					
 								lineObj.attrs.vertex.updateData();
 								lineObj.draw({uniforms : { color : [1,1,1,1] }});

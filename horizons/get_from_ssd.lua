@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 require 'ext'
-local json = require 'dkjson'
+local json = require 'myjson'
 local socket = require 'socket'
 local https = require 'ssl.https'
 local htmlparser = require 'htmlparser.htmlparser'
@@ -121,20 +121,20 @@ for _,p in ipairs(ps) do
 					prospero = 'prospero (1999u3)',
 					setebos = 'setebos (1999u1)',
 					stephano = 'stephano (1999u2)',
-					['s/2003 j15']	= '2003j15',
+					['s/2003 j15']	= 'philophrosyne (2003j15)',
 					['s/2003 j18']	= '2003j18',
 					['s/2003 j19']	= '2003j19',
 					['s/2011 j1']	= '2011j1',
 					['s/2006 s3']	= '2006s3',
 					['s/2000 j11']	= 'dia (2000j11)',
 					['s/2003 j12']	= '2003j12',
-					['s/2003 j3']	= '2003j3',
+					['s/2003 j3']	= 'eupheme (2003j3)',
 					['s/2010 j1']	= '2010j1',
 					['s/2003 j10']	= '2003j10',
 					['s/2010 j2']	= '2010j2',
 					['s/2011 j2']	= '2011j2',
-					['s/2004 n1']	= 's 2004 n1',
-					['s/2003 j5']	= '2003j5',
+					['s/2004 n1']	= 'hippocamp',
+					['s/2003 j5']	= 'eirene (2003j5)',
 					['s/2003 j16']	= '2003j16',
 					['s/2006 s1']	= '2006s01',
 					['s/2007 s2']	= '2007s2',
@@ -254,7 +254,7 @@ for _,planet in ipairs(planets) do
 	end
 end
 for name,var in pairs(vars) do
-	if not var.read then print('didnt read from ',name) end
+	if not var.read then print("didn't read from ",name) end
 end
 --]]
 

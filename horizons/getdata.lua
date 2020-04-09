@@ -1,7 +1,7 @@
 #! /usr/bin/env lua
 require 'ext'
 local socket = require 'socket'
-local json = require 'dkjson'
+local json = require 'myjson'
 local julian = require 'julian'
 
 -- try to match the astro-phys date on file
@@ -118,39 +118,51 @@ local function run()
 		send('eclip')	-- ecliptical coordinates 
 		readUntil(' :')
 		send(startDate)	-- starting date (probably GMT)
-		readUntil(' :')
-		send(endDate)	-- ending date (can't be equal to starting date)
-		readUntil(' :')
-		send('')		-- keep output interval.  if it's bigger than the end date is from the start then we just get the starting coordinates
-		readUntil(' :')
-		--output table defaults - don't accept the first time through
-		local ephemerisData
-		if not first then
-			send('')
+		local result = readUntil(' :')
+		if result:match'No ephemeris for target' then
+			send'-'			-- back out
+			readUntil' :'
+			send'-'			-- back out
+			readUntil' :'
+			send'-'			-- back out
+			readUntil' :'
+			send'-'			-- back out
+			readUntil'<cr>:'
+			send''			-- back out
 		else
-			send('n')		-- no, don't accept defaults
+			send(endDate)	-- ending date (can't be equal to starting date)
 			readUntil(' :')
-			send('')		-- keep J2000 coordinates
+			send('')		-- keep output interval.  if it's bigger than the end date is from the start then we just get the starting coordinates
 			readUntil(' :')
-			send('')		-- keep no corrections
-			readUntil(' :')
-			send('3')		-- switch to km/day (from default of AU's)
-			readUntil(' :')
-			send('')		-- keep no CSV output format 
-			readUntil(' :')
-			send('')		-- keep no output delta T 
-			readUntil(' :')
-			send('')		-- keep output table type
-			readUntil(' :')
-			send('')		-- keep no cartesian output labels
+			--output table defaults - don't accept the first time through
+			local ephemerisData
+			if not first then
+				send('')
+			else
+				send('n')		-- no, don't accept defaults
+				readUntil(' :')
+				send('')		-- keep J2000 coordinates
+				readUntil(' :')
+				send('')		-- keep no corrections
+				readUntil(' :')
+				send('3')		-- switch to km/day (from default of AU's)
+				readUntil(' :')
+				send('')		-- keep no CSV output format 
+				readUntil(' :')
+				send('')		-- keep no output delta T 
+				readUntil(' :')
+				send('')		-- keep output table type
+				readUntil(' :')
+				send('')		-- keep no cartesian output labels
+			end
+			ephemerisData = getEphemerisData(readUntil(', ? : '))		-- keep output table type to state vector (pos+vel) + extra stuff
+			local ephemerisData = table(ephemerisData, body)
+			setmetatable(ephemerisData, nil)
+			table.insert(entries, ephemerisData)
+			--file['horizons-results.json'] = json.encode(entries)
+			-- done with output table stuff
+			send('n')	-- exit sun ephemeris query
 		end
-		ephemerisData = getEphemerisData(readUntil(', ? : '))		-- keep output table type to state vector (pos+vel) + extra stuff
-		local ephemerisData = table(ephemerisData, body)
-		setmetatable(ephemerisData, nil)
-		table.insert(entries, ephemerisData)
-		--file['horizons-results.json'] = json.encode(entries)
-		-- done with output table stuff
-		send('n')	-- exit sun ephemeris query
 		readUntil('Horizons>')
 		first = false
 	
@@ -183,11 +195,13 @@ local jsonData = 'horizonsDynamicData = '..json.encode(newDynamicVars, {indent=t
 file[datestr..'-dynamic-vars.json'] = jsonData
 
 local oldJsonData = file['dynamic-vars.json']
-local oldDynamicVars = json.decode(oldJsonData:sub(oldJsonData:find('=')+1))
+local oldDynamicVars = oldJsonData and json.decode(oldJsonData:sub(oldJsonData:find('=')+1))
 -- assert the old and the new have the same # of entries each with the same fields
 assert(newDynamicVars.julianDate and tonumber(newDynamicVars.julianDate), "new dynamic vars have bad julianDate")
 assert(newDynamicVars.coords and type(newDynamicVars.coords) == 'table', "new dynamic vars have bad coords")
-assert(#newDynamicVars.coords == #oldDynamicVars.coords, "new dynamic vars has "..#newDynamicVars.coords.." coords, different from old, which had "..#oldDynamicVars.coords.." coords")
+if oldDynamicVars then
+	assert(#newDynamicVars.coords == #oldDynamicVars.coords, "new dynamic vars has "..#newDynamicVars.coords.." coords, different from old, which had "..#oldDynamicVars.coords.." coords")
+end
 local function assertIsVector(v, title)
 	assert(type(v) == 'table', title.." is not a table")
 	assert(#v == 3, title.." does not have 3 elements")
@@ -196,14 +210,17 @@ local function assertIsVector(v, title)
 	end
 end
 for i=1,#newDynamicVars.coords do
-	local old = oldDynamicVars.coords[i]
+	local old = oldDynamicVars and oldDynamicVars.coords[i]
 	local new = newDynamicVars.coords[i]
-	assert(old.id == new.id, "coords #"..i.." has old id "..old.id..", new id "..new.id)
-	assert(old.name == new.name, "coords #"..i.." has old name "..old.name..", new name "..new.name)
+	if old then
+		assert(old.id == new.id, "coords #"..i.." has old id "..old.id..", new id "..new.id)
+		assert(old.name == new.name, "coords #"..i.." has old name "..old.name..", new name "..new.name)
+	end
 	assertIsVector(new.pos, "coords #"..i.." pos")
 	assertIsVector(new.vel, "coords #"..i.." vel")
 end
-assert(#oldDynamicVars == #newDynamicVars, "number of new dynamic entries do not match number of old dynamic entries")
-
+if oldDynamicVars then
+	assert(#oldDynamicVars == #newDynamicVars, "number of new dynamic entries do not match number of old dynamic entries")
+end
 print('ALL OK, OVERWRITING DYNAMIC VARS')
 file['dynamic-vars.json'] = jsonData

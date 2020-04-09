@@ -209,8 +209,14 @@ var SolarSystem = makeClass({
 						return planet.name == parentName;
 					});
 					var parent = this.planets[parentIndex];
-					if (parent.parent.match(/Barycenter$/g)) {
-						parentName = parent.parent;
+					if (parent !== undefined &&
+						parent.parent !== undefined)
+					{
+						if (parent.parent.match(/Barycenter$/g)) {
+							parentName = parent.parent;
+						}
+					} else {
+						console.log("couldn't read parent of ",staticData);
 					}
 					this.planets.push(mergeInto(new Planet(), {
 						id:dynamicData.id,
@@ -263,7 +269,9 @@ var SolarSystem = makeClass({
 			planet.mass = 0;
 			$.each(this.planets, function(j, childPlanet) {
 				if (childPlanet.parent != planet.name) return;
-				planet.mass += childPlanet.mass;
+				if (childPlanet.mass !== undefined) {
+					planet.mass += childPlanet.mass;
+				}
 			});
 		}
 

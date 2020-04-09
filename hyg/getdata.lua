@@ -77,6 +77,7 @@ for i,row in ipairs(csvdata.rows) do
 	
 		-- reconstruct spherical to cartesian and see accurate the xyz is
 		-- dec is ranged [-90,90], but ra is only [0,23]
+-- TODO also why is ursa major pointing away from ursa minor?		
 		local ra = math.rad(assert(tonumber(row.ra)))
 		local dec = math.rad(assert(tonumber(row.dec)))
 		local dist = assert(tonumber(row.dist))

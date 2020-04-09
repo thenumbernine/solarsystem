@@ -6,10 +6,11 @@ oh well, here I will attempt to split the data out of the one big file
 --]]
 
 require 'ext'
-local json = require 'dkjson'
+local json = require 'myjson'
 
-local data = io.readfile('horizons.txt'):trim()
-data = data:gsub('\r\n', '\n'):gsub('\r', '\n')
+local data = file['horizons.txt']:trim()
+	:gsub('\r+\n', '\n')	-- ... why do you need more than one CR per line?
+	:gsub('\r', '\n')
 local lines = data:split('\n')
 
 local lineIndex
@@ -42,19 +43,21 @@ local unknownDatas = {}
 local db = {}	-- our database
 local allkeys = table()
 
-planetInfos = table()
+local planetInfos = table()
 xpcall(function()
 	getline()
 	while nextline do 
 		local id = canbe('^Horizons>%[%[%[my input:(%d+)%]%]%]$')
 		if id then
 			mustbe('^ '..id..'$')
-			mustbe('^%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*%*$')
+			mustbe('^'..('%*'):rep(79)..'$')
 			-- four month abbrevs because someone put Junn in one entry
 			-- likewise someone punched in "Oct 11, 2016" as "Oct 11,2 016"
 			local name = canbe('^ ?Revised ?: ....? %d%d, ?%d ?%d%d%d%s+(.*)%s+     ')
+			-- nope, looks like that changed, now some entries use the full month name.
+						or canbe('^ ?Revised ?: %w+ %d?%d, ?%d ?%d%d%d%s+(.*)%s+     ')
 						or canbe('^JPL/HORIZONS%s+(.*)%s+     ')
-			assert(name, "failed to find next name on line "..lineIndex..': '..nextline)
+			assert(name, "failed to find next name on line "..lineIndex..': '..tolua(nextline))
 			name = name:trim()
 			--[[
 			name could be in one of the following forms:
@@ -67,6 +70,9 @@ xpcall(function()
 			if a and b then
 				name = a:trim()
 				parent = b
+			end
+			if not parent and name ~= 'Sun' then
+				parent = 'Sun'
 			end
 
 			local vars = table()
@@ -90,6 +96,7 @@ xpcall(function()
 				end
 
 				if canbe('^ GEOPHYSICAL DATA')
+				or canbe('^ GEOPHYSICAL PROPERTIES')
 				or canbe('^ PHYSICAL DATA')
 				or canbe('^ ?PHYSICAL PROPERTIES[^\n]*:$')
 				or canbe('^ SATELLITE PHYSICAL PROPERTIES:')
@@ -105,6 +112,7 @@ xpcall(function()
 				
 						-- multiple headers ... i could organize this parser better, I know
 						if canbe('^ GEOPHYSICAL DATA')
+						or canbe('^ GEOPHYSICAL PROPERTIES')
 						or canbe('^ PHYSICAL DATA')
 						or canbe('^ ?PHYSICAL PROPERTIES:$')
 						or canbe('^ SATELLITE PHYSICAL PROPERTIES:')
@@ -155,7 +163,7 @@ xpcall(function()
 				end
 			end
 
-			print(id, name, parent)
+			print(tolua{id=id, name=name, parent=parent})
 			for k,v in pairs(vars) do
 				print('',k,v)
 				if type(k) == 'string' then
@@ -196,9 +204,9 @@ Flattening
 for _,planetInfo in ipairs(planetInfos) do
 	planetInfo.id = tonumber(planetInfo.id)
 	local vars = planetInfo.vars
-	--print()
+print()
 	for k,v in pairs(planetInfo.vars) do
-		--print('(vars)','',k,v)
+print('(vars)',tolua{k=k,v=v})
 		if type(v) == 'string' then
 			local plusminus = v:find('%(%d*%+%-',nil)
 			if plusminus then
@@ -225,14 +233,34 @@ for _,planetInfo in ipairs(planetInfos) do
 				end
 			elseif k:match('^Mass, 10%^%d+ kg$') then
 				local scale = k:match('^Mass, 10%^(%d+) kg$')
-				scale = tonumber(scale)
-				planetInfo.mass = tonumber(v) * 10^scale
+				local v2 = tonumber(v)
+				if not v2 then
+					v2 = v:match'~([.%d]+)'
+					v2 = assert(tonumber(v2))
+				end
+				planetInfo.mass = v2 * 10^scale
+			elseif k:match('^Mass x10%^%d+ %(kg%)$') then
+				local scale = k:match('^Mass x10%^(%d+) %(kg%)$')
+				local v2 = tonumber(v)
+				if not v2 then
+					v2 = v:match'~([.%d]+)'
+					v2 = assert(tonumber(v2))
+				end
+				planetInfo.mass = v2 * 10^scale
+		
 			end
 			if k == 'Radius (photosphere)' then
 				local v2, scale = v:match('^([.%d]+)%(10%^(%d+)%) km')
 				v2 = tonumber(v2)
 				scale = tonumber(scale)
-				planetInfo.radius = v2 * 10^(scale+3)
+				if v2 and scale then
+					planetInfo.radius = v2 * 10^(scale+3)
+				else	-- maybe there's no 10^x ...
+					v2 = v:match'^([.%d]+) km'
+					v2 = tonumber(v2)
+					assert(v2)
+					planetInfo.radius = v2 * 1e+3
+				end
 			end
 			if k:lower() == 'mean radius (km)' 
 			or k == 'Mean radius, km'
@@ -262,9 +290,13 @@ for _,planetInfo in ipairs(planetInfos) do
 					end
 				end
 			end
-			if k:match('^Equatorial Radius') then
+			if k:lower():match('^equatorial radius') then
 				local v2 = v:match('^(.*) km$')
-				v2 = tonumber(v2)
+				if v2 then
+					v2 = tonumber(v2)
+				else
+					v2 = tonumber(v)
+				end
 				v2 = v2 * 1000	--km
 				planetInfo.equatorialRadius = tonumber(v2)
 			end
@@ -288,7 +320,9 @@ for _,planetInfo in ipairs(planetInfos) do
 				planetInfo.inverseFlattening = (1 - math.sqrt(1 - e^2)) / e^2
 			end
 			--]]
-			if k:match('^Flattening') then
+			if k:match('^Flattening') 
+			or k:match('^Flattening, f') 
+			then
 				local inv = v:match('^1/(.*)$')
 				if inv then
 					planetInfo.inverseFlattening = tonumber(inv)
@@ -296,9 +330,13 @@ for _,planetInfo in ipairs(planetInfos) do
 					planetInfo.inverseFlattening = 1 / tonumber(v)
 				end
 			end
+		
+			if k:match'Geometric Albedo' then
+				planetInfo.albedo = tonumber(v)
+			end
 		end
 	end
-	--[[
+	-- [[
 	for k,v in pairs(planetInfo) do
 		if k ~= 'vars' then
 			print(k,v)
@@ -307,10 +345,17 @@ for _,planetInfo in ipairs(planetInfos) do
 	--]]
 end
 
---remove that straggler that doesn't show up in the dynamic data
-if planetInfos[#planetInfos].id == 1000041 then
-	planetInfos:remove(#planetInfos)
+
+--[[ remove lagrangian points
+-- notice, these are ids are 31,32,34,35
+-- in old var files there were 391,392,394,395
+for i=#planetInfos,1,-1 do
+	if planetInfos[i].name:match'^SEMB%-L%d$' then
+		planetInfos:remove(i)
+	end
 end
+--]]
+
 
 local planetInfoForName = {}
 for _,planetInfo in ipairs(planetInfos) do
@@ -338,6 +383,25 @@ planetInfoForName.Pasiphae.mass = 299733686619439000
 planetInfoForName.Sinope.mass = 74933421654859700
 planetInfoForName.Lysithea.mass = 62944074190082100
 
+
+
+--[[
+--remove that straggler that doesn't show up in the dynamic data
+--if planetInfos[#planetInfos].id == 1000041 then
+--	planetInfos:remove(#planetInfos)
+--end
+for i=#planetInfos,1,-1 do
+	local p = planetInfos[i]
+	if #p.vars == 0 
+	and not p.radius
+	and not p.mass
+	then
+		planetInfos:remove(i)
+	end
+end
+--]]
+
+
 print('parsed '..#planetInfos..' planets')
-io.writefile('static-vars.json', 'horizonsStaticData = '..json.encode(planetInfos, {indent=true})..';')
+file['static-vars.json'] = 'horizonsStaticData = '..json.encode(planetInfos, {indent=true})..';'
 
