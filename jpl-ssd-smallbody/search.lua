@@ -11,6 +11,12 @@ local bodyTypeForEnum = {
 	[2] = 'unnumbered asteroid',
 }
 
+local orbitTypeForEnum = {
+	[0] = 'elliptic',
+	[1] = 'hyperbolic',
+	[2] = 'parabolic',
+}
+
 -- fixing json's incomplete specs ...
 local json_inf = setmetatable({}, { __tojson = function() return ('%q'):format'Infinity' end})
 local json_ninf = setmetatable({}, { __tojson = function() return ('%q'):format'-Infinity' end})
@@ -129,7 +135,7 @@ run = function(env)
 							eccentricAnomaly = read'eccentricAnomaly',
 							timeOfPeriapsisCrossing = read'timeOfPeriapsisCrossing',
 							meanAnomaly = read'meanAnomaly',
-							orbitType = read'orbitType',
+							orbitType = orbitTypeForEnum[read'orbitType'],
 							orbitalPeriod = read'orbitalPeriod',
 						})
 					end				
@@ -153,4 +159,3 @@ run = function(env)
 	return 200, headers, coroutine.wrap(text)
 end
 }
-

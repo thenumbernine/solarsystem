@@ -53,7 +53,7 @@ var SmallBodies = makeClass({
 	showWithDensity : false,	//don't change this after init
 	visRatioThreshold : .03,
 	visRatioPickThreshold : .1,
-	numElem : 6,
+	numElem : 3,
 	
 	show : true,
 	init : function() {
@@ -85,7 +85,8 @@ void main() {
 		
 		
 		var xhr = new XMLHttpRequest();
-		xhr.open('GET', 'jpl-ssd-smallbody/posvel.f64', true);
+		//xhr.open('GET', 'jpl-ssd-smallbody/posvel.f64', true);
+		xhr.open('GET', 'jpl-ssd-smallbody/pos.f32', true);
 		xhr.responseType = 'arraybuffer';
 		// if we want a progress bar ...
 		var lastProgress = 0;
@@ -105,13 +106,15 @@ void main() {
 
 		xhr.onload = function(e) {
 			var data = new DataView(this.response);
-			var len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
+			//var len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
+			var len = data.byteLength / Float32Array.BYTES_PER_ELEMENT;
 				
 			//units are in parsecs
 			//don't forget velocity is not being rescaled (i'm not using it at the moment)
 			var floatBuffer = new Float32Array(len);
 			for (var j = 0; j < len; ++j) {
-				floatBuffer[j] = data.getFloat64(j * Float64Array.BYTES_PER_ELEMENT, true);
+				//floatBuffer[j] = data.getFloat64(j * Float64Array.BYTES_PER_ELEMENT, true);
+				floatBuffer[j] = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 /*				
 				if (j % 6 == 5) {
 var n = floatBuffer.length;
@@ -236,9 +239,9 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		var x = data[0+this.numElem*index];
 		var y = data[1+this.numElem*index];
 		var z = data[2+this.numElem*index];
-		var vx = data[3+this.numElem*index];
-		var vy = data[4+this.numElem*index];
-		var vz = data[5+this.numElem*index];
+		//var vx = data[3+this.numElem*index];
+		//var vy = data[4+this.numElem*index];
+		//var vz = data[5+this.numElem*index];
 
 		//TODO toggle on/off orbit data if we're selecting on/off a small body
 		//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -260,7 +263,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		var smallBody = mergeInto(new SmallBody(), {
 			name : 'Small Body '+index,	//node.nameArray[index],
 			pos : [x,y,z],
-			vel : [vx,vy,vz],
+			//vel : [vx,vy,vz],
 			radius : 1,
 			smallBodyID : index,
 		});

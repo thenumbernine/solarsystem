@@ -379,9 +379,9 @@ var SolarSystem = makeClass({
 		planet.initSceneLatLonLineObjs();
 		
 		// if we pass the row info
-		//planet.getKOEFromSourceData();
+		planet.getKOEFromSourceData();
 		// if we just pass pos and vel
-		planet.calcKOEFromPosVel();
+		//planet.calcKOEFromPosVel();
 
 		planet.updatePosVel();
 

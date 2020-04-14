@@ -135,6 +135,8 @@ function OutputToPoints:processBody(body)
 			assert(timeOfPeriapsisCrossing)	--julian day
 			local timeSinceLastPeriapsisCrossing = julianDate - timeOfPeriapsisCrossing
 			meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * math.pi / orbitalPeriod
+			
+			body.meanAnomalyAtEpoch = meanAnomaly - 2 * math.pi / orbitalPeriod * (julianDate - body.epoch) 
 		elseif isAsteroid then
 			-- https://en.wikipedia.org/wiki/Mean_anomaly
 			-- M = M0 + n (t - t0)
@@ -266,14 +268,30 @@ if not buildOctree then
 	self.bodies:sort(function(a,b)
 		return assert(a.name) < assert(b.name)
 	end)
-	
+
+	local floatp = ffi.new'float[1]'
+	local function float(x)
+		floatp[0] = x
+		return floatp
+	end
+
 	print'writing pos/vel...'
-	local f = assert(ffi.C.fopen('posvel.f64', 'wb'))
 	-- write it all out to a giant float buffer
+		--[[ write pos/vel as doubles
+	local f = assert(ffi.C.fopen('posvel.f64', 'wb'))
 	for i,body in ipairs(self.bodies) do
 		ffi.C.fwrite(body._ptr[0].pos, ffi.sizeof'real' * 3, 1, f)
 		ffi.C.fwrite(body._ptr[0].vel, ffi.sizeof'real' * 3, 1, f)
 	end
+		--]]
+		-- [[ write pos only as float
+	local f = assert(ffi.C.fopen('pos.f32', 'wb'))
+	for i,body in ipairs(self.bodies) do
+		ffi.C.fwrite(float(body._ptr[0].pos[0]), ffi.sizeof'float', 1, f)
+		ffi.C.fwrite(float(body._ptr[0].pos[1]), ffi.sizeof'float', 1, f)
+		ffi.C.fwrite(float(body._ptr[0].pos[2]), ffi.sizeof'float', 1, f)
+	end
+		--]]
 	ffi.C.fclose(f)
 
 	print'writing raw struct...'
@@ -282,7 +300,7 @@ if not buildOctree then
 		ffi.C.fwrite(body._ptr, ffi.sizeof'body_t', 1, f)
 	end
 	ffi.C.fclose(f)
-	
+
 	print'...done'
 
 else -- buildOctree
