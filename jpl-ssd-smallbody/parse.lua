@@ -118,7 +118,7 @@ typedef struct {
 		{name='orbitalPeriod', type=real},
 	}
 
-	local f = assert(io.open('body_t.desc.lua', 'w'))
+	local f = assert(io.open('body_t_desc.lua', 'w'))
 	f:write'return {\n'
 	f:write('\tname = '..('%q'):format'body_t'..',\n')
 	f:write('\tsize = '..ffi.sizeof'body_t'..',\n')

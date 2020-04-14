@@ -360,8 +360,8 @@ var SolarSystem = makeClass({
 		var index = solarSystem.planets.length;
 		var planet = mergeInto(new Planet(), {
 			name : name,
-//			isComet : row.bodyType == 'comet',
-//			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+			isComet : row.bodyType == 'comet',
+			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
 			sourceData : row,
 			parent : solarSystem.planets[solarSystem.indexes.Sun],
 			starSystem : solarSystem,

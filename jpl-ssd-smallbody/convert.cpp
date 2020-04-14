@@ -1,4 +1,7 @@
-//g++ -shared -Llua convert.cpp -o convert.so
+/*
+compile with: g++ -shared -Llua convert.cpp -o convert.so
+library for converting strings of raw binary data to numbers
+*/
 #include <lua.hpp>
 
 template<typename T>
@@ -34,9 +37,21 @@ int convert_T(lua_State* L) {
 	return lua_pushtype<T>(L, *(T*)str);
 }
 
+#ifdef REG
+#error here
+#endif
+#define REG(x)	{#x, convert_T<x>}
+static luaL_Reg funcs[] = {
+	REG(int),
+	REG(long),
+	REG(float),
+	REG(double),
+};
+#undef REG
+
 extern "C" {
-int convert_int(lua_State* L) { return convert_T<int>(L); }
-int convert_long(lua_State* L) { return convert_T<long>(L); }
-int convert_float(lua_State* L) { return convert_T<float>(L); }
-int convert_double(lua_State* L) { return convert_T<double>(L); }
+int luaopen_convert(lua_State* L) {
+	luaL_newlib(L, funcs);
+	return 1;
+}
 }

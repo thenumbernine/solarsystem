@@ -601,6 +601,7 @@ var ui = new function() {
 
 		//dataSource = 'remote' for remote queries, 'local' for the currently-selected planets
 		var processSearch = function(pageIndex, dataSource) {
+console.log("small-bodies got a search request...");			
 			var button = $('#celestialBodiesSearch');
 			var searchText = $('#celestialBodiesSearchText');
 			var searchStr = searchText.val();
@@ -686,7 +687,7 @@ var ui = new function() {
 							}
 						}).appendTo($('#celestialBodiesSearchResults'));
 					}
-					if (pageIndex < pageMax) {
+					if (pageIndex < pageMax-1) {
 						nextButton = $('<button>', {
 							text : 'Next',
 							click : function() {
@@ -709,8 +710,10 @@ var ui = new function() {
 						text : searchStr,
 						page : pageIndex+1	//1-based
 					},
-					cache : false
+					cache : false,
+					timeout : 30000
 				}).error(function() {
+console.log("search error", arguments);
 					searchText.val(searchStr);
 					searchText.prop('disabled', 0);
 					button.prop('disabled', 0);
@@ -844,7 +847,8 @@ if (true) {	//recent asteroid passing by
 				$('#celestialBodiesSearchVisible').prop('checked') ? 'local' : 'remote'
 			);
 		});
-		$('#celestialBodiesSearch').trigger('click');	//fire one off
+		
+//		$('#celestialBodiesSearch').trigger('click');	//fire one off
 
 		
 		// constellations

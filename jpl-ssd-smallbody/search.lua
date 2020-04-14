@@ -2,6 +2,8 @@
 require 'ext'
 local wsapi_request = require 'wsapi.request'
 local bit = require 'bit'
+local body_t = require 'body_t_desc'
+local convert = require 'convert'
 
 local bodyTypeForEnum = {
 	[0] = 'comet',
@@ -10,9 +12,9 @@ local bodyTypeForEnum = {
 }
 
 -- fixing json's incomplete specs ...
-local json_inf = setmetatable({}, { __tojson = function() return 'Infinity' end})
-local json_ninf = setmetatable({}, { __tojson = function() return '-Infinity' end})
-local json_nan = setmetatable({}, {__tojson = function() return 'NaN' end})
+local json_inf = setmetatable({}, { __tojson = function() return ('%q'):format'Infinity' end})
+local json_ninf = setmetatable({}, { __tojson = function() return ('%q'):format'-Infinity' end})
+local json_nan = setmetatable({}, {__tojson = function() return ('%q'):format'NaN' end})
 
 --[[
 GET parameters:
@@ -45,14 +47,6 @@ run = function(env)
 		searchPage = math.max(1, tonumber(get.page) or 1)
 	end
 
-	local body_t = assert(loadfile'body_t.desc.lua')()
-	local convert = {
-		int = assert(package.loadlib('./convert.so', 'convert_int')),
-		long = assert(package.loadlib('./convert.so', 'convert_long')),
-		float = assert(package.loadlib('./convert.so', 'convert_float')),
-		double = assert(package.loadlib('./convert.so', 'convert_double')),
-	}
-
 	searchText = searchText:lower()
 
 	local pageSize = 20
@@ -78,7 +72,6 @@ run = function(env)
 				f:seek('set', nodepos + body_t.fields.name.offset)
 				local name = f:read(44):match'[^\0]*'
 				if name:lower():find(searchText,1,true) then
-					print(i, name)
 					local row = {}
 					
 					local function read(fieldName)
@@ -89,8 +82,7 @@ run = function(env)
 						if field.type == 'char[44]'
 						or field.type == 'char[13]'
 						then
-							return d
-
+							return d:match'[^\0]*'
 						elseif field.type == 'double[3]' then
 							return {
 								convert.double(d:sub(1,8)),
@@ -98,9 +90,8 @@ run = function(env)
 								convert.double(d:sub(17,24)),
 							}
 						else
-							-- why is this encoding as null?
+							-- json doesn't handle non-finite numbers...
 							local x = convert[field.type](d)
-							print(fieldName, d, x)
 							if x == math.huge then return json_inf end
 							if x == -math.huge then return json_ninf end
 							if x ~= x then return json_nan end
@@ -144,7 +135,8 @@ run = function(env)
 					end				
 				end
 			end
-		
+
+			f:close()
 			local endTime = os.clock()	-- TODO hires timer?
 
 			local count = #rows
