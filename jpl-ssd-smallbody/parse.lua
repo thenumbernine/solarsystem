@@ -4,7 +4,7 @@
 require 'ext'
 --local gcmem = require 'ext.gcmem'
 local result, ffi = pcall(require, 'ffi')
-local useffi = false
+local useffi = true
 
 local OutputPoints = require 'output_points'
 
@@ -28,6 +28,9 @@ local function processToFile(args)
 	local lastTime = os.time()
 	local lines = assert(file[inputFilename], "failed to read file "..inputFilename):split('\n')
 	local cols = Columns(lines)
+
+print(tolua(cols.columns))
+
 	for i=3,#lines do	-- skip headers and ---- line
 		local line = lines[i]
 		if #line:trim() > 0 then
@@ -64,10 +67,12 @@ local numberFields = table{
 	'timeOfPerihelionPassage',		--comets
 }
 
+local real
 if useffi then
+	real = 'double'
 	local template = require 'template'
 	local code = template([[
-typedef double real;
+typedef <?=real?> real;
 
 typedef struct {
 <? for _,field in ipairs(numberFields) do
@@ -81,7 +86,7 @@ typedef struct {
 
 	//computed parameters:
 	long index;
-	real pos[3], A[3], B[3];
+	real pos[3], vel[3], A[3], B[3];
 	real eccentricAnomaly;
 	real timeOfPeriapsisCrossing;
 	real meanAnomaly;
@@ -89,9 +94,44 @@ typedef struct {
 	real orbitalPeriod;
 } body_t;
 ]], {
+	real = real,
 	numberFields = numberFields,
 })
 	ffi.cdef(code)
+
+	local allFields = numberFields:mapi(function(name)
+		return {name=name, type=real}
+	end):append{
+		{name='bodyType', type='int'},
+		{name='horizonID', type='int'},
+		{name='name', type='char[44]'},
+		{name='orbitSolutionReference', type='char[13]'},
+		{name='index', type='long'},
+		{name='pos', type=real..'[3]'},
+		{name='vel', type=real..'[3]'},
+		{name='A', type=real..'[3]'},
+		{name='B', type=real..'[3]'},
+		{name='eccentricAnomaly', type=real},
+		{name='timeOfPeriapsisCrossing', type=real},
+		{name='meanAnomaly', type=real},
+		{name='orbitType', type='int'},
+		{name='orbitalPeriod', type=real},
+	}
+
+	local f = assert(io.open('body_t.desc.lua', 'w'))
+	f:write'return {\n'
+	f:write('\tname = '..('%q'):format'body_t'..',\n')
+	f:write('\tsize = '..ffi.sizeof'body_t'..',\n')
+	f:write'\tfields = {\n'
+	for _,field in ipairs(allFields) do
+		f:write('\t\t'..field.name..' = {'
+			..'type='..('%q'):format(field.type)..', '
+			..'offset='..ffi.offsetof('body_t', field.name)..', '
+			..'size='..ffi.sizeof(ffi.new(field.type))..', '
+		..'},\n')
+	end
+	f:write'\t},\n'
+	f:write'}\n'
 end
 
 local function newBody()

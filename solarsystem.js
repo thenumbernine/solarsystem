@@ -351,15 +351,17 @@ var SolarSystem = makeClass({
 		var name = row.name;
 
 		//only add if it's not there
-		if (solarSystem.indexes[name] !== undefined) return solarSystem.planets[solarSystem.indexes[name]];
+		if (solarSystem.indexes[name] !== undefined) {
+			return solarSystem.planets[solarSystem.indexes[name]];
+		}
 
 		//add the row to the bodies
 
 		var index = solarSystem.planets.length;
 		var planet = mergeInto(new Planet(), {
 			name : name,
-			isComet : row.bodyType == 'comet',
-			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
+//			isComet : row.bodyType == 'comet',
+//			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
 			sourceData : row,
 			parent : solarSystem.planets[solarSystem.indexes.Sun],
 			starSystem : solarSystem,
@@ -375,7 +377,12 @@ var SolarSystem = makeClass({
 
 		planet.initColorSchRadiusAngle();
 		planet.initSceneLatLonLineObjs();
-		planet.getKOEFromSourceData();
+		
+		// if we pass the row info
+		//planet.getKOEFromSourceData();
+		// if we just pass pos and vel
+		planet.calcKOEFromPosVel();
+
 		planet.updatePosVel();
 
 		return planet;

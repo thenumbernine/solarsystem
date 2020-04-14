@@ -9,10 +9,12 @@ local json = require 'dkjson'
 --<? if _VERSION ~= 'Lua 5.3' ?>
 local bit = bit32 or require 'bit'
 --<? else ?>
+--[[
 local bit = {
 	bor = function(a,b) return a | b end,
 	lshift = function(a,b) return a << b end,
 }
+--]]
 --<? end ?>
 local ffi = require 'ffi'
 
@@ -118,8 +120,9 @@ function OutputToPoints:processBody(body)
 		meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3 
 	elseif orbitType == 'hyperbolic' then
 		-- this must mean no hyperbolic orbits are numbered / unnumbered small bodies? 
-		assert(timeOfPeriapsisCrossing)	--only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
-		meanAnomaly = math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24	--in seconds
+		-- hmm, there are hyperbolic orbits in the latest ELEMENTS.UNNUM ...
+		--assert(timeOfPeriapsisCrossing)	--only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
+		meanAnomaly = math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * (timeOfPeriapsisCrossing or math.nan) * 60*60*24	--in seconds
 	elseif orbitType == 'elliptic' then
 		--in theory I can say 
 		--eccentricAnomaly = math.acos((eccentricity + math.cos(argumentOfPeriapsis)) / (1 + eccentricity * math.cos(argumentOfPeriapsis)))
@@ -217,6 +220,7 @@ function OutputToPoints:processBody(body)
 	end
 
 	local pos = A * coeffA + B * coeffB
+	local vel = A * coeffDerivA + B * coeffDerivB
 
 	local r = pos:length()
 	if math.isfinite(r) then 
@@ -224,6 +228,7 @@ function OutputToPoints:processBody(body)
 	end
 
 	body.pos = pos
+	body.vel = vel
 
 	self.bodies:insert(body)
 	body.index = #self.bodies
@@ -246,9 +251,42 @@ function OutputToPoints:processBody(body)
 	body.B = B
 end
 
+local buildOctree = false
+		
+require 'ffi.c.stdio'
+
 function OutputToPoints:staticDone()
 	print('max radius:',self.maxR)
 	
+	local longp = ffi.new('long[1]')
+
+if not buildOctree then
+
+	print'sorting...'
+	self.bodies:sort(function(a,b)
+		return assert(a.name) < assert(b.name)
+	end)
+	
+	print'writing pos/vel...'
+	local f = assert(ffi.C.fopen('posvel.f64', 'wb'))
+	-- write it all out to a giant float buffer
+	for i,body in ipairs(self.bodies) do
+		ffi.C.fwrite(body._ptr[0].pos, ffi.sizeof'real' * 3, 1, f)
+		ffi.C.fwrite(body._ptr[0].vel, ffi.sizeof'real' * 3, 1, f)
+	end
+	ffi.C.fclose(f)
+
+	print'writing raw struct...'
+	local f = assert(ffi.C.fopen('alldata.raw', 'wb'))
+	for i,body in ipairs(self.bodies) do
+		ffi.C.fwrite(body._ptr, ffi.sizeof'body_t', 1, f)
+	end
+	ffi.C.fclose(f)
+	
+	print'...done'
+
+else -- buildOctree
+
 	print('building octree leafs')
 	local leafPointCount = 1000
 
@@ -577,13 +615,11 @@ childDepth 	start	end	size
 		return tonumber(nodeID)
 	end), nil)
 	
-	local longp = ffi.new('long[1]')
 	local allNodesFile 
 	if writeOneBigFile then	
 		-- I can't json.encode all at once without luajit crapping out, so I will do it piecewise ...
 		--local allNodesFile = io.open('nodes.json', 'w')
 		--allNodesFile:write'{\n' 
-		require 'ffi.c.stdio'
 		-- make sure body_t is defined
 		ffi.sizeof'body_t'
 		allNodesFile = assert(ffi.C.fopen('nodes.raw', 'wb'))
@@ -664,6 +700,8 @@ typedef struct header_s {
 			nodes = allNodeIDs,
 		}, {indent=true})
 	end
+
+end	-- buildOctree
 
 	print('done')
 end

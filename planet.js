@@ -227,6 +227,8 @@ var Planet = makeClass({
 			this.orbitAxis = [0,0,1];
 			this.orbitBasis = [[1,0,0],[0,1,0],[0,0,1]];
 			return;
+		} else if (parentBody.name.match(/Barycenter$/g)) {
+			parentBody = parentBody.parent;
 		}
 
 		//consider position relative to orbiting parent

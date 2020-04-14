@@ -1,12 +1,18 @@
 #!/usr/bin/env wsapi.cgi
 require 'ext'
 local wsapi_request = require 'wsapi.request'
+local bit = require 'bit'
 
 local bodyTypeForEnum = {
 	[0] = 'comet',
 	[1] = 'numbered asteroid',
 	[2] = 'unnumbered asteroid',
 }
+
+-- fixing json's incomplete specs ...
+local json_inf = setmetatable({}, { __tojson = function() return 'Infinity' end})
+local json_ninf = setmetatable({}, { __tojson = function() return '-Infinity' end})
+local json_nan = setmetatable({}, {__tojson = function() return 'NaN' end})
 
 --[[
 GET parameters:
@@ -39,12 +45,22 @@ run = function(env)
 		searchPage = math.max(1, tonumber(get.page) or 1)
 	end
 
+	local body_t = assert(loadfile'body_t.desc.lua')()
+	local convert = {
+		int = assert(package.loadlib('./convert.so', 'convert_int')),
+		long = assert(package.loadlib('./convert.so', 'convert_long')),
+		float = assert(package.loadlib('./convert.so', 'convert_float')),
+		double = assert(package.loadlib('./convert.so', 'convert_double')),
+	}
+
 	searchText = searchText:lower()
 
 	local pageSize = 20
 	local offset = (searchPage - 1) * pageSize	-- offset is 0-based
 
 	local function text()
+		local startTime = os.clock()	-- TODO hires timer?
+		
 		local env, conn, cur
 		local json = require 'dkjson'
 		if not isComet and not isNumbered and not isUnnumbered then
@@ -52,58 +68,88 @@ run = function(env)
 			return
 		end
 		local results = select(2, xpcall(function()
-
-			local allNodeIDs = json.decode(file['octree.json']).nodes
-			local nodes = {}
-
 			local rows = {}
-			for line in io.lines('node-dict.csv') do
-				if line:sub(1,1) ~= '#' then
-					local name, nodeIDStr, localIndexStr = line:match('^"([^"]*)",([^,]*),([^,]*)$')
-					--assert(name and nodeIDStr and localIndexStr)
-					local nodeID = tonumber(nodeIDStr)
-					--assert(tostring(nodeID) == nodeIDStr)
-					--assert(table.find(allNodeIDs, nodeID))
-					local localIndex = tonumber(localIndexStr)
-					--assert(tostring(localIndex) == localIndexStr)
-					if name:lower():find(searchText,1,true) then
-						local node = nodes[nodeID]
-						if not node then
-							node = json.decode(file['nodes/'..nodeID..'.json'])
-							nodes[nodeID] = node
-						end
-						local row = assert(node[localIndex])
-						local bodyType = row[17]
-						if (isComet and bodyType == 0)
-						or (isNumbered and bodyType == 1)
-						or (isUnnumbered and bodyType == 2)
+			local f = io.open('alldata.raw', 'r')
+			local filesize = f:seek'end'
+			local count = filesize / body_t.size
+			-- count should be 961405
+			for i=0,count-1 do
+				local nodepos = i * body_t.size
+				f:seek('set', nodepos + body_t.fields.name.offset)
+				local name = f:read(44):match'[^\0]*'
+				if name:lower():find(searchText,1,true) then
+					print(i, name)
+					local row = {}
+					
+					local function read(fieldName)
+						local field = body_t.fields[fieldName]
+						f:seek('set', nodepos + field.offset)
+						local d = f:read(field.size)
+						assert(d)
+						if field.type == 'char[44]'
+						or field.type == 'char[13]'
 						then
-							table.insert(rows, {
-								pk = row[4],
-								bodyType = bodyTypeForEnum[bodyType],
-								idNumber = row[19],
-								name = name,
-								epoch = row[13],
-								perihelionDistance = row[14],
-								semiMajorAxis = row[5],
-								eccentricity = row[9],
-								inclination = row[8],
-								argumentOfPeriapsis = row[7],
-								longitudeOfAscendingNode = row[6],
-								meanAnomalyAtEpoch = row[12],
-								absoluteMagnitude =row[15],
-								magnitudeOfSlopeParameter = row[16],
-								timeOfPerihelionPassage = row[10],
-								orbitSolutionReference = row[21],
-							})
-						end				
+							return d
+
+						elseif field.type == 'double[3]' then
+							return {
+								convert.double(d:sub(1,8)),
+								convert.double(d:sub(9,16)),
+								convert.double(d:sub(17,24)),
+							}
+						else
+							-- why is this encoding as null?
+							local x = convert[field.type](d)
+							print(fieldName, d, x)
+							if x == math.huge then return json_inf end
+							if x == -math.huge then return json_ninf end
+							if x ~= x then return json_nan end
+							return x
+						end
 					end
+					
+					
+					local bodyType = read'bodyType'
+					if (isComet and bodyType == 0)
+					or (isNumbered and bodyType == 1)
+					or (isUnnumbered and bodyType == 2)
+					then
+						table.insert(rows, {
+							epoch = read'epoch',
+							perihelionDistance = read'perihelionDistance',
+							semiMajorAxis = read'semiMajorAxis',
+							eccentricity = read'eccentricity',
+							inclination = read'inclination',
+							argumentOfPeriapsis = read'argumentOfPeriapsis',
+							longitudeOfAscendingNode = read'longitudeOfAscendingNode',
+							meanAnomalyAtEpoch = read'meanAnomalyAtEpoch',
+							absoluteMagnitude = read'absoluteMagnitude',
+							magnitudeSlopeParameter = read'magnitudeSlopeParameter',
+							timeOfPerihelionPassage = read'timeOfPerihelionPassage',
+							bodyType = bodyTypeForEnum[bodyType],
+							horizonID = read'horizonID',
+							name = name,
+							orbitSolutionReference = read'orbitSolutionReference',
+							index = read'index',
+							pos = read'pos',
+							vel = read'vel',
+							A = read'A',
+							B = read'B',
+							eccentricAnomaly = read'eccentricAnomaly',
+							timeOfPeriapsisCrossing = read'timeOfPeriapsisCrossing',
+							meanAnomaly = read'meanAnomaly',
+							orbitType = read'orbitType',
+							orbitalPeriod = read'orbitalPeriod',
+						})
+					end				
 				end
 			end
-			
+		
+			local endTime = os.clock()	-- TODO hires timer?
+
 			local count = #rows
-			local results = {rows=rows, count=count}
-			return json.encode(results)
+			local results = {rows=rows, count=count, time=endTime - startTime}
+			return json.encode(results, {indent=true})
 		end, function(err)
 			if cur then cur:close() end
 			if conn then conn:close() end

@@ -124,8 +124,7 @@ void main() {
 	}
 	var calcOrbitPathEndTime = Date.now();
 
-	var setPlanetTiltAngleToMoonOrbitPlane = function(planetName, moonName) {
-		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
+	var setPlanetTiltAngleToMoonOrbitPlane = function(planet, moonName) {
 		var moon = solarSystem.planets[solarSystem.indexes[moonName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
@@ -134,32 +133,38 @@ void main() {
 
 	//accepts degrees
 	//TODO start at orbit axis plane rather than earth's (ie J2000) orbit axis plane
-	var setPlanetTiltAngleToFixedValue = function(planetName, inclination, tiltDirection) {
+	var setPlanetTiltAngleToFixedValue = function(planet, inclination, tiltDirection) {
 		if (tiltDirection === undefined) tiltDirection = 0;
-		var planet = solarSystem.planets[solarSystem.indexes[planetName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
-	setPlanetTiltAngleToFixedValue('Mercury', 2.11/60);		//TODO tilt from mercury orbit plane.  until then it's off
-	setPlanetTiltAngleToFixedValue('Venus', 177.3);			//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
-	setPlanetTiltAngleToFixedValue('Earth', 23 + 1/60*(26 + 1/60*(21.4119)), 180);
-	setPlanetTiltAngleToMoonOrbitPlane('Mars', 'Phobos');		//ours: 25.79, exact: 25.19
-	setPlanetTiltAngleToMoonOrbitPlane('Jupiter', 'Metis');		//ours: 3.12, exact: 3.13
-	setPlanetTiltAngleToMoonOrbitPlane('Saturn', 'Atlas');		//ours: 26.75, exact: 26.73
-	setPlanetTiltAngleToMoonOrbitPlane('Uranus', 'Cordelia');	//ours: 97.71, exact: 97.77
-	setPlanetTiltAngleToMoonOrbitPlane('Neptune', 'Galatea');	//ours: 28.365, exact: 28.32
-	setPlanetTiltAngleToMoonOrbitPlane('Pluto', 'Charon');		//ours: 119, exact: 119
+	var setBy = {
+		Mercury:{inclination:2.11/60},//TODO tilt from mercury orbit plane.  until then it's off
+		Venus:{inclination:177.3},//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
+		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},
+		Mars:{toMoon:'Phobos'},//ours: 25.79, exact: 25.19
+		Jupiter:{toMoon:'Metis'},//ours: 3.12, exact: 3.13
+		Saturn:{toMoon:'Atlas'},//ours: 26.75, exact: 26.73
+		Uranus:{toMoon:'Cordelia'},//ours: 97.71, exact: 97.77
+		Neptune:{toMoon:'Galatea'},//ours: 28.365, exact: 28.32
+		Pluto:{toMoon:'Charon'},//ours: 119, exact: 119
+	};
 
 	//now set all moon tilt angles to the orbit axis 
 	var Sun = solarSystem.planets[0];
 	for (var i = 0; i < solarSystem.planets.length; ++i) {
 		var planet = solarSystem.planets[i];
-		if (planet.parent !== undefined &&
-			planet.parent.parent !== undefined &&
-			planet.parent.parent == Sun)
-		{
+		var sb = setBy[planet.name];
+		if (sb && sb.inclination !== undefined) {
+			setPlanetTiltAngleToFixedValue(planet, sb.inclination, sb.tiltDirection);
+		} else if (sb && sb.toMoon) {
+			setPlanetTiltAngleToMoonOrbitPlane(planet, sb.toMoon);
+		} else if (planet.keplerianOrbitalElements !== undefined
+				&& planet.keplerianOrbitalElements.longitudeOfAscendingNode !== undefined
+				&& planet.keplerianOrbitalElements.inclination !== undefined
+		) {
 			quat.rotateZ(planet.tiltAngle, planet.tiltAngle, planet.keplerianOrbitalElements.longitudeOfAscendingNode);
 			quat.rotateX(planet.tiltAngle, planet.tiltAngle, planet.keplerianOrbitalElements.inclination);
 			quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);

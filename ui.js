@@ -764,7 +764,7 @@ if (false) {
 		"orbitSolutionReference" : "JPL 101",
 		"epoch" : 56691,
 		"eccentricity" : 1.00074241,
-		"idNumber" : "C",
+		"horizonID" : "C",
 		"name" : "2013 A1 (Siding Spring)",
 		"longitudeOfAscendingNode" : 5.2530270564044
 	});
@@ -782,7 +782,7 @@ if (false) {
 		"orbitSolutionReference" : "JPL J863/77",
 		"epoch" : 49400,
 		"eccentricity" : 0.96714291,
-		"idNumber" : "1P",
+		"horizonID" : "1P",
 		"name" : "Halley",
 		"longitudeOfAscendingNode" : 1.0196227452785
 	});
@@ -794,7 +794,7 @@ if (true) {	//recent asteroid passing by
 		"inclination":0.41440347267775,
 		"name":"2004 BL86",
 		"eccentricity":0.40307315,
-		"idNumber":"357439",
+		"horizonID":"357439",
 		"bodyType":"numbered asteroid",
 		"orbitSolutionReference":"JPL 34",
 		"absoluteMagnitude":19.1,
