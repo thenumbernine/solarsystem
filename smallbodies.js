@@ -14,6 +14,29 @@ A few options on how to handle small bodies:
 	?MB.  Hopefully less than above to just view a few small bodies.  But to view all it will be more than the flatfile of 250MB.
 	Seems most octree nodes were visible, so this was just downloading more data than above.
 	Also we have to issue multiple draw commands per octree node, so it will draw slower as well.
+
+If we were going to simulate everything on the GPU, what would we need?
+	- orbitType: elliptic vs hyperbolic vs parabolic
+	elliptic:
+		- orbitalPeriod			\
+		- meanAnomalyAtEpoch 	 - these can be combined into meanAnomaly
+		- epoch					/
+	hyperbolic:
+		- meanAnomaly
+		- timeOfPeriapsisCrossing
+	parabolic:
+		haven't done this yet
+	- eccentricity
+	- A, B
+	- sqrt(semiMajorAxis^3 / gravitationalParameter)
+	- meanAnomaly is written
+	- eccentricAnomaly is written
+	- fractionOffset is written ... for the orbit path shader
+
+xyz <= (const) A, B, (dyn) coeffA, coeffB
+coeffA, coeffB <= (const) eccentricity, (dyn) pathEccentricAnomaly, dE_dt
+dE_dt <= (const) sqrt(semiMajorAxis^3/gravitationalParameter), eccentricity, (dyn) pathEccentricAnomaly
+pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
 */
 
 var showSmallBodies = true;

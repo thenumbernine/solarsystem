@@ -751,14 +751,16 @@ r^2 = a^2 (cos(E)
 		var orbitType = ke.orbitType;
 
 		//https://en.wikipedia.org/wiki/Kepler%27s_laws_of_planetary_motion#Position_as_a_function_of_time
-	
+
+		var meanAnomaly, meanMotion;
 		if (orbitType == 'elliptic') {
 			assertExists(ke, 'orbitalPeriod');
 			assertExists(ke, 'meanAnomalyAtEpoch');	//not always there.  esp not in planets.
-			var meanMotion = 2 * Math.PI / ke.orbitalPeriod;
-			var meanAnomaly = ke.meanAnomalyAtEpoch + meanMotion * (julianDate - ke.epoch);
+			meanMotion = 2 * Math.PI / ke.orbitalPeriod;
+			meanAnomaly = ke.meanAnomalyAtEpoch + meanMotion * (julianDate - ke.epoch);
 		} else if (orbitType == 'hyperbolic') {
 			assertExists(ke, 'timeOfPeriapsisCrossing');
+			meanAnomaly = ke.meanAnomaly;
 			meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
 		} else if (orbitType == 'parabolic') {
 console.log('parabolic orbit for planet',this);			
@@ -769,7 +771,7 @@ console.log('parabolic orbit for planet',this);
 
 		var eccentricity = ke.eccentricity;
 
-		//solve Newton Rhapson
+		//solve eccentricAnomaly from meanAnomaly via Newton Rhapson
 		//for elliptical orbits:
 		//	f(E) = M - E + e sin E = 0
 		//	f'(E) = -1 + e cos E
@@ -846,10 +848,11 @@ console.log('parabolic orbit for planet',this);
 		this.vel[0] = velX + this.parent.vel[0];
 		this.vel[1] = velY + this.parent.vel[1];
 		this.vel[2] = velZ + this.parent.vel[2];
-	
-		this.keplerianOrbitalElements.meanAnomaly = meanAnomaly;
-		this.keplerianOrbitalElements.eccentricAnomaly = eccentricAnomaly;
-		this.keplerianOrbitalElements.fractionOffset = fractionOffset;
+
+		//ke == this.keplerianOrbitalElements
+		ke.meanAnomaly = meanAnomaly;
+		ke.eccentricAnomaly = eccentricAnomaly;
+		ke.fractionOffset = fractionOffset;
 	}
 
 });

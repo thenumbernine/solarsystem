@@ -65,7 +65,7 @@ var SolarSystem = makeClass({
 			radius : 1.73753e+6,
 			rotationPeriod : 27.321662,
 			orbitalPeriod : 27.321662,
-			rotationOffset : 180 * Math.PI / 360,
+			rotationOffset : 0,//180 * Math.PI / 360,
 			type : 'planet'
 		}));
 		this.planets.push(mergeInto(new Planet(), {
