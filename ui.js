@@ -856,6 +856,45 @@ if (true) {	//recent asteroid passing by
 
 
 		var constellationsResults = $('#constellationsResults');
+		
+		
+		//TODO - slider / min/max for filtering stars by ... (a) app. mag, or (b) abs mag
+		// (or (c) app. mag from custom location?)
+		$('<span>', {
+			text : 'selected min:'
+		}).appendTo(constellationsResults);
+		$('<span>', {
+			id : 'constellationsSelMinMag'
+		}).appendTo(constellationsResults);
+		$('<br>').appendTo(constellationsResults);
+		
+		$('<span>', {
+			text : 'selected max:'
+		}).appendTo(constellationsResults);
+		$('<span>', {
+			id : 'constellationsSelMaxMag',
+		}).appendTo(constellationsResults);
+		$('<br>').appendTo(constellationsResults);
+	
+/* TODO finish me
+		$('<span>', {
+			text : 'filter min:'
+		}).appendTo(constellationsResults);
+		$('<span>', {
+			id : 'constellationsMinMag'
+		}).appendTo(constellationsResults);
+		$('<br>').appendTo(constellationsResults);
+		
+		$('<span>', {
+			text : 'filter max:'
+		}).appendTo(constellationsResults);
+		$('<span>', {
+			id : 'constellationsMaxMag',
+		}).appendTo(constellationsResults);
+		$('<br>').appendTo(constellationsResults);
+*/
+
+
 		var sortedConstellationNames = [];
 		$.each(constellations, function(i,con) {
 			sortedConstellationNames.push(con.name);
@@ -865,13 +904,27 @@ if (true) {	//recent asteroid passing by
 		$.each(constellations, function(i,con) {
 			constellationIndexForName[con.name] = i;
 		});
-		
+
+		var updateMagMinMax = function() {
+			var magmin = Infinity;
+			var magmax = -Infinity;
+			for (var k = 0; k < constellations.length; ++k) {
+				if (displayConstellations[k]) {
+					magmin = Math.min(magmin, constellations[k].mag.min);
+					magmax = Math.max(magmax, constellations[k].mag.max);
+				}
+			}
+			$('#constellationsSelMinMag').text(magmin);
+			$('#constellationsSelMaxMag').text(magmax);
+		};
+
 		$.each(sortedConstellationNames, function(i,name) {
 			$('<input>', {
 				type : 'checkbox',
 				change : function() {
 					var index = constellationIndexForName[name];
 					displayConstellations[index] = !displayConstellations[index];
+					updateMagMinMax();
 				}
 			})
 				.appendTo(constellationsResults);
@@ -883,6 +936,7 @@ if (true) {	//recent asteroid passing by
 			$('<br>').appendTo(constellationsResults);
 		});
 
+		updateMagMinMax();
 
 		// rest of the init
 
