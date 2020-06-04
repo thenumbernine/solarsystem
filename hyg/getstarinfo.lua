@@ -26,7 +26,7 @@ function run(env)
 			coroutine.yield(json.encode{error='invalid index', index=index or 'nil'})
 		end
 		
-		coroutine.yield
+		coroutine.yield'TODO FINISHME'
 	end	
 	return 200, headers, coroutine.wrap(text)
 end

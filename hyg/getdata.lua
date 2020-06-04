@@ -108,7 +108,7 @@ local ra2 = ra % (2 * math.pi)
 		ranges.dist.min = math.min(ranges.dist.min or dist, dist)
 		ranges.dist.max = math.max(ranges.dist.max or dist, dist)
 
-		local mag = assert(tonumber(row.absmag))	--apparent magnitude
+		local mag = assert(tonumber(row.absmag))	--absolute magnitude
 		ranges.mag.min = math.min(ranges.mag.min or mag, mag)
 		ranges.mag.max = math.max(ranges.mag.max or mag, mag)
 		
@@ -146,6 +146,8 @@ local ra2 = ra % (2 * math.pi)
 				ra2 = {},
 				dec = {},
 				dist = {},
+				mag = {},
+				indexes = {},	-- array of all indexes in the HYG data of all stars of the constellation 
 			}
 			constellations:insert(conInfo)
 			constellationIndex = #constellations
@@ -162,8 +164,17 @@ local ra2 = ra % (2 * math.pi)
 	
 		conInfo.dist.min = math.min(conInfo.dist.min or dist, dist)
 		conInfo.dist.max = math.max(conInfo.dist.max or dist, dist)
+		
+		conInfo.mag.min = math.min(conInfo.mag.min or mag, mag)
+		conInfo.mag.max = math.max(conInfo.mag.max or mag, mag)
 
+		-- without individual star info, constellsions.json is 22603 bytes
+		-- with individual star info it is 678818 bytes
+		table.insert(conInfo.indexes, numValidRows) 
+		-- verify original row matches
+		--table.insert(conInfo.indexes, {i, row.id, numValidRows})
 
+--print(i, row.id, numValidRows, mag, row.proper)
 		buffer[0 + numElem * numValidRows] = x
 		buffer[1 + numElem * numValidRows] = y
 		buffer[2 + numElem * numValidRows] = z
@@ -180,6 +191,24 @@ local ra2 = ra % (2 * math.pi)
 
 		numValidRows = numValidRows + 1
 	end
+end
+
+-- now sort the constellation stars by their magnitude
+for _,con in ipairs(constellations) do
+	table.sort(con.indexes, function(a,b)
+		-- sort by buffer magnitude
+		return buffer[6 + numElem * a] < buffer[6 + numElem * b]
+		-- sort by original row magnitude
+		--return tonumber(csvdata.rows[a[1]].absmag) < tonumber(csvdata.rows[b[1]].absmag)
+	end)
+	--[=[ if you want to see those values:
+	con.magnitudes = table.mapi(con.indexes, function(i)
+		-- buffer magnitude
+		return buffer[6 + numElem * i]
+		-- original row magnitude
+		--return tonumber(csvdata.rows[i[1]].absmag)
+	end)
+	--]=]
 end
 
 print('rows processed:', numRows)
@@ -210,6 +239,7 @@ for _,con in ipairs(constellations) do
 end
 
 -- make name of sun consistent with NASA data
+-- TODO call it Sol in the NASA data?
 assert(namedStars[1].name == 'Sol')
 namedStars[1].name = 'Sun'
 
