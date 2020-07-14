@@ -471,6 +471,7 @@ var ui = new function() {
 			'showVelocityVectors',
 			'showRotationAxis',
 			'showOrbitAxis',
+			'showEllipseAxis',
 			'showLatAndLonLines',
 			'showGravityWell',
 			'showNames',				//overlays.js

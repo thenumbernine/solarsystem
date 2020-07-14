@@ -55,6 +55,7 @@ var showVelocityVectors = false;
 var velocityVectorScale = 30;
 var showRotationAxis = false;
 var showOrbitAxis = false;
+var showEllipseAxis = false;
 var showLatAndLonLines = false;
 var showGravityWell = false;
 var showPlanetsAsDistantPoints = true;
@@ -353,6 +354,48 @@ var showFPS = false;
 					lineObj.attrs.vertex.data[5] = delta[2] + planet.orbitAxis[2] * -2 * planet.radius;
 					lineObj.attrs.vertex.updateData();
 					lineObj.draw({uniforms : { color : planet.color }});
+				}
+		
+				//show ellipses major and minor axis
+				if (showEllipseAxis &&
+					planet.keplerianOrbitalElements &&
+					planet.keplerianOrbitalElements.A && 
+					planet.keplerianOrbitalElements.B)
+				{
+					if (planet.parent) {
+						vec3.sub(delta, planet.parent.pos, orbitTarget.pos);
+					} else {
+						vec3.copy(delta, orbitTarget.pos);
+					}
+					lineObj.attrs.vertex.data[0] = delta[0] - planet.keplerianOrbitalElements.A[0];
+					lineObj.attrs.vertex.data[1] = delta[1] - planet.keplerianOrbitalElements.A[1];
+					lineObj.attrs.vertex.data[2] = delta[2] - planet.keplerianOrbitalElements.A[2];
+					lineObj.attrs.vertex.data[3] = delta[0] + planet.keplerianOrbitalElements.A[0];
+					lineObj.attrs.vertex.data[4] = delta[1] + planet.keplerianOrbitalElements.A[1];
+					lineObj.attrs.vertex.data[5] = delta[2] + planet.keplerianOrbitalElements.A[2];
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : { color : planet.color }});
+				
+					if (planet.parent) {
+						vec3.sub(delta, planet.parent.pos, orbitTarget.pos);
+					} else {
+						vec3.copy(delta, orbitTarget.pos);
+					}				
+					lineObj.attrs.vertex.data[0] = delta[0] - planet.keplerianOrbitalElements.B[0];
+					lineObj.attrs.vertex.data[1] = delta[1] - planet.keplerianOrbitalElements.B[1];
+					lineObj.attrs.vertex.data[2] = delta[2] - planet.keplerianOrbitalElements.B[2];
+					lineObj.attrs.vertex.data[3] = delta[0] + planet.keplerianOrbitalElements.B[0];
+					lineObj.attrs.vertex.data[4] = delta[1] + planet.keplerianOrbitalElements.B[1];
+					lineObj.attrs.vertex.data[5] = delta[2] + planet.keplerianOrbitalElements.B[2];
+					lineObj.attrs.vertex.updateData();
+					lineObj.draw({uniforms : {
+						color : [
+							planet.color[0] * .3,
+							planet.color[1] * .3,
+							planet.color[2] * .3,
+							1
+						]
+					}});
 				}
 			}
 		}
