@@ -4,7 +4,7 @@ local https = require 'ssl.https'
 local ltn12 = require 'ltn12'
 
 local function download(filename, url)
-	if io.fileexists(filename) then
+	if os.fileexists(filename) then
 		print('already have file '..filename..', so skipping the download and using the cached version')
 		return
 	end
