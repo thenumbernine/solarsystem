@@ -1,6 +1,5 @@
 #! /usr/bin/env luajit
 require 'ext'
-local json = require 'dkjson'
 local ffi = require 'ffi'
 local csv = require 'csv'
 
@@ -245,8 +244,16 @@ namedStars[1].name = 'Sun'
 
 -- write 
 file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows)
+--[[ in json
+local json = require 'dkjson'
 file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
 file['constellations.json'] = 'constellations = '..json.encode(constellations, {indent=true}) .. ';'
+--]]
+-- [[ in lua
+file['namedStars.lua'] = 'namedStars = ' .. tolua(namedStars)
+file['constellations.lua'] = 'constellations = '..tolua(constellations)
+--]]
+print'done!'
 
 --[[ plot dist density map
 local f = io.open('dist-distribution.txt', 'w')

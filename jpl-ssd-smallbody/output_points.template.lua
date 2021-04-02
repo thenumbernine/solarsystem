@@ -5,9 +5,9 @@ local gravitationalConstant = 6.6738480e-11		-- m^3 / (kg * s^2)
 local julian = assert(loadfile('../horizons/julian.lua'))()
 
 local vec3 = require 'vec.vec3'
-local json = require 'dkjson'
 --<? if _VERSION ~= 'Lua 5.3' ?>
-local bit = bit32 or require 'bit'
+local bit = require 'bit'	-- this is the lib in luajit 
+		or require 'bit32'
 --<? else ?>
 --[[
 local bit = {
@@ -16,6 +16,7 @@ local bit = {
 }
 --]]
 --<? end ?>
+--local json = require 'dkjson'	-- needs luarocks with luajit
 local ffi = require 'ffi'
 
 local julianDate = julian.fromCalendar(os.date'!*t')
@@ -618,7 +619,8 @@ childDepth 	start	end	size
 		print'done with node dictionary!'
 	end
 
-	local rowDesc = json.decode(file['row-desc.json']:match('.-=(.*)'))
+	--local rowDesc = json.decode(file['row-desc.json']:match('.-=(.*)'))
+	local rowDesc = assert(loadfile'row-desc.lua')()
 
 	-- TODO: automatically make dirs for file[] access?
 	if writeIndividualNodes then

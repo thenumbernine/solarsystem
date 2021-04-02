@@ -1,4 +1,4 @@
-local file = require 'ext.file'
-
-return assert(loadfile('output_points.template.lua'))()
---return assert(load(require 'template'(file['output_points.lua'])))()
+local f = assert(loadfile('output_points.template.lua'))
+local r = assert(f())
+return r
+--return assert(load(require 'template'(require 'ext.file'['output_points.lua'])))()

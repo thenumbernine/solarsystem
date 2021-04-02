@@ -2,7 +2,6 @@
 require 'ext'
 local json = require 'myjson'
 local socket = require 'socket'
-local https = require 'ssl.https'
 local htmlparser = require 'htmlparser.htmlparser'
 htmlparser.common = require 'htmlparser.common'
 htmlparser.xpath = require 'htmlparser.xpath'
@@ -51,6 +50,7 @@ local page = file[cacheFileName]
 if not page then
 	local url = 'https://ssd.jpl.nasa.gov/?sat_phys_par'
 	local t = table()
+	local https = require 'ssl.https'
 	assert(https.request{
 		url = url,
 		sink = require 'ltn12'.sink.table(t),
@@ -167,6 +167,7 @@ local page = file[cacheFileName]
 if not page then
 	local url = 'https://ssd.jpl.nasa.gov/?planet_phys_par'
 	local t = table()
+	local https = require 'ssl.https'
 	assert(https.request{
 		url = url,
 		sink = require 'ltn12'.sink.table(t),

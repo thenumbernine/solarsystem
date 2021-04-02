@@ -286,7 +286,12 @@ print('(vars)',tolua{k=k,v=v})
 						y = y * 1000
 						planetInfo.radius = (x + y) / 2
 					else
-						planetInfo.radius = tonumber(v) * 1000
+						x, y = v:match('^([.%d]+) %+/%- ([.%d]+)$')
+						if x and y then
+							planetInfo.radius = tonumber(x) * 1000
+						else
+							planetInfo.radius = tonumber(v) * 1000
+						end
 					end
 				end
 			end

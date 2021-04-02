@@ -110,6 +110,10 @@ function processPlanet(node, resultSystem)
 		local tag = child.tag:lower()
 		if tag == 'name' then
 			setName(resultBody, getText(child))
+		elseif tag == 'satellite' then
+			local body = processPlanet(child, resultSystem)
+			body.type = 'satellite'
+			body.parent = resultBody
 		elseif tag == 'semimajoraxis' then
 			setField(resultBody, 'semiMajorAxis', getNumber(child) * auInM)
 		elseif tag == 'separation' then
@@ -173,6 +177,8 @@ function processPlanet(node, resultSystem)
 		elseif tag == 'impactparameter' then
 		elseif tag == 'metallicity' then
 		elseif tag == 'new' then
+		elseif tag == 'tilt' then
+			setField(resultBody, 'tilt', getNumber(child))
 		else
 			error('unknown parameter '..tag..' for planet')
 		end
@@ -187,6 +193,10 @@ function processStar(node, resultSystem)
 		local tag = child.tag:lower()
 		if tag == 'planet' then
 			local body = processPlanet(child, resultSystem)
+			body.parent = resultBody
+		elseif tag == 'asteroid' then
+			local body = processPlanet(child, resultSystem)
+			body.type = 'asteroid'
 			body.parent = resultBody
 		elseif tag == 'name' then
 			setName(resultBody, getText(child))
@@ -276,6 +286,8 @@ function processBinary(node, resultSystem)
 			setField(resultBody, 'HMagnitude', getNumber(child))
 		elseif tag == 'magk' then
 			setField(resultBody, 'KMagnitude', getNumber(child))
+		elseif tag == 'meananomaly' then
+			setField(resultBody, 'meanAnomaly', getNumber(child))
 		--undocumented:
 		elseif tag == 'positionangle' then
 			setField(resultBody, 'positionAngle', math.rad(getNumber(child)))	-- no documentation, guessing degrees -> radians
@@ -796,9 +808,10 @@ for _,system in ipairs(resultSystems) do
 					local otherBody = system.bodies[j]
 					if otherBody.parent == body then
 						if not otherBody.name then
-							error("failed to find name of child of barycenter for system "..system.name)
+							print("failed to find name of child of barycenter for system "..system.name)
+						else
+							table.insert(parts, assert(otherBody.name))
 						end
-						table.insert(parts, assert(otherBody.name))
 					end
 				end
 				assert(#parts > 0)

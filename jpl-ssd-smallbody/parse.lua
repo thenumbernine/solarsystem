@@ -26,7 +26,12 @@ local function processToFile(args)
 	local outputObj = assert(args.outputObj)
 
 	local lastTime = os.time()
-	local lines = assert(file[inputFilename], "failed to read file "..inputFilename):split('\n')
+	
+	-- file[] read is not working on luajit in windows
+	--local data = file[inputFilename]
+	local data = io.readfile(inputFilename)
+	
+	local lines = assert(data, "failed to read file "..inputFilename):split('\n')
 	local cols = Columns(lines)
 
 print(tolua(cols.columns))

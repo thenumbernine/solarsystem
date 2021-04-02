@@ -1,7 +1,7 @@
 #!/usr/bin/env wsapi.cgi
 require 'ext'
 local wsapi_request = require 'wsapi.request'
-local bit = require 'bit'
+local bit = require 'bit32' or require 'bit'
 local body_t = require 'body_t_desc'
 local convert = require 'convert'
 
