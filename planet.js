@@ -856,3 +856,17 @@ console.log('parabolic orbit for planet',this);
 	}
 
 });
+
+/*
+TODO Apsidal precession:
+https://en.wikipedia.org/wiki/Apsidal_precession
+
+epsilon = 24 pi^3 a^2 / (T^2 c^2 (1 + e^2))
+a = semi-major axis,		[a] = m
+T = period of revolution,	[T] = s/revolution ... [revolution] = 1
+c = speed of light,			[c] = m/s
+e = eccentricity of orbit,	[e] = 1 = m/m
+epsilon = precession during one period of revolution, in radians
+[epsilon] = [a]^2 / ([T]^2 [c]^2 (1 + [e]^2))
+[epsilon] = m^2 / (s^2/rev^2 m^2/s^2) = rev^2 = 1
+*/
