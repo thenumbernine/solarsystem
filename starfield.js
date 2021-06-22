@@ -20,7 +20,11 @@ var drawConstellationColorScalar = 20;
 var drawConstellationPointSizeMax = 10;
 
 
+//maps from constellation index to list of vertex indexes in the point cloud
 var indexesForConstellations = [];
+
+//maps from point cloud index to constellation index 
+var constellationForIndex = [];
 
 var starfield = new function() {
 	this.maxDistInLyr = 5000;
@@ -341,13 +345,16 @@ if (dist < metersPerUnits.pc / thiz.renderScale) {
 			
 				if (j%numElem==8) {	//constellation
 					var constellationIndex = floatBuffer[j];
-					indexesForConstellations[constellationIndex].push( (j-8)/numElem );
+					var vertexIndex = (j-8)/numElem;
+					indexesForConstellations[constellationIndex].push(vertexIndex);
+					constellationForIndex[vertexIndex] = constellationIndex;
 				}
 			}
 
 			for (var j = 0; j < constellations.length; ++j) {
 				indexesForConstellations[j] = new glutil.ElementArrayBuffer({
-					data : indexesForConstellations[j]
+					data : indexesForConstellations[j],
+					keep : true
 				});
 			}
 
@@ -434,6 +441,8 @@ console.log('adding star systems to star fields and vice versa');
 			//preserved since the original 1000 or however many from the HYG database are not moved
 			starSystem.starfieldIndex = args.index;
 
+			starSystem.constellationIndex = constellationForIndex[starSystem.starfieldIndex];
+
 			//note this.buffer holds x y z abs-mag color-index
 			starSystem.pos = [
 				this.buffer.data[0 + starSystem.starfieldIndex * this.buffer.dim] * this.renderScale,
@@ -513,8 +522,12 @@ console.log('adding star systems to star fields and vice versa');
 			if (!picking) {
 				
 				gl.disable(gl.DEPTH_TEST);
-				
-				this.sceneObj.draw();
+
+//don't draw stars as a whole
+//only draw selected constellations
+// TODO don't put bubbles around them at close dist?
+// TODO find some other way to select them?
+//				this.sceneObj.draw();
 
 				//only draw bubbles around stars once we're out of the star system
 				//then fade them into display
@@ -555,7 +568,7 @@ console.log('adding star systems to star fields and vice versa');
 							texs : [this.colorIndexTex, this.bubbleTex]
 						});
 					
-					
+/*					
 						//and draw some bboxes around it
 						var minmax = ['min', 'max'];
 						var sunPos = solarSystem.planets[solarSystem.indexes.Sun].pos;	//I store the data wrt the sun's position
@@ -586,6 +599,7 @@ console.log('adding star systems to star fields and vice versa');
 								lineObj.draw({uniforms : { color : [1,1,1,1] }});
 							}
 						}
+*/					
 					}
 				}
 				this.sceneObj.geometry.indexes = undefined;
@@ -626,20 +640,49 @@ console.log('adding star systems to star fields and vice versa');
 					/* until then ... manually? */
 					$.each(starSystems, function(i,starSystem) {
 						if (starSystem !== orbitStarSystem) {
-							pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - orbitTarget.pos[0]) / thiz.renderScale;
-							pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - orbitTarget.pos[1]) / thiz.renderScale;
-							pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - orbitTarget.pos[2]) / thiz.renderScale;
-							pointObj.attrs.vertex.updateData();
-							pickObject.drawPoints({
-								sceneObj : pointObj,
-								targetCallback : function() { return starSystem; },
-								pointSize : pointSize,
-								pointSizeScaleWithDist : true,
-								pointSizeMin : 0,
-								pointSizeMax : 5
-							});
+							if (starSystem.constellationIndex === undefined ||
+								displayConstellations[starSystem.constellationIndex]
+							) {
+								pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - orbitTarget.pos[0]) / thiz.renderScale;
+								pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - orbitTarget.pos[1]) / thiz.renderScale;
+								pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - orbitTarget.pos[2]) / thiz.renderScale;
+								pointObj.attrs.vertex.updateData();
+								pickObject.drawPoints({
+									sceneObj : pointObj,
+									targetCallback : function() { return starSystem; },
+									pointSize : pointSize,
+									pointSizeScaleWithDist : true,
+									pointSizeMin : 0,
+									pointSizeMax : 5
+								});
+							}
 						}
 					});
+					/**/
+					/* only visible constellations ... 
+					but TODO we need a starSytsem object * /
+					for (var k = 0; k < constellations.length; ++k) {
+						if (displayConstellations[k]) {
+							for (var j = 0; j < indexesForConstellations[k].count; ++j) {
+								var i = indexesForConstellations[k].data[j];
+								var x = thiz.buffer.data[0 + thiz.buffer.dim * i];
+								var y = thiz.buffer.data[1 + thiz.buffer.dim * i];
+								var z = thiz.buffer.data[2 + thiz.buffer.dim * i];
+								pointObj.attrs.vertex.data[0] = x - orbitTarget.pos[0] / thiz.renderScale;
+								pointObj.attrs.vertex.data[1] = y - orbitTarget.pos[1] / thiz.renderScale;
+								pointObj.attrs.vertex.data[2] = z - orbitTarget.pos[2] / thiz.renderScale;
+								pointObj.attrs.vertex.updateData();
+								pickObject.drawPoints({
+									sceneObj : pointObj,
+									targetCallback : function() { return starSystem; },
+									pointSize : pointSize,
+									pointSizeScaleWithDist : true,
+									pointSizeMin : 0,
+									pointSizeMax : 5
+								});
+							}
+						}
+					}
 					/**/
 				}
 			}

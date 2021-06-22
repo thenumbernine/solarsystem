@@ -76,16 +76,16 @@ for i,row in ipairs(csv.rows) do
 		-- so skip these entries.  they're not even outside the milky way.  they just aren't filled in.
 		numInvalidRows = numInvalidRows + 1
 	else
-		-- in parsecs?  docs don't say.  but vel and dist is, so...
+		-- in parsecs
 		local x = assert(tonumber(row.x))
 		local y = assert(tonumber(row.y))
 		local z = assert(tonumber(row.z))
 		
-		-- ranged [0, 23.9], in hour-circle-units
+		-- in hour-angles
 		local ra = assert(tonumber(row.ra))
 		ra = ra * (2 * math.pi / 24)
 		
-		-- ranged [-90,90], so i'm guessing degrees then
+		-- in degrees
 		local dec = assert(tonumber(row.dec))
 		dec = math.rad(dec)
 		
@@ -317,8 +317,7 @@ print'done!'
 --[[ plot dist density map
 local f = io.open('dist-distribution.txt', 'w')
 f:write'#dist_min\tdist_max\tcount\n'
-local bins = 2000
-local counts = range(bins):map(function(i) return 0 end)
+local distbin = Bin(0, statset.dist.max, 2000)
 for i,row in ipairs(csv.rows) do
 	-- [=[ bin by dist
 	local dist = assert(tonumber(row.dist))
@@ -329,15 +328,10 @@ for i,row in ipairs(csv.rows) do
 	local z = assert(tonumber(row.z)) - sunPos.z
 	local dist = math.sqrt(x*x + y*y + z*z)
 	--]=]
-
-	local bin = 1 + math.floor(bins * (dist / statset.dist.max))
-	if bin >= 1 and bin <= bins then
-		counts[bin] = counts[bin] + 1
-	end
+	distbin:accum(dist) 
 end
-for bin,count in ipairs(counts) do
-	local distMin = (bin-1) / bins * statset.dist.max
-	local distMax = bin / bins * statset.dist.max
+for bin,count in ipairs(distbin) do
+	local distMin, distMax = distbin:getBinBounds(bin)
 	f:write(distMin,'\t',distMax,'\t',count,'\n')
 end
 f:close()
