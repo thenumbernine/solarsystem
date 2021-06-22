@@ -10,7 +10,7 @@ getdata.lua = LuaJIT script that extracts the xyz contents and store them as a b
 		float vy
 		float vz
 		float mag	<- absolute magnitude
-		float colorIndex	<- color index
+		float colorIndex	<- color index (B-V) https://en.wikipedia.org/wiki/Color_index , is related to temperature.
 		float constellationIndex	<- index of constellation in constellations.json name list.  1-based, where 0 is no constellations.
 	namedStars.json	<- table of the 87 stars with proper names, and their associated (zero-based) indexes in the stardata.f32 buffer 
 

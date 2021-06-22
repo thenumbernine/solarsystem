@@ -1,51 +1,64 @@
 #! /usr/bin/env luajit
 require 'ext'
 local ffi = require 'ffi'
-local csv = require 'csv'
+local CSV = require 'csv'
+local Stat = require 'stat'
+local StatSet = require 'stat.set'
 
---[[ v2
-local csvdata = csv.file'hygxyz.csv'
---]]
--- [[ v3
-local csvdata = csv.file'hygdata_v3.csv'
---]]
+local csv = CSV.file'hygdata_v3.csv'
 
-local rowHeaders = csvdata.rows:remove(1)
+local outputLum = ... == 'lum'
+
+local offsetFromSun = true
+local rotateEquatorialToEcliptic = true
+
+--[=[
+M = -2.5 log(LStarOverLSun * LSunOverL0)/log(10)
+LStarOverLSun = 10^(-M/2.5) / LSunOverL0
+--]=]
+
+
+local rowHeaders = csv.rows:remove(1)
 for i=1,#rowHeaders do rowHeaders[i] = rowHeaders[i]:lower() end
-csvdata:setColumnNames(rowHeaders)
+csv:setColumnNames(rowHeaders)
 
 -- sun is positioned relative to the earth, so offset everything for the sun to be the center
-local sunRow = csvdata.rows[1]
+local sunRow = csv.rows[1]
 local sunPos = {
 	x = assert(tonumber(sunRow.x)),
 	y = assert(tonumber(sunRow.y)),
 	z = assert(tonumber(sunRow.z)),
 }
 
-local numRows = #csvdata.rows
+local numRows = #csv.rows
 local numElem = 9
 local bufferType = 'float'
 local buffer = ffi.new(bufferType..'[?]', numElem * numRows)	-- allocate space for data of each planet 
 
-local maxAbs = 0
+local maxAbsPos = 0
 local namedStars = {}
 local constellations = table()	-- list of unique names so far
 local columnCounts = {}
 
-local totalErrors = 0
 
-local ranges = {}
-ranges.mag = {}
-ranges.colorIndex = {}
-ranges.ra = {}
-ranges.ra2 = {}
-ranges.dec = {}
-ranges.dist = {}
-ranges.cons = {}
+local statset = StatSet(
+	'absmag',	-- absolute magnitude
+	'mag',		-- apparent magnitude
+	'lum',		-- luminosity, in LSun (even though the sun isn't 1.0 ... )
+	'colorIndex',
+	'temp',
+	'ra',
+	'ra2',
+	'dec',
+	'dist',
+	'posSphereError',
+	'postEclipticDistError'
+)
 
 local numValidRows = 0
-for i,row in ipairs(csvdata.rows) do
-	for _,col in ipairs(csvdata.columns) do
+local numInvalidRows = 0
+for i,row in ipairs(csv.rows) do
+	for _,col in ipairs(csv.columns) do
 		if #row[col] > 0 then
 			columnCounts[col] = (columnCounts[col] or 0) + 1
 		end
@@ -61,65 +74,98 @@ for i,row in ipairs(csvdata.rows) do
 	if tonumber(row.dist) == 100000 then
 		-- this is the magic number for 'idk'
 		-- so skip these entries.  they're not even outside the milky way.  they just aren't filled in.
+		numInvalidRows = numInvalidRows + 1
 	else
-		-- in parsecs
-		local x = assert(tonumber(row.x)) - sunPos.x
-		local y = assert(tonumber(row.y)) - sunPos.y
-		local z = assert(tonumber(row.z)) - sunPos.z
+		-- in parsecs?  docs don't say.  but vel and dist is, so...
+		local x = assert(tonumber(row.x))
+		local y = assert(tonumber(row.y))
+		local z = assert(tonumber(row.z))
+		
+		-- ranged [0, 23.9], in hour-circle-units
+		local ra = assert(tonumber(row.ra))
+		ra = ra * (2 * math.pi / 24)
+		
+		-- ranged [-90,90], so i'm guessing degrees then
+		local dec = assert(tonumber(row.dec))
+		dec = math.rad(dec)
+		
+		-- docs say parsecs
+		local dist = assert(tonumber(row.dist))
+		
+		-- reconstruct spherical to cartesian and see accurate the xyz is
+		local rx = dist * math.cos(ra) * math.cos(dec)
+		local ry = dist * math.sin(ra) * math.cos(dec)
+		local rz = dist * math.sin(dec)
+
+		-- dist error in xyz <-> dist ra dec of the original data
+		local posSphereError = math.sqrt(
+			(x - rx) * (x - rx)
+			+ (y - ry) * (y - ry)
+			+ (z - rz) * (z - rz)
+		)
+
+		if offsetFromSun then
+			x = x - sunPos.x
+			y = y - sunPos.y
+			z = z - sunPos.z
+			rx = rx - sunPos.x
+			ry = ry - sunPos.y
+			rz = rz - sunPos.z
+		end
+
 
 		-- HYG is in equatorial coordinates
 		-- rotate equatorial pos to ecliptic pos
-		local epsilon = math.rad(23 + 1/60*(26 + 1/60*(21.4119)))	-- earth tilt
-		local cosEps = math.cos(epsilon)
-		local sinEps = math.sin(epsilon)
-		y, z = cosEps * y + sinEps * z, -sinEps * y + cosEps * z
-	
-		-- reconstruct spherical to cartesian and see accurate the xyz is
-		-- dec is ranged [-90,90], but ra is only [0,23]
--- TODO also why is ursa major pointing away from ursa minor?		
-		local ra = math.rad(assert(tonumber(row.ra)))
-		local dec = math.rad(assert(tonumber(row.dec)))
-		local dist = assert(tonumber(row.dist))
-		local rx = dist * math.cos(ra) * math.cos(dec) - sunPos.x
-		local ry = dist * math.sin(ra) * math.cos(dec) - sunPos.y
-		local rz = dist * math.sin(dec) - sunPos.z
-		ry, rz = cosEps * ry + sinEps * rz, -sinEps * ry + cosEps * rz
-		local rerr = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)/math.max(1,dist)
-		totalErrors = totalErrors + rerr
+		local postEclipticDistError = math.nan
+		if rotateEquatorialToEcliptic then
+			local epsilon = math.rad(23 + 1/60*(26 + 1/60*(21.4119)))	-- earth tilt
+			local cosEps = math.cos(epsilon)
+			local sinEps = math.sin(epsilon)
+			y, z = cosEps * y + sinEps * z,
+					-sinEps * y + cosEps * z
+			ry, rz = cosEps * ry + sinEps * rz,
+					-sinEps * ry + cosEps * rz
+			
+			postEclipticDistError = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)
+		end
 
 
--- recalc ra, dec
+--[[ recalc ra, dec
 ra = math.atan2(y, x)
 dec = math.atan2(z, math.sqrt(x*x + y*y))
 dist = math.sqrt(x*x + y*y + z*z)
+--]]
 
+local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 
-		ranges.ra.min = math.min(ranges.ra.min or ra, ra)
-		ranges.ra.max = math.max(ranges.ra.max or ra, ra)
+		local mag = assert(tonumber(row.mag))		-- apparent magnitude
+		local absmag = assert(tonumber(row.absmag))	-- absolute magnitude
+		local lum = assert(tonumber(row.lum))		-- luminosity
+		local colorIndex = tonumber(row.ci) or .656	-- fill in blanks with something close to white
 
-local ra2 = ra % (2 * math.pi)
-		ranges.ra2.min = math.min(ranges.ra2.min or ra2, ra2)
-		ranges.ra2.max = math.max(ranges.ra2.max or ra2, ra2)
+		-- calc temp based on colorIndex BV using Newton method on the color temp BV function
+		local temp = 4600 * (1 / (.92 * colorIndex + 1.7) + 1 / (.92 * colorIndex + .62))
+
 		
-		ranges.dec.min = math.min(ranges.dec.min or dec, dec)
-		ranges.dec.max = math.max(ranges.dec.max or dec, dec)
-		
-		ranges.dist.min = math.min(ranges.dist.min or dist, dist)
-		ranges.dist.max = math.max(ranges.dist.max or dist, dist)
+		statset:accum(
+			absmag,
+			mag,
+			lum,
+			colorIndex,
+			temp,
+			ra,
+			ra2,
+			dec,
+			dist,
+			posSphereError,
+			postEclipticDistError 
+		)
 
-		local mag = assert(tonumber(row.absmag))	--absolute magnitude
-		ranges.mag.min = math.min(ranges.mag.min or mag, mag)
-		ranges.mag.max = math.max(ranges.mag.max or mag, mag)
-		
-		local colorIndex = tonumber(row.colorindex or row.ci) or .656	-- fill in blanks with something close to white
-		ranges.colorIndex.min = math.min(ranges.colorIndex.min or colorIndex, colorIndex)
-		ranges.colorIndex.max = math.max(ranges.colorIndex.max or colorIndex, colorIndex)
 
 		-- in parsecs per year
 		local vx = assert(tonumber(row.vx))
 		local vy = assert(tonumber(row.vy))
 		local vz = assert(tonumber(row.vz))
-
 
 		local name = (#row.proper > 0 and row.proper)
 				or (#row.bf > 0 and row.bf)
@@ -141,11 +187,14 @@ local ra2 = ra % (2 * math.pi)
 		if not conInfo then
 			conInfo = {
 				name = con,
+				-- TODO use StatSet ?
+				-- in fact, then just combine StatSet's at the end?
 				ra = {},
 				ra2 = {},
 				dec = {},
 				dist = {},
 				mag = {},
+				absmag = {},
 				indexes = {},	-- array of all indexes in the HYG data of all stars of the constellation 
 			}
 			constellations:insert(conInfo)
@@ -166,6 +215,10 @@ local ra2 = ra % (2 * math.pi)
 		
 		conInfo.mag.min = math.min(conInfo.mag.min or mag, mag)
 		conInfo.mag.max = math.max(conInfo.mag.max or mag, mag)
+		
+		conInfo.absmag.min = math.min(conInfo.absmag.min or absmag, absmag)
+		conInfo.absmag.max = math.max(conInfo.absmag.max or absmag, absmag)
+
 
 		-- without individual star info, constellsions.json is 22603 bytes
 		-- with individual star info it is 678818 bytes
@@ -180,13 +233,21 @@ local ra2 = ra % (2 * math.pi)
 		buffer[3 + numElem * numValidRows] = vx
 		buffer[4 + numElem * numValidRows] = vy
 		buffer[5 + numElem * numValidRows] = vz
-		buffer[6 + numElem * numValidRows] = mag
-		buffer[7 + numElem * numValidRows] = colorIndex 
+	
+		if outputLum then
+			-- gaia is storing lum and temp
+			buffer[6 + numElem * numValidRows] = lum
+			buffer[7 + numElem * numValidRows] = colorIndex 
+		else
+			-- solarsystem is storing absmag and colorIndex (or should it be absmag?)
+			buffer[6 + numElem * numValidRows] = absmag
+			buffer[7 + numElem * numValidRows] = colorIndex 
+		end
 		buffer[8 + numElem * numValidRows] = constellationIndex-1
 		
-		maxAbs = math.max(maxAbs, x)
-		maxAbs = math.max(maxAbs, y)
-		maxAbs = math.max(maxAbs, z)
+		maxAbsPos = math.max(maxAbsPos, x)
+		maxAbsPos = math.max(maxAbsPos, y)
+		maxAbsPos = math.max(maxAbsPos, z)
 
 		numValidRows = numValidRows + 1
 	end
@@ -195,38 +256,35 @@ end
 -- now sort the constellation stars by their magnitude
 for _,con in ipairs(constellations) do
 	table.sort(con.indexes, function(a,b)
-		-- sort by buffer magnitude
+		-- sort by buffer abs mag / luminosity
 		return buffer[6 + numElem * a] < buffer[6 + numElem * b]
 		-- sort by original row magnitude
-		--return tonumber(csvdata.rows[a[1]].absmag) < tonumber(csvdata.rows[b[1]].absmag)
+		--return tonumber(csv.rows[a[1]].absmag) < tonumber(csv.rows[b[1]].absmag)
 	end)
 	--[=[ if you want to see those values:
 	con.magnitudes = table.mapi(con.indexes, function(i)
 		-- buffer magnitude
 		return buffer[6 + numElem * i]
 		-- original row magnitude
-		--return tonumber(csvdata.rows[i[1]].absmag)
+		--return tonumber(csv.rows[i[1]].absmag)
 	end)
 	--]=]
 end
 
 print('rows processed:', numRows)
 print('valid entries:', numValidRows)
+print('invalid entries:', numInvalidRows)
 
-print('max reconstruction error',totalErrors/numValidRows)
+print('max abs position coordinate:', maxAbsPos)
 
-print('abs max coordinate', maxAbs)
+--[[ see what data is present:
 print('num columns provided:')
-for _,name in ipairs(csvdata.columns) do
+for _,name in ipairs(csv.columns) do
 	print('', name, columnCounts[name])
 end
-
-print(tolua(ranges))
---[[
-for k,v in pairs(ranges) do
-	print(k,'min',ranges[k].min,'max',ranges[k].max)
-end
 --]]
+
+print(statset)
 
 for _,con in ipairs(constellations) do
 	local dra = con.ra.max - con.ra.min
@@ -244,6 +302,7 @@ namedStars[1].name = 'Sun'
 
 -- write 
 file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows)
+
 --[[ in json
 local json = require 'dkjson'
 file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
@@ -260,7 +319,7 @@ local f = io.open('dist-distribution.txt', 'w')
 f:write'#dist_min\tdist_max\tcount\n'
 local bins = 2000
 local counts = range(bins):map(function(i) return 0 end)
-for i,row in ipairs(csvdata.rows) do
+for i,row in ipairs(csv.rows) do
 	-- [=[ bin by dist
 	local dist = assert(tonumber(row.dist))
 	--]=]
@@ -271,14 +330,14 @@ for i,row in ipairs(csvdata.rows) do
 	local dist = math.sqrt(x*x + y*y + z*z)
 	--]=]
 
-	local bin = 1 + math.floor(bins * (dist / ranges.dist.max))
+	local bin = 1 + math.floor(bins * (dist / statset.dist.max))
 	if bin >= 1 and bin <= bins then
 		counts[bin] = counts[bin] + 1
 	end
 end
 for bin,count in ipairs(counts) do
-	local distMin = (bin-1) / bins * ranges.dist.max
-	local distMax = bin / bins * ranges.dist.max
+	local distMin = (bin-1) / bins * statset.dist.max
+	local distMax = bin / bins * statset.dist.max
 	f:write(distMin,'\t',distMax,'\t',count,'\n')
 end
 f:close()
