@@ -187,44 +187,38 @@ local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 		if not conInfo then
 			conInfo = {
 				name = con,
-				-- TODO use StatSet ?
-				-- in fact, then just combine StatSet's at the end?
-				ra = {},
-				ra2 = {},
-				dec = {},
-				dist = {},
-				mag = {},
-				absmag = {},
-				indexes = {},	-- array of all indexes in the HYG data of all stars of the constellation 
+				-- TODO don't use global statSet, only use constellation StatSets, and combine in the end?
+				stats = StatSet(
+					'ra',
+					'ra2',
+					'dec',
+					'dist',
+					'lum',
+					'mag',
+					'absmag'
+				),
+				-- array of all indexes in the HYG data of all stars of the constellation
+				indexes = table(),
 			}
 			constellations:insert(conInfo)
 			constellationIndex = #constellations
 		end
 
-		conInfo.ra.min = math.min(conInfo.ra.min or ra, ra)
-		conInfo.ra.max = math.max(conInfo.ra.max or ra, ra)
-		
-		conInfo.ra2.min = math.min(conInfo.ra2.min or ra2, ra2)
-		conInfo.ra2.max = math.max(conInfo.ra2.max or ra2, ra2)
-		
-		conInfo.dec.min = math.min(conInfo.dec.min or dec, dec)
-		conInfo.dec.max = math.max(conInfo.dec.max or dec, dec)
-	
-		conInfo.dist.min = math.min(conInfo.dist.min or dist, dist)
-		conInfo.dist.max = math.max(conInfo.dist.max or dist, dist)
-		
-		conInfo.mag.min = math.min(conInfo.mag.min or mag, mag)
-		conInfo.mag.max = math.max(conInfo.mag.max or mag, mag)
-		
-		conInfo.absmag.min = math.min(conInfo.absmag.min or absmag, absmag)
-		conInfo.absmag.max = math.max(conInfo.absmag.max or absmag, absmag)
-
+		conInfo.stats:accum(
+			ra,
+			ra2,
+			dec,
+			dist,
+			lum,
+			mag,
+			absmag
+		)
 
 		-- without individual star info, constellsions.json is 22603 bytes
 		-- with individual star info it is 678818 bytes
-		table.insert(conInfo.indexes, numValidRows) 
+		conInfo.indexes:insert(numValidRows) 
 		-- verify original row matches
-		--table.insert(conInfo.indexes, {i, row.id, numValidRows})
+		--conInfo.indexes:insert{i, row.id, numValidRows}
 
 --print(i, row.id, numValidRows, mag, row.proper)
 		buffer[0 + numElem * numValidRows] = x
@@ -287,12 +281,12 @@ end
 print(statset)
 
 for _,con in ipairs(constellations) do
-	local dra = con.ra.max - con.ra.min
-	local dra2 = con.ra2.max - con.ra2.min
+	local dra = con.stats.ra.max - con.stats.ra.min
+	local dra2 = con.stats.ra2.max - con.stats.ra2.min
 	if dra2 < dra then
-		con.ra = con.ra2
+		con.stats.ra = con.stats.ra2
+		-- don't forget the indexed reference to ra is still dangling
 	end
-	con.ra2 = nil
 end
 
 -- make name of sun consistent with NASA data
@@ -310,7 +304,23 @@ file['constellations.json'] = 'constellations = '..json.encode(constellations, {
 --]]
 -- [[ in lua
 file['namedStars.lua'] = 'namedStars = ' .. tolua(namedStars)
-file['constellations.lua'] = 'constellations = '..tolua(constellations)
+file['constellations.lua'] = 'constellations = '..tolua(
+	constellations:mapi(function(con) 
+		local o = {
+			name = con.name,
+			indexes = table(con.indexes):setmetatable(nil),
+		}
+		for k,stat in pairs(con.stats) do
+			if type(k) ~= 'number' then
+				o[k] = {
+					min = stat.min,
+					max = stat.max,
+				}
+			end
+		end
+		return o
+	end)
+)
 --]]
 print'done!'
 
