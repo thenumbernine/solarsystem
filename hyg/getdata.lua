@@ -11,6 +11,7 @@ local outputLum = ... == 'lum'
 
 local offsetFromSun = true
 local rotateEquatorialToEcliptic = true
+local compareAbsMagToLum = false
 
 --[=[
 M = -2.5 log(LStarOverLSun * LSunOverL0)/log(10)
@@ -54,6 +55,8 @@ local statset = StatSet(
 	'posSphereError',
 	'postEclipticDistError'
 )
+
+local absMagToLumError = 0
 
 local numValidRows = 0
 local numInvalidRows = 0
@@ -129,7 +132,6 @@ for i,row in ipairs(csv.rows) do
 			postEclipticDistError = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)
 		end
 
-
 --[[ recalc ra, dec
 ra = math.atan2(y, x)
 dec = math.atan2(z, math.sqrt(x*x + y*y))
@@ -146,6 +148,19 @@ local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 		-- calc temp based on colorIndex BV using Newton method on the color temp BV function
 		local temp = 4600 * (1 / (.92 * colorIndex + 1.7) + 1 / (.92 * colorIndex + .62))
 
+		if compareAbsMagToLum then
+			local LStarOverLSun = lum
+			
+			-- I deduced this ... but what value should it be?
+			-- -2.5 log10(LSunOverL0) = 4.85 = sun's abs mag
+			local LSunOverL0 = 0.011481536214969
+			
+			local M = -2.5 * math.log(LStarOverLSun * LSunOverL0) / math.log(10)
+			local dM = M - absmag
+--print('abs mag vs lum error', dM)			
+			-- max error is 3.5527136788005e-15
+			absMagToLumError = math.max(absMagToLumError, math.abs(dM))
+		end
 		
 		statset:accum(
 			absmag,
@@ -270,6 +285,10 @@ print('valid entries:', numValidRows)
 print('invalid entries:', numInvalidRows)
 
 print('max abs position coordinate:', maxAbsPos)
+
+if compareAbsMagToLum then
+	print('absMagToLumError:', absMagToLumError)
+end
 
 --[[ see what data is present:
 print('num columns provided:')
