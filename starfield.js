@@ -28,7 +28,8 @@ var constellationForIndex = [];
 
 var starfield = new function() {
 	this.maxDistInLyr = 5000;
-	this.renderScale = 1e+10;
+	this.renderScale = 1e+10;	//worked wrt all the float precision of glsl to render points, but the shader Pc dist calcs are ~ machine precision
+	//this.renderScale = 1e+17;	// gives us Pc/scale ~ 3.24 (on the order of 1)
 	
 	this.init = function() {
 		
@@ -165,18 +166,19 @@ void main() {
 	vec4 vtx4 = mvMat * vec4(vertex, 1.);
 
 	//calculate apparent magnitude, convert to alpha
-	float distanceInParsecs = length(vtx4.xyz) / ( */}) 
-				+ floatToGLSL(metersPerUnits.pc / starfield.renderScale) 
+	float distanceInParsecs = length(vertex.xyz) * ( */}) 
+				+ floatToGLSL(starfield.renderScale / metersPerUnits.pc) 
 				+ mlstr(function(){/*);	//convert distance to parsecs
 	
 	//https://en.wikipedia.org/wiki/Apparent_magnitude
 	float apparentMagnitude = absoluteMagnitude - 5. * (1. - log(distanceInParsecs) / M_LOG_10);
 	
 	//not sure where I got this one from ...
-	float log100alpha = -.2*(apparentMagnitude - visibleMagnitudeBias);
+	float log100alpha = -.2*(apparentMagnitude - 0.);//visibleMagnitudeBias);
 	alpha = pow(100., log100alpha);
 	
 	alpha = clamp(alpha, 0., 1.);
+alpha = 1.;
 
 	//calculate color
 	color = texture2D(colorIndexTex, vec2((colorIndex - COLOR_INDEX_MIN) / (COLOR_INDEX_MAX - COLOR_INDEX_MIN), .5)).rgb;
@@ -184,7 +186,10 @@ void main() {
 	gl_Position = projMat * vtx4;
 	
 	//TODO point sprite / point spread function?
-	gl_PointSize = pointSize / gl_Position.w;
+	//gl_PointSize = pointSize / gl_Position.w;
+	// TODO var for apparentMagnitudeBias
+	gl_PointSize = visibleMagnitudeBias * -(apparentMagnitude - 6.5);
+	
 	gl_PointSize = min(gl_PointSize, pointSizeMax);
 	
 	gl_Position.z = depthfunction(gl_Position);

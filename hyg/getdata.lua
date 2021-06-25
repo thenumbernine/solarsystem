@@ -1,4 +1,8 @@
 #! /usr/bin/env luajit
+
+-- should i move the data processing stuff to universe/offline?
+-- should I put the whole universe/offline folder in a repo of its own for point processing?
+
 require 'ext'
 local ffi = require 'ffi'
 local CSV = require 'csv'
@@ -11,27 +15,45 @@ local outputLum = ... == 'lum'
 
 local offsetFromSun = true
 local rotateEquatorialToEcliptic = true
-local compareAbsMagToLum = false
 
---[=[
-M = -2.5 log(LStarOverLSun * LSunOverL0)/log(10)
-LStarOverLSun = 10^(-M/2.5) / LSunOverL0
---]=]
+local compareAbsMagToLum = true
+local compareAppMagToAbsMag = true
+local compareTempToLuminosity = true
 
+local rows = csv.rows
 
-local rowHeaders = csv.rows:remove(1)
+local rowHeaders = rows:remove(1)
 for i=1,#rowHeaders do rowHeaders[i] = rowHeaders[i]:lower() end
 csv:setColumnNames(rowHeaders)
 
+--[[ debugging
+for i,row in ipairs(rows) do
+	if row.proper ~= '' then
+		rows[row.proper] = row
+	end
+end
+local function rowtotable(row)
+	local t = {}
+	for i,h in ipairs(rowHeaders) do
+		t[h] = row[i]
+	end
+	return t
+end
+print(tolua(rowtotable(rows.Sol)))
+print(tolua(rowtotable(rows.Polaris)))
+print(tolua(rowtotable(rows.Merak)))
+do return end
+--]]
+
 -- sun is positioned relative to the earth, so offset everything for the sun to be the center
-local sunRow = csv.rows[1]
+local sunRow = rows[1]
 local sunPos = {
 	x = assert(tonumber(sunRow.x)),
 	y = assert(tonumber(sunRow.y)),
 	z = assert(tonumber(sunRow.z)),
 }
 
-local numRows = #csv.rows
+local numRows = #rows
 local numElem = 9
 local bufferType = 'float'
 local buffer = ffi.new(bufferType..'[?]', numElem * numRows)	-- allocate space for data of each planet 
@@ -43,24 +65,27 @@ local columnCounts = {}
 
 
 local statset = StatSet(
+	'ra',
+	'dec',
+	'dist',
+	'x', 'y', 'z',
+	'ra2',
+	
 	'absmag',	-- absolute magnitude
 	'mag',		-- apparent magnitude
 	'lum',		-- luminosity, in LSun (even though the sun isn't 1.0 ... )
 	'colorIndex',
 	'temp',
-	'ra',
-	'ra2',
-	'dec',
-	'dist',
+	
 	'posSphereError',
-	'postEclipticDistError'
+	'postEclipticDistError',
+	'absMagToLumError',
+	'appMagToAbsMagError'
 )
-
-local absMagToLumError = 0
 
 local numValidRows = 0
 local numInvalidRows = 0
-for i,row in ipairs(csv.rows) do
+for i,row in ipairs(rows) do
 	for _,col in ipairs(csv.columns) do
 		if #row[col] > 0 then
 			columnCounts[col] = (columnCounts[col] or 0) + 1
@@ -132,13 +157,13 @@ for i,row in ipairs(csv.rows) do
 			postEclipticDistError = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)
 		end
 
---[[ recalc ra, dec
-ra = math.atan2(y, x)
-dec = math.atan2(z, math.sqrt(x*x + y*y))
-dist = math.sqrt(x*x + y*y + z*z)
---]]
+		--[[ recalc ra, dec
+		ra = math.atan2(y, x)
+		dec = math.atan2(z, math.sqrt(x*x + y*y))
+		dist = math.sqrt(x*x + y*y + z*z)
+		--]]
 
-local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
+		local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 
 		local mag = assert(tonumber(row.mag))		-- apparent magnitude
 		local absmag = assert(tonumber(row.absmag))	-- absolute magnitude
@@ -146,34 +171,56 @@ local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 		local colorIndex = tonumber(row.ci) or .656	-- fill in blanks with something close to white
 
 		-- calc temp based on colorIndex BV using Newton method on the color temp BV function
+		-- https://en.wikipedia.org/wiki/Color_index 
 		local temp = 4600 * (1 / (.92 * colorIndex + 1.7) + 1 / (.92 * colorIndex + .62))
 
+		local absMagToLumError = 0
 		if compareAbsMagToLum then
 			local LStarOverLSun = lum
 			
-			-- I deduced this ... but what value should it be?
-			-- -2.5 log10(LSunOverL0) = 4.85 = sun's abs mag
-			local LSunOverL0 = 0.011481536214969
+			-- https://www.omnicalculator.com/physics/luminosity 
+			local LSun = 3.828e+26 	-- Watts
+			local L0 = 3.0128e+28	-- Watts
+			local LSunOverL0 = LSun / L0
 			
-			local M = -2.5 * math.log(LStarOverLSun * LSunOverL0) / math.log(10)
-			local dM = M - absmag
---print('abs mag vs lum error', dM)			
-			-- max error is 3.5527136788005e-15
-			absMagToLumError = math.max(absMagToLumError, math.abs(dM))
+			local M = (-2.5 / math.log(10)) * math.log(LStarOverLSun * LSunOverL0)
+			-- max abs error is 3.5527136788005e-15
+			absMagToLumError = M - absmag
 		end
+
+		local appMagToAbsMagError = 0
+		if compareAppMagToAbsMag then
+			local m = absmag - 5 + (5 / math.log(10)) * math.log(dist)
+			-- I guess for the sun, which is at the center of our coordinate system, log(0) for the sun means inf apparent magnitude
+			-- maybe that's why the earth is the original coordinate system origin?
+			appMagToAbsMagError = m - mag
+		end
+
+		--[[ compare temp to luminosity -- this requires the star's radius to be known though ... hmm
+		if compareTempToLuminosity then
+			-- https://en.wikipedia.org/wiki/Luminosity#Luminosity_formulae
+			local lumFromTemp = sigma * 4 * math.pi * radius * radius * temp * temp * temp * temp
+			local dT = lum - lumFromTemp 
+		end
+		--]]
 		
 		statset:accum(
+			ra,
+			dec,
+			dist,
+			x,y,z,
+			ra2,		
+			
 			absmag,
 			mag,
 			lum,
 			colorIndex,
 			temp,
-			ra,
-			ra2,
-			dec,
-			dist,
+			
 			posSphereError,
-			postEclipticDistError 
+			postEclipticDistError,
+			absMagToLumError,
+			appMagToAbsMagError 
 		)
 
 
@@ -243,15 +290,9 @@ local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
 		buffer[4 + numElem * numValidRows] = vy
 		buffer[5 + numElem * numValidRows] = vz
 	
-		if outputLum then
-			-- gaia is storing lum and temp
-			buffer[6 + numElem * numValidRows] = lum
-			buffer[7 + numElem * numValidRows] = colorIndex 
-		else
-			-- solarsystem is storing absmag and colorIndex (or should it be absmag?)
-			buffer[6 + numElem * numValidRows] = absmag
-			buffer[7 + numElem * numValidRows] = colorIndex 
-		end
+		-- gaia is storing lum and temp, and I think storing lum and calculating absmag can reduce us one log() call
+		buffer[6 + numElem * numValidRows] = lum
+		buffer[7 + numElem * numValidRows] = temp
 		buffer[8 + numElem * numValidRows] = constellationIndex-1
 		
 		maxAbsPos = math.max(maxAbsPos, x)
@@ -268,14 +309,14 @@ for _,con in ipairs(constellations) do
 		-- sort by buffer abs mag / luminosity
 		return buffer[6 + numElem * a] < buffer[6 + numElem * b]
 		-- sort by original row magnitude
-		--return tonumber(csv.rows[a[1]].absmag) < tonumber(csv.rows[b[1]].absmag)
+		--return tonumber(rows[a[1]].absmag) < tonumber(rows[b[1]].absmag)
 	end)
 	--[=[ if you want to see those values:
 	con.magnitudes = table.mapi(con.indexes, function(i)
 		-- buffer magnitude
 		return buffer[6 + numElem * i]
 		-- original row magnitude
-		--return tonumber(csv.rows[i[1]].absmag)
+		--return tonumber(rows[i[1]].absmag)
 	end)
 	--]=]
 end
@@ -285,10 +326,6 @@ print('valid entries:', numValidRows)
 print('invalid entries:', numInvalidRows)
 
 print('max abs position coordinate:', maxAbsPos)
-
-if compareAbsMagToLum then
-	print('absMagToLumError:', absMagToLumError)
-end
 
 --[[ see what data is present:
 print('num columns provided:')
@@ -347,7 +384,7 @@ print'done!'
 local f = io.open('dist-distribution.txt', 'w')
 f:write'#dist_min\tdist_max\tcount\n'
 local distbin = Bin(0, statset.dist.max, 2000)
-for i,row in ipairs(csv.rows) do
+for i,row in ipairs(rows) do
 	-- [=[ bin by dist
 	local dist = assert(tonumber(row.dist))
 	--]=]
