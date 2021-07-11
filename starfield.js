@@ -5,13 +5,7 @@ TODO OOP this, and make one per galaxy (which we have observed stars within)
 
 var showStars = true;
 var starPointSizeScale = 3;
-
-//TODO FIXME WHAT IS WRONG WITH THIS
-// this is 30x more powerful than it is on my desktop version
-// that would make sense if the coords were 30x stronger (i.e. if they were in meters instead of parsecs)
-// BUT THEY ARE NOT
-// for the record, 1 parsec = 3.0857e+16, so dist sq (which my dist calcs are based on, though i .5 * the log to account) would be ~ 10^33
-var starPointSizeBias = -30;
+var starPointSizeBias = -3;
 
 var starPointAlpha = 1;
 var allowSelectStars = true;
