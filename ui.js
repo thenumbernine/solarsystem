@@ -515,7 +515,8 @@ var ui = new function() {
 
 		$.each([
 			'gravityWellScaleFixedValue',
-			'starsVisibleMagnitudeBias',	//in starfield.js
+			'starPointSizeBias',	//in starfield.js
+			'starPointSizeScale',	//in starfield.js
 			'planetScaleExaggeration'
 		], function(_, toggle) {
 			(function(){

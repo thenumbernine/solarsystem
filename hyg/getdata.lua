@@ -5,45 +5,39 @@
 
 require 'ext'
 local ffi = require 'ffi'
-local CSV = require 'csv'
 local Stat = require 'stat'
 local StatSet = require 'stat.set'
 
-local csv = CSV.file'hygdata_v3.csv'
-
-local outputLum = ... == 'lum'
+-- [[ using csv.  2x slower to parse but 2x smaller file.
+local hyg = require 'csv'.file'hygdata_v3.csv'
+hyg:setColumnNames(hyg.rows:remove(1))
+local rows = hyg.rows
+--]]
+--[[ using lua.  2x faster to parse, but about 2x larger
+--[=[ too big for load()
+local hyg = fromlua(io.readfile'hygdata_v3.lua')
+--]=]
+-- [=[ assuming one row per line
+local hygrows = io.readfile'hygdata_v3.lua':split'\n'
+local function asserteq(a,b) if a~=b then error("expected "..tolua(a).." to equal "..tolua(b)) end end
+asserteq(hygrows:remove(1), '{')
+if hygrows:last() == '' then hygrows:remove() end
+asserteq(hygrows:remove(), '}')
+local rows = hygrows:mapi(function(row,i)
+	if row:sub(-1) == ',' then row = row:sub(1,-2) end
+	return fromlua(row)
+end):setmetatable(nil)
+--]=]
+--]]
 
 local offsetFromSun = true
 local rotateEquatorialToEcliptic = true
-
 local compareAbsMagToLum = true
 local compareAppMagToAbsMag = true
 local compareTempToLuminosity = true
 
-local rows = csv.rows
-
-local rowHeaders = rows:remove(1)
-for i=1,#rowHeaders do rowHeaders[i] = rowHeaders[i]:lower() end
-csv:setColumnNames(rowHeaders)
-
---[[ debugging
-for i,row in ipairs(rows) do
-	if row.proper ~= '' then
-		rows[row.proper] = row
-	end
-end
-local function rowtotable(row)
-	local t = {}
-	for i,h in ipairs(rowHeaders) do
-		t[h] = row[i]
-	end
-	return t
-end
-print(tolua(rowtotable(rows.Sol)))
-print(tolua(rowtotable(rows.Polaris)))
-print(tolua(rowtotable(rows.Merak)))
-do return end
---]]
+-- indexForHip[hipparcos index] = 0-based-index
+local indexForHip = {}
 
 -- sun is positioned relative to the earth, so offset everything for the sun to be the center
 local sunRow = rows[1]
@@ -58,7 +52,6 @@ local numElem = 9
 local bufferType = 'float'
 local buffer = ffi.new(bufferType..'[?]', numElem * numRows)	-- allocate space for data of each planet 
 
-local maxAbsPos = 0
 local namedStars = {}
 local constellations = table()	-- list of unique names so far
 local columnCounts = {}
@@ -86,11 +79,13 @@ local statset = StatSet(
 local numValidRows = 0
 local numInvalidRows = 0
 for i,row in ipairs(rows) do
+	--[[
 	for _,col in ipairs(csv.columns) do
 		if #row[col] > 0 then
 			columnCounts[col] = (columnCounts[col] or 0) + 1
 		end
 	end
+	--]]
 
 	--[[ this assertion isn't required, I was just curious if it was enforced
 	-- and as of the v3 release it's no longer true
@@ -125,6 +120,10 @@ for i,row in ipairs(rows) do
 		local ry = dist * math.sin(ra) * math.cos(dec)
 		local rz = dist * math.sin(dec)
 
+		-- r1 = radius or semi-major radius of spheroid, in arcminutes
+		-- r2 = semi-minor radius of ellipsoid, in arcminutes
+		-- convert arcminutes to years ?
+
 		-- dist error in xyz <-> dist ra dec of the original data
 		local posSphereError = math.sqrt(
 			(x - rx) * (x - rx)
@@ -157,13 +156,14 @@ for i,row in ipairs(rows) do
 			postEclipticDistError = math.sqrt((x-rx)^2 + (y-ry)^2 + (z-rz)^2)
 		end
 
-		--[[ recalc ra, dec
+		-- [[ recalc ra, dec
+		-- or else the constellation bounds will be off.
 		ra = math.atan2(y, x)
 		dec = math.atan2(z, math.sqrt(x*x + y*y))
 		dist = math.sqrt(x*x + y*y + z*z)
 		--]]
 
-		local ra2 = (ra + math.pi) % (2 * math.pi) - math.pi
+		local ra2 = ra % (2 * math.pi)
 
 		local mag = assert(tonumber(row.mag))		-- apparent magnitude
 		local absmag = assert(tonumber(row.absmag))	-- absolute magnitude
@@ -196,11 +196,20 @@ for i,row in ipairs(rows) do
 			appMagToAbsMagError = m - mag
 		end
 
-		--[[ compare temp to luminosity -- this requires the star's radius to be known though ... hmm
+		-- [[ compare temp to luminosity -- this requires the star's radius to be known though ... hmm
 		if compareTempToLuminosity then
-			-- https://en.wikipedia.org/wiki/Luminosity#Luminosity_formulae
-			local lumFromTemp = sigma * 4 * math.pi * radius * radius * temp * temp * temp * temp
-			local dT = lum - lumFromTemp 
+			-- this is what i get for filling in the blanks:
+			local ci = tonumber(row.ci)
+			local radius = error("hyg doesn't provide radius") 
+			if ci and radius then
+				local temp = 4600 * (1 / (.92 * ci + 1.7) + 1 / (.92 * ci + .62))
+
+				-- https://en.wikipedia.org/wiki/Luminosity#Luminosity_formulae
+				local sigma = 5.670374419e-8	-- units of W / (m^2 K^4)
+				local lumFromTemp = sigma * 4 * math.pi * radius * radius * temp * temp * temp * temp
+				
+				local dT = lum - lumFromTemp 
+			end
 		end
 		--]]
 		
@@ -229,15 +238,15 @@ for i,row in ipairs(rows) do
 		local vy = assert(tonumber(row.vy))
 		local vz = assert(tonumber(row.vz))
 
-		local name = (#row.proper > 0 and row.proper)
-				or (#row.bf > 0 and row.bf)
+		local name = (row.proper and #row.proper > 0 and row.proper)
+				or (row.bf and #row.bf > 0 and row.bf)
 				or nil
 		if name and #name > 0 then
 			name = name:trim():gsub('%s+', ' ')
 			table.insert(namedStars, {name=name, index=numValidRows})
 		end
 		
-		local con = #row.con > 0 and row.con or nil
+		local con = row.con and #row.con > 0 and row.con or nil
 		local conInfo, constellationIndex
 		if con and #con > 0 then
 			constellationIndex, conInfo = constellations:find(nil, function(c) return c.name == con end)
@@ -293,17 +302,24 @@ for i,row in ipairs(rows) do
 		-- gaia is storing lum and temp, and I think storing lum and calculating absmag can reduce us one log() call
 		buffer[6 + numElem * numValidRows] = lum
 		buffer[7 + numElem * numValidRows] = temp
-		buffer[8 + numElem * numValidRows] = constellationIndex-1
 		
-		maxAbsPos = math.max(maxAbsPos, x)
-		maxAbsPos = math.max(maxAbsPos, y)
-		maxAbsPos = math.max(maxAbsPos, z)
+		buffer[8 + numElem * numValidRows] = assert(tonumber(row.id))
+		
+
+		if row.hip ~= '' then
+			local hip = tonumber(row.hip)
+			assert(tostring(hip) == row.hip)
+			indexForHip[hip] = numValidRows
+		end
+
 
 		numValidRows = numValidRows + 1
 	end
 end
 
--- now sort the constellation stars by their magnitude
+file['index-for-hip.lua'] = tolua(indexForHip)
+
+-- now sort the constellation stars by their luminosity
 for _,con in ipairs(constellations) do
 	table.sort(con.indexes, function(a,b)
 		-- sort by buffer abs mag / luminosity
@@ -325,8 +341,6 @@ print('rows processed:', numRows)
 print('valid entries:', numValidRows)
 print('invalid entries:', numInvalidRows)
 
-print('max abs position coordinate:', maxAbsPos)
-
 --[[ see what data is present:
 print('num columns provided:')
 for _,name in ipairs(csv.columns) do
@@ -336,6 +350,7 @@ end
 
 print(statset)
 
+-- [[ output constellations
 for _,con in ipairs(constellations) do
 	local dra = con.stats.ra.max - con.stats.ra.min
 	local dra2 = con.stats.ra2.max - con.stats.ra2.min
@@ -343,7 +358,9 @@ for _,con in ipairs(constellations) do
 		con.stats.ra = con.stats.ra2
 		-- don't forget the indexed reference to ra is still dangling
 	end
+	con.stats.ra2 = nil
 end
+--]]
 
 -- make name of sun consistent with NASA data
 -- TODO call it Sol in the NASA data?
@@ -359,8 +376,10 @@ file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=tru
 file['constellations.json'] = 'constellations = '..json.encode(constellations, {indent=true}) .. ';'
 --]]
 -- [[ in lua
-file['namedStars.lua'] = 'namedStars = ' .. tolua(namedStars)
-file['constellations.lua'] = 'constellations = '..tolua(
+file['namedStars.lua'] = tolua(table.mapi(namedStars, function(row)
+	return row.name, row.index
+end):setmetatable(nil))
+file['constellations.lua'] = tolua(
 	constellations:mapi(function(con) 
 		local o = {
 			name = con.name,

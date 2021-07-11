@@ -31,7 +31,7 @@ local CSV = require 'csv'
 -- and compare stats 
 
 print'reading hyg'
-local hyg = CSV.file'../../solarsystem/hyg/hygdata_v3.csv'
+local hyg = CSV.file'../hyg/hygdata_v3.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 
 print'building hyg lookup for hip'

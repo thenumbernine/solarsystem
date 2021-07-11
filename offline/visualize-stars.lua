@@ -30,11 +30,13 @@ matrix_ffi.real = 'float'	-- default matrix_ffi type
 --[[
 set = directory to use if you don't specify individual files:
 
-filename = filename for our point data
+pointfile = filename for our point data
 namefile = lua file mapping indexes to names of stars
-consfile = lua file containing constellation info for star points
+consfile = lua file containing constellation info for star points ... not used anymore ...
 
-format = whether to use xyz or our 9-col format
+format = whether to use xyz or our 9-col format ... not used anymore ...
+
+-- TODO do this per-dataset, and allow multiple datasets (like gaia + hyg + exo)
 lummin = set this to filter out for min value in solar luminosity
 lumhicount = show only this many of the highest-luminosity stars
 appmaghicount = show only this many of the highest apparent magnitude stars
@@ -42,7 +44,9 @@ rlowcount = show only this many of the stars with lowest r
 rmax = filter out points further than this value
 print = set this to print out all the remaining points
 nolumnans = remove nan luminosity ... not needed, this was a mixup of abs mag and lum, and idk why abs mag had nans (maybe it too was being calculated from lums that were abs mags that had negative values?)
-addsun = add our sun to the dataset.  I don't see it in there.
+
+addsun = add our sun to the dataset.  I don't see it in Gaia.
+addexo = add exoplanets.  this requires testing by the hyg id, which is the hyg 9th param, so this will not work with gaia right now.
 nounnamed = remove stars that don't have entries in the namefile
 buildnbhds = build neighbhoods
 buildvels = build velocity field lines
@@ -52,9 +56,18 @@ local cmdline = require 'ext.cmdline'(...)
 --local set = cmdline.set or 'gaia'
 local set = cmdline.set or 'hyg'
 
-local filename = cmdline.filename or ('../'..set..'/stardata.f32')
-local namefile = cmdline.namefile or ('../'..set..'/namedStars.lua')
-local constellationFile = cmdline.consfile or ('../'..set..'/constellations.lua')
+-- assign defaults first, then override with cmdline
+local pointfile = '../'..set..'/stardata.f32'
+local namefile = '../'..set..'/namedStars.lua'
+
+if cmdline.pointfile then
+	pointfile = cmdline.pointfile
+	-- AND invalidate any default values (like the star names etc)
+	namefile = nil
+end
+if cmdline.namefile then
+	namefile = cmdline.namefile
+end
 
 -- lua table mapping from index to string
 -- TODO now upon mouseover, determine star and show name by it
@@ -66,50 +79,51 @@ if namefile then
 	end
 end
 
--- this file holds info for the constellation field value of the pt_t
--- it also holds the 'indexes' but this is a bad idea for larger datasets
--- hmm, how about I don't store constellation per-point/ channels at all? 
--- and instead I just store regions of the sky?
-local constellations
-if constellationFile then
-	local consdata = file[constellationFile]
-	if consdata then
-		constellations = fromlua(consdata)
-		constellations = table.sort(constellations, function(a,b)
-			return (a.name or ''):lower() < (b.name or ''):lower()
-		end)
-		for _,constellation in ipairs(constellations) do
-			constellation.enabled = false
-		end
---[[ shuffling is great for getting asosciated colors unique
--- but it will ruin the association with the 'constellation' channel in the pt_t buffer
--- so TODO instead, how about remapping via a table / texture ?		
--- though I am leaning away from the 'constellation' channel, since larger databases like Gaia do not have it		
-		if constellations then
--- idk if it's just my list, but when i color hue by constellation, i get a rainbow
--- and i don't want a rainbow, i want discernible colors
--- so here i'm shuffling it
-			local baseStars
-			if constellations[1].name == nil then
-				baseStars = table.remove(constellations, 1)
+local constellationNamesForAbbrevs = fromlua(file['../constellations/constellationNamesForAbbrevs.lua'])
+local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev) 
+	return abbrev, name
+end):setmetatable(nil)
+
+local constellations = table.map(constellationNamesForAbbrevs, function(name, abbrev, t)
+	return {
+		name = name,
+		abbrev = abbrev, 
+		enabled = false,
+	}, #t+1
+end)
+
+-- TODO make sure nothing is indexing constellations (like the HYG-generated star data was)
+constellations = constellations:sort(function(a,b)
+	return a.name:lower() < b.name:lower()
+end)
+
+local constellationForAbbrev = table.mapi(constellations, function(cons)
+	return cons, (cons.abbrev or 'unnamed')
+end):setmetatable(nil)
+
+-- constellation lines are in hip, so use this to convert them to hyg 
+local indexForHip = fromlua(file['../hyg/index-for-hip.lua'])
+
+for name, lines in pairs(fromlua(file['../constellations/constellation-lines.lua'])) do
+	local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
+		return name2:gsub(' ', '') == name
+	end)
+	assert(abbrev, "couldn't find abbrev for lines name "..name)
+	local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
+	
+	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua 
+	constellation.lines = lines 
+	for _,line in ipairs(lines) do
+		for j=#line,1,-1 do
+			local index = indexForHip[line[j]]
+			if not index then
+				table.remove(line, j)
+			else
+				line[j] = index
 			end
-			constellations = table.shuffle(constellations)
-			-- keep the base stars at the first index
-			if baseStars then
-				constellations:insert(1, baseStars)
-			end
 		end
---]]		
-		print('loaded '..#constellations..' constellations')
 	end
 end
-
-
--- TODO combine the non-indexes part of points/constellations with the constellationNamesForAbbrevs.lua and constellationLines.lua 
--- and put all non-pointset constlelation info in one place
--- and call the abbreviation 'abbrev' intsead of 'name'
-local constellationNameForAbbrev = fromlua(file['constellationNamesForAbbrevs.lua'])
-
 
 
 local App = class(require 'glapp.orbit'(require 'imguiapp'))
@@ -185,7 +199,10 @@ typedef struct {
 	// I should add on 'r1' and 'r2' .. or just 'radius' ... for both
 	// and make this 11 cols
 	//radius, probably in sun-radii
+	//alright, I'm using the hyg id for the hyg database here.  no need for constellation.
+	//and maybe i'm using it to cross-correlate with the exoplanet database
 	float radius;
+
 } pt_9col_t;
 ]]
 
@@ -193,7 +210,7 @@ assert(ffi.sizeof'pt_3col_t' == 3 * ffi.sizeof'float')
 assert(ffi.sizeof'pt_9col_t' == 9 * ffi.sizeof'float')
 
 --[[
-local format = cmdline.format or filename:match'%-(.*)%.f32$' or '3col'
+local format = cmdline.format or pointfile:match'%-(.*)%.f32$' or '3col'
 local pt_t = ({
 	['3col'] = 'pt_3col_t',
 	['9col'] = 'pt_9col_t',
@@ -202,8 +219,8 @@ local pt_t = ({
 local pt_t = 'pt_9col_t'
 
 -- 2x
-local gpuVelLineElemBuf
-local cpuVelLineElemBuf 
+local gpuVelLineBuf
+local cpuVelLineBuf 
 
 
 ffi.cdef[[
@@ -226,8 +243,9 @@ local drawNbhdLineShader
 local fbo
 local fbotex
 
-local tempMin = 3300
-local tempMax = 8000
+-- black body color table from http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color_D58.html
+local colorTempMin = 1000
+local colorTempMax = 40000
 local tempTex
 
 local LSun = 3.828e+26 	-- Watts
@@ -241,17 +259,17 @@ local buildVelocityBuffers = cmdline.buildvels
 
 -- _G so that sliderFloatTable can use them
 starPointAlpha = 1
-pointSizeScale = 3
-pointSizeBias = -3
-velLineAlpha = .5
+starPointSizeScale = 3
+starPointSizeBias = -3
+lineVelAlpha = .5
 hsvRange = .2
 hdrScale = .001
 hdrGamma = 1
 bloomLevels = 0
 showDensity = false
-velScalar = 1
+lineVelScalar = 1
 drawPoints = true
-drawVelLines = true
+drawVelLines = false
 normalizeVel = false
 showPickScene = false
 showInformation = true			-- show information on the current star being hovered over
@@ -259,9 +277,11 @@ drawGrid = true			-- draw a sphere with 30' segments around our orbiting star
 gridRadius = 100
 showNeighbors = false	-- associated with the initialization flag buildNeighborhood
 nbhdLineAlpha = 1
-showConstellations = false
+showConstellations = cmdline.showConstellations or false
 sliceRMin = 0
 sliceRMax = math.huge
+sliceLumMin = 0
+sliceLumMax = math.huge
 showStarNames = true
 
 --[[
@@ -291,7 +311,7 @@ function App:initGL(...)
 
 --	self.view.angle = (quatd():fromAngleAxis(0, 0, 1, 90) * self.view.angle):normalize()
 
-	local data = file[filename]
+	local data = file[pointfile]
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
@@ -316,15 +336,20 @@ print('loaded '..numPts..' stars...')
 	or cmdline.nolumnans 
 	or cmdline.addsun
 	or (cmdline.nounnamed and namedStars)
+	or cmdline.addexo
 	then
+print'filtering some of our data...'		
+print'converting from binary blob to lua table...'		
 		local pts = table()
 		for i=0,numPts-1 do
 			-- keep track of the original index, for remapping the name file
 			pts:insert{obj=ffi.new(pt_t, cpuPointBuf[i]), index=i}
 		end
+print'...done converting'
 
 		-- do this first, while namedStars <-> objs, before moving any objs
 		if cmdline.nounnamed then
+print'filtering out unnamed...'			
 			assert(namedStars, "you can't filter out unnamed stars if you don't have a name file")
 			for i=numPts-1,0,-1 do
 				if not namedStars[i] then
@@ -335,6 +360,7 @@ print('loaded '..numPts..' stars...')
 		end
 
 		if cmdline.nolumnans then
+print'filtering out luminosity nans...'			
 			pts = pts:filter(function(pt)
 				return math.isfinite(pt.obj.lum)
 			end)
@@ -342,6 +368,7 @@ print('loaded '..numPts..' stars...')
 		end
 
 		if cmdline.addsun then
+print'adding sun point...'			
 			local sun = ffi.new(pt_t)
 			sun.pos:set(0,0,0)
 			-- vel is in Pc/year?  double check plz.
@@ -356,18 +383,21 @@ print('loaded '..numPts..' stars...')
 		end
 
 		if cmdline.lummin then
+print('filtering out luminosity min '..cmdline.lummin)
 			pts = pts:filter(function(pt)
 				return pt.obj.lum >= cmdline.lummin
 			end)
 			print('lummin filtered down to '..#pts)
 		end
 		if cmdline.lumhicount then
+print('filtering out only the highest '..cmdline.lumhicount..' luminous objects...')			
 			pts = pts:sort(function(a,b)
 				return a.obj.lum > b.obj.lum
 			end):sub(1, cmdline.lumhicount)
 			print('lumhicount filtered down to '..#pts)
 		end
 		if cmdline.appmaghicount then
+print('filtering out only the highest '..cmdline.appmaghicount..' apparent magnitude objects...')			
 			pts = pts:sort(function(a,b)
 				return  a.obj.lum / a.obj.pos:lenSq()
 						> b.obj.lum / b.obj.pos:lenSq()
@@ -375,20 +405,39 @@ print('loaded '..numPts..' stars...')
 			print('appmaghicount filtered down to '..#pts)
 		end
 		if cmdline.rlowcount then
+print('filtering out only the closest '..cmdline.rlowcount..' objects...')
 			pts = pts:sort(function(a,b)
 				return  a.obj.pos:lenSq() < b.obj.pos:lenSq()
 			end):sub(1, cmdline.rlowcount)
 			print('rlowcount filtered down to '..#pts)
 		end
 		if cmdline.rmax then
+print('filtering out only objects of distance '..cmdline.rmax..' or less...')
 			pts = pts:filter(function(pt)
 				return pt.obj.pos:length() <= cmdline.rmax
 			end)
 			print('rmin filtered down to '..#pts)
 		end
+	
+		if cmdline.addexo then
+print('adding exoplanets not done yet')			
+			--[[
+			now load the open exoplanet catalog parsed data
+			map from exoplanet system name to hyg name
+			if there's no hyg number associated then add the system
+			notice, the exoplanet catalog provides 
+			visualMagnitude per-body, sometimes 
+			temperature per-body sometimes 
+			radius per-body sometimes, maybe more often than not
+			J K H magnitudes.
+			in absense of visual magnitude, should I derive it from the J K H magnitudes?
+			or should I use the radius+temp equation:
+			luminosity = sigma area temperature^4, for area = 4 pi radius^2, sigma = Stefan-Boltzmann constant 5.670374419e-8 W / (m^2 K^4)
+			--]]
+		end
 
-		-- now remap the constellations and namedStars 
 		if namedStars then
+print('remapping old named stars...')			
 			local newnames = namedStars and {} or nil
 			for i,pt in ipairs(pts) do
 				-- pts will be 0-based
@@ -399,44 +448,26 @@ print('loaded '..numPts..' stars...')
 			if namedStars then
 				namedStars = newnames
 			end
-		end
-		if constellations then
-			if constellations then
-				for _,c in ipairs(constellations) do
-					c.indexset = table.mapi(c.indexes, function(index)
-						return true, index
-					end):setmetatable(nil)
-					c.indexes = {}
-				end
-			end
-			for i,pt in ipairs(pts) do
-				if constellations then
-					for _,c in ipairs(constellations) do
-						if c.indexset[pt.index] then
-							table.insert(c.indexes, i-1)
-						end
-					end
-				end
-			end
-			if constellations then
-				for _,c in ipairs(constellations) do
-					c.indexset = nil
-				end
-			end
+print('...done remapping old named stars')			
 		end
 
 		if cmdline.print then
+print('printing radius and luminosity...')			
 			for _,pt in ipairs(pts) do
 				local r = pt.obj:length()
 				print('r='..r..' lum='..pt.obj.lum)
 			end
+print('...done printing radius and luminosity')			
 		end
 
 		numPts = #pts
+print('allocating new binary blob...')		
 		cpuPointBuf = ffi.new(pt_t..'[?]', numPts)
+print('copying from lua table to new binary blob...')
 		for i=0,numPts-1 do
 			cpuPointBuf[i] = pts[i+1].obj
 		end
+print('...done copying from lua table to new binary blob')
 	end
 
 	env = CLEnv{precision='float', size=numPts, useGLSharing=false}
@@ -486,6 +517,8 @@ log10lum = {min = -1.5146129279835, max = 4.9850069452041, avg = 1.0599897393166
 Seems with Gaia I am getting only a small subset of the luminosity range that I am with the HYG database.  I wonder why?  Maybe luminosity is one of the things they calculated last?  And I should just be deriving it from the magnitude?
 --]]
 
+-- [=[ why is this crashing intermittantly for gaia data?
+-- maybe something to with how, when it doesn't crash, luajit has a 'not enough memory' error shortly after	
 	--local log10lumbin = require 'stat.bin'(-10, 10, 200)
 	-- TODO better way of setting these flags ... in ctor maybe?
 	for _,s in ipairs(s) do
@@ -505,6 +538,7 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 
 	lum stddev is 163, so 3 stddev is ~ 500
 	--]]
+print'calculating stats on data...'	
 	for i=0,numPts-1 do
 		local pt = cpuPointBuf[i]
 		local pos = pt.pos
@@ -518,7 +552,7 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 	end
 	print("data range (Pc):")
 	print(s)
-
+--]=]
 
 	if cmdline.makeLog10LumBins then
 		-- TODO why not just do this in the getstats or another offline tool?
@@ -527,6 +561,7 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 			s.log10lum.min + (s.log10lum.min - s.log10lum.max) * .5 / log10lumbincount,
 			s.log10lum.max + (s.log10lum.max - s.log10lum.min) * .5 / log10lumbincount,
 			log10lumbincount)
+		
 		for i=0,numPts-1 do
 			log10lumbins:accum(math.log(cpuPointBuf[i].lum) * _1_log_10)
 		end
@@ -540,6 +575,8 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 				log10lumbins[i] = log10lumbins[i] / total
 			end
 		end
+		
+		-- plot it:
 		local plotdatafn = 'log10lum-dist-'..set..'.txt'
 		file[plotdatafn] = log10lumbins:getTextData()
 		require 'gnuplot'{
@@ -557,7 +594,7 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 		data = cpuPointBuf,
 	}
 
-	local pt_t_attrs = {
+	local gpuPointBuf_attrs = {
 		pos = {
 			buffer = gpuPointBuf,
 			size = 3,
@@ -596,17 +633,60 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 	}
 
 
+	-- TODO show orbit diagrams for all stars around Sgt A*?
+	local gpuVelLineBuf_attrs 
 	if buildVelocityBuffers then
-		cpuVelLineElemBuf = vector'int'
+		cpuVelLineBuf = ffi.new(pt_t..'[?]', numPts*2)
 		for i=0,numPts-1 do
-			cpuVelLineElemBuf:push_back(i)
-			cpuVelLineElemBuf:push_back(i)
+			cpuVelLineBuf[0+2*i] = ffi.new(pt_t, cpuPointBuf[i])
+			cpuVelLineBuf[1+2*i] = ffi.new(pt_t, cpuPointBuf[i])
 		end
 		
-		gpuVelLineElemBuf = GLElementArrayBuffer{
-			size = ffi.sizeof(cpuVelLineElemBuf.type) * #cpuVelLineElemBuf,
-			data = cpuVelLineElemBuf.v,
+		gpuVelLineBuf = GLArrayBuffer{
+			size = ffi.sizeof(pt_t) * 2 * numPts,
+			data = cpuVelLineBuf,
 		}
+	
+		gpuVelLineBuf_attrs = {
+			pos = {
+				buffer = gpuVelLineBuf,
+				size = 3,
+				type = gl.GL_FLOAT,
+				stride = ffi.sizeof(pt_t),
+				offset = ffi.offsetof(pt_t, 'pos'),
+			},
+			vel = pt_t == 'pt_9col_t' and {
+				buffer = gpuVelLineBuf,
+				size = 3,
+				type = gl.GL_FLOAT,
+				stride = ffi.sizeof(pt_t),
+				offset = ffi.offsetof(pt_t, 'vel'),
+			} or nil,
+			lum = pt_t == 'pt_9col_t' and {
+				buffer = gpuVelLineBuf,
+				size = 1,
+				type = gl.GL_FLOAT,
+				stride = ffi.sizeof(pt_t),
+				offset = ffi.offsetof(pt_t, 'lum'),
+			} or nil,
+			temp = pt_t == 'pt_9col_t' and {
+				buffer = gpuVelLineBuf,
+				size = 1,
+				type = gl.GL_FLOAT,
+				stride = ffi.sizeof(pt_t),
+				offset = ffi.offsetof(pt_t, 'temp'),
+			} or nil,
+			radius = pt_t == 'pt_9col_t' and {
+				buffer = gpuVelLineBuf,
+				size = 1,
+				type = gl.GL_FLOAT,
+				stride = ffi.sizeof(pt_t),
+				offset = ffi.offsetof(pt_t, 'radius'),
+			} or nil,
+		}
+
+
+
 	end
 
 	local nbhd_t_attrs
@@ -845,9 +925,9 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 
 	local starTexSize = 256
 	starTex = GLTex2D{
-		image = Image(starTexSize, starTexSize, 3, 'unsigned char', function(x,y)
-			local u = ((x + .5) / starTexSize) * 2 - 1
-			local v = ((y + .5) / starTexSize) * 2 - 1
+		image = Image(starTexSize, starTexSize, 3, 'unsigned char', function(i,j)
+			local u = ((i + .5) / starTexSize) * 2 - 1
+			local v = ((j + .5) / starTexSize) * 2 - 1
 			
 			--[[
 			local l = math.exp(-5 * (u*u + v*v))
@@ -862,42 +942,55 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 		end),
 		wrap = {s = gl.GL_CLAMP_TO_EDGE, t = gl.GL_CLAMP_TO_EDGE},
 		magFilter = gl.GL_LINEAR,
-		minFilter = gl.GL_NEAREST,
+		minFilter = gl.GL_LINEAR_MIPMAP_LINEAR,
+		generateMipmap = true,
 	}
 
 	-- black body color table from http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color_D58.html
-	-- HYG data temp range is 1500 to 21700 
-	tempMin = 1000
-	tempMax = 40000
-	local rgbs = table()
-	for l in io.lines'bbr_color_D58.txt' do
-		if l ~= '' and l:sub(1,1) ~= '#' then
-			local cmf = l:sub(11,15)
-			if cmf == '10deg' then
-				local temp = tonumber(string.trim(l:sub(2,6)))
-				-- TODO instead of tempMin/tempMax determining the texture bounds, have the texture determine the tempMin/tempMax bounds
-				-- and maybe remap it - logarithmically - or based on abs mag (log of lum)
-				if temp >= tempMin and temp <= tempMax then
-					local r = tonumber(l:sub(82,83), 16)
-					local g = tonumber(l:sub(84,85), 16)
-					local b = tonumber(l:sub(86,87), 16)
-					rgbs:insert{r,g,b}
+	do
+--[[ writing colorForTemp.png from the black body data:		
+		local rgbs = table()
+		for l in io.lines'bbr_color_D58.txt' do
+			if l ~= '' and l:sub(1,1) ~= '#' then
+				local cmf = l:sub(11,15)
+				if cmf == '10deg' then
+					local temp = tonumber(string.trim(l:sub(2,6)))
+					-- TODO instead of colorTempMin/colorTempMax determining the texture bounds, have the texture determine the colorTempMin/colorTempMax bounds
+					-- and maybe remap it - logarithmically - or based on abs mag (log of lum)
+					if temp >= colorTempMin and temp <= colorTempMax then
+						local r = tonumber(l:sub(82,83), 16)
+						local g = tonumber(l:sub(84,85), 16)
+						local b = tonumber(l:sub(86,87), 16)
+						rgbs:insert{r,g,b}
+					end
 				end
 			end
 		end
-	end
-	tempTex = GLTex2D{
-		image = Image(#rgbs, 1, 3, 'unsigned char', function(i,j)
+		local tempImg = Image(#rgbs, 1, 3, 'unsigned char', function(i,j)
 			return table.unpack(rgbs[i+1])
-		end),
-		wrap = {s = gl.GL_CLAMP_TO_EDGE, t = gl.GL_CLAMP_TO_EDGE},
-		magFilter = gl.GL_LINEAR,
-		minFilter = gl.GL_NEAREST,
-	}
-	glreport'here'
+		end)
+		tempImg:save'../colorForTemp.png'
+--]]
+-- [[ or just reading it:
+		local tempImg = Image'../colorForTemp.png'
+--]]		
+		tempTex = GLTex2D{
+			image = tempImg,
+			wrap = {s = gl.GL_CLAMP_TO_EDGE, t = gl.GL_CLAMP_TO_EDGE},
+			magFilter = gl.GL_LINEAR,
+			minFilter = gl.GL_NEAREST,
+		}
+		glreport'here'
+	end
 
 
 local calcPointSize = template([[
+<?
+local clnumber = require 'cl.obj.number'
+?>
+#define M_1_LOG_10	<?=clnumber(1/math.log(10))?>
+#define LSunOverL0	<?=clnumber(LSunOverL0)?>
+
 	//how to calculate this in fragment space ...
 	// coordinates are in Pc
 	float distInPcSq = dot(vmv.xyz, vmv.xyz);
@@ -905,12 +998,12 @@ local calcPointSize = template([[
 	//log(distInPc^2) = 2 log(distInPc)
 	//so log10(distInPc) = .5 log10(distInPc^2)
 	//so log10(distInPc) = .5 / log(10) * log(distInPc^2)
-	float log10DistInPc = <?= .5 / math.log(10) ?> * log(distInPcSq);
+	float log10DistInPc = (.5 * M_1_LOG_10) * log(distInPcSq);
 
 	//MBolStar - MBolSun = -2.5 * log10( LStar / LSun)
 	float LStarOverLSun = lum;
-	float LStarOverL0 = <?=LSunOverL0?> * LStarOverLSun;
-	float absoluteMagnitude = <?= -2.5 / math.log(10)?> * log(LStarOverL0);	// abs magn
+	float LStarOverL0 = LSunOverL0 * LStarOverLSun;
+	float absoluteMagnitude = (-2.5 * M_1_LOG_10) * log(LStarOverL0);	// abs magn
 
 	/*
 	apparent magnitude:
@@ -928,7 +1021,7 @@ local calcPointSize = template([[
 	HDR will have to factor into here somehow ...
 	*/
 
-	gl_PointSize = (6.5 - apparentMagnitude) * pointSizeScale + pointSizeBias;
+	gl_PointSize = (6.5 - apparentMagnitude) * starPointSizeScale + starPointSizeBias;
 ]], {
 		LSunOverL0 = LSunOverL0,
 	})
@@ -946,17 +1039,27 @@ in float lum;
 out float discardv;
 out vec3 color;
 
-uniform float pointSizeScale;
-uniform float pointSizeBias;
+uniform float starPointSizeScale;
+uniform float starPointSizeBias;
 uniform float pickSizeBias;
 
 uniform float sliceRMin, sliceRMax;
+
+uniform float sliceLumMin, sliceLumMax;
+
 uniform vec3 orbit;
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
 void main() {
+	if (lum < sliceLumMin ||
+		lum > sliceLumMax)
+	{
+		discardv = 1.;
+		return;
+	}
+
 	vec4 vtx = vec4(pos.xyz, 1.);
 	vec4 vmv = modelViewMatrix * vtx;
 	gl_Position = projectionMatrix * vmv;
@@ -972,6 +1075,7 @@ void main() {
 		distFromOrbitSq_in_Pc2 > sliceRMax * sliceRMax)
 	{
 		discardv = 1.;
+		return;
 	}
 
 	float i = gl_VertexID;
@@ -1000,7 +1104,7 @@ void main() {
 	gl_FragColor = vec4(color, 1.);
 }
 ]],
-		attrs = pt_t_attrs,
+		attrs = gpuPointBuf_attrs,
 	}
 	glreport'here'
 	
@@ -1027,32 +1131,42 @@ out float discardv;
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
-uniform float pointSizeScale;
-uniform float pointSizeBias;
+uniform float starPointSizeScale;
+uniform float starPointSizeBias;
 uniform sampler2D tempTex;
 
 //how to occlude, based on radial distance, in Parsecs -- *FROM THE ORBIT*
 uniform float sliceRMin, sliceRMax;
+uniform float sliceLumMin, sliceLumMax;
 
 //current orbiting position, used for occlusion
 uniform vec3 orbit;
 
 void main() {
+	discardv = 0.;
+	
+	if (lum < sliceLumMin ||
+		lum > sliceLumMax)
+	{
+		discardv = 1.;
+		return;
+	}
+
 	vec4 vtx = vec4(pos.xyz, 1.);
 	vec4 vmv = modelViewMatrix * vtx;
 	gl_Position = projectionMatrix * vmv;
 
 	<?=calcPointSize?>
 
-	discardv = 0.;
 	vec3 orbitToPos = pos - orbit;
 	float distFromOrbitSq_in_Pc2 = dot(orbitToPos, orbitToPos);
 	if (distFromOrbitSq_in_Pc2 < sliceRMin * sliceRMin ||
 		distFromOrbitSq_in_Pc2 > sliceRMax * sliceRMax)
 	{
 		discardv = 1.;
+		return;
 	}
-
+	
 	lumv = 1.;
 
 	// if the point size is < .5 then just make the star dimmer instead
@@ -1063,14 +1177,13 @@ void main() {
 		lumv *= pow(2., dimmer);
 	}
 
-	float tempfrac = (temp - <?=clnumber(tempMin)?>) * <?=clnumber(1/(tempMax - tempMin))?>;
+	float tempfrac = (temp - <?=clnumber(colorTempMin)?>) * <?=clnumber(1/(colorTempMax - colorTempMin))?>;
 	tempcolor = texture2D(tempTex, vec2(tempfrac, .5)).rgb;
 }
 ]], 	{
 			calcPointSize = calcPointSize,
-			constellations = constellations,
-			tempMin = tempMin,
-			tempMax = tempMax,
+			colorTempMin = colorTempMin,
+			colorTempMax = colorTempMax,
 		}),
 		fragmentCode = template([[
 #version 460
@@ -1105,7 +1218,7 @@ void main() {
 			tempTex = 0,
 			starTex = 1,
 		},
-		attrs = pt_t_attrs,
+		attrs = gpuPointBuf_attrs,
 	}
 	
 
@@ -1119,9 +1232,7 @@ void main() {
 in vec3 pos;
 in vec3 vel;
 
-out float lumv;
-
-uniform float velScalar;
+uniform float lineVelScalar;
 uniform bool normalizeVel;
 
 uniform mat4 modelViewMatrix;
@@ -1133,42 +1244,23 @@ void main() {
 	vec3 velv = vel;
 	if (normalizeVel) velv = normalize(velv);
 	
-	//trying to use a shader variable:	
-	float end = mod(float(gl_VertexID), 2.);
-	vtx.xyz += velv * (end - .5) * velScalar;
+	float end = float(gl_VertexID & 1);
+
+	vtx.xyz += velv * (end * lineVelScalar);
 	
-	gl_Position = projectionMatrix * modelViewMatrix * vtx;
-	lumv = 1.;//gl_Vertex.w;
+	gl_Position = projectionMatrix * (modelViewMatrix * vtx);
 }
 ]],
 		fragmentCode = [[
 #version 460
 
-in float lumv;
-
-uniform float velLineAlpha;
+uniform float lineVelAlpha;
 
 void main() {
-	float lumf = lumv;
-
-#if 0	//inv sq dim
-	float z = gl_FragCoord.z / gl_FragCoord.w;
-	z *= .001;
-	lumf *= 1. / (z * z);
-#endif
-
-#if 0	//make the point smooth 
-	vec2 d = gl_PointCoord.xy * 2. - 1.;
-	float rsq = dot(d,d);
-	lumf *= 1. / (10. * rsq + .1);
-#endif
-
-	vec3 color = vec3(.1, 1., .1) * lumf * velLineAlpha;
-	gl_FragColor = vec4(color, 1.); 
-	//gl_FragColor = vec4(1., 1., 1., 100.);
+	gl_FragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
 ]],
-		attrs = pt_t_attrs,
+		attrs = gpuVelLineBuf_attrs,
 	}
 	accumStarLineShader:useNone()
 	glreport'here'
@@ -1302,11 +1394,13 @@ function App:drawPickScene()
 	
 	drawIDShader:use()
 	drawIDShader:setUniforms{
-		pointSizeScale = pointSizeScale,
-		pointSizeBias = pointSizeBias,
+		starPointSizeScale = starPointSizeScale,
+		starPointSizeBias = starPointSizeBias,
 		pickSizeBias = pickSizeBias,
 		sliceRMin = sliceRMin,
 		sliceRMax = sliceRMax,
+		sliceLumMin = sliceLumMin,
+		sliceLumMax = sliceLumMax,
 		orbit = {self.view.orbit:unpack()},	-- TODO
 		modelViewMatrix = modelViewMatrix.ptr,
 		projectionMatrix = projectionMatrix.ptr,
@@ -1348,10 +1442,12 @@ function App:drawScene()
 		accumStarPointShader:use()
 		accumStarPointShader:setUniforms{
 			starPointAlpha = starPointAlpha,
-			pointSizeScale = pointSizeScale,
-			pointSizeBias = pointSizeBias,
+			starPointSizeScale = starPointSizeScale,
+			starPointSizeBias = starPointSizeBias,
 			sliceRMin = sliceRMin,
 			sliceRMax = sliceRMax,
+			sliceLumMin = sliceLumMin,
+			sliceLumMax = sliceLumMax,
 			modelViewMatrix = modelViewMatrix.ptr,
 			projectionMatrix = projectionMatrix.ptr,
 			--orbit = self.view.orbit.s,		-- TODO orbit is a vec3 is a glsl float type
@@ -1376,17 +1472,15 @@ function App:drawScene()
 	if drawVelLines and buildVelocityBuffers then
 		accumStarLineShader:use()
 		accumStarLineShader:setUniforms{
-			velLineAlpha = velLineAlpha,
-			velScalar = velScalar,
+			lineVelAlpha = lineVelAlpha,
+			lineVelScalar = lineVelScalar,
 			normalizeVel = normalizeVel and 1 or 0,
 			modelViewMatrix = modelViewMatrix.ptr,
 			projectionMatrix = projectionMatrix.ptr,
 		}
 
 		accumStarLineShader.vao:use()
-		gpuVelLineElemBuf:bind()	-- vao:use() also calls bind() on the associated buffers, so do the element bind last
-		gl.glDrawElements(gl.GL_LINES, cpuVelLineElemBuf.size, gl.GL_UNSIGNED_INT, nil)
-		gpuVelLineElemBuf:unbind() 
+		gl.glDrawArrays(gl.GL_LINES, 0, 2 * numPts)
 		accumStarLineShader.vao:useNone()
 		accumStarLineShader:useNone()
 	end
@@ -1541,32 +1635,15 @@ function App:update()
 	end
 
 	if showConstellations then
+		gl.glColor3f(1,1,0)
 		for _,constellation in ipairs(constellations) do
 			if constellation.enabled then
-				gl.glColor3f(.5, .5, .5)
-				for i=0,7 do
-					local ir = constellation.dist[bit.band(i, 1) == 0 and 'min' or 'max']
-					local ith = math.pi/2 - (constellation.dec[bit.band(i, 2) == 0 and 'min' or 'max'])
-					local iph = constellation.ra[bit.band(i, 4) == 0 and 'min' or 'max']
-					for j=0,2 do
-						local k = bit.bxor(i, bit.lshift(1, j))
-						if k > i then
-							local jr = constellation.dist[bit.band(k, 1) == 0 and 'min' or 'max']
-							local jth = math.pi/2 - (constellation.dec[bit.band(k, 2) == 0 and 'min' or 'max'])
-							local jph = constellation.ra[bit.band(k, 4) == 0 and 'min' or 'max']
-							local div = 20
-							gl.glBegin(gl.GL_LINE_STRIP)
-							for m=0,div do
-								local s = m/div
-								local t = 1 - s
-								local r = s * ir + t * jr
-								local th = s * ith + t * jth
-								local ph = s * iph + t * jph
-								gl.glVertex3f(sphericalToCartesian(r, th, ph):unpack())
-							end
-							gl.glEnd()
-						end
+				for _,line in ipairs(constellation.lines) do
+					gl.glBegin(gl.GL_LINE_STRIP)
+					for _,i in ipairs(line) do
+						gl.glVertex3f(cpuPointBuf[i].pos:unpack())
 					end
+					gl.glEnd()
 				end
 			end
 		end
@@ -1574,10 +1651,11 @@ function App:update()
 
 	glreport'here'
 	App.super.update(self)
+
+	-- with the gaia data, when filtering/rebuilding the data, i get 'out of memory' errors that hopefully this will help
+	collectgarbage()		
 end
 
---[[
---]]
 
 local float = ffi.new'float[1]'
 local function sliderFloatTable(title, t, key, ...)
@@ -1805,8 +1883,8 @@ local search = {
 function App:updateGUI()
 
 	checkboxTable('draw points', _G, 'drawPoints')
-	sliderFloatTable('point size scale', _G, 'pointSizeScale', -10, 10)
-	sliderFloatTable('point size bias', _G, 'pointSizeBias', -10, 10)
+	sliderFloatTable('point size scale', _G, 'starPointSizeScale', -10, 10)
+	sliderFloatTable('point size bias', _G, 'starPointSizeBias', -10, 10)
 	sliderFloatTable('pick size', _G, 'pickSizeBias', 0, 20)
 	inputFloatTable('point alpha value', _G, 'starPointAlpha')
 
@@ -1820,6 +1898,9 @@ function App:updateGUI()
 	
 	inputFloatTable('slice r min', _G, 'sliceRMin')
 	inputFloatTable('slice r max', _G, 'sliceRMax')
+	
+	inputFloatTable('slice lum min', _G, 'sliceLumMin')
+	inputFloatTable('slice lum max', _G, 'sliceLumMax')
 
 	
 	checkboxTable('show pick scene', _G, 'showPickScene')	
@@ -1833,6 +1914,13 @@ function App:updateGUI()
 	end
 
 	-- view stuff
+	if ig.igButton'reset view' then
+		-- making some assumptions here
+		self.view.orbit:set(0,0,0)
+		self.viewDist = self.viewDist
+		self.view.pos:set(0, 0, self.viewDist)
+		self.view.angle:set(0, 0, 0, 1)
+	end
 	ig.igText('dist (Pc) '..(self.view.pos - self.view.orbit):length())
 	inputFloatTable('znear', self.view, 'znear')
 	inputFloatTable('zfar', self.view, 'zfar')
@@ -1872,10 +1960,12 @@ function App:updateGUI()
 
 
 	-- draw vel lines
-	checkboxTable('draw vel lines', _G, 'drawVelLines')
-	inputFloatTable('line alpha value', _G, 'velLineAlpha')
-	inputFloatTable('vel scalar', _G, 'velScalar')
-	checkboxTable('normalize velocity', _G, 'normalizeVel')
+	if buildVelocityBuffers then
+		checkboxTable('draw vel lines', _G, 'drawVelLines')
+		inputFloatTable('line alpha value', _G, 'lineVelAlpha')
+		inputFloatTable('line vel scalar', _G, 'lineVelScalar')
+		checkboxTable('normalize velocity', _G, 'normalizeVel')
+	end
 
 	-- gui stuff
 	checkboxTable('show mouseover info', _G, 'showInformation')
@@ -1898,7 +1988,7 @@ function App:updateGUI()
 				then 
 					ig.igSameLine() 
 				end
-				checkboxTooltipTable(constellationNameForAbbrev[constellation.name], constellation, 'enabled')
+				checkboxTooltipTable(constellation.name, constellation, 'enabled')
 				count = count + 1
 			end
 		end
@@ -1923,7 +2013,7 @@ function App:updateGUI()
 			s:insert('name: '..tostring(name))
 		end
 		local pt = cpuPointBuf[selectedIndex]
-		local dist = (pt.pos - self.view.pos):length()
+		local dist = (pt.pos - self.view.orbit):length()
 			
 		local LStarOverLSun = pt.lum
 		local absmag = (-2.5 / math.log(10)) * math.log(LStarOverLSun * LSunOverL0)

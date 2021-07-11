@@ -1,6 +1,5 @@
 #!/usr/bin/env lua
 require 'ext'
-local json = require 'dkjson'
 local htmlparser = require 'htmlparser'
 local htmlparser_common = require 'htmlparser.common'
 local findattr = htmlparser_common.findattr
@@ -92,14 +91,26 @@ local function setSeparation(obj, node)
 	-- separation looks to be equivalent of the radius of the orbit
 	-- this should be a fallback for when semimajoraxis is not provided
 	local unit = findattr(node, 'unit')
-	if not unit then
-		io.stderr:write("ignoring separation with no specified units: ",tolua(node),'\n')
-		return
-	elseif unit == 'arcsec' then	-- then process separtion in arcseconds?
+	if unit == 'arcsec' then	
+		-- then process separtion in arcseconds?
+		-- most separation arcsecs are side by side with separation AU
 	elseif unit == 'AU' then
 		setField(obj, 'separation', getNumber(node) * auInM)
+	elseif unit == nil then
+--[[	
+		io.stderr:write("ignoring separation with no specified units: ",tolua(node),'\n')
+--]]	
+-- [[	
+		io.stderr:write("found separation with no specified units: ",tolua(node),'\n')
+		io.stderr:flush()
+		-- docs say units are either AU or arcsec
+		-- most entries provide both and specify the units
+		-- want to assume it is AU?
+		setField(obj, 'separation', getNumber(node) * auInM)
+--]]	
 	else
-		error('unknown separation type '..tolua(node.attrs))
+		io.stderr:write('unknown separation type '..tolua(node.attrs)..'\n')
+		io.stderr:flush()
 	end
 end
 
@@ -722,6 +733,10 @@ end
 -- fixes a batch of names
 -- also returns the new combination name
 local function fixnames(names)
+-- [[
+	return names, names[1]
+--]]
+--[[
 	local newnames = {}	-- new name table is [survey] => [newname]
 	local newvalues = {}
 	for i=1,#names do
@@ -742,6 +757,7 @@ local function fixnames(names)
 	end
 	--return newnames, table.concat(newvalues, nameSeparator)
 	return newnames, newvalues[1] 
+--]]
 end
 
 -- fixes a single name
@@ -872,5 +888,11 @@ end
 I feel like I should be doing the data pre-processing here in this file, to make it more than just a conversion from xml's 2 forms of keys (attrs and children) to json's 1 form of keys (object fields)
 --]]
 
+--[[
 local results = {systems=resultSystems}
+local json = require 'dkjson'
 file['openExoplanetCatalog.json'] = json.encode(results, {indent=true})
+--]]
+-- [[
+file['openExoplanetCatalog.lua'] = tolua(resultSystems)
+--]]

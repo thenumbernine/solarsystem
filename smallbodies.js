@@ -39,8 +39,11 @@ dE_dt <= (const) sqrt(semiMajorAxis^3/gravitationalParameter), eccentricity, (dy
 pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
 */
 
-var showSmallBodies = true;
-var allowSelectSmallBodies = true;
+//TODO don't even download this until requested
+//and another TODO - organize the external datasets and have them all downloaded on request 
+// kinda like the universe visualization does
+var showSmallBodies = false;
+var allowSelectSmallBodies = false;
 
 //used with isa in the orbitTarget detection
 //instanciated when the user selects a node in the tree 

@@ -645,22 +645,25 @@ var showFPS = false;
 					pointObj.attrs.velocity.data[1] = planet.vel[1];
 					pointObj.attrs.velocity.data[2] = planet.vel[2];
 					pointObj.attrs.velocity.updateData();
-					pointObj.attrs.absoluteMagnitude.data[0] = planet.absoluteMagnitude || 10;
-					pointObj.attrs.absoluteMagnitude.updateData();
-					pointObj.attrs.colorIndex.data[0] = planet.colorIndex || 0;
-					pointObj.attrs.colorIndex.updateData();
+					pointObj.attrs.luminosity.data[0] = planet.luminosity || 10;
+					pointObj.attrs.luminosity.updateData();
+					pointObj.attrs.temperature.data[0] = planet.temperature || 20000;
+					pointObj.attrs.temperature.updateData();
 					pointObj.draw({
 						shader : starfield.colorIndexShader,
 						//disable depth test too?
 						blend : [gl.SRC_ALPHA, gl.ONE],
 						uniforms : {
-							colorIndexTex : 0,
+							tempTex : 0,
 							starTex : 1,
-							pointSize : 1,
-							pointSizeMax : 5,
-							visibleMagnitudeBias : starsVisibleMagnitudeBias
+							starPointSizeBias : starPointSizeBias,
+							starPointSizeScale : starPointSizeScale,
+							starsPointAlpha : starsPointAlpha 
+							//old vars
+							//pointSize : 1,
+							//pointSizeMax : 5,
 						},
-						texs : [starfield.colorIndexTex, starfield.starTex]
+						texs : [starfield.tempTex, starfield.starTex]
 					});
 				}
 			}
@@ -1204,12 +1207,12 @@ void main() {
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
-			absoluteMagnitude : new glutil.ArrayBuffer({
+			luminosity : new glutil.ArrayBuffer({
 				dim : 1,
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
 			}),
-			colorIndex : new glutil.ArrayBuffer({
+			temperature : new glutil.ArrayBuffer({
 				dim : 1,
 				count : 1,
 				usage : gl.DYNAMIC_DRAW
