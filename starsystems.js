@@ -8,6 +8,9 @@ var starSystems = [];
 var starSystemForNames = {};
 var solarSystem;	//the one and only.  don't construct until after WebGL init so we can populate our float tex for the planets
 
+//ugly ugly singletons
+var starSystemsHasGotResults = false;
+
 var planetSceneObj;
 var planetLatLonObj;
 
@@ -957,6 +960,8 @@ void main() {
 	},
 
 	processResults : function(results) {
+		starSystemsHasGotResults = true;
+
 		//process results
 		$.each(results.systems, function(i,systemInfo) {
 			var systemName = assertExists(systemInfo, 'name');

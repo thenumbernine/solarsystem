@@ -430,6 +430,11 @@ console.log('num stars within 1pc:', numClose);
 				if (starSystems.length > 1) thiz.addStarSystems();
 
 				if (done) done();
+			
+
+				//ugly ugly code
+				// see if the starsystems are already oloaded
+				thiz.addStarSystems();
 			};
 			xhr.send();
 		};
@@ -444,12 +449,11 @@ console.log('num stars within 1pc:', numClose);
 
 	//this is called after the exoplanets load
 	this.addStarSystems = function() {
-		if (this.buffer === undefined) {
-			console.log("WARNING can't add stars -- no star point buffer exists");
-			return;
-		}
+		if (this.alreadyAddedStarSystems) return;	// already processed
+		if (!starSystemsHasGotResults) return;		// starsystems not ready yet?
+		if (this.buffer === undefined) return;		// we're not ready yet?
 
-/* add stars from open exoplanet data * /
+/* add stars from open exoplanet data */
 		{
 			console.log('adding star systems to star fields and vice versa');	
 			assert(starSystems.length > 1);
@@ -538,6 +542,8 @@ console.log('num stars within 1pc:', numClose);
 		}
 
 		starSystemsExtra.initStarsControls();
+
+		this.alreadyAddedStarSystems = true;
 	};
 
 	this.draw = function(
