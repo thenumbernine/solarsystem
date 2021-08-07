@@ -50,6 +50,8 @@ addexo = add exoplanets.  this requires testing by the hyg id, which is the hyg 
 nounnamed = remove stars that don't have entries in the namefile
 buildnbhds = build neighbhoods
 buildvels = build velocity field lines
+
+showStarNames = whether to show star names
 --]]
 local cmdline = require 'ext.cmdline'(...)
 
@@ -283,6 +285,7 @@ sliceRMax = math.huge
 sliceLumMin = 0
 sliceLumMax = math.huge
 showStarNames = true
+if cmdline.showStarNames ~= nil then showStarNames = cmdline.showStarNames end
 
 --[[
 picking is based on point size drawn
@@ -1095,13 +1098,14 @@ void main() {
 
 in vec3 color;
 in float discardv;
+out vec4 fragColor;
 
 void main() {
 	if (discardv > 0.) {
 		discard;
 	}
 
-	gl_FragColor = vec4(color, 1.);
+	fragColor = vec4(color, 1.);
 }
 ]],
 		attrs = gpuPointBuf_attrs,
@@ -1178,7 +1182,7 @@ void main() {
 	}
 
 	float tempfrac = (temp - <?=clnumber(colorTempMin)?>) * <?=clnumber(1/(colorTempMax - colorTempMin))?>;
-	tempcolor = texture2D(tempTex, vec2(tempfrac, .5)).rgb;
+	tempcolor = texture(tempTex, vec2(tempfrac, .5)).rgb;
 }
 ]], 	{
 			calcPointSize = calcPointSize,
@@ -1195,6 +1199,8 @@ in float discardv;
 uniform float starPointAlpha;
 uniform sampler2D starTex;
 
+out vec4 fragColor;
+
 void main() {
 	if (discardv > 0.) {
 		discard;
@@ -1209,8 +1215,8 @@ void main() {
 	lumf *= 1. / (10. * rsq + .1);
 #endif
 
-	gl_FragColor = vec4(tempcolor * lumf * starPointAlpha, 1.)
-		* texture2D(starTex, gl_PointCoord)
+	fragColor = vec4(tempcolor * lumf * starPointAlpha, 1.)
+		* texture(starTex, gl_PointCoord)
 	;
 }
 ]]),
@@ -1256,8 +1262,10 @@ void main() {
 
 uniform float lineVelAlpha;
 
+out vec4 fragColor;
+
 void main() {
-	gl_FragColor = vec4(.1, 1., .1, lineVelAlpha);
+	fragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
 ]],
 		attrs = gpuVelLineBuf_attrs,
@@ -1269,17 +1277,19 @@ void main() {
 		vertexCode = [[
 #version 460
 
+in vec3 pos;
 out vec2 texcoord;
 
 void main() {
-	texcoord = gl_Vertex.xy;
-	gl_Position = vec4(gl_Vertex.x * 2. - 1., gl_Vertex.y * 2. - 1., 0., 1.);
+	texcoord = pos.xy;
+	gl_Position = vec4(pos.x * 2. - 1., pos.y * 2. - 1., 0., 1.);
 }
 ]],
 		fragmentCode = template[[
 <?
 local clnumber = require 'cl.obj.number'
 ?>
+#version 460
 
 in vec2 texcoord;
 
@@ -1291,27 +1301,29 @@ uniform float hsvRange;
 uniform bool showDensity;
 uniform float bloomLevels;
 
+out vec4 fragColor;
+
 void main() {
-	gl_FragColor = vec4(0., 0., 0., 0.);
+	fragColor = vec4(0., 0., 0., 0.);
 <? 
 local maxLevels = 8
 for level=0,maxLevels-1 do 
-?>	if (bloomLevels >= <?=clnumber(level)?>) gl_FragColor += texture2D(fbotex, texcoord, <?=clnumber(level)?>);
+?>	if (bloomLevels >= <?=clnumber(level)?>) fragColor += texture(fbotex, texcoord, <?=clnumber(level)?>);
 <? 
 end 
 ?>
-	gl_FragColor *= hdrScale * <?=clnumber(1/maxLevels)?>;
+	fragColor *= hdrScale * <?=clnumber(1/maxLevels)?>;
 
 	if (showDensity) {
-		gl_FragColor = texture1D(hsvtex, log(dot(gl_FragColor.rgb, vec3(.3, .6, .1)) + 1.) * hsvRange);
+		fragColor = texture(hsvtex, log(dot(fragColor.rgb, vec3(.3, .6, .1)) + 1.) * hsvRange);
 	} else {
 		//tone mapping, from https://learnopengl.com/Advanced-Lighting/HDR
-		//gl_FragColor.rgb = gl_FragColor.rgb / (gl_FragColor.rgb + vec3(1.));
-		gl_FragColor.rgb = pow(gl_FragColor.rgb, vec3(1. / hdrGamma));
-		gl_FragColor.rgb = log(gl_FragColor.rgb + vec3(1.));
+		//fragColor.rgb = fragColor.rgb / (fragColor.rgb + vec3(1.));
+		fragColor.rgb = pow(fragColor.rgb, vec3(1. / hdrGamma));
+		fragColor.rgb = log(fragColor.rgb + vec3(1.));
 	}
 
-	gl_FragColor.a = 1.;
+	fragColor.a = 1.;
 }
 ]],
 		uniforms = {
@@ -1352,11 +1364,12 @@ void main() {
 #version 460
 
 in float lumv;
+out vec4 fragColor;
 
 void main() {
 	float lumf = lumv;
 	vec3 color = vec3(.1, 1., .1) * lumf;
-	gl_FragColor = vec4(color, 1.); 
+	fragColor = vec4(color, 1.); 
 }
 ]],
 			attrs = nbhd_t_attrs,
@@ -1796,6 +1809,14 @@ local function guiShowStars(self)
 			assert(index >= 0 and index < numPts)
 			local pt = cpuPointBuf[index]
 			local vpt = modelViewMatrix * require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}
+--print('pt.pos', pt.pos)
+--print('pt.pos.x', pt.pos.x)
+--print('pt.pos.y', pt.pos.y)
+--print('pt.pos.z', pt.pos.z)
+--print("require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}", require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1})
+--print('modelViewMatrix ', modelViewMatrix)
+--print('vpt', vpt)
+--print('vpt', require 'ext.tolua'(vpt))
 			local mz = vpt[3]
 			if -mz > self.view.znear
 			and -mz < self.view.zfar
