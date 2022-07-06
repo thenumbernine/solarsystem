@@ -1695,7 +1695,7 @@ local function checkboxTable(title, t, key, ...)
 end
 
 local function checkboxTooltipTable(title, ...)
-	ig.igPushIDStr(title)
+	ig.igPushID_Str(title)
 	local result = checkboxTable('', ...)
 	if ig.igIsItemHovered(ig.ImGuiHoveredFlags_None) then
 		ig.igBeginTooltip()
@@ -1729,7 +1729,7 @@ local function guiShowStars(self)
 	and namedStars
 	-- and showAllNamedStarsAtOnce
 	then
-		ig.igPushIDStr('star names')
+		ig.igPushID_Str('star names')
 	
 		-- global / persist: nameWithAppMagLastPos
 		if not nameWithAppMagLastPos 
@@ -1761,7 +1761,7 @@ local function guiShowStars(self)
 
 		local windowCount = 0
 		local function addWindowForStar(x, y, name)
-			ig.igPushIDStr(name)
+			ig.igPushID_Str(name)
 			ig.igSetNextWindowPos(
 				ig.ImVec2(x,y), 	-- ImVec2 pos
 				0,					-- ImGuiCond cond
