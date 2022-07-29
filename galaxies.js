@@ -59,7 +59,7 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;	// = constant sprite width / screen width, though I have a tapering function that changes size with scale
 void main() {
-	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
+	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vertex, 1.)));
 	gl_PointSize = pointSize / gl_Position.w;
 	gl_PointSize = max(1., gl_PointSize);
 	gl_Position.z = depthfunction(gl_Position);

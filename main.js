@@ -77,6 +77,12 @@ var integrationPaused = true;
 var defaultIntegrateTimeStep = 1/(24*60);
 var integrateTimeStep = defaultIntegrateTimeStep;
 
+// in case you want to see things in flat earth mode ( just a half theta mapping of spherical coordinates, then flatten planet z)
+var targetFlatEarthCoeff = 0;
+var flatEarthConvCoeff = .03;
+var flatEarthCoeff = 0;
+var flatEarthRelativeEarthPos = [0,0,0];
+var flatEarthRelativeEarthNorthDir = [0,0,1];
 
 var Galaxy = makeClass({
 	init : function(args) {
@@ -147,6 +153,8 @@ var showFPS = false;
 				frames = 0;
 				lastFPSTime = thisTime;	
 			}
+		
+			flatEarthCoeff = flatEarthCoeff + flatEarthConvCoeff * (targetFlatEarthCoeff - flatEarthCoeff);
 		}
 
 		if (overlayShowCurrentPosition && orbitTarget.isa(Planet)) {
@@ -275,6 +283,21 @@ var showFPS = false;
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
+		//flat earth
+		var earth = solarSystem.planets[solarSystem.indexes.Earth];
+		flatEarthRelativeEarthPos = [];
+		vec3.sub(flatEarthRelativeEarthPos, earth.pos, orbitTarget.pos);
+		flatEarthRelativeEarthNorthDir = [0,0,1];
+		vec3.quatZAxis(flatEarthRelativeEarthNorthDir, earth.angle);
+
+		//update all our sceneObjs' flatEarth uniforms here
+		lineObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+		lineObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+		lineObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
+		pointObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+		pointObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+		pointObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
+
 		//draw debug lines 
 		if (!picking) {
 			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
@@ -290,6 +313,7 @@ var showFPS = false;
 					planet !== solarSystem.planets[solarSystem.indexes.Sun] &&
 					planet !== solarSystem.planets[solarSystem.indexes.Moon]) continue;
 				*/
+					
 
 				//draw lines to other planets
 				if (showLinesToOtherPlanets &&
@@ -297,6 +321,7 @@ var showFPS = false;
 					orbitTarget !== planet &&
 					(!planet.parent || planet.parent.index == 0))
 				{
+					
 					//while here, update lines
 
 					vec3.sub(delta, planet.pos, orbitTarget.pos);
@@ -521,6 +546,12 @@ var showFPS = false;
 
 					planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
 					planet.sceneObj.uniforms.scaleExaggeration = planetScaleExaggeration;	
+
+					//flat earth
+					planet.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+					planet.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+					planet.sceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
+
 					
 					if (picking) {
 						pickObject.drawPlanet(planet.sceneObj, planet);
@@ -538,6 +569,9 @@ var showFPS = false;
 						planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;
 						planetLatLonObj.uniforms.inverseFlattening = planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5;
 						planetLatLonObj.uniforms.scaleExaggeration = planetScaleExaggeration;
+						planetLatLonObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+						planetLatLonObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+						planetLatLonObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 						planetLatLonObj.draw();
 					}
 				}
@@ -591,6 +625,9 @@ var showFPS = false;
 					}
 					vec3.sub(planet.ringObj.uniforms.pos, planet.pos, orbitTarget.pos);
 					quat.copy(planet.ringObj.uniforms.angle, planet.angle);
+					planet.ringObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+					planet.ringObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+					planet.ringObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 
 					//webkit bug
 					planet.ringObj.shader.use();
@@ -732,6 +769,9 @@ var showFPS = false;
 						orbitPathSceneObj.uniforms.eccentricAnomaly = planet.keplerianOrbitalElements.eccentricAnomaly;
 						orbitPathSceneObj.uniforms.orbitType = orbitPathIndexForType[planet.keplerianOrbitalElements.orbitType];
 						orbitPathSceneObj.uniforms.fractionOffset = planet.keplerianOrbitalElements.fractionOffset || 0;
+						orbitPathSceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+						orbitPathSceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+						orbitPathSceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 
 						orbitPathSceneObj.draw();
 						
@@ -820,6 +860,10 @@ var showFPS = false;
 				for (var i = 0; i < 16; ++i) {
 					planet.gravWellObj.uniforms.mvMat[i] = mvMat[i];
 				}
+		
+				planet.gravWellObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+				planet.gravWellObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+				planet.gravWellObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 
 				planet.gravWellObj.draw();
 			}
@@ -978,7 +1022,6 @@ function init() {
 	ModifiedDepthShaderProgram = makeClass({
 		super : glutil.ShaderProgram,
 		init : function(args) {
-
 			// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
 			//  but, true to the original design, I actually want more detail up front.  Maybe I'll map it to get more detail up front than it already has?
 			args.vertexCode = mlstr(function(){/*
@@ -988,13 +1031,63 @@ uniform float zNear, zFar, depthConstant;
 	//return (2.0 * log(v.w / zNear) / log(zFar / zNear) - 1.) * v.w;
 //}
 #define depthfunction(x) ((x).z)
+
+#define earthRadius	6.37101e+6	//TODO get this from solarSystem.planets[solarSystem.indexes.Earth].radius
+
+uniform vec3 earthPos;
+uniform vec3 earthNorthDir;
+uniform float flatEarthCoeff;	//0. is original, 1. is fully flat-earth
+vec4 flatEarthXForm(vec4 pos) {
+	if (flatEarthCoeff == 0.) return pos;
+	
+	pos.xyz -= earthPos;
+	
+	float z = dot(pos.xyz, earthNorthDir);
+	vec3 xy = pos.xyz - earthNorthDir * z;	//no 2D basis chosen mind you
+	float r2 = length(xy);
+	float r3 = length(pos);
+	vec3 unitxy = xy / r2;
+	float theta = atan(r2, z);
+	
+	// so we are mapping the spherical theta to the new cylindrical distance
+	// but what about objects beyond the earth?  they need to be mapped above earth
+	// and cannot exceed a certain distance... how to do this ... hyperbolic mapping?
+	vec3 newPos = unitxy * theta;	// times planet radius ... len xyz always messes us up.
+	
+	//works fine for earth, but stars are too far out
+	//newPos *= r3;
+	
+	//better for distant objects like orbits and stars
+	newPos *= earthRadius;
+
+	//what about the new z?  
+	// for vertices within the earth radius, they map to z=0
+	// for vertices outside that radius, map to z=radius and map to xy = 
+	// well, for most objects away from earth, they will be at theta=pi/2 ... so how do i map them in more diverse locations?
+	if (r3 > 1.1 * earthRadius) {
+		z = earthRadius;
+		newPos.xyz += z * earthNorthDir;	
+	}
+
+	// past some threshold, wrap antarctica around the bottom.  
+	// the threshold angle is probably whatever the angle of the triangles touching the south pole on the sphere model.
+	if (theta > 3.1) {
+		newPos = pos.xyz;
+	}
+	
+	pos.xyz = mix(pos.xyz, newPos.xyz, flatEarthCoeff);
+	pos.xyz += earthPos;
+	return pos;
+}
 	*/}) + (args.vertexCode || '');
 			if (args.uniforms === undefined) args.uniforms = {};
 			args.uniforms.zNear = glutil.view.zNear;
 			args.uniforms.zFar = glutil.view.zFar;
 			args.uniforms.depthConstant = depthConstant;
+		
 			args.vertexPrecision = 'best';
 			args.fragmentPrecision = 'best';
+			
 			ModifiedDepthShaderProgram.super.call(this, args);
 		}
 	});
@@ -1127,7 +1220,9 @@ uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;
 void main() {
-	vec4 vtx4 = mvMat * vec4(vertex, 1.);
+	vec4 vtx4 = vec4(vertex, 1.);
+	vtx4 = flatEarthXForm(vtx4);
+	vtx4 = mvMat * vtx4;
 	gl_Position = projMat * vtx4;
 	gl_PointSize = pointSize;
 	gl_Position.z = depthfunction(gl_Position);
@@ -1161,7 +1256,9 @@ uniform float scaleExaggeration;
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
-	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	vec4 vtx4 = vec4(vtx3, 1.);
+	vtx4 = flatEarthXForm(vtx4);
+	vtx4 = mvMat * vtx4;
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }

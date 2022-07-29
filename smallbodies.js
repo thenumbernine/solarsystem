@@ -88,11 +88,11 @@ var SmallBodies = makeClass({
 		this.shader = new ModifiedDepthShaderProgram({
 			vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
-uniform mat4 mvMat;
+uniform mat4 viewMatInv;
 uniform mat4 projMat;
 uniform float pointSize;
 void main() {
-	gl_Position = projMat * (mvMat * vec4(vertex, 1.));
+	gl_Position = projMat * (viewMatInv * flatEarthXForm(vec4(vertex, 1.)));
 	gl_PointSize = pointSize / gl_Position.w;
 	gl_PointSize = clamp(gl_PointSize, .25, 5.);
 	gl_Position.z = depthfunction(gl_Position);
@@ -210,14 +210,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		if (picking && !allowSelectSmallBodies) return;
 		if (this.sceneObj === undefined) return;
 
-		vec3.scale(viewPosInv, glutil.view.pos, -1);
-		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
-		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-
 		this.doDraw(distFromSolarSystemInM, tanFovY, picking);
-
-		vec3.scale(viewPosInv, glutil.view.pos, -1);
-		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	},
 
 	doDraw : function(distInM, tanFovY, picking) {
@@ -232,6 +225,10 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
 		this.sceneObj.uniforms.julianDate = julianDate;
+		
+		this.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+		this.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+		this.sceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 		
 		if (picking) {
 /*

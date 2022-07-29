@@ -60,7 +60,7 @@ void main() {
 		mod(floor(vertexIDCh0 / 256.), 8.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
 	
-	gl_Position = projMat * (mvMat * vec4(vertex, 1.)); 
+	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vertex, 1.))); 
 
 	gl_PointSize = pointSize;
 	if (pointSizeScaleWithDist) gl_PointSize /= gl_Position.w;
@@ -107,7 +107,7 @@ uniform float scaleExaggeration;
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
-	gl_Position = projMat * (mvMat * vec4(vtx3, 1.));
+	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vtx3, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -298,6 +298,9 @@ if (skipProjection) {
 			equatorialRadius : sceneObj.uniforms.equatorialRadius,
 			inverseFlattening : sceneObj.uniforms.inverseFlattening,
 			scaleExaggeration : sceneObj.uniforms.scaleExaggeration,
+			flatEarthCoeff : flatEarthCoeff,
+			earthPos : flatEarthRelativeEarthPos,
+			earthNorthDir : flatEarthRelativeEarthNorthDir,
 			id : this.registerCallback(callbackObj, 1)
 		});
 		sceneObj.geometry.draw();

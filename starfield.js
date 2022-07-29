@@ -187,6 +187,7 @@ var starfield = new function() {
 '#define colorTempMin '+floatToGLSL(colorTempMin)+'\n'+
 '#define colorTempMax '+floatToGLSL(colorTempMax)+'\n'+
 '#define LSunOverL0 '+floatToGLSL(LSunOverL0)+'\n'+
+'#define renderScale '+floatToGLSL(thiz.renderScale)+'\n'+
 '#define log10UnitRatio '+floatToGLSL(Math.log10(thiz.renderScale / metersPerUnits.pc))+'\n'+
 					mlstr(function(){/*
 attribute vec3 vertex;
@@ -198,8 +199,11 @@ varying float lumv;
 varying vec3 tempcolor;
 //varying float discardv;
 
+uniform mat4 viewMatInv;
+uniform mat4 localMat;
 uniform mat4 mvMat;
 uniform mat4 projMat;
+
 uniform float starPointSizeScale;
 uniform float starPointSizeBias;
 uniform sampler2D tempTex;
@@ -216,8 +220,21 @@ void main() {
 //	}
 
 	vec4 vtx4 = vec4(vertex, 1.);
-	vec4 vmv = mvMat * vtx4;
-	gl_Position = projMat * vmv;
+	
+	// needs to be non-flat-earth for proper dist calcs and point size
+	vec4 vmv = mvMat * vtx4;	
+	
+	vtx4 = localMat * vtx4;
+
+	//special hack for starfields, since they are in a different scale than planets ...
+	// TODO determine some good rescaling, but maybe I should fix the theta=pi/2 star problem in flatEarthXForm first...
+	if (flatEarthCoeff != 0.) {
+		vtx4 *= 2. * earthRadius;	// place out beyond the renormalization 
+		vtx4 = flatEarthXForm(vtx4);
+		vtx4 /= (2. * earthRadius * renderScale);
+	}
+
+	gl_Position = projMat * (viewMatInv * vtx4);
 //	gl_Position.z = depthfunction(gl_Position);
 
 	//how to calculate this in fragment space ...
@@ -580,6 +597,10 @@ console.log('num stars within 1pc:', numClose);
 			this.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
 			this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
 			this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
+
+			this.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
+			this.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
+			this.sceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
 
 			if (!picking) {
 				

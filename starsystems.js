@@ -33,6 +33,7 @@ uniform mat4 projMat;
 void main() {
 	vec4 vtx4 = mvMat * vec4(vertex.xyz, 1.);
 	alpha = vertex.w;
+	vtx4 = flatEarthXForm(vtx4);
 	gl_Position = projMat * vtx4;
 	gl_PointSize = 4.;
 	gl_Position.z = depthfunction(gl_Position);
@@ -52,6 +53,8 @@ void main() {
 		vertexCode : mlstr(function(){/*
 attribute vec4 vertex;
 varying float alpha;
+uniform mat4 viewMatInv;
+uniform mat4 localMat;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform vec3 A, B;
@@ -80,7 +83,8 @@ void main() {
 	
 	alpha = frac; 
 
-	gl_Position = projMat * (mvMat * vec4(pos, 1.));
+	//I have to separate the modelTransform and viewTransform for any object that has a non-identity modelTransform that wants to use the flatEarthXForm
+	gl_Position = projMat * (viewMatInv * flatEarthXForm(localMat * vec4(pos, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),
@@ -416,9 +420,9 @@ void main() {
 	vec4 modelPos = vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
 
 	//rotate the planet-local-frame vector into modelview space
-	vec4 eyePos = mvMat * modelPos;
+	vec4 eyePos = mvMat * flatEarthXForm(modelPos);
 	worldPosv = quatRotate(angle, modelPos.xyz) + pos;
-
+	
 	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -568,7 +572,7 @@ void main() {
 	vec4 modelPos = vec4(cosTheta * rad, sinTheta * rad, 0., 1.);
 
 	//rotate the planet-local-frame vector into modelview space
-	vec4 eyePos = mvMat * modelPos;
+	vec4 eyePos = mvMat * flatEarthXForm(modelPos);
 	worldPosv = quatRotate(angle, modelPos.xyz) + pos;
 
 	gl_Position = projMat * eyePos;
@@ -763,7 +767,7 @@ void main() {
 */}) 
 			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
 			+ mlstr(function(){/*
-	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -822,7 +826,7 @@ void main() {
 */}) 
 			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
 			+ mlstr(function(){/*
-	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -882,7 +886,7 @@ void main() {
 */}) 
 			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - worldVertex);')
 			+ mlstr(function(){/*
-	vec4 vtx4 = mvMat * vec4(worldVertex, 1.);
+	vec4 vtx4 = mvMat * flatEarthXForm(vec4(worldVertex, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }

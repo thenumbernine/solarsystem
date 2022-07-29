@@ -11,6 +11,7 @@ var SolarSystem = makeClass({
 			name : 'Sun',
 			mass : 1.9891e+30,
 			radius : 6.960e+8,
+			//inverseFlattening : 1/0.00005,
 			type : 'star'
 		}));
 		this.planets.push(mergeInto(new Planet(), {

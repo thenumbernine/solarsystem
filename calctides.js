@@ -52,7 +52,7 @@ void main() {
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	tidev = tide;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
-	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -168,7 +168,7 @@ void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
-	vec4 vtx4 = mvMat * vec4(vtx3, 1.);
+	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }

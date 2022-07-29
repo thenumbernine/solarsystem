@@ -36,7 +36,7 @@ void main() {
 	texCoordv = vec2(-texCoord.y, texCoord.x);
 	vec3 vtx3 = vec3(vertex.x, vertex.y, 0.);
     vec3 modelPos = transpose(eclipticalToGalactic * equatorialToEcliptical) * (SCALE_OF_MILKY_WAY_SPRITE * vtx3);
-    gl_Position = projMat * mvMat * vec4(modelPos, 1.);
+    gl_Position = projMat * (mvMat * flatEarthXForm(vec4(modelPos, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
 */}),

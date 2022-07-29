@@ -276,6 +276,7 @@ normalizeVel = false
 showPickScene = false
 showInformation = true			-- show information on the current star being hovered over
 drawGrid = true			-- draw a sphere with 30' segments around our orbiting star
+tiltGridToPlanet = false
 gridRadius = 100
 showNeighbors = false	-- associated with the initialization flag buildNeighborhood
 nbhdLineAlpha = 1
@@ -1623,6 +1624,10 @@ function App:update()
 
 	-- TODO draw around origin?  or draw around view orbit?
 	if drawGrid then
+		if tiltGridToPlanet then
+			gl.glPushMatrix()
+			gl.glRotatef(23.4365472133, -1, 0, 0)
+		end
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
 		gl.glColor3f(.25, .25, .25)
@@ -1645,6 +1650,9 @@ function App:update()
 		end
 		gl.glEnd()
 		gl.glDisable(gl.GL_BLEND)
+		if tiltGridToPlanet then
+			gl.glPopMatrix()
+		end
 	end
 
 	if showConstellations then
@@ -1926,6 +1934,7 @@ function App:updateGUI()
 	
 	checkboxTable('show pick scene', _G, 'showPickScene')	
 	checkboxTable('show grid', _G, 'drawGrid')	
+	checkboxTable('tilt to planet', _G, 'tiltGridToPlanet') 
 	inputFloatTable('grid radius', _G, 'gridRadius')
 
 	-- draw nhbd lines stuff which looks dumb right now
