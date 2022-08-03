@@ -1,8 +1,10 @@
-![](https://cdn.rawgit.com/thenumbernine/solarsystem/master/images/screenshot.png)
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=KYWUWS86GSFGL)
+
+![solar system](https://cdn.rawgit.com/thenumbernine/solarsystem/master/images/screenshot.png)
 
 ## Solar System in WebGL
 
-allows you see gravitational / tidal forces of various planets on various other planets
+Allows you see gravitational / tidal forces of various planets on various other planets.
 
 Calculations are done using Newtonian coefficients rewritten in terms of Riemann metric tensor.  See Ch. 12 of "Gravitation" by Misner, Thorne, and Wheeler.
 This is equivalent to linearized gravity when the velocity is assumed to be purely timelike.  I have a cartesian Schwarzschild metric in black-hole-skymap,
@@ -13,21 +15,21 @@ I've since been corrected that I should be using a Gauss Cubic integrator.  Expe
 
 The textures are (c) NASA.  
 
-Sun is from http://commons.m.wikimedia.org/wiki/File:Map_of_the_full_sun.jpg
-Mercury from http://laps.noaa.gov/albers/sos/sos.html
-Venus without clouds from http://laps.noaa.gov/albers/sos/sos.html
-Venus with clouds from http://www.mmedia.is/~bjj/data/venus/
-Earth from http://m.earthobservatory.nasa.gov/Features/BlueMarble
-Mars, Phobos, Deimos from http://maps.jpl.nasa.gov
-Jupiter, Enceladus, Mimas, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe from Cassini, images by http://www.ciclops.org/maps.php
-	Io, Europa from http://laps.noaa.gov/albers/sos/sos.html
-	Ganymede, Callisto from https://ksp.sarbian.com/nathankell/RealSolarSystem/Textures/4096/
-Jupiter rings from http://www.celestiamotherlode.net/catalog/jupiter.php
-Saturn from http://www.mmedia.is/~bjj/data/saturn/
-Saturn rings from http://www.mmedia.is/~bjj/data/s_rings/index.html
-Neptune from http://www.mmedia.is/~bjj/data/neptune/
-Pluto from http://en.spaceengine.org/forum/22-758-6
-	Charon from http://en.spaceengine.org/forum/22-758-6
+- Sun is from http://commons.m.wikimedia.org/wiki/File:Map_of_the_full_sun.jpg
+- Mercury from http://laps.noaa.gov/albers/sos/sos.html
+- Venus without clouds from http://laps.noaa.gov/albers/sos/sos.html
+- Venus with clouds from http://www.mmedia.is/~bjj/data/venus/
+- Earth from http://m.earthobservatory.nasa.gov/Features/BlueMarble
+- Mars, Phobos, Deimos from http://maps.jpl.nasa.gov
+- Jupiter, Enceladus, Mimas, Tethys, Dione, Rhea, Titan, Iapetus, Phoebe from Cassini, images by http://www.ciclops.org/maps.php
+	- Io, Europa from http://laps.noaa.gov/albers/sos/sos.html
+	- Ganymede, Callisto from https://ksp.sarbian.com/nathankell/RealSolarSystem/Textures/4096/
+- Jupiter rings from http://www.celestiamotherlode.net/catalog/jupiter.php
+- Saturn from http://www.mmedia.is/~bjj/data/saturn/
+- Saturn rings from http://www.mmedia.is/~bjj/data/s_rings/index.html
+- Neptune from http://www.mmedia.is/~bjj/data/neptune/
+- Pluto from http://en.spaceengine.org/forum/22-758-6
+	- Charon from http://en.spaceengine.org/forum/22-758-6
 
 Position and velocity data is from NASA Horizons telnet server horizons.jpl.nasa.gov
 Planet characteristics are from NASA Horizons server and from http://solarsystem.nasa.gov/planets/index.cfm
