@@ -82,14 +82,14 @@ if namefile then
 end
 
 local constellationNamesForAbbrevs = fromlua(file['../constellations/constellationNamesForAbbrevs.lua'])
-local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev) 
+local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
 	return abbrev, name
 end):setmetatable(nil)
 
 local constellations = table.map(constellationNamesForAbbrevs, function(name, abbrev, t)
 	return {
 		name = name,
-		abbrev = abbrev, 
+		abbrev = abbrev,
 		enabled = false,
 	}, #t+1
 end)
@@ -103,7 +103,7 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 	return cons, (cons.abbrev or 'unnamed')
 end):setmetatable(nil)
 
--- constellation lines are in hip, so use this to convert them to hyg 
+-- constellation lines are in hip, so use this to convert them to hyg
 local indexForHip = fromlua(file['../hyg/index-for-hip.lua'])
 
 for name, lines in pairs(fromlua(file['../constellations/constellation-lines.lua'])) do
@@ -113,8 +113,8 @@ for name, lines in pairs(fromlua(file['../constellations/constellation-lines.lua
 	assert(abbrev, "couldn't find abbrev for lines name "..name)
 	local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
 	
-	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua 
-	constellation.lines = lines 
+	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
+	constellation.lines = lines
 	for _,line in ipairs(lines) do
 		for j=#line,1,-1 do
 			local index = indexForHip[line[j]]
@@ -129,7 +129,7 @@ end
 
 
 local App = class(require 'glapp.orbit'(require 'imguiapp'))
-local ig = require 'ffi.imgui'		-- windows bug, gotta include ig after imguiapp (or after imgui?)
+local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or after imgui?)
 	
 local _1_log_10 = 1 / math.log(10)
 
@@ -137,7 +137,7 @@ App.title = 'pointcloud visualization tool'
 App.viewDist = 5e-4
 
 --[[
-my gaia data: 
+my gaia data:
 	float pos[3]
 	float vel[3]
 	float luminosity
@@ -164,12 +164,12 @@ typedef struct {
 	solar luminosity
 	https://en.wikipedia.org/wiki/Solar_luminosity
 	3.828e+26 watts
-	total emitted over the whole surface 
-	L_sun = 4 pi k I_sun A^2 
+	total emitted over the whole surface
+	L_sun = 4 pi k I_sun A^2
 		for L_sum solar luminosity (watts)
 		and I_sun solar irradiance (watts/meter^2)
 	
-	https://en.wikipedia.org/wiki/Luminosity	
+	https://en.wikipedia.org/wiki/Luminosity
 	
 	flux = luminosity / area
 	area of sphere = 4 pi r^2
@@ -196,7 +196,7 @@ typedef struct {
 	// which I'm rebuilding later from the 'constellations' file ...
 	/// sooo ... dont' rebuild it? just make this 'constellation'
 	//and as far as radius ... HYG has r1 and r2 for spheroid sizes
-	//Gaia has 'radius' as well 
+	//Gaia has 'radius' as well
 	//how many valid columns in both?
 	// I should add on 'r1' and 'r2' .. or just 'radius' ... for both
 	// and make this 11 cols
@@ -222,20 +222,20 @@ local pt_t = 'pt_9col_t'
 
 -- 2x
 local gpuVelLineBuf
-local cpuVelLineBuf 
+local cpuVelLineBuf
 
 
 ffi.cdef[[
 typedef struct {
 	vec3f_t pos;	//pos of each endpoint of the line
-	float dist;		//distance between.  will be doubled up in pairs of vertexes for each line 
+	float dist;		//distance between.  will be doubled up in pairs of vertexes for each line
 } nbhd_t;
 ]]
 
 local cpuNbhdLineBuf
 local gpuNbhdLineBuf
 
-local env	-- I'm not using CL at the moment 
+local env	-- I'm not using CL at the moment
 local drawIDShader
 local accumStarPointShader
 local accumStarLineShader
@@ -259,7 +259,7 @@ local LSunOverL0 = LSun / L0
 local buildNeighborhood = cmdline.buildnbhds
 local buildVelocityBuffers = cmdline.buildvels
 
--- _G so that sliderFloatTable can use them
+-- _G so that ig.luatableSliderFloat can use them
 starPointAlpha = 1
 starPointSizeScale = 3
 starPointSizeBias = -3
@@ -332,18 +332,18 @@ print('loaded '..numPts..' stars...')
 	end
 	--]]
 
-	if cmdline.lummin 
+	if cmdline.lummin
 	or cmdline.lumhicount
-	or cmdline.appmaghicount 
+	or cmdline.appmaghicount
 	or cmdline.rlowcount
-	or cmdline.rmax 
-	or cmdline.nolumnans 
+	or cmdline.rmax
+	or cmdline.nolumnans
 	or cmdline.addsun
 	or (cmdline.nounnamed and namedStars)
 	or cmdline.addexo
 	then
-print'filtering some of our data...'		
-print'converting from binary blob to lua table...'		
+print'filtering some of our data...'
+print'converting from binary blob to lua table...'
 		local pts = table()
 		for i=0,numPts-1 do
 			-- keep track of the original index, for remapping the name file
@@ -353,7 +353,7 @@ print'...done converting'
 
 		-- do this first, while namedStars <-> objs, before moving any objs
 		if cmdline.nounnamed then
-print'filtering out unnamed...'			
+print'filtering out unnamed...'
 			assert(namedStars, "you can't filter out unnamed stars if you don't have a name file")
 			for i=numPts-1,0,-1 do
 				if not namedStars[i] then
@@ -364,7 +364,7 @@ print'filtering out unnamed...'
 		end
 
 		if cmdline.nolumnans then
-print'filtering out luminosity nans...'			
+print'filtering out luminosity nans...'
 			pts = pts:filter(function(pt)
 				return math.isfinite(pt.obj.lum)
 			end)
@@ -372,14 +372,14 @@ print'filtering out luminosity nans...'
 		end
 
 		if cmdline.addsun then
-print'adding sun point...'			
+print'adding sun point...'
 			local sun = ffi.new(pt_t)
 			sun.pos:set(0,0,0)
 			-- vel is in Pc/year?  double check plz.
 			-- Gaia velocity is in solar reference frame, so the sun's vel will be zero
 			sun.vel:set(0,0,0)
 			sun.lum = 1
-			sun.temp = 5772	-- well, the B-V is 0.63.  maybe I should just be storing that? 
+			sun.temp = 5772	-- well, the B-V is 0.63.  maybe I should just be storing that?
 			sun.radius = 1	-- in solar radii
 			
 			pts:insert{obj=sun, index=numPts}
@@ -394,14 +394,14 @@ print('filtering out luminosity min '..cmdline.lummin)
 			print('lummin filtered down to '..#pts)
 		end
 		if cmdline.lumhicount then
-print('filtering out only the highest '..cmdline.lumhicount..' luminous objects...')			
+print('filtering out only the highest '..cmdline.lumhicount..' luminous objects...')
 			pts = pts:sort(function(a,b)
 				return a.obj.lum > b.obj.lum
 			end):sub(1, cmdline.lumhicount)
 			print('lumhicount filtered down to '..#pts)
 		end
 		if cmdline.appmaghicount then
-print('filtering out only the highest '..cmdline.appmaghicount..' apparent magnitude objects...')			
+print('filtering out only the highest '..cmdline.appmaghicount..' apparent magnitude objects...')
 			pts = pts:sort(function(a,b)
 				return  a.obj.lum / a.obj.pos:lenSq()
 						> b.obj.lum / b.obj.pos:lenSq()
@@ -424,14 +424,14 @@ print('filtering out only objects of distance '..cmdline.rmax..' or less...')
 		end
 	
 		if cmdline.addexo then
-print('adding exoplanets not done yet')			
+print('adding exoplanets not done yet')
 			--[[
 			now load the open exoplanet catalog parsed data
 			map from exoplanet system name to hyg name
 			if there's no hyg number associated then add the system
-			notice, the exoplanet catalog provides 
-			visualMagnitude per-body, sometimes 
-			temperature per-body sometimes 
+			notice, the exoplanet catalog provides
+			visualMagnitude per-body, sometimes
+			temperature per-body sometimes
 			radius per-body sometimes, maybe more often than not
 			J K H magnitudes.
 			in absense of visual magnitude, should I derive it from the J K H magnitudes?
@@ -441,7 +441,7 @@ print('adding exoplanets not done yet')
 		end
 
 		if namedStars then
-print('remapping old named stars...')			
+print('remapping old named stars...')
 			local newnames = namedStars and {} or nil
 			for i,pt in ipairs(pts) do
 				-- pts will be 0-based
@@ -452,20 +452,20 @@ print('remapping old named stars...')
 			if namedStars then
 				namedStars = newnames
 			end
-print('...done remapping old named stars')			
+print('...done remapping old named stars')
 		end
 
 		if cmdline.print then
-print('printing radius and luminosity...')			
+print('printing radius and luminosity...')
 			for _,pt in ipairs(pts) do
 				local r = pt.obj:length()
 				print('r='..r..' lum='..pt.obj.lum)
 			end
-print('...done printing radius and luminosity')			
+print('...done printing radius and luminosity')
 		end
 
 		numPts = #pts
-print('allocating new binary blob...')		
+print('allocating new binary blob...')
 		cpuPointBuf = ffi.new(pt_t..'[?]', numPts)
 print('copying from lua table to new binary blob...')
 		for i=0,numPts-1 do
@@ -516,13 +516,13 @@ r = {min = 3.2871054403464, max = 2121788012.1646, avg = 3722.3396439795, sqavg 
 v = {min = 1.2907013896885e-07, max = 86.409967259077, avg = 0.00012526101936957, sqavg = 0.0010910844398197, stddev = 0.033031329817262, count = 7112113},
 lum = {min = 0.030576450750232, max = 96606.6328125, avg = 51.305569407229, sqavg = 29367.297608038, stddev = 163.50852013225, count = 6081418},
 temp = {min = 3229, max = 9715.6669921875, avg = 4822.2554139669, sqavg = 23954513.485383, stddev = 836.87884896789, count = 7102644},
-log10lum = {min = -1.5146129279835, max = 4.9850069452041, avg = 1.0599897393166, sqavg = 1.8131122068599, stddev = 0.83038181543398, count = 6081418},	
+log10lum = {min = -1.5146129279835, max = 4.9850069452041, avg = 1.0599897393166, sqavg = 1.8131122068599, stddev = 0.83038181543398, count = 6081418},
 
 Seems with Gaia I am getting only a small subset of the luminosity range that I am with the HYG database.  I wonder why?  Maybe luminosity is one of the things they calculated last?  And I should just be deriving it from the magnitude?
 --]]
 
 -- [=[ why is this crashing intermittantly for gaia data?
--- maybe something to with how, when it doesn't crash, luajit has a 'not enough memory' error shortly after	
+-- maybe something to with how, when it doesn't crash, luajit has a 'not enough memory' error shortly after
 	--local log10lumbin = require 'stat.bin'(-10, 10, 200)
 	-- TODO better way of setting these flags ... in ctor maybe?
 	for _,s in ipairs(s) do
@@ -538,11 +538,11 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 	
 	SagA* = 8178 Pc from us, so not in the HYG or Gaia data
 
-	Proxima Centauri is 1.3 Pc from us 
+	Proxima Centauri is 1.3 Pc from us
 
 	lum stddev is 163, so 3 stddev is ~ 500
 	--]]
-print'calculating stats on data...'	
+print'calculating stats on data...'
 	for i=0,numPts-1 do
 		local pt = cpuPointBuf[i]
 		local pos = pt.pos
@@ -638,7 +638,7 @@ print'calculating stats on data...'
 
 
 	-- TODO show orbit diagrams for all stars around Sgt A*?
-	local gpuVelLineBuf_attrs 
+	local gpuVelLineBuf_attrs
 	if buildVelocityBuffers then
 		cpuVelLineBuf = ffi.new(pt_t..'[?]', numPts*2)
 		for i=0,numPts-1 do
@@ -695,7 +695,7 @@ print'calculating stats on data...'
 
 	local nbhd_t_attrs
 	if buildNeighborhood then
-		-- maybe i can quick sort and throw in some random compare and that'll do some kind of rough estimate 
+		-- maybe i can quick sort and throw in some random compare and that'll do some kind of rough estimate
 print('looking for max')
 		cpuNbhdLineBuf = vector'nbhd_t'
 		-- heuristic with bins
@@ -717,7 +717,7 @@ print('looking for max')
 		nodeCount = nodeCount + 1
 		local nodemax = 10
 		local function addToTree(node, i)
-			local pos = cpuPointBuf[i].pos	
+			local pos = cpuPointBuf[i].pos
 			
 			-- have we divided?  pay it forward.
 			if node.children then
@@ -760,7 +760,7 @@ print('looking for max')
 				end
 				-- split the nodes up into the children
 				for _,i in ipairs(node.pts) do
-					local pos = cpuPointBuf[i].pos	
+					local pos = cpuPointBuf[i].pos
 					local childIndex = bit.bor(
 						(pos.x > node.mid[1]) and 1 or 0,
 						(pos.y > node.mid[2]) and 2 or 0,
@@ -770,17 +770,17 @@ print('looking for max')
 				node.pts = nil
 			end
 		end
-print'pushing into bins'	
+print'pushing into bins'
 		for i=0,numPts-1 do
 			addToTree(root, i)
 		end
 print('created '..nodeCount..' nodes')
-print'searching bins'	
+print'searching bins'
 	
 		-- when connecting each star to all closest stars:
 		-- nbhdThrehsold = 5 <=> 248422 lines
 		-- nbhdThrehsold = 7 <=> 689832 lines
-		-- nbhdThrehsold = 10 <=> too many 
+		-- nbhdThrehsold = 10 <=> too many
 		local nbhdThreshold = 7	-- in Pc
 		-- targetApparentMagnitude = -1 <=> 103454 lines (incl dups)
 		-- targetApparentMagnitude = 0 <=> 412688 lines
@@ -788,7 +788,7 @@ print'searching bins'
 		--local targetApparentMagnitude = 0
 
 		local ai = 1
-		local lastTime = os.time()	
+		local lastTime = os.time()
 		local function searchTree(node)
 			if node.children then
 				assert(not node.pts)
@@ -814,7 +814,7 @@ print'searching bins'
 					m = -5/2 log10(LStar/L0) - 5 + 5 log10(d)
 					m/5 + 1/2 log10(LStar/L0) + 1 = log10(d)
 					d = 10^(m/5 + 1) sqrt(LStar/L0)
-					ex: for LSun, the dist at which it has 
+					ex: for LSun, the dist at which it has
 					app mag = -1 <=> d = 0.7 pc
 					app mag = 0 <=> d = 1.1 pc
 					app mag = 1 <=> d = 1.8 pc
@@ -831,14 +831,14 @@ print'searching bins'
 					-- so the lines represent what can see the star?
 					local touchbnd = box3{
 						min = {
-							pi.pos.x - nbhdThreshold, 
-							pi.pos.y - nbhdThreshold, 
-							pi.pos.z - nbhdThreshold, 
-						}, 
+							pi.pos.x - nbhdThreshold,
+							pi.pos.y - nbhdThreshold,
+							pi.pos.z - nbhdThreshold,
+						},
 						max = {
-							pi.pos.x + nbhdThreshold, 
-							pi.pos.y + nbhdThreshold, 
-							pi.pos.z + nbhdThreshold, 
+							pi.pos.x + nbhdThreshold,
+							pi.pos.y + nbhdThreshold,
+							pi.pos.z + nbhdThreshold,
 						},
 					}
 
@@ -881,7 +881,7 @@ print'searching bins'
 									local nb = ffi.new'nbhd_t'
 									nb.pos:set(pj.pos:unpack())
 									nb.dist = dist
-									cpuNbhdLineBuf:push_back(nb)					
+									cpuNbhdLineBuf:push_back(nb)
 								end
 							end
 						end
@@ -952,7 +952,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 
 	-- black body color table from http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color_D58.html
 	do
---[[ writing colorForTemp.png from the black body data:		
+--[[ writing colorForTemp.png from the black body data:
 		local rgbs = table()
 		for l in io.lines'bbr_color_D58.txt' do
 			if l ~= '' and l:sub(1,1) ~= '#' then
@@ -977,7 +977,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 --]]
 -- [[ or just reading it:
 		local tempImg = Image'../colorForTemp.png'
---]]		
+--]]
 		tempTex = GLTex2D{
 			image = tempImg,
 			wrap = {s = gl.GL_CLAMP_TO_EDGE, t = gl.GL_CLAMP_TO_EDGE},
@@ -1021,7 +1021,7 @@ local clnumber = require 'cl.obj.number'
 	/*
 	ok now on to the point size ...
 	and magnitude ...
-	hmm ... 
+	hmm ...
 	HDR will have to factor into here somehow ...
 	*/
 
@@ -1306,12 +1306,12 @@ out vec4 fragColor;
 
 void main() {
 	fragColor = vec4(0., 0., 0., 0.);
-<? 
+<?
 local maxLevels = 8
-for level=0,maxLevels-1 do 
+for level=0,maxLevels-1 do
 ?>	if (bloomLevels >= <?=clnumber(level)?>) fragColor += texture(fbotex, texcoord, <?=clnumber(level)?>);
-<? 
-end 
+<?
+end
 ?>
 	fragColor *= hdrScale * <?=clnumber(1/maxLevels)?>;
 
@@ -1370,7 +1370,7 @@ out vec4 fragColor;
 void main() {
 	float lumf = lumv;
 	vec3 color = vec3(.1, 1., .1) * lumf;
-	fragColor = vec4(color, 1.); 
+	fragColor = vec4(color, 1.);
 }
 ]],
 			attrs = nbhd_t_attrs,
@@ -1400,7 +1400,7 @@ function App:drawPickScene()
 	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
 	gl.glEnable(gl.GL_DEPTH_TEST)
 
-	-- TODO 
+	-- TODO
 	-- 1) smaller viewpoint of 3x3 pixels
 	-- 2) pick matrix to zoom in on the specific mouse location
 
@@ -1480,7 +1480,7 @@ function App:drawScene()
 		
 		accumStarPointShader:useNone()
 		
-		gl.glDisable(gl.GL_POINT_SPRITE)		
+		gl.glDisable(gl.GL_POINT_SPRITE)
 		gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
 	end
 	if drawVelLines and buildVelocityBuffers then
@@ -1674,37 +1674,13 @@ function App:update()
 	App.super.update(self)
 
 	-- with the gaia data, when filtering/rebuilding the data, i get 'out of memory' errors that hopefully this will help
-	collectgarbage()		
+	collectgarbage()
 end
 
-
-local float = ffi.new'float[1]'
-local function sliderFloatTable(title, t, key, ...)
-	float[0] = t[key]
-	local result = ig.igSliderFloat(title, float, ...) 
-	if result then t[key] = float[0] end
-	return result
-end
-
-local function inputFloatTable(title, t, key, ...)
-	float[0] = t[key]
-	local result = ig.igInputFloat(title, float, ...) 
-	if result then t[key] = float[0] end
-	return result
-end
-
-
-local bool = ffi.new'bool[1]'
-local function checkboxTable(title, t, key, ...)
-	bool[0] = t[key]
-	local result = ig.igCheckbox(title, bool, ...)
-	if result then t[key] = bool[0] end
-	return result
-end
 
 local function checkboxTooltipTable(title, ...)
 	ig.igPushID_Str(title)
-	local result = checkboxTable('', ...)
+	local result = ig.luatableCheckbox('', ...)
 	if ig.igIsItemHovered(ig.ImGuiHoveredFlags_None) then
 		ig.igBeginTooltip()
 		ig.igText(title)
@@ -1714,39 +1690,26 @@ local function checkboxTooltipTable(title, ...)
 	return result
 end
 
--- TODO dynamic sized buffer?
-local str = ffi.new'char[256]'
-local function textTable(title, t, k, ...)
-	local src = tostring(t[k])
-	local len = math.min(ffi.sizeof(str)-1, #src)
-	ffi.copy(str, src, len)
-	str[len] = 0
-	if ig.igInputText(title, str, ffi.sizeof(str), ...) then
-		t[k] = ffi.string(str)
-		return true
-	end
-end
-
 local nameWithAppMagLastPos
 local namesWithAppMag
 local function guiShowStars(self)
 	-- do this before any other tooltip, so it will be on bottom
 	-- there's usually just 5000 or so of these
 	-- and if we filter by apparent magnitude then there can't be many visible at once
-	if showStarNames 
+	if showStarNames
 	and namedStars
 	-- and showAllNamedStarsAtOnce
 	then
 		ig.igPushID_Str('star names')
 	
 		-- global / persist: nameWithAppMagLastPos
-		if not nameWithAppMagLastPos 
+		if not nameWithAppMagLastPos
 		or (nameWithAppMagLastPos - self.view.pos):lenSq() > .01	-- greater than some epsilon of how far to move, squared.  make the dist less than the closest stars in the dataset
-		then 
-			nameWithAppMagLastPos = nameWithAppMagLastPos or vec3d() 
-			nameWithAppMagLastPos:set(self.view.pos:unpack()) 
+		then
+			nameWithAppMagLastPos = nameWithAppMagLastPos or vec3d()
+			nameWithAppMagLastPos:set(self.view.pos:unpack())
 			-- now sort all named indexes basedon their apparent magnitude
-			-- global / persist: namesWithAppMag 
+			-- global / persist: namesWithAppMag
 			namesWithAppMag = table.map(namedStars, function(name, index, t)
 				local pt = cpuPointBuf[index]
 				local distSq = (pt.pos - self.view.pos):lenSq()
@@ -1781,7 +1744,7 @@ local function guiShowStars(self)
 			-- even if they have all the 'no input' and 'no nav' flags possible set
 			--ig.igOpenPopup('star name', 0)
 			-- igBeginPopup vs igBeginPopupEx, the only difference is normal takes str for title, Ex takes ImGuiID which is an int ... ?
---					if ig.igBeginPopup('star name', 
+--					if ig.igBeginPopup('star name',
 --						bit.bor(
 --							ig.ImGuiWindowFlags_NoFocusOnAppearing,
 --							ig.ImGuiWindowFlags_NoBringToFrontOnFocus,
@@ -1807,7 +1770,7 @@ local function guiShowStars(self)
 		end
 
 		local visibleNamedStars
---[[		
+--[[
 		for index,name in pairs(namedStars) do
 --]]
 -- [[
@@ -1853,7 +1816,7 @@ local function guiShowStars(self)
 						x = x,
 						y = y,
 						name = name,
-					}				
+					}
 					local distSq = mx*mx + my*my + mz*mz
 					local log10DistInPc = .5 * _1_log_10 * math.log(distSq)
 					local LStarOverL0 = pt.lum * LSunOverL0
@@ -1864,7 +1827,7 @@ local function guiShowStars(self)
 					visibleNamedStars = visibleNamedStars or table()
 					visibleNamedStars:insert(star)
 					--]]
-					--[[ insert in-order.  
+					--[[ insert in-order.
 					-- TODO insert in-order in a tree?
 					visibleNamedStars = visibleNamedStars or table()
 					local found
@@ -1911,36 +1874,36 @@ local search = {
 }
 function App:updateGUI()
 
-	checkboxTable('draw points', _G, 'drawPoints')
-	sliderFloatTable('point size scale', _G, 'starPointSizeScale', -10, 10)
-	sliderFloatTable('point size bias', _G, 'starPointSizeBias', -10, 10)
-	sliderFloatTable('pick size', _G, 'pickSizeBias', 0, 20)
-	inputFloatTable('point alpha value', _G, 'starPointAlpha')
+	ig.luatableCheckbox('draw points', _G, 'drawPoints')
+	ig.luatableSliderFloat('point size scale', _G, 'starPointSizeScale', -10, 10)
+	ig.luatableSliderFloat('point size bias', _G, 'starPointSizeBias', -10, 10)
+	ig.luatableSliderFloat('pick size', _G, 'pickSizeBias', 0, 20)
+	ig.luatableInputFloat('point alpha value', _G, 'starPointAlpha')
 
---[[ not used atm	
-	checkboxTable('show density', _G, 'showDensity')
-	sliderFloatTable('hdr scale', _G, 'hdrScale', 0, 1000, '%.7f', 10)
-	sliderFloatTable('hdr gamma', _G, 'hdrGamma', 0, 1000, '%.7f', 10)
-	sliderFloatTable('hsv range', _G, 'hsvRange', 0, 1000, '%.7f', 10)
-	sliderFloatTable('bloom levels', _G, 'bloomLevels', 0, 8)
---]]	
+--[[ not used atm
+	ig.luatableCheckbox('show density', _G, 'showDensity')
+	ig.luatableSliderFloat('hdr scale', _G, 'hdrScale', 0, 1000, '%.7f', 10)
+	ig.luatableSliderFloat('hdr gamma', _G, 'hdrGamma', 0, 1000, '%.7f', 10)
+	ig.luatableSliderFloat('hsv range', _G, 'hsvRange', 0, 1000, '%.7f', 10)
+	ig.luatableSliderFloat('bloom levels', _G, 'bloomLevels', 0, 8)
+--]]
 	
-	inputFloatTable('slice r min', _G, 'sliceRMin')
-	inputFloatTable('slice r max', _G, 'sliceRMax')
+	ig.luatableInputFloat('slice r min', _G, 'sliceRMin')
+	ig.luatableInputFloat('slice r max', _G, 'sliceRMax')
 	
-	inputFloatTable('slice lum min', _G, 'sliceLumMin')
-	inputFloatTable('slice lum max', _G, 'sliceLumMax')
+	ig.luatableInputFloat('slice lum min', _G, 'sliceLumMin')
+	ig.luatableInputFloat('slice lum max', _G, 'sliceLumMax')
 
 	
-	checkboxTable('show pick scene', _G, 'showPickScene')	
-	checkboxTable('show grid', _G, 'drawGrid')	
-	checkboxTable('tilt to planet', _G, 'tiltGridToPlanet') 
-	inputFloatTable('grid radius', _G, 'gridRadius')
+	ig.luatableCheckbox('show pick scene', _G, 'showPickScene')
+	ig.luatableCheckbox('show grid', _G, 'drawGrid')
+	ig.luatableCheckbox('tilt to planet', _G, 'tiltGridToPlanet')
+	ig.luatableInputFloat('grid radius', _G, 'gridRadius')
 
 	-- draw nhbd lines stuff which looks dumb right now
 	if buildNeighborhood then
-		checkboxTable('show nbhd', _G, 'showNeighbors')
-		inputFloatTable('nbhd alpha', _G, 'nbhdLineAlpha')
+		ig.luatableCheckbox('show nbhd', _G, 'showNeighbors')
+		ig.luatableInputFloat('nbhd alpha', _G, 'nbhdLineAlpha')
 	end
 
 	-- view stuff
@@ -1952,12 +1915,12 @@ function App:updateGUI()
 		self.view.angle:set(0, 0, 0, 1)
 	end
 	ig.igText('dist (Pc) '..(self.view.pos - self.view.orbit):length())
-	inputFloatTable('znear', self.view, 'znear')
-	inputFloatTable('zfar', self.view, 'zfar')
-	sliderFloatTable('fov y', self.view, 'fovY', 0, 180)
+	ig.luatableInputFloat('znear', self.view, 'znear')
+	ig.luatableInputFloat('zfar', self.view, 'zfar')
+	ig.luatableSliderFloat('fov y', self.view, 'fovY', 0, 180)
 
 	if namedStars then
-		if textTable('orbit', search, 'orbit', ig.ImGuiInputTextFlags_EnterReturnsTrue) then
+		if ig.luatableInputText('orbit', search, 'orbit', ig.ImGuiInputTextFlags_EnterReturnsTrue) then
 			for i,v in pairs(namedStars) do
 				if v == search.orbit then
 					assert(i >= 0 and i < numPts, "oob index in name table "..i)
@@ -1966,7 +1929,7 @@ function App:updateGUI()
 				end
 			end
 		end
-		if textTable('look at', search, 'lookat', ig.ImGuiInputTextFlags_EnterReturnsTrue) then
+		if ig.luatableInputText('look at', search, 'lookat', ig.ImGuiInputTextFlags_EnterReturnsTrue) then
 			for i,v in pairs(namedStars) do
 				if v == search.lookat then
 					local orbitDist = (self.view.pos - self.view.orbit):length()
@@ -1991,32 +1954,32 @@ function App:updateGUI()
 
 	-- draw vel lines
 	if buildVelocityBuffers then
-		checkboxTable('draw vel lines', _G, 'drawVelLines')
-		inputFloatTable('line alpha value', _G, 'lineVelAlpha')
-		inputFloatTable('line vel scalar', _G, 'lineVelScalar')
-		checkboxTable('normalize velocity', _G, 'normalizeVel')
+		ig.luatableCheckbox('draw vel lines', _G, 'drawVelLines')
+		ig.luatableInputFloat('line alpha value', _G, 'lineVelAlpha')
+		ig.luatableInputFloat('line vel scalar', _G, 'lineVelScalar')
+		ig.luatableCheckbox('normalize velocity', _G, 'normalizeVel')
 	end
 
 	-- gui stuff
-	checkboxTable('show mouseover info', _G, 'showInformation')
-	checkboxTable('show star names', _G, 'showStarNames')
+	ig.luatableCheckbox('show mouseover info', _G, 'showInformation')
+	ig.luatableCheckbox('show star names', _G, 'showStarNames')
 
-	checkboxTable('show constellations', _G, 'showConstellations')
+	ig.luatableCheckbox('show constellations', _G, 'showConstellations')
 	if showConstellations then
 		if checkboxTooltipTable('All', _G, 'showAllConstellations') then	-- TODO infer
 			for _,constellation in ipairs(constellations) do
 				constellation.enabled = showAllConstellations
 			end
 		end
-		ig.igSameLine() 
+		ig.igSameLine()
 
 		local count = 0
 		for _,constellation in ipairs(constellations) do
 			if constellation.name then
-				if count > 0 
+				if count > 0
 				and count % 10 ~= 9
-				then 
-					ig.igSameLine() 
+				then
+					ig.igSameLine()
 				end
 				checkboxTooltipTable(constellation.name, constellation, 'enabled')
 				count = count + 1
@@ -2030,8 +1993,8 @@ function App:updateGUI()
 		ig.ImVec2(0,0),
 		ig.ImVec2(1,1))
 
-	if showInformation 
-	and selectedIndex < 0xffffff 
+	if showInformation
+	and selectedIndex < 0xffffff
 	and selectedIndex >= 0
 	and selectedIndex < numPts
 	then
