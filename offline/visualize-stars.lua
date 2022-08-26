@@ -18,7 +18,6 @@ local GLFBO = require 'gl.fbo'
 local GLTex2D = require 'gl.tex2d'
 local GLHSVTex = require 'gl.hsvtex'
 local GLArrayBuffer = require 'gl.arraybuffer'
-local CLEnv = require 'cl.obj.env'
 local vec3f = require 'vec-ffi.vec3f'
 local vec3d = require 'vec-ffi.vec3d'
 local quatd = require 'vec-ffi.quatd'
@@ -473,6 +472,8 @@ print('copying from lua table to new binary blob...')
 print('...done copying from lua table to new binary blob')
 	end
 
+	--[==[ I'm not using OpenCL at this moment
+	local CLEnv = require 'cl.obj.env'
 	env = CLEnv{precision='float', size=numPts, useGLSharing=false}
 	local real3code = template([[
 <?
@@ -499,7 +500,8 @@ typedef _<?=env.real?>4 real4;
 
 	ffi.cdef(real3code)
 	env.code = env.code .. real3code
-	
+	--]==]
+
 	-- get range
 	local s = require 'stat.set'('x','y','z','r', 'v', 'lum', 'temp', 'log10lum')
 --[[
