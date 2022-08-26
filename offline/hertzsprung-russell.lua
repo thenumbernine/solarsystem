@@ -38,7 +38,7 @@ for i,pt in ipairs(lpts) do
 	pts[i-1] = lpts[i]
 end
 
-local App = require 'ext.class'(require 'glapp.orbit'(require 'imguiapp'))
+local App = require 'imguiapp.withorbit'()
 
 function App:update()
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)

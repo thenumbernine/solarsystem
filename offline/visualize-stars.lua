@@ -1,7 +1,6 @@
 #!/usr/bin/env luajit
 -- simple pointcloud visualizer
 -- TODO move this to solarsystem project, so i can keep building off of it, and comparing it to the solarsystem renderer, and eventually add in things like the exoplanets
-local class = require 'ext.class'
 local table = require 'ext.table'
 local range = require 'ext.range'
 local string = require 'ext.string'
@@ -128,7 +127,7 @@ for name, lines in pairs(fromlua(file['../constellations/constellation-lines.lua
 end
 
 
-local App = class(require 'glapp.orbit'(require 'imguiapp'))
+local App = require 'imguiapp.withorbit'()
 local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or after imgui?)
 	
 local _1_log_10 = 1 / math.log(10)
