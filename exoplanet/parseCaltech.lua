@@ -234,4 +234,4 @@ end
 print('max angle error (deg)', math.deg(maxAngleError))
 print("didn't find distance for "..didntFindDistance.." of "..(foundDistance + didntFindDistance).." stars")
 
-io.writefile('exoplanetResults.json', 'exoplanetInfo = \n' .. json.encode(results, {indent=true}) .. '\n;')
+file'exoplanetResults.json':write('exoplanetInfo = \n' .. json.encode(results, {indent=true}) .. '\n;')
