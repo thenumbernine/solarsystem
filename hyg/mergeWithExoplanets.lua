@@ -1,7 +1,5 @@
-local file = require 'ext.file'
-local json = require 'dkjson'
-
-local hygStars = assert(load('return '..file['simbad-data.lua']))()
+local fromlua = require 'ext.fromlua'
+local hygStars = fromlua(file'simbad-data.lua':read())
 local hygForOID = {}
 for _,hygStar in pairs(hygStars) do
 	if hygStar.simbadOIDRef then
@@ -9,7 +7,8 @@ for _,hygStar in pairs(hygStars) do
 	end
 end
 
-local exoplanets = json.decode(file['../exoplanet/openExoplanetCatalog.json'])
+local json = require 'dkjson'
+local exoplanets = json.decode(file'../exoplanet/openExoplanetCatalog.json':read())
 local exoplanetForOID = {}
 for _,exoplanet in ipairs(exoplanets) do
 	if exoplanet.simbadOIDRef then

@@ -73,13 +73,13 @@ end
 -- TODO now upon mouseover, determine star and show name by it
 local namedStars
 if namefile then
-	local namedata = file[namefile]
+	local namedata = file(namefile):read()
 	if namedata then
 		namedStars = fromlua(namedata)
 	end
 end
 
-local constellationNamesForAbbrevs = fromlua(file['../constellations/constellationNamesForAbbrevs.lua'])
+local constellationNamesForAbbrevs = fromlua(file'../constellations/constellationNamesForAbbrevs.lua':read())
 local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
 	return abbrev, name
 end):setmetatable(nil)
@@ -102,9 +102,9 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 end):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = fromlua(file['../hyg/index-for-hip.lua'])
+local indexForHip = fromlua(file'../hyg/index-for-hip.lua':read())
 
-for name, lines in pairs(fromlua(file['../constellations/constellation-lines.lua'])) do
+for name, lines in pairs(fromlua(file'../constellations/constellation-lines.lua':read())) do
 	local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
 		return name2:gsub(' ', '') == name
 	end)
@@ -313,7 +313,7 @@ function App:initGL(...)
 
 --	self.view.angle = (quatd():fromAngleAxis(0, 0, 1, 90) * self.view.angle):normalize()
 
-	local data = file[pointfile]
+	local data = file(pointfile):read()
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
@@ -583,7 +583,7 @@ print'calculating stats on data...'
 		
 		-- plot it:
 		local plotdatafn = 'log10lum-dist-'..set..'.txt'
-		file[plotdatafn] = log10lumbins:getTextData()
+		file(plotdatafn):write(log10lumbins:getTextData())
 		require 'gnuplot'{
 			output = 'log10lum-dist-'..set..'.png',
 			style = 'data linespoints',
