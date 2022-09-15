@@ -29,7 +29,7 @@ for _,row in ipairs(hyg.rows) do
 	end
 end
 
-local exoplanets = fromlua(file['../exoplanet/openExoplanetCatalog.lua'])
+local exoplanets = fromlua(file'../exoplanet/openExoplanetCatalog.lua':read())
 
 -- [[ make sure there's no overlap of names
 --[=[ duplicate names I found:

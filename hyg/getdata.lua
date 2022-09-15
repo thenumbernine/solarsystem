@@ -15,10 +15,10 @@ local rows = hyg.rows
 --]]
 --[[ using lua.  2x faster to parse, but about 2x larger
 --[=[ too big for load()
-local hyg = fromlua(io.readfile'hygdata_v3.lua')
+local hyg = fromlua(file'hygdata_v3.lua':read())
 --]=]
 -- [=[ assuming one row per line
-local hygrows = io.readfile'hygdata_v3.lua':split'\n'
+local hygrows = file'hygdata_v3.lua':read():split'\n'
 local function asserteq(a,b) if a~=b then error("expected "..tolua(a).." to equal "..tolua(b)) end end
 asserteq(hygrows:remove(1), '{')
 if hygrows:last() == '' then hygrows:remove() end
@@ -317,7 +317,7 @@ for i,row in ipairs(rows) do
 	end
 end
 
-file['index-for-hip.lua'] = tolua(indexForHip)
+file'index-for-hip.lua':write(tolua(indexForHip))
 
 -- now sort the constellation stars by their luminosity
 for _,con in ipairs(constellations) do
@@ -368,18 +368,18 @@ assert(namedStars[1].name == 'Sol')
 namedStars[1].name = 'Sun'
 
 -- write 
-file['stardata.f32'] = ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows)
+file'stardata.f32':write(ffi.string(buffer, ffi.sizeof(bufferType) * numElem * numValidRows))
 
 --[[ in json
 local json = require 'dkjson'
-file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
-file['constellations.json'] = 'constellations = '..json.encode(constellations, {indent=true}) .. ';'
+file'namedStars.json':write('namedStars = ' .. json.encode(namedStars, {indent=true}) ..';')
+file'constellations.json':write('constellations = '..json.encode(constellations, {indent=true}) .. ';')
 --]]
 -- [[ in lua
-file['namedStars.lua'] = tolua(table.mapi(namedStars, function(row)
+file'namedStars.lua':write(tolua(table.mapi(namedStars, function(row))
 	return row.name, row.index
 end):setmetatable(nil))
-file['constellations.lua'] = tolua(
+file'constellations.lua':write(tolua(
 	constellations:mapi(function(con) 
 		local o = {
 			name = con.name,
@@ -395,12 +395,12 @@ file['constellations.lua'] = tolua(
 		end
 		return o
 	end)
-)
+))
 --]]
 print'done!'
 
 --[[ plot dist density map
-local f = io.open('dist-distribution.txt', 'w')
+local f = file'dist-distribution.txt':open'w'
 f:write'#dist_min\tdist_max\tcount\n'
 local distbin = Bin(0, statset.dist.max, 2000)
 for i,row in ipairs(rows) do

@@ -3,10 +3,10 @@ require 'ext'
 local json = require 'myjson'
 
 local staticIntro = 'horizonsStaticData = '
-local static = json.decode(file['static-vars.json']:match(staticIntro..'(.*)'))
+local static = json.decode(file'static-vars.json':read():match(staticIntro..'(.*)'))
 
 local dynamicIntro = 'horizonsDynamicData = '
-local dynamic = json.decode(file['dynamic-vars.json']:match(dynamicIntro..'(.*)'))
+local dynamic = json.decode(file'dynamic-vars.json':read():match(dynamicIntro..'(.*)'))
 
 
 print('#static', #static)
@@ -48,5 +48,5 @@ for i=#static,1,-1 do
 	end
 end
 
-file['static-vars.json' ] = staticIntro..json.encode(static, {indent=true})..';'
-file['dynamic-vars.json'] = dynamicIntro..json.encode(dynamic, {indent=true})..';'
+file'static-vars.json':write(staticIntro..json.encode(static, {indent=true})..';')
+file'dynamic-vars.json':write(dynamicIntro..json.encode(dynamic, {indent=true})..';')

@@ -9,7 +9,7 @@ print('...done reading csv file')
 stars:setColumnNames(stars.rows:remove(1))
 
 print('parsing simbad info...')
-local simbadInfos = assert(load('return '..file['simbad-data.lua']))() or {}
+local simbadInfos = fromlua((file'simbad-data.lua':read())) or {}
 local simbadInfosForHipID = {}
 local simbadInfosForHDID = {}
 print('...done parsing simbad info')
@@ -92,4 +92,4 @@ for i=1,#hdIDsToRequest,batchSize do
 	end
 end
 
-file['simbad-data.lua'] = '{' .. table.map(simbadInfos, function(v,k,t) return '['..k..']='..tolua(v), #t+1 end):concat',\n' .. '}'
+file'simbad-data.lua':write('{' .. table.map(simbadInfos, function(v,k,t) return '['..k..']='..tolua(v), #t+1 end):concat',\n' .. '}')

@@ -27,9 +27,7 @@ local function processToFile(args)
 
 	local lastTime = os.time()
 	
-	-- file[] read is not working on luajit in windows
-	--local data = file[inputFilename]
-	local data = io.readfile(inputFilename)
+	local data = file(inputFilename):read()
 	
 	local lines = assert(data, "failed to read file "..inputFilename):split('\n')
 	local cols = Columns(lines)
@@ -123,7 +121,7 @@ typedef struct {
 		{name='orbitalPeriod', type=real},
 	}
 
-	local f = assert(io.open('body_t_desc.lua', 'w'))
+	local f = assert(file'body_t_desc.lua':open'w')
 	f:write'return {\n'
 	f:write('\tname = '..('%q'):format'body_t'..',\n')
 	f:write('\tsize = '..ffi.sizeof'body_t'..',\n')

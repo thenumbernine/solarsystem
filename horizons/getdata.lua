@@ -11,7 +11,7 @@ local conn = assert(socket.connect('horizons.jpl.nasa.gov', 6775))
 conn:settimeout(0, 't')
 print('connected!')
 
-local f = io.open('horizons.txt', 'w')
+local f = file'horizons.txt':open'w'
 
 local function readUntil(find)
 	local data = ''
@@ -159,7 +159,7 @@ local function run()
 			local ephemerisData = table(ephemerisData, body)
 			setmetatable(ephemerisData, nil)
 			table.insert(entries, ephemerisData)
-			--file['horizons-results.json'] = json.encode(entries)
+			--file'horizons-results.json':write(json.encode(entries))
 			-- done with output table stuff
 			send('n')	-- exit sun ephemeris query
 		end
@@ -192,9 +192,9 @@ local newDynamicVars = {
 -- keep here just in case
 local datestr = os.date'!%Y_%m_%d-%H_%m_%S' 
 local jsonData = 'horizonsDynamicData = '..json.encode(newDynamicVars, {indent=true})..';'
-file[datestr..'-dynamic-vars.json'] = jsonData
+file(datestr..'-dynamic-vars.json'):write(jsonData)
 
-local oldJsonData = file['dynamic-vars.json']
+local oldJsonData = file'dynamic-vars.json':read()
 local oldDynamicVars = oldJsonData and json.decode(oldJsonData:sub(oldJsonData:find('=')+1))
 -- assert the old and the new have the same # of entries each with the same fields
 assert(newDynamicVars.julianDate and tonumber(newDynamicVars.julianDate), "new dynamic vars have bad julianDate")
@@ -223,4 +223,4 @@ if oldDynamicVars then
 	assert(#oldDynamicVars == #newDynamicVars, "number of new dynamic entries do not match number of old dynamic entries")
 end
 print('ALL OK, OVERWRITING DYNAMIC VARS')
-file['dynamic-vars.json'] = jsonData
+file'dynamic-vars.json':write(jsonData)

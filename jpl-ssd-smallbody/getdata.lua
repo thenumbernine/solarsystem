@@ -4,7 +4,7 @@ local https = require 'ssl.https'
 local ltn12 = require 'ltn12'
 
 local function download(filename, url)
-	if os.fileexists(filename) then
+	if file(filename):exists() then
 		print('already have file '..filename..', so skipping the download and using the cached version')
 		return
 	end
@@ -17,7 +17,7 @@ local function download(filename, url)
 	})
 	data = data:concat()
 	print('writing file '..filename..' with this much data: '..#data)
-	file[filename] = data
+	file(filename):write(data)
 end
 
 download('ELEMENTS.NUMBR', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')

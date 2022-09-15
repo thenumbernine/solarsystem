@@ -2,8 +2,8 @@
 require 'ext'
 local json = require 'dkjson'
 -- assigns globals:
-local namedStars = fromlua(file['namedStars.lua'])
-local constellations = fromlua(file['constellations.lua'])
+local namedStars = fromlua(file'namedStars.lua':read())
+local constellations = fromlua(file'constellations.lua':read())
 -- writes files:
-file['namedStars.json'] = 'namedStars = ' .. json.encode(namedStars, {indent=true}) ..';'
-file['constellations.json'] = 'constellations = '..json.encode(constellations, {indent=true}) .. ';'
+file'namedStars.json':write('namedStars = ' .. json.encode(namedStars, {indent=true}) ..';')
+file'constellations.json':write('constellations = '..json.encode(constellations, {indent=true}) .. ';')

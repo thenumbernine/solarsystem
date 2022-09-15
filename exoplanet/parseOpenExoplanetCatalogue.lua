@@ -7,7 +7,7 @@ local findtags = htmlparser_common.findtags
 local findchilds = htmlparser_common.findchilds
 require 'htmlparser.xpath'
 htmlparser.htmlnonclosing = {}
-local tree = htmlparser.parse(file['systems.xml'])
+local tree = htmlparser.parse(file'systems.xml':read())
 
 local function getText(child)
 	if not (#child.child == 1) then error("tried to parse text of a child with multiple children: " ..tolua(child)) end
@@ -891,8 +891,8 @@ I feel like I should be doing the data pre-processing here in this file, to make
 --[[
 local results = {systems=resultSystems}
 local json = require 'dkjson'
-file['openExoplanetCatalog.json'] = json.encode(results, {indent=true})
+file'openExoplanetCatalog.json':write(json.encode(results, {indent=true}))
 --]]
 -- [[
-file['openExoplanetCatalog.lua'] = tolua(resultSystems)
+file'openExoplanetCatalog.lua':write(tolua(resultSystems))
 --]]
