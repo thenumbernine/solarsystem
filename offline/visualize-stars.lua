@@ -282,12 +282,16 @@ normalizeVel = false
 showPickScene = false
 showInformation = true			-- show information on the current star being hovered over
 drawGrid = true			-- draw a sphere with 30' segments around our orbiting star
-tiltGridToPlanet = false
+tiltGridToPolaris = false
+tiltGridToVega = false
 gridRadius = 100
 showNeighbors = false	-- associated with the initialization flag buildNeighborhood
 nbhdLineAlpha = 1
 showEarth = cmdline.showEarth or false
 earthSize = .1
+earthAnglePhi = 0
+earthAngleTheta = 0
+earthAnglePsi = 0
 showConstellations = cmdline.showConstellations or false
 sliceRMin = 0
 sliceRMax = math.huge
@@ -1635,9 +1639,12 @@ function App:update()
 
 	-- TODO draw around origin?  or draw around view orbit?
 	if drawGrid then
-		if tiltGridToPlanet then
+		if tiltGridToPolaris then
 			gl.glPushMatrix()
 			gl.glRotatef(23.4365472133, -1, 0, 0)
+		elseif tiltGridToVega then
+			gl.glPushMatrix()
+			gl.glRotatef(-23.4365472133, -1, 0, 0)
 		end
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
@@ -1661,7 +1668,7 @@ function App:update()
 		end
 		gl.glEnd()
 		gl.glDisable(gl.GL_BLEND)
-		if tiltGridToPlanet then
+		if tiltGridToPolaris or tiltGridToVega then
 			gl.glPopMatrix()
 		end
 	end
@@ -1710,7 +1717,14 @@ function App:update()
 		end
 
 		gl.glPushMatrix()
-		gl.glRotatef(23.4365472133, -1, 0, 0)
+		if tiltGridToVega then
+			gl.glRotatef(-23.4365472133, -1, 0, 0)
+		else
+			gl.glRotatef(23.4365472133, -1, 0, 0)
+		end
+		gl.glRotatef(earthAnglePsi, 0, 1, 0)
+		gl.glRotatef(earthAngleTheta, 1, 0, 0)
+		gl.glRotatef(earthAnglePhi, 0, 0, 1)
 		gl.glEnable(gl.GL_DEPTH_TEST)
 		self.earthTex:enable()
 		self.earthTex:bind()
@@ -1956,7 +1970,11 @@ function App:updateGUI()
 	
 	ig.luatableCheckbox('show pick scene', _G, 'showPickScene')
 	ig.luatableCheckbox('show grid', _G, 'drawGrid')
-	ig.luatableCheckbox('tilt to planet', _G, 'tiltGridToPlanet')
+	
+	-- TODO how about sliders for solar <-> planet plane , and for axial precession 0<->360 of planet plane
+	ig.luatableCheckbox('tilt to polaris', _G, 'tiltGridToPolaris')
+	ig.luatableCheckbox('tilt to vega', _G, 'tiltGridToVega')
+	
 	ig.luatableInputFloat('grid radius', _G, 'gridRadius')
 
 	-- draw nhbd lines stuff which looks dumb right now
@@ -2025,7 +2043,9 @@ function App:updateGUI()
 	
 	ig.luatableCheckbox('show earth', _G, 'showEarth')
 	ig.luatableInputFloat('earth size', _G, 'earthSize')
-
+	ig.luatableSliderFloat('earth angle phi', _G, 'earthAnglePhi', -180, 180)
+	ig.luatableSliderFloat('earth angle theta', _G, 'earthAngleTheta', -180, 180)
+	ig.luatableSliderFloat('earth angle psi', _G, 'earthAnglePsi', -180, 180)
 	ig.luatableCheckbox('show constellations', _G, 'showConstellations')
 	if showConstellations then
 		if checkboxTooltipTable('All', _G, 'showAllConstellations') then	-- TODO infer
