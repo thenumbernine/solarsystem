@@ -104,7 +104,15 @@ end):setmetatable(nil)
 -- constellation lines are in hip, so use this to convert them to hyg
 local indexForHip = fromlua(file'../hyg/index-for-hip.lua':read())
 
-for name, lines in pairs(fromlua(file'../constellations/constellation-lines.lua':read())) do
+local constellationSrcData = file'../constellations/constellation-lines.lua':read()
+if constellationSrcData then
+	constellationSrcData = fromlua(constellationSrcData)
+else
+	print("couldn't find constellation-line data")
+	constellationSrcData = {}
+end
+
+for name, lines in pairs(constellationSrcData) do
 	local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
 		return name2:gsub(' ', '') == name
 	end)
@@ -278,6 +286,8 @@ tiltGridToPlanet = false
 gridRadius = 100
 showNeighbors = false	-- associated with the initialization flag buildNeighborhood
 nbhdLineAlpha = 1
+showEarth = cmdline.showEarth or false
+earthSize = .1
 showConstellations = cmdline.showConstellations or false
 sliceRMin = 0
 sliceRMax = math.huge
@@ -1671,6 +1681,54 @@ function App:update()
 		end
 	end
 
+	if showEarth then
+		if not self.earthTex then
+			self.earthTex = GLTex2D{
+				filename = '../textures/hires/earth.png',
+				minFilter = gl.GL_LINEAR,
+				magFilter = gl.GL_LINEAR,
+				generateMipmaps = true,
+			}
+		end
+
+		local idivs = 50
+		local jdivs = 50
+
+		local function vertex(i,j)
+			local u = i/idivs
+			local v = j/jdivs
+			local theta = u*math.pi
+			local phi = v*math.pi*2
+			local costh, sinth = math.cos(theta), math.sin(theta)
+			local cosphi, sinphi = math.cos(phi), math.sin(phi)
+			gl.glTexCoord2d(v, u)
+			
+			local x = earthSize * sinth * cosphi
+			local y = earthSize * sinth * sinphi
+			local z = earthSize * costh
+			gl.glVertex3d(x,y,z)
+		end
+
+		gl.glPushMatrix()
+		gl.glRotatef(23.4365472133, -1, 0, 0)
+		gl.glEnable(gl.GL_DEPTH_TEST)
+		self.earthTex:enable()
+		self.earthTex:bind()
+		for i=0,idivs-1 do
+			gl.glColor3f(1,1,1)
+			gl.glBegin(gl.GL_TRIANGLE_STRIP)
+			for j=0,jdivs do
+				vertex(i+1,j)
+				vertex(i,j)
+			end
+			gl.glEnd()
+		end
+		self.earthTex:unbind()
+		self.earthTex:disable()
+		gl.glDisable(gl.GL_DEPTH_TEST)
+		gl.glPopMatrix()
+	end
+
 	glreport'here'
 	App.super.update(self)
 
@@ -1964,6 +2022,9 @@ function App:updateGUI()
 	-- gui stuff
 	ig.luatableCheckbox('show mouseover info', _G, 'showInformation')
 	ig.luatableCheckbox('show star names', _G, 'showStarNames')
+	
+	ig.luatableCheckbox('show earth', _G, 'showEarth')
+	ig.luatableInputFloat('earth size', _G, 'earthSize')
 
 	ig.luatableCheckbox('show constellations', _G, 'showConstellations')
 	if showConstellations then
