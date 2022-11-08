@@ -34,7 +34,7 @@ local offsetFromSun = true
 local rotateEquatorialToEcliptic = true
 local compareAbsMagToLum = true
 local compareAppMagToAbsMag = true
-local compareTempToLuminosity = true
+local compareTempToLuminosity = false	-- can't do with hyg cuz it doesnt have radius
 
 -- indexForHip[hipparcos index] = 0-based-index
 local indexForHip = {}
@@ -376,9 +376,9 @@ file'namedStars.json':write('namedStars = ' .. json.encode(namedStars, {indent=t
 file'constellations.json':write('constellations = '..json.encode(constellations, {indent=true}) .. ';')
 --]]
 -- [[ in lua
-file'namedStars.lua':write(tolua(table.mapi(namedStars, function(row))
+file'namedStars.lua':write(tolua(table.mapi(namedStars, function(row)
 	return row.name, row.index
-end):setmetatable(nil))
+end):setmetatable(nil)))
 file'constellations.lua':write(tolua(
 	constellations:mapi(function(con) 
 		local o = {
