@@ -1407,8 +1407,8 @@ local pixel = ffi.new'pixel4_t'
 
 local selectedIndex
 
-local modelViewMatrix = matrix_ffi.zeros(4,4)
-local projectionMatrix = matrix_ffi.zeros(4,4)
+local modelViewMatrix = matrix_ffi.zeros{4,4}
+local projectionMatrix = matrix_ffi.zeros{4,4}
 
 function App:drawPickScene()
 	gl.glClearColor(1,1,1,1)
