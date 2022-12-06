@@ -12,6 +12,13 @@ http://www.bogan.ca/orbits/kepler/orbteqtn.html
 http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
 https://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
 https://space.stackexchange.com/questions/8911/determining-orbital-position-at-a-future-point-in-time
+
+TODO theres some vel errors in here
+in calcKOEFromPosVel and calcOrbitBasis the vel is converted from m/day to m/s (to work with gravitationalConstant)
+ but later it looks like the Vinti A, B expect m/day
+ and later the parent-rel vel is computed by adding the KOE-computed vel to the parent vel
+ ... pretty sure one of these is in m/s and the other in m/day
+though atm i don't think I use vel but TODO fix this
 */
 var Planet = makeClass({
 	init : function(args) {
@@ -804,8 +811,9 @@ console.log('parabolic orbit for planet',this);
 
 		//TODO don't use meanMotion for hyperbolic orbits
 		var fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
-		var theta = timeAdvanced * meanMotion;
-		var pathEccentricAnomaly = eccentricAnomaly + theta;
+		// TODO where did I get this from?  I think it's more like 'theta == eccentricAnomaly' cuz I'm doubling the value by adding this ...
+		//var theta = timeAdvanced * meanMotion;
+		var pathEccentricAnomaly = eccentricAnomaly;	// + theta;
 		var A = ke.A;
 		var B = ke.B;
 
