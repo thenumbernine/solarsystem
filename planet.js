@@ -341,7 +341,7 @@ var Planet = makeClass({
 
 		var sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
 		var cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
-		var argumentOfPeriapsis = Math.atan(sinPericenter, cosPericenter);	//omega
+		var argumentOfPeriapsis = Math.atan2(sinPericenter, cosPericenter);	//omega
 
 		var cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
 		var sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
