@@ -20,6 +20,13 @@ local function download(filename, url)
 	file(filename):write(data)
 end
 
+--[[ "no protocols available ...
 download('ELEMENTS.NUMBR', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')
 download('ELEMENTS.UNNUM', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.UNNUM')
 download('ELEMENTS.COMET', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
+--]]
+-- [[
+print(os.execute'wget https://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')
+print(os.execute'wget https://ssd.jpl.nasa.gov/dat/ELEMENTS.UNNUM')
+print(os.execute'wget https://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')
+--]]

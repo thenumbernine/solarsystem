@@ -42,8 +42,8 @@ pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
 //TODO don't even download this until requested
 //and another TODO - organize the external datasets and have them all downloaded on request 
 // kinda like the universe visualization does
-var showSmallBodies = false;
-var allowSelectSmallBodies = false;
+var showSmallBodies = true;
+var allowSelectSmallBodies = true;
 
 //used with isa in the orbitTarget detection
 //instanciated when the user selects a node in the tree 
@@ -89,10 +89,16 @@ var SmallBodies = makeClass({
 			vertexCode : mlstr(function(){/*
 attribute vec3 vertex;
 uniform mat4 viewMatInv;
+uniform mat4 localMat;
 uniform mat4 projMat;
 uniform float pointSize;
 void main() {
-	gl_Position = projMat * (viewMatInv * flatEarthXForm(vec4(vertex, 1.)));
+	vec4 vtx4 = vec4(vertex, 1.);
+	vtx4 = localMat * vtx4;
+	if (flatEarthCoeff != 0.) {
+		vtx4 = flatEarthXForm(vtx4);
+	}
+	gl_Position = projMat * (viewMatInv * vtx4);
 	gl_PointSize = pointSize / gl_Position.w;
 	gl_PointSize = clamp(gl_PointSize, .25, 5.);
 	gl_Position.z = depthfunction(gl_Position);
@@ -192,8 +198,9 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			},
 			shader : this.shader,
 			blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+			pos : [0,0,0],
 			parent : null,
-			static : true
+			static : false
 		});
 	},
 	
@@ -210,12 +217,15 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		if (picking && !allowSelectSmallBodies) return;
 		if (this.sceneObj === undefined) return;
 
-		this.doDraw(distFromSolarSystemInM, tanFovY, picking);
+		this.doDraw(distFromSolarSystemInM, tanFovY, picking, viewPosInv, invRotMat);
 	},
 
-	doDraw : function(distInM, tanFovY, picking) {
+	doDraw : function(distInM, tanFovY, picking, viewPosInv, invRotMat) {
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
+		
+		vec3.scale(viewPosInv, glutil.view.pos, -1);
+		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 		
 		var pointSize = 
 			this.pointSize 
@@ -225,6 +235,12 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
 		this.sceneObj.uniforms.julianDate = julianDate;
+			
+		if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
+			this.sceneObj.pos[0] = -orbitTarget.pos[0];
+			this.sceneObj.pos[1] = -orbitTarget.pos[1];
+			this.sceneObj.pos[2] = -orbitTarget.pos[2];
+		}
 		
 		this.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
 		this.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
