@@ -513,6 +513,15 @@ var ui = new function() {
 			});
 		});
 
+		//checkbox but the reflected variable is a number not a bool
+		$('#flatEarthMode').change(() => {
+			if ($('#flatEarthMode').is(':checked')) {
+				window.targetFlatEarthCoeff = 1;
+			} else {
+				window.targetFlatEarthCoeff = 0;
+			}
+		});
+
 		$.each([
 			'gravityWellScaleFixedValue',
 			'starPointSizeBias',	//in starfield.js
