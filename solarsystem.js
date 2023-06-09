@@ -206,7 +206,7 @@ var SolarSystem = makeClass({
 					magntidue
 					*/
 					var parentName = staticData.parent;
-					var parentIndex = this.planets.findWithComparator(null, function(planet) {
+					var parentIndex = this.planets.findIndex(function(planet) {
 						return planet.name == parentName;
 					});
 					var parent = this.planets[parentIndex];
