@@ -1,15 +1,15 @@
-var skyCubeObj;
-var skyCubeMaxBrightness = .3;
-var skyCubeFadeOutStartDistInLyr = 100;
-var skyCubeFadeOutEndDistInLyr = 200;
+let skyCubeObj;
+let skyCubeMaxBrightness = .3;
+let skyCubeFadeOutStartDistInLyr = 100;
+let skyCubeFadeOutEndDistInLyr = 200;
 
-var skyCube = new function() {
+let skyCube = new function() {
 
 	this.init = function() {
 		//looks like doing these in realtime will mean toning the detail down a bit ...
 		//if the image is too big, how do we downsample the skymap without lagging the whole browser?  1) browsers start using LuaJIT (not going to happen, stupid JS) 2) provide pre-computed sampled down versions.
 		
-		var glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
+		let glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
 		this.texURLPrefixes = [
 			'textures/sky-visible-cube-xp-',
@@ -24,7 +24,7 @@ var skyCube = new function() {
 			return filename + Math.min(1024, glMaxCubeMapTextureSize) +'.png';
 		});
 
-		var thiz = this;
+		let thiz = this;
 		new glutil.TextureCube({
 			flipY : true,
 			generateMipmap : true,
@@ -43,48 +43,49 @@ var skyCube = new function() {
 	};
 	
 	this.texLoaded = function(skyTex) {
-		var cubeShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
-varying vec3 vertexv;
+		let cubeShader = new ModifiedDepthShaderProgram({
+			vertexCode : `
+in vec3 vertex;
+out vec3 vertexv;
 uniform mat4 projMat;
 
 void main() {
 	vertexv = vertex;
 	gl_Position = projMat * vec4(vertex, 1.);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
-varying vec3 vertexv;
+`,
+			fragmentCode : `
+in vec3 vertexv;
 uniform samplerCube skyTex;
 uniform float brightness;
 //uniform vec4 angle;
 uniform vec4 viewAngle;
 
-*/}) + coordinateSystemCode + quatRotateCode + mlstr(function(){/*
+` + coordinateSystemCode + quatRotateCode + `
 
+out vec4 fragColor;
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
 	dir = eclipticalToGalactic * equatorialToEcliptical * dir;
-	gl_FragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
-	gl_FragColor.a = 1.;
+	fragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
+	fragColor.a = 1.;
 }
-*/}),
+`,
 			uniforms : {
 				skyTex : 0
 			}
 		});
 
-		var cubeVtxArray = new Float32Array(3*8);
-		for (var i = 0; i < 8; i++) {
+		let cubeVtxArray = new Float32Array(3*8);
+		for (let i = 0; i < 8; i++) {
 			cubeVtxArray[0+3*i] = glutil.view.zNear*10*(2*(i&1)-1);
 			cubeVtxArray[1+3*i] = glutil.view.zNear*10*(2*((i>>1)&1)-1);
 			cubeVtxArray[2+3*i] = glutil.view.zNear*10*(2*((i>>2)&1)-1);
 		}
 	
 		
-		var cubeIndexBuf = new glutil.ElementArrayBuffer({
+		let cubeIndexBuf = new glutil.ElementArrayBuffer({
 			data : [
 				5,7,3,3,1,5,		// <- each value has the x,y,z in the 0,1,2 bits (off = 0, on = 1)
 				6,4,0,0,2,6,
@@ -121,7 +122,7 @@ void main() {
 		if (picking) return;
 		if (distFromSolarSystemInLyr >= skyCubeFadeOutEndDistInLyr) return;
 			
-		var brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
+		let brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
 		
 		gl.disable(gl.DEPTH_TEST);
 		skyCubeObj.uniforms.brightness = brightness;

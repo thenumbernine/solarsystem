@@ -1,5 +1,5 @@
 //our solar system
-var SolarSystem = makeClass({
+let SolarSystem = makeClass({
 	super : StarSystem,
 	name : 'Solar System',
 	init : function() {
@@ -172,16 +172,16 @@ var SolarSystem = makeClass({
 		this.stars.push(this.planets[0]);
 
 		//start out with the current planets
-		var currentIDs = {};
-		for (var i = 0; i < this.planets.length; ++i) {
+		let currentIDs = {};
+		for (let i = 0; i < this.planets.length; ++i) {
 			currentIDs[this.planets[i].id] = this.planets[i];
 		}
 
 		//I need to fix up my export script ...
 		if (horizonsDynamicData.coords.length != horizonsStaticData.length) throw 'static to dynamic data lengths differ: dynamic has '+horizonsDynamicData.coords.length+' while static has '+horizonsStaticData.length;
-		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
-			var dynamicData = horizonsDynamicData.coords[i];
-			var staticData = horizonsStaticData[i];
+		for (let i = 0; i < horizonsDynamicData.coords.length; ++i) {
+			let dynamicData = horizonsDynamicData.coords[i];
+			let staticData = horizonsStaticData[i];
 			if (dynamicData.id != staticData.id) {
 				console.log('staticData',staticData);
 				console.log('dynamicData',dynamicData);
@@ -205,11 +205,11 @@ var SolarSystem = makeClass({
 					inverseFlattening (all but sun, mercury, venus, moon, pluto)
 					magntidue
 					*/
-					var parentName = staticData.parent;
-					var parentIndex = this.planets.findIndex(function(planet) {
+					let parentName = staticData.parent;
+					let parentIndex = this.planets.findIndex(function(planet) {
 						return planet.name == parentName;
 					});
-					var parent = this.planets[parentIndex];
+					let parent = this.planets[parentIndex];
 					if (parent !== undefined &&
 						parent.parent !== undefined)
 					{
@@ -237,8 +237,8 @@ var SolarSystem = makeClass({
 
 		//used for getting dynamic data, and for texture loading
 		this.planetForHorizonID = {};
-		for (var i = 0; i < this.planets.length; ++i) {
-			var planet = this.planets[i];
+		for (let i = 0; i < this.planets.length; ++i) {
+			let planet = this.planets[i];
 			this.planetForHorizonID[planet.id] = planet;
 		}
 
@@ -249,11 +249,11 @@ var SolarSystem = makeClass({
 		// because there's nothing consistent about formatting or variable names
 		//so I'm thinking cron job to update and then integrate to extrapolate for later time.
 
-		for (var i = 0; i < horizonsDynamicData.coords.length; ++i) {
-			var dynamicData = horizonsDynamicData.coords[i];
-			var planet = this.planetForHorizonID[dynamicData.id];
+		for (let i = 0; i < horizonsDynamicData.coords.length; ++i) {
+			let dynamicData = horizonsDynamicData.coords[i];
+			let planet = this.planetForHorizonID[dynamicData.id];
 			if (planet) {	//excluding the BCC and Ln points
-				for (var j = 0; j < 3; ++j) {
+				for (let j = 0; j < 3; ++j) {
 					//convert km to m
 					planet.pos[j] = dynamicData.pos[j] * 1000;
 					planet.vel[j] = dynamicData.vel[j] * 1000;
@@ -262,8 +262,8 @@ var SolarSystem = makeClass({
 		}
 
 		//calculate total mass of barycenter systems
-		for (var i = this.planets.length-1; i >= 0; --i) {
-			var planet = this.planets[i];
+		for (let i = this.planets.length-1; i >= 0; --i) {
+			let planet = this.planets[i];
 			planet.isBarycenter = planet.name.match(/Barycenter$/g);
 			if (!planet.isBarycenter) continue;
 			assert(planet.mass === undefined);
@@ -279,8 +279,8 @@ var SolarSystem = makeClass({
 
 
 		// get texture name 
-		for (var i = 0; i < this.planets.length; ++i) { 
-			var planet = this.planets[i];
+		for (let i = 0; i < this.planets.length; ++i) { 
+			let planet = this.planets[i];
 			if (planet.name in {
 				Sun:1,
 				Mercury:1,
@@ -324,17 +324,17 @@ var SolarSystem = makeClass({
 	//specific to solarsystem / smallbodies:
 
 	removeSmallBody : function(row) {
-		var name = row.name;
+		let name = row.name;
 
 		//only add if it's already there
 		if (solarSystem.indexes[name] === undefined) return;
 			
-		var index = solarSystem.indexes[name];
-		var planet = solarSystem.planets[index];
+		let index = solarSystem.indexes[name];
+		let planet = solarSystem.planets[index];
 		solarSystem.initPlanets.splice(index, 1);
 		solarSystem.planets.splice(index, 1);
 		//now remap indexes
-		for (var i = index; i < solarSystem.planets.length; ++i) {
+		for (let i = index; i < solarSystem.planets.length; ++i) {
 			solarSystem.planets[index].index = i;
 		}
 		if (orbitTarget === planet) {
@@ -343,13 +343,13 @@ var SolarSystem = makeClass({
 		//TODO destruct WebGL geometry?  or is it gc'd automatically?
 		//now rebuild indexes
 		solarSystem.indexes = {};
-		for (var i = 0; i < solarSystem.planets.length; ++i) {
+		for (let i = 0; i < solarSystem.planets.length; ++i) {
 			solarSystem.indexes[solarSystem.planets[i].name] = i;
 		}
 	},
 
 	addSmallBody : function(row) {
-		var name = row.name;
+		let name = row.name;
 
 		//only add if it's not there
 		if (solarSystem.indexes[name] !== undefined) {
@@ -358,8 +358,8 @@ var SolarSystem = makeClass({
 
 		//add the row to the bodies
 
-		var index = solarSystem.planets.length;
-		var planet = mergeInto(new Planet(), {
+		let index = solarSystem.planets.length;
+		let planet = mergeInto(new Planet(), {
 			name : name,
 			isComet : row.bodyType == 'comet',
 			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',

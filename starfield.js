@@ -3,39 +3,39 @@ all stars of the milky way
 TODO OOP this, and make one per galaxy (which we have observed stars within) 
 */
 
-var showStars = true;
-var starPointSizeScale = 3;
-var starPointSizeBias = -3;
+let showStars = true;
+let starPointSizeScale = 3;
+let starPointSizeBias = -3;
 
-var starPointAlpha = 1;
-var allowSelectStars = true;
+let starPointAlpha = 1;
+let allowSelectStars = true;
 
-var bubbleStartFadeDistInLyr = .25;
-var bubbleStopFadeDistInLyr = 1.25;
+let bubbleStartFadeDistInLyr = .25;
+let bubbleStopFadeDistInLyr = 1.25;
 
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
 // and remove StarInField ... make that just StarSystem (even for zero-planet systems)
 //
 //only instanciate these for the named stars.  87 in all.
 
-var drawConstellationColorScalar = 20;
-var drawConstellationPointSizeMax = 10;
+let drawConstellationColorScalar = 20;
+let drawConstellationPointSizeMax = 10;
 
 //hardwired from the color tex
-var colorTempMin = 1000;
-var colorTempMax = 40000;
+let colorTempMin = 1000;
+let colorTempMax = 40000;
 
-var LSun = 3.828e+26; 	// Watts
-var L0 = 3.0128e+28;	// Watts
-var LSunOverL0 = LSun / L0;
+let LSun = 3.828e+26; 	// Watts
+let L0 = 3.0128e+28;	// Watts
+let LSunOverL0 = LSun / L0;
 
 //maps from constellation index to list of vertex indexes in the point cloud
-//var indexesForConstellations = [];
+//let indexesForConstellations = [];
 
 //maps from point cloud index to constellation index 
-var constellationForIndex = [];
+let constellationForIndex = [];
 
-var starfield = new function() {
+let starfield = new function() {
 	this.maxDistInLyr = 5000;
 	//this.renderScale = 1e+5;	//znear=1e+4, zfar=1e+25, something that puts all stars between?
 	//this.renderScale = 1e+10;	//worked wrt all the float precision of glsl to render points, but the shader Pc dist calcs are ~ machine precision
@@ -49,18 +49,18 @@ var starfield = new function() {
 	this.renderScale = metersPerUnits.pc;	//1:1 Pc/scale
 	
 	this.init = function() {
-		var thiz = this;
+		let thiz = this;
 		
-		var bubbleTexWidth = 64;
-		var bubbleTexData = new Uint8Array(bubbleTexWidth * bubbleTexWidth * 3);
-		for (var j = 0; j < bubbleTexWidth; ++j) {
-			var y = 2 * ((j+.5) / bubbleTexWidth - .5);
-			var ay = Math.abs(y);
-			for (var i = 0; i < bubbleTexWidth; ++i) {
-				var x = 2 * ((i+.5) / bubbleTexWidth - .5);
-				var ax = Math.abs(x);
-				var r = Math.sqrt(x*x + y*y);
-				var lum = Math.pow(r,10) * (1 - r);
+		let bubbleTexWidth = 64;
+		let bubbleTexData = new Uint8Array(bubbleTexWidth * bubbleTexWidth * 3);
+		for (let j = 0; j < bubbleTexWidth; ++j) {
+			let y = 2 * ((j+.5) / bubbleTexWidth - .5);
+			let ay = Math.abs(y);
+			for (let i = 0; i < bubbleTexWidth; ++i) {
+				let x = 2 * ((i+.5) / bubbleTexWidth - .5);
+				let ax = Math.abs(x);
+				let r = Math.sqrt(x*x + y*y);
+				let lum = Math.pow(r,10) * (1 - r);
 				bubbleTexData[0+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
 				bubbleTexData[1+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
 				bubbleTexData[2+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
@@ -80,28 +80,28 @@ var starfield = new function() {
 		});
 		
 		console.log('init star tex...');
-		var starTexSize = 64;
-		var starTexData = new Uint8Array(starTexSize * starTexSize * 3);
-		for (var j = 0; j < starTexSize; ++j) {
-			for (var i = 0; i < starTexSize; ++i) {
-				var u = ((i+.5) / starTexSize) * 2 - 1;
-				var v = ((j+.5) / starTexSize) * 2 - 1;
+		let starTexSize = 64;
+		let starTexData = new Uint8Array(starTexSize * starTexSize * 3);
+		for (let j = 0; j < starTexSize; ++j) {
+			for (let i = 0; i < starTexSize; ++i) {
+				let u = ((i+.5) / starTexSize) * 2 - 1;
+				let v = ((j+.5) / starTexSize) * 2 - 1;
 				/* some kind of 4-point star tex * /				
 				u *= .5;
 				v *= .5;
-				var av = Math.abs(v);
-				var au = Math.abs(u);
-				var rL2 = Math.sqrt(Math.pow(au,2) + Math.pow(av,2));
-				var rL_2 = Math.pow(au,1/2) + Math.pow(av,1/2);
-				var r = rL2 + rL_2;
-				var sigma = 1;
-				var rs = r / sigma;
-				var l = Math.exp(-rs*rs);
+				let av = Math.abs(v);
+				let au = Math.abs(u);
+				let rL2 = Math.sqrt(Math.pow(au,2) + Math.pow(av,2));
+				let rL_2 = Math.pow(au,1/2) + Math.pow(av,1/2);
+				let r = rL2 + rL_2;
+				let sigma = 1;
+				let rs = r / sigma;
+				let l = Math.exp(-rs*rs);
 				/**/
 				
 				/* ring tex */
-				var r = Math.sqrt(u*u + v*v)
-				var l = Math.exp(-50 * Math.pow(r - .75, 2))
+				let r = Math.sqrt(u*u + v*v)
+				let l = Math.exp(-50 * Math.pow(r - .75, 2))
 				/**/
 				
 				l = Math.floor(255 * Math.clamp(l, 0, 1));
@@ -123,14 +123,14 @@ var starfield = new function() {
 			generateMipmap : true
 		});
 		/*{
-			var level = 1;
-			var lastStarTexData = starTexData;
-			for (var w = starTexSize>>1; w; w>>=1, ++level) {
-				var starTexData = new Uint8Array(w * w * 4);
-				var lastW = w<<1;
-				for (var j = 0; j < w; ++j) {
-					for (var i = 0; i < w; ++i) {
-						for (var k = 0; k < 4; ++k) {
+			let level = 1;
+			let lastStarTexData = starTexData;
+			for (let w = starTexSize>>1; w; w>>=1, ++level) {
+				let starTexData = new Uint8Array(w * w * 4);
+				let lastW = w<<1;
+				for (let j = 0; j < w; ++j) {
+					for (let i = 0; i < w; ++i) {
+						for (let k = 0; k < 4; ++k) {
 							starTexData[k+4*(i+w*j)] = Math.max(
 								lastStarTexData[k+4*((2*i+0)+2*w*(2*j+0))],
 								lastStarTexData[k+4*((2*i+1)+2*w*(2*j+0))],
@@ -154,11 +154,11 @@ var starfield = new function() {
 		}
 		*/	
 		
-		var loadColorTempTex = function(done) {
+		let loadColorTempTex = function(done) {
 			console.log('init color index tex...');
 			//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 			//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
-			var tempImg = new Image();
+			let tempImg = new Image();
 			tempImg.onload = function() {
 				thiz.tempTex = new glutil.Texture2D({
 					data : tempImg,
@@ -177,27 +177,27 @@ var starfield = new function() {
 			tempImg.src = 'colorForTemp.png';
 		};	
 
-		var initColorIndexShader = function(done) {
+		let initColorIndexShader = function(done) {
 			console.log('init color index shader...');
 			//currently only used by starfield shader
 			//considering use with planet shader
 			thiz.colorIndexShader = new ModifiedDepthShaderProgram({
-				vertexCode :
-'#define M_1_LOG_10 '+floatToGLSL(1/Math.log(10))+'\n'+
-'#define colorTempMin '+floatToGLSL(colorTempMin)+'\n'+
-'#define colorTempMax '+floatToGLSL(colorTempMax)+'\n'+
-'#define LSunOverL0 '+floatToGLSL(LSunOverL0)+'\n'+
-'#define renderScale '+floatToGLSL(thiz.renderScale)+'\n'+
-'#define log10UnitRatio '+floatToGLSL(Math.log10(thiz.renderScale / metersPerUnits.pc))+'\n'+
-					mlstr(function(){/*
-attribute vec3 vertex;
-attribute vec3 velocity;
-attribute float luminosity;		// in solar luminosity units
-attribute float temperature;	// in K
+				vertexCode :`
+#define M_1_LOG_10 `+floatToGLSL(1/Math.log(10))+`
+#define colorTempMin `+floatToGLSL(colorTempMin)+`
+#define colorTempMax `+floatToGLSL(colorTempMax)+`
+#define LSunOverL0 `+floatToGLSL(LSunOverL0)+`
+#define renderScale `+floatToGLSL(thiz.renderScale)+`
+#define log10UnitRatio `+floatToGLSL(Math.log10(thiz.renderScale / metersPerUnits.pc))+`
 
-varying float lumv;
-varying vec3 tempcolor;
-//varying float discardv;
+in vec3 vertex;
+in vec3 velocity;
+in float luminosity;		// in solar luminosity units
+in float temperature;	// in K
+
+out float lumv;
+out vec3 tempcolor;
+//out float discardv;
 
 uniform mat4 viewMatInv;
 uniform mat4 localMat;
@@ -283,34 +283,35 @@ void main() {
 
 	//calculate color
 	float tempfrac = (temperature - colorTempMin) / (colorTempMax - colorTempMin);
-	tempcolor = texture2D(tempTex, vec2(tempfrac, .5)).rgb;
+	tempcolor = texture(tempTex, vec2(tempfrac, .5)).rgb;
 }
-*/}),
-				fragmentCode : mlstr(function(){/*
-varying float lumv;
-varying vec3 tempcolor;
-//varying float discardv;
+`,
+				fragmentCode : `
+in float lumv;
+in vec3 tempcolor;
+//in float discardv;
 
 uniform float starPointAlpha;
 uniform sampler2D starTex;
 
+out vec4 fragColor;
 void main() {
 	//can you discard vertices?  or only in geometry/tesselation shaders?
 	//if (discardv > 0.) discard;
 
 	float lumf = lumv;
 
-	gl_FragColor = vec4(tempcolor * lumf * starPointAlpha, 1.) 
-		* texture2D(starTex, gl_PointCoord);
+	fragColor = vec4(tempcolor * lumf * starPointAlpha, 1.) 
+		* texture(starTex, gl_PointCoord);
 }
-*/})
+`
 			});
 		
 			if (done) done();
 		};
 
-		var loadStarField = function(done) {
-			var xhr = new XMLHttpRequest();
+		let loadStarField = function(done) {
+			let xhr = new XMLHttpRequest();
 			xhr.open('GET', 'hyg/stardata.f32', true);
 			xhr.responseType = 'arraybuffer';
 			/* if we want a progress bar ...
@@ -322,38 +323,38 @@ void main() {
 			*/
 			
 			//unnamed is index 0
-//			for (var k = 0; k < constellations.length; ++k) {
+//			for (let k = 0; k < constellations.length; ++k) {
 //				indexesForConstellations[k] = []; 
 //			}
 			
-			var numElem = 9;
+			let numElem = 9;
 			xhr.onload = function(e) {
-				var arrayBuffer = this.response;
-				var data = new DataView(arrayBuffer);
+				let arrayBuffer = this.response;
+				let data = new DataView(arrayBuffer);
 
 				//units are in parsecs
 				//don't forget velocity is not being rescaled (i'm not using it at the moment)
-				var floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
-				var len = floatBuffer.length;
-var numClose = 0;			
+				let floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
+				let len = floatBuffer.length;
+let numClose = 0;			
 
 				//stats on the data to verify
-				var xMin = Infinity;
-				var xMax = -Infinity;
-				var yMin = Infinity;
-				var yMax = -Infinity;
-				var zMin = Infinity;
-				var zMax = -Infinity;
-				var rMin = Infinity;
-				var rMax = -Infinity;
-				var lumMin = Infinity;
-				var lumMax = -Infinity;
-				var tempMin = Infinity;
-				var tempMax = -Infinity;
+				let xMin = Infinity;
+				let xMax = -Infinity;
+				let yMin = Infinity;
+				let yMax = -Infinity;
+				let zMin = Infinity;
+				let zMax = -Infinity;
+				let rMin = Infinity;
+				let rMax = -Infinity;
+				let lumMin = Infinity;
+				let lumMax = -Infinity;
+				let tempMin = Infinity;
+				let tempMax = -Infinity;
 
 console.log("rescaling data by "+(metersPerUnits.pc / thiz.renderScale));
-				for (var j = 0; j < len; ++j) {
-					var x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
+				for (let j = 0; j < len; ++j) {
+					let x = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 					if (j % numElem < 3) {
 						if (Math.abs(x) > 1e+20) {
 							console.log('star '+Math.floor(j/numElem)+' has coordinate that position exceeds fp resolution');
@@ -366,12 +367,12 @@ console.log("rescaling data by "+(metersPerUnits.pc / thiz.renderScale));
 				
 					//process every row:
 					if (j % numElem == numElem - 1) {
-						var x = floatBuffer[j - numElem + 1];
-						var y = floatBuffer[j - numElem + 2];
-						var z = floatBuffer[j - numElem + 3];
-						var lum = floatBuffer[j - numElem + 7];
-						var temp = floatBuffer[j - numElem + 8];
-						var r = Math.sqrt(x*x + y*y + z*z);
+						let x = floatBuffer[j - numElem + 1];
+						let y = floatBuffer[j - numElem + 2];
+						let z = floatBuffer[j - numElem + 3];
+						let lum = floatBuffer[j - numElem + 7];
+						let temp = floatBuffer[j - numElem + 8];
+						let r = Math.sqrt(x*x + y*y + z*z);
 						if (r < metersPerUnits.pc / thiz.renderScale) {
 							numClose++;
 						}
@@ -389,14 +390,14 @@ console.log("rescaling data by "+(metersPerUnits.pc / thiz.renderScale));
 						if (temp > tempMax) tempMax = temp;
 
 //						//constellation
-//						var constellationIndex = floatBuffer[j - numElem + 9];
-//						var vertexIndex = (j-8)/numElem;
+//						let constellationIndex = floatBuffer[j - numElem + 9];
+//						let vertexIndex = (j-8)/numElem;
 //						indexesForConstellations[constellationIndex].push(vertexIndex);
 //						constellationForIndex[vertexIndex] = constellationIndex;
 					}
 				}
 
-//				for (var j = 0; j < constellations.length; ++j) {
+//				for (let j = 0; j < constellations.length; ++j) {
 //					indexesForConstellations[j] = new glutil.ElementArrayBuffer({
 //						data : indexesForConstellations[j],
 //						keep : true
@@ -477,11 +478,11 @@ console.log('num stars within 1pc:', numClose);
 
 			//add buffer points
 
-			var array = this.buffer.data;	//9 fields: x y z vx vy vz luminostiy temperature constellation
+			let array = this.buffer.data;	//9 fields: x y z vx vy vz luminostiy temperature constellation
 			array = Array.prototype.slice.call(array);	//to js array
 
-			for (var i = 0; i < starSystems.length; ++i) {
-				var starSystem = starSystems[i];
+			for (let i = 0; i < starSystems.length; ++i) {
+				let starSystem = starSystems[i];
 				starSystem.starfieldIndex = array.length / 5;
 				array.push(starSystem.pos[0] / this.renderScale);
 				array.push(starSystem.pos[1] / this.renderScale);
@@ -500,8 +501,8 @@ console.log('num stars within 1pc:', numClose);
 
 		//then add named stars to the starSystem array
 
-		for (var i = 0; i < namedStars.length; ++i) {
-			var args = namedStars[i];
+		for (let i = 0; i < namedStars.length; ++i) {
+			let args = namedStars[i];
 
 			if (({
 				Sun:1,
@@ -509,7 +510,7 @@ console.log('num stars within 1pc:', numClose);
 				"Fomalhaut":1,
 			})[args.name]) continue;	//hmm... there are some double-ups ...
 			
-			var starSystem = new StarSystem();
+			let starSystem = new StarSystem();
 
 			starSystem.name = args.name;
 
@@ -530,7 +531,7 @@ console.log('num stars within 1pc:', numClose);
 
 			//now add a single star to the new star system ...
 
-			var body = mergeInto(new Planet(), {
+			let body = mergeInto(new Planet(), {
 				type : 'star',
 				name : args.name,
 				//mass : undefined,
@@ -571,7 +572,7 @@ console.log('num stars within 1pc:', numClose);
 		distFromSolarSystemInLyr,
 		distFromSolarSystemInMpc
 	) {
-		var thiz = this;
+		let thiz = this;
 
 		if (!showStars) return;
 			
@@ -584,7 +585,7 @@ console.log('num stars within 1pc:', numClose);
 			orbitTarget !== undefined &&
 			orbitTarget.pos !== undefined)
 		{
-			var pointSize = 
+			let pointSize = 
 				canvas.width 
 				/ 100
 				* metersPerUnits.pc 
@@ -606,8 +607,8 @@ console.log('num stars within 1pc:', numClose);
 				
 				gl.disable(gl.DEPTH_TEST);
 
-var pushZNear = glutil.view.zNear;
-var pushZFar = glutil.view.zFar;
+let pushZNear = glutil.view.zNear;
+let pushZFar = glutil.view.zFar;
 glutil.view.zNear = 1e-3;
 glutil.view.zFar = 1e+6;
 glutil.updateProjection();
@@ -621,10 +622,10 @@ glutil.updateProjection();
 				//only draw bubbles around stars once we're out of the star system
 				//then fade them into display
 				if (distFromSolarSystemInLyr > bubbleStartFadeDistInLyr) {
-					//var colorScale = starfield.colorScale || .5;//(distFromSolarSystemInLyr - bubbleStartFadeDistInLyr) / (bubbleStopFadeDistInLyr - bubbleStartFadeDistInLyr);
+					//let colorScale = starfield.colorScale || .5;//(distFromSolarSystemInLyr - bubbleStartFadeDistInLyr) / (bubbleStopFadeDistInLyr - bubbleStartFadeDistInLyr);
 					//colorScale = Math.clamp(colorScale, 0, 1);
 
-					var pointSize = 
+					let pointSize = 
 						canvas.width 
 						/ 10
 						* metersPerUnits.pc 
@@ -644,7 +645,7 @@ glutil.updateProjection();
 
 				// draw constellations
 
-//				for (var k = 0; k < constellations.length; ++k) {
+//				for (let k = 0; k < constellations.length; ++k) {
 //					if (displayConstellations[k]) {
 //						this.sceneObj.geometry.indexes = indexesForConstellations[k];
 //						this.sceneObj.draw({
@@ -658,21 +659,21 @@ glutil.updateProjection();
 //					
 ///**/
 //						//and draw some bboxes around it
-//						var minmax = ['min', 'max'];
-//						var sunPos = solarSystem.planets[solarSystem.indexes.Sun].pos;	//I store the data wrt the sun's position
-//						for (var v1 = 0; v1 < 8; ++v1) {
-//							for (var edge = 0; edge < 3; ++edge) {
-//								var v2 = v1 ^ (1 << edge);
+//						let minmax = ['min', 'max'];
+//						let sunPos = solarSystem.planets[solarSystem.indexes.Sun].pos;	//I store the data wrt the sun's position
+//						for (let v1 = 0; v1 < 8; ++v1) {
+//							for (let edge = 0; edge < 3; ++edge) {
+//								let v2 = v1 ^ (1 << edge);
 //								if (v1 > v2) continue;
 //
-//								var con = constellations[k];
+//								let con = constellations[k];
 //
-//								var ra1 = con.ra[ minmax[v1&1] ];
-//								var ra2 = con.ra[ minmax[v2&1] ];
-//								var dec1 = con.dec[ minmax[(v1>>1)&1] ];
-//								var dec2 = con.dec[ minmax[(v2>>1)&1] ];
-//								var dist1 = con.dist[ minmax[(v1>>2)&1] ];
-//								var dist2 = con.dist[ minmax[(v2>>2)&1] ];
+//								let ra1 = con.ra[ minmax[v1&1] ];
+//								let ra2 = con.ra[ minmax[v2&1] ];
+//								let dec1 = con.dec[ minmax[(v1>>1)&1] ];
+//								let dec2 = con.dec[ minmax[(v2>>1)&1] ];
+//								let dist1 = con.dist[ minmax[(v1>>2)&1] ];
+//								let dist2 = con.dist[ minmax[(v2>>2)&1] ];
 //
 //								dist1 *= metersPerUnits.pc / this.renderScale;
 //								dist2 *= metersPerUnits.pc / this.renderScale;
@@ -711,7 +712,7 @@ glutil.updateProjection();
 					pickObject.drawPoints({
 						sceneObj : this.sceneObj,
 						targetCallback : function(index) {
-							for (var i = 0; i < namedStars.length; ++i) {
+							for (let i = 0; i < namedStars.length; ++i) {
 								if (namedStars[i].index == index) {	//namedStars[i].index is the index in the hyg 120,000 star buffer
 									//if (orbitStarSystem == starSystems[whatever starsystem index matches]) return
 									return starSystems[i];
@@ -745,13 +746,13 @@ glutil.updateProjection();
 					/**/
 					/* only visible constellations ... 
 					but TODO we need a starSytsem object * /
-					for (var k = 0; k < constellations.length; ++k) {
+					for (let k = 0; k < constellations.length; ++k) {
 						if (displayConstellations[k]) {
-							for (var j = 0; j < indexesForConstellations[k].count; ++j) {
-								var i = indexesForConstellations[k].data[j];
-								var x = thiz.buffer.data[0 + thiz.buffer.dim * i];
-								var y = thiz.buffer.data[1 + thiz.buffer.dim * i];
-								var z = thiz.buffer.data[2 + thiz.buffer.dim * i];
+							for (let j = 0; j < indexesForConstellations[k].count; ++j) {
+								let i = indexesForConstellations[k].data[j];
+								let x = thiz.buffer.data[0 + thiz.buffer.dim * i];
+								let y = thiz.buffer.data[1 + thiz.buffer.dim * i];
+								let z = thiz.buffer.data[2 + thiz.buffer.dim * i];
 								pointObj.attrs.vertex.data[0] = x - orbitTarget.pos[0] / thiz.renderScale;
 								pointObj.attrs.vertex.data[1] = y - orbitTarget.pos[1] / thiz.renderScale;
 								pointObj.attrs.vertex.data[2] = z - orbitTarget.pos[2] / thiz.renderScale;
@@ -774,11 +775,11 @@ glutil.updateProjection();
 		/*
 		//add overlay text
 		if (!picking) {
-			for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
-				var starSystem = starSystems[starSystemIndex];
+			for (let starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
+				let starSystem = starSystems[starSystemIndex];
 				
-				var withinSolarSystem = false;
-				for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
+				let withinSolarSystem = false;
+				for (let planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
 					if (starSystem.planets[planetIndex].orbitVisRatio > 1) {
 						withinSolarSystem = true;
 						break;
@@ -788,12 +789,12 @@ glutil.updateProjection();
 				
 				//if the star system is close enough
 				//TODO use luminance
-				var deltaX = starSystem.pos[0] - orbitTarget.pos[0];
-				var deltaY = starSystem.pos[1] - orbitTarget.pos[1];
-				var deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
-				var dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
+				let deltaX = starSystem.pos[0] - orbitTarget.pos[0];
+				let deltaY = starSystem.pos[1] - orbitTarget.pos[1];
+				let deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
+				let dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
 				//TODO if the dist is lower than the max radius of the star system then don't draw it
-				var ratio = dist / orbitTargetDistance
+				let ratio = dist / orbitTargetDistance
 				if (0.1 < ratio && ratio < 10) {
 					overlayTexts.add(starSystem);
 				}

@@ -4,7 +4,7 @@
 // http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
 // ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/jpl_eph.cc
 // http://www.astro-phys.com/js/astro/api.js
-var EphemerisData = makeClass({
+let EphemerisData = makeClass({
 
 	//parsed from header.406
 	hdr : {
@@ -192,34 +192,34 @@ var EphemerisData = makeClass({
 	},
 
 	interp : function(coeff, numCoeffs, intervalLength, time) {
-		var pc = new Float64Array(18);//ffi.new('double[18]')
-		var vc = new Float64Array(18);//ffi.new('double[18]')
+		let pc = new Float64Array(18);//ffi.new('double[18]')
+		let vc = new Float64Array(18);//ffi.new('double[18]')
 	
 		if (time < 0 || time > 1) throw 'out of bounds';
 		// tc is the normalized chebyshev time (-1 <= tc <= 1)
-		var tc = 2 * time - 1;
+		let tc = 2 * time - 1;
 		
 		pc[0] = 1;
 		pc[1] = tc;
 
-		var twot = tc + tc
-		for (var i = 2; i < numCoeffs; ++i) {
+		let twot = tc + tc
+		for (let i = 2; i < numCoeffs; ++i) {
 			pc[i] = twot * pc[i-1] - pc[i-2];
 		}
 		
-		var pos = 0;
-		for (var i = numCoeffs-1; i >= 0; --i) {
+		let pos = 0;
+		for (let i = numCoeffs-1; i >= 0; --i) {
 			pos += pc[i] * coeff[i];
 		}
 		
 		vc[0] = 0;
 		vc[1] = 1;
 		vc[2] = twot + twot;
-		for (var i=3; i < numCoeffs; ++i) {
+		for (let i=3; i < numCoeffs; ++i) {
 			vc[i] = twot * vc[i-1] + pc[i-1] + pc[i-1] - vc[i-2];
 		}
-		var vel = 0;
-		for (var i = numCoeffs-1; i >= 1; --i) {
+		let vel = 0;
+		for (let i = numCoeffs-1; i >= 1; --i) {
 			vel += vc[i] * coeff[i];
 		}
 		vel *= 2 / intervalLength;
@@ -228,12 +228,12 @@ var EphemerisData = makeClass({
 
 	posVel : function(planetIndex, timeOrigin, timeOffset) {
 		timeOffset = +timeOffset;
-		var coeffBuffer = this.getCoeffBuffer(timeOrigin, timeOffset);
-		var coeff, numCoeffs, subintervalLength, subintervalFrac = getCoeffSubinterval(planetIndex, coeffBuffer, timeOrigin, timeOffset);
-		var pos = [];
-		var vel = [];
-		var tmp;
-		for (var i = 0; i < 3; ++i) {
+		let coeffBuffer = this.getCoeffBuffer(timeOrigin, timeOffset);
+		let coeff, numCoeffs, subintervalLength, subintervalFrac = getCoeffSubinterval(planetIndex, coeffBuffer, timeOrigin, timeOffset);
+		let pos = [];
+		let vel = [];
+		let tmp;
+		for (let i = 0; i < 3; ++i) {
 			tmp = interp(coeff, numCoeffs, subintervalLength, subintervalFrac);
 			pos[i] = tmp[0];
 			vel[i] = tmp[1];
@@ -253,20 +253,20 @@ var EphemerisData = makeClass({
 	sun : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Sun, timeOrigin, timeOffset); },
 
 	earth : function(timeOrigin, timeOffset) {
-		var tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
-		var earthMoonPos = tmp[0];
-		var earthMoonVel = tmp[1] 
-		var tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
-		var geoMoonPos = tmp[0];
-		var geoMoonVel = tmp[1];
-		var scale = 1 / (1 + this.hdr.emrat);
+		let tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
+		let earthMoonPos = tmp[0];
+		let earthMoonVel = tmp[1] 
+		let tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
+		let geoMoonPos = tmp[0];
+		let geoMoonVel = tmp[1];
+		let scale = 1 / (1 + this.hdr.emrat);
 		
-		var earthPos = [
+		let earthPos = [
 			earthMoonPos[0] - geoMoonPos[0] * scale,
 			earthMoonPos[1] - geoMoonPos[1] * scale,
 			earthMoonPos[2] - geoMoonPos[2] * scale
 		];
-		var earthVel = [
+		let earthVel = [
 			earthMoonVel[0] - geoMoonVel[0] * scale,
 			earthMoonVel[1] - geoMoonVel[1] * scale,
 			earthMoonVel[2] - geoMoonVel[2] * scale
@@ -276,30 +276,30 @@ var EphemerisData = makeClass({
 	},
 
 	moon : function(timeOrigin, timeOffset) {
-		var tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
-		var earthMoonPos = tmp[0];
-		var earthMoonVel = tmp[1];
-		var tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
-		var geoMoonPos = tmp[0];
-		var geoMoonVel = tmp[1];
-		var scale = 1 / (1 + this.hdr.emrat);
+		let tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
+		let earthMoonPos = tmp[0];
+		let earthMoonVel = tmp[1];
+		let tmp = this.posVel(this.objIndexForName.GeoCMoon, timeOrigin, timeOffset);
+		let geoMoonPos = tmp[0];
+		let geoMoonVel = tmp[1];
+		let scale = 1 / (1 + this.hdr.emrat);
 		
-		var earthPos = [
+		let earthPos = [
 			earthMoonPos[0] - geoMoonPos[0] * scale,
 			earthMoonPos[1] - geoMoonPos[1] * scale,
 			earthMoonPos[2] - geoMoonPos[2] * scale
 		];
-		var earthVel = [
+		let earthVel = [
 			earthMoonVel[0] - geoMoonVel[0] * scale,
 			earthMoonVel[1] - geoMoonVel[1] * scale,
 			earthMoonVel[2] - geoMoonVel[2] * scale
 		];
-		var moonPos = [
+		let moonPos = [
 			geoMoonPos[0] + earthPos[0],
 			geoMoonPos[1] + earthPos[1],
 			geoMoonPos[2] + earthPos[2]
 		];
-		var moonVel = [
+		let moonVel = [
 			geoMoonVel[0] + earthVel[0],
 			geoMoonVel[1] + earthVel[1],
 			geoMoonVel[2] + earthVel[2]
@@ -328,43 +328,43 @@ EphemerisData.prototype.objIndexForName = {};
 $.each(EphemerisData.prototype.objNames, function(objIndex,objName) {
 	EphemerisData.prototype.objIndexForName[objName] = objIndex;
 });
-var ephemerisData = new EphemerisData();
+let ephemerisData = new EphemerisData();
 
 function initAstroPhysPlanetsByRecords() {
 	//getting records ...
-	var url = 'http://www.astro-phys.com/api/de406/records';
-	//var url = 'astro-phys-records.json';
+	let url = 'http://www.astro-phys.com/api/de406/records';
+	//let url = 'astro-phys-records.json';
 	console.log('reading from '+url);
 	$.ajax({
 		url : url,
 		dataType : 'jsonp'
 	}).done(function(data) {
 		//copied from astro-api.  i need to change the apicall but keep the function the same
-		var results = data.results;
-		var start = data.start;
-		var end = data.end;
-		for(var body in results) {
-			var nchunks = results[body].length
-			var c_step = (end - start) / nchunks;
-			for(var i = 0; i < nchunks; ++i) {
-				var c_start = start + i * c_step;
-				var c_end = c_start + c_step;
-				var coeffs = results[body][i];
+		let results = data.results;
+		let start = data.start;
+		let end = data.end;
+		for(let body in results) {
+			let nchunks = results[body].length
+			let c_step = (end - start) / nchunks;
+			for(let i = 0; i < nchunks; ++i) {
+				let c_start = start + i * c_step;
+				let c_end = c_start + c_step;
+				let coeffs = results[body][i];
 				results[body][i] = new astro.CoeffSet(coeffs, c_start, c_end);
 			}
 		}
 		
-		var record = new astro.Record(results, start, end);
+		let record = new astro.Record(results, start, end);
 		julianDate = data.date;
 		initPlanets = planets.clone();
 		initJulianDate = julianDate;
 		refreshCurrentTimeText();
 		
 		//record.getStates is giving back the whole coefficients ... ?	
-		var positions = record.getPositions(julianDate);
+		let positions = record.getPositions(julianDate);
 		planets = new Planets();
-		for (var i = 0; i < planets.length; ++i) {
-			var planet = planets[i];
+		for (let i = 0; i < planets.length; ++i) {
+			let planet = planets[i];
 			//convert km to m
 			planet.pos[0] = positions[planet.name.toLowerCase()][0] * 1000;
 			planet.pos[1] = positions[planet.name.toLowerCase()][1] * 1000;
@@ -380,10 +380,10 @@ function initAstroPhysPlanetsByRecords() {
 //not used at the moment
 // convert from json query object from http://www.astro-phys.com
 function makePlanetsFromAstroPhysState(astroPhysPlanets) {
-	var planets = new Planets();
-	for (var i = 0; i < planets.length; ++i) {
-		var planet = planets[i];
-		var astroPhysPlanet = astroPhysPlanets[planet.name.toLowerCase()];
+	let planets = new Planets();
+	for (let i = 0; i < planets.length; ++i) {
+		let planet = planets[i];
+		let astroPhysPlanet = astroPhysPlanets[planet.name.toLowerCase()];
 	
 		//convert km to m
 		planet.pos[0] = astroPhysPlanet[0][0] * 1000;
@@ -399,16 +399,16 @@ function makePlanetsFromAstroPhysState(astroPhysPlanets) {
 function initAstroPhysPlanetsByStates() {
 	//getting single sets of states ...
 	//returning a single state
-	var planetNames = [];
+	let planetNames = [];
 	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
-		var planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
+		let planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
 		planetNames.push(planetClassPrototype.name.toLowerCase());
 	});
 
 	//works, but not for the extra horizon data
 	if (false) {
-		var url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
-		//var url = 'astro-phys-state.json';
+		let url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
+		//let url = 'astro-phys-state.json';
 		console.log('reading from '+url);
 		$.ajax({
 			url : url,
@@ -456,12 +456,12 @@ function makePlanetsFromEphemeris(date, denum, dir) {
 	if (!ephemerisData.hasInitialized()) {
 		ephemerisData.initialize(denum, dir);
 	}
-	var planets = new Planets();
-	for (var i=0; i < planets.length; ++i) {
-		var planet = planets[i];
-		var tmp = ephemerisData[planet.name.toLowerCase()](date);	// returns pos & vel in terms of km and km/julian day
-		var pos = tmp[0];
-		var vel = tmp[1];
+	let planets = new Planets();
+	for (let i=0; i < planets.length; ++i) {
+		let planet = planets[i];
+		let tmp = ephemerisData[planet.name.toLowerCase()](date);	// returns pos & vel in terms of km and km/julian day
+		let pos = tmp[0];
+		let vel = tmp[1];
 		
 		//convert km to m
 		planet.pos[0] = pos[0] * 1000;
@@ -477,12 +477,12 @@ function makePlanetsFromEphemeris(date, denum, dir) {
 //TODO if this gets reinstated then go from clone to copy
 function updateTimeForEphemeris() {
 	if (targetJulianDate !== undefined) {
-		var logDate = Math.log(julianDate);
-		var logTarget = Math.log(targetJulianDate);
-		var coeff = .5;
-		var deltaLog = logTarget - logDate;
+		let logDate = Math.log(julianDate);
+		let logTarget = Math.log(targetJulianDate);
+		let coeff = .5;
+		let deltaLog = logTarget - logDate;
 		if (deltaLog < 0) {
-			var newLogDate = logDate + coeff * deltaLog;
+			let newLogDate = logDate + coeff * deltaLog;
 			julianDate = Math.exp(newLogDate);
 		} else {
 			julianDate = targetJulianDate;
@@ -500,9 +500,9 @@ function getLeapSec(mjd, utc) {
 	return 0;
 }
 function tai2utc(taimjd, tai) {
-	var mjd = taimjd;
-	var ls = getLeapSec(taimjd, tai);
-	var utc = tai - ls / 86400;
+	let mjd = taimjd;
+	let ls = getLeapSec(taimjd, tai);
+	let utc = tai - ls / 86400;
 	if (utc < 0) {
 		++utc;
 		--mjd;
@@ -517,8 +517,8 @@ function tai2utc(taimjd, tai) {
 	return [mjd, utc];
 }
 function tt2utc(ttmjd, tt) {
-	var tai = tt - 32.184 / 86400;
-	var taimjd = ttmjd;
+	let tai = tt - 32.184 / 86400;
+	let taimjd = ttmjd;
 	if (tai < 0) {
 		++tai;
 		--taimjd;
@@ -530,8 +530,8 @@ function getUt1Offset(mjd, utc) {
 	return 0;
 }
 function utc2ut1(mjd, utc) {
-	var ut1mjd = mjd;
-	var ut1 = utc + getUt1Offset(mjd, utc) / 86400;
+	let ut1mjd = mjd;
+	let ut1 = utc + getUt1Offset(mjd, utc) / 86400;
 	if (ut1 > 1) {
 		--ut1;
 		++ut1mjd;
@@ -544,14 +544,14 @@ function utc2ut1(mjd, utc) {
 }
 function iauGmst82() { return 0; } // sofa
 function utc2gmst(mjd, utc) {
-	var tmp = utc2ut1(mjd, utc);
-	var ut1mjd = tmp[0];
-	var ut1 = tmp[1];
+	let tmp = utc2ut1(mjd, utc);
+	let ut1mjd = tmp[0];
+	let ut1 = tmp[1];
 	return iauGmst82(2400000.5, ut1mjd + ut1) / (2 * Math.pi);
 }
 function utc2tai(mjd, utc) {
-	var taimjd = mjd;
-	var tai = utc;
+	let taimjd = mjd;
+	let tai = utc;
 	tai += getLeapSec(mjd, utc) / 86400;
 	if (tai > 1) {
 		--tai;
@@ -564,26 +564,26 @@ function utc2tt(mjd, utc) {
 }
 function iauEqeq94() { return 0; }	// sofa
 function utc2gast(mjd, utc) {
-	var gmst = utc2gmst(mjd, utc);
-	var tmp = utc2tt(mjd, utc);
-	var ttmjd = tmp[0];
-	var tt = tmp[1];
+	let gmst = utc2gmst(mjd, utc);
+	let tmp = utc2tt(mjd, utc);
+	let ttmjd = tmp[0];
+	let tt = tmp[1];
 	return gmst + iauEqeq94(2400000.5, ttmjd + tt) / (2 * Math.pi);
 }
 function utc2last(mjd,utc,lon) {
-	var lon = 0;	// longitude of our observatory ... from space!
-	var last = utc2gast(mjd, utc) + lon / (2 * Math.pi);
+	let lon = 0;	// longitude of our observatory ... from space!
+	let last = utc2gast(mjd, utc) + lon / (2 * Math.pi);
 	if (last < 0) ++last;	//modulo?
 	if (last > 1) --last;
 	return last;
 }
 function getEarthAngle(jd) {
-	var jdofs = julianDate - 2400000.5;
-	var ttmjd = Math.floor(jdofs);
-	var tt = jdofs - ttmjd;
-	var tmp = tt2utc(ttmjd, tt);
-	var mjd = tmp[0];
-	var utc = tmp[1];
-	var arg = utc2last(mjd,utc) * Math.pi * 2;
+	let jdofs = julianDate - 2400000.5;
+	let ttmjd = Math.floor(jdofs);
+	let tt = jdofs - ttmjd;
+	let tmp = tt2utc(ttmjd, tt);
+	let mjd = tmp[0];
+	let utc = tmp[1];
+	let arg = utc2last(mjd,utc) * Math.pi * 2;
 	return deg;
 }

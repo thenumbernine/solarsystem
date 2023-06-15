@@ -1,41 +1,44 @@
-var orbitPathResolution = 500;
-var ringResolution = 200;
-var orbitPathIndexForType = {elliptic:0, hyperbolic:1, parabolic:2};	//used in the shader
-var orbitPathShader;
+import {glMatrix} from '/js/gl-matrix-3.4.1/index.js';
+glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
 
-var julianDate = 0;
-var lastJulianDate = 0;
-var initJulianDate = 0;
+let orbitPathResolution = 500;
+let ringResolution = 200;
+let orbitPathIndexForType = {elliptic:0, hyperbolic:1, parabolic:2};	//used in the shader
+let orbitPathShader;
+
+let julianDate = 0;
+let lastJulianDate = 0;
+let initJulianDate = 0;
 
 // track ball motion variables
-var mouseOverTarget;
-var orbitStarSystem;	//only do surface calculations for what star system we are in
-var orbitTarget;
-var orbitGeodeticLocation;
-var orbitDistance;
-var orbitOffset = [0,0,0];
-var orbitTargetDistance;
-var orbitZoomFactor = .0003;	// upon mousewheel
+let mouseOverTarget;
+let orbitStarSystem;	//only do surface calculations for what star system we are in
+let orbitTarget;
+let orbitGeodeticLocation;
+let orbitDistance;
+let orbitOffset = [0,0,0];
+let orbitTargetDistance;
+let orbitZoomFactor = .0003;	// upon mousewheel
 
 //if we're orbiting at 1AU then we can only click things at 1000 AU
-var ratioOfOrbitDistanceToAllowSelection = 10000;
+let ratioOfOrbitDistanceToAllowSelection = 10000;
 
-var mouse;
-var mouseDir;
+let mouse;
+let mouseDir;
 
-var resetDistanceOnSelectingNewSystem = false;
+let resetDistanceOnSelectingNewSystem = false;
 
-var gl;
-var canvas;
+let gl;
+let canvas;
 
-var colorShader;
-var latLonShader;
+let colorShader;
+let latLonShader;
 
-var pointObj;
+let pointObj;
 
-var planetAmbientLight = .1;
+let planetAmbientLight = .1;
 
-var displayMethods = [
+let displayMethods = [
 	'None',
 	'Tangent Tidal',
 	'Normal Tidal',
@@ -47,51 +50,50 @@ var displayMethods = [
 	'Normal Total',
 	'Total'
 ];
-var displayMethod = 'None';
-var planetInfluences = [];
+let displayMethod = 'None';
+let planetInfluences = [];
 
-var showLinesToOtherPlanets = false;
-var showVelocityVectors = false;
-var velocityVectorScale = 30;
-var showRotationAxis = false;
-var showOrbitAxis = false;
-var showEllipseAxis = false;
-var showLatAndLonLines = false;
-var showGravityWell = false;
-var showPlanetsAsDistantPoints = true;
-var showOrbits = true;
-var planetScaleExaggeration = 1;
+let showLinesToOtherPlanets = false;
+let showVelocityVectors = false;
+let velocityVectorScale = 30;
+let showRotationAxis = false;
+let showOrbitAxis = false;
+let showEllipseAxis = false;
+let showLatAndLonLines = false;
+let showGravityWell = false;
+let showPlanetsAsDistantPoints = true;
+let showOrbits = true;
+let planetScaleExaggeration = 1;
 
-var gravityWellScaleNormalized = true;
-var gravityWellScaleFixed = false;
-var gravityWellScaleFixedValue = 2000;
-var gravityWellRadialMinLog100 = -1;
-var gravityWellRadialMaxLog100 = 2;
+let gravityWellScaleNormalized = true;
+let gravityWellScaleFixed = false;
+let gravityWellScaleFixedValue = 2000;
+let gravityWellRadialMinLog100 = -1;
+let gravityWellRadialMaxLog100 = 2;
 
-var overlayShowOrbitTarget = true;
-var overlayShowCurrentPosition = false;
+let overlayShowOrbitTarget = true;
+let overlayShowCurrentPosition = false;
 
-var heatAlpha = .5;
+let heatAlpha = .5;
 
-var integrationPaused = true;
-var defaultIntegrateTimeStep = 1/(24*60);
-var integrateTimeStep = defaultIntegrateTimeStep;
+let integrationPaused = true;
+let defaultIntegrateTimeStep = 1/(24*60);
+let integrateTimeStep = defaultIntegrateTimeStep;
 
 // in case you want to see things in flat earth mode ( just a half theta mapping of spherical coordinates, then flatten planet z)
-var targetFlatEarthCoeff = 0;
-var flatEarthConvCoeff = .03;
-var flatEarthCoeff = 0;
-var flatEarthRelativeEarthPos = [0,0,0];
-var flatEarthRelativeEarthNorthDir = [0,0,1];
+let targetFlatEarthCoeff = 0;
+let flatEarthConvCoeff = .03;
+let flatEarthCoeff = 0;
+let flatEarthRelativeEarthPos = [0,0,0];
+let flatEarthRelativeEarthNorthDir = [0,0,1];
 
-var Galaxy = makeClass({
-	init : function(args) {
+class Galaxy {
+	constructor(args) {
 		for (k in args) {
 			this[k] = args[k];
 		}
 	}
-});
-
+}
 
 function clearGeodeticLocation() {
 	if (orbitGeodeticLocation === undefined) return;
@@ -109,7 +111,7 @@ function clearGeodeticLocation() {
 }
 
 function resetOrbitViewPos() {
-	var viewAngleZAxis = vec3.create();
+	let viewAngleZAxis = vec3.create();
 	vec3.quatZAxis(viewAngleZAxis, glutil.view.angle);
 	vec3.scale(glutil.view.pos, viewAngleZAxis, orbitDistance + (orbitTarget.equatorialRadius || orbitTarget.radius || 0));
 	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
@@ -120,33 +122,33 @@ function refreshMeasureText() {
 	$('#measureMax').text(orbitTarget.measureMax === undefined ? '' : (orbitTarget.measureMax.toExponential() + ' m/s^2'));
 }
 
-var drawScene;
-var gravityWellZScale = 1;
-var gravityWellTargetZScale = 1;
-var planetPointVisRatio = .001;
-var showFPS = false;
+let drawScene;
+let gravityWellZScale = 1;
+let gravityWellTargetZScale = 1;
+let planetPointVisRatio = .001;
+let showFPS = false;
 (function(){
-	var delta = vec3.create();//[];
-	var viewAngleInv = quat.create();
-	var invRotMat = mat4.create();
-	var viewPosInv = vec3.create();
-	var viewfwd = vec3.create();
+	let delta = vec3.create();//[];
+	let viewAngleInv = quat.create();
+	let invRotMat = mat4.create();
+	let viewPosInv = vec3.create();
+	let viewfwd = vec3.create();
 	
 	//fps counter
-	var frames = 0;
-	var lastFPSTime = Date.now();
+	let frames = 0;
+	let lastFPSTime = Date.now();
 
 	//used for new gpu update of tide tex
-	var updatePlanetStateBuffer = new Float32Array(1);
+	let updatePlanetStateBuffer = new Float32Array(1);
 
 	drawScene = function(picking) {
 
 		//should picking count towards fps? nah
 		if (!picking) {
 			frames++;
-			var thisTime = Date.now();
+			let thisTime = Date.now();
 			if (thisTime - lastFPSTime > 1000) {
-				var fps = frames * 1000 / (thisTime - lastFPSTime);
+				let fps = frames * 1000 / (thisTime - lastFPSTime);
 				if (showFPS) {
 					console.log('fps '+fps);
 				}
@@ -159,10 +161,10 @@ var showFPS = false;
 
 		if (overlayShowCurrentPosition && orbitTarget.isa(Planet)) {
 			//update the min and max to reflect the current position
-			var x = glutil.view.pos[0] + orbitTarget.pos[0];
-			var y = glutil.view.pos[1] + orbitTarget.pos[1];
-			var z = glutil.view.pos[2] + orbitTarget.pos[2];
-			var t = calcMetricForce([x,y,z], orbitTarget);
+			let x = glutil.view.pos[0] + orbitTarget.pos[0];
+			let y = glutil.view.pos[1] + orbitTarget.pos[1];
+			let z = glutil.view.pos[2] + orbitTarget.pos[2];
+			let t = calcMetricForce([x,y,z], orbitTarget);
 			$('#measureMin').text(t === undefined ? '' : t.toExponential() + ' m/s^2');
 			$('#measureMax').text(t === undefined ? '' : t.toExponential() + ' m/s^2');
 		}
@@ -172,18 +174,18 @@ var showFPS = false;
 		//1) only update it if tide calcs are on
 		//2) only include planets that are enabled for tide calcs
 		// more discernment later when i make it general purpose
-		var useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
+		let useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
 		if (useOverlay && !picking) {
 		
-			var targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
+			let targetSize = orbitStarSystem.planetStateTex.width * orbitStarSystem.planetStateTex.height * 4;
 			
 			if (updatePlanetStateBuffer.length != targetSize) {
 				updatePlanetStateBuffer = new Float32Array(targetSize);
 			}
 
 			//gather pos and mass
-			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				var planet = orbitStarSystem.planets[planetIndex];
+			for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				let planet = orbitStarSystem.planets[planetIndex];
 				updatePlanetStateBuffer[0 + 4 * planetIndex] = planet.pos[0];
 				updatePlanetStateBuffer[1 + 4 * planetIndex] = planet.pos[1];
 				updatePlanetStateBuffer[2 + 4 * planetIndex] = planet.pos[2];
@@ -227,12 +229,12 @@ var showFPS = false;
 		vec3.quatZAxis(viewfwd, glutil.view.angle);
 		vec3.scale(viewfwd, viewfwd, -1);
 					
-		var tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
+		let tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
 		
-		var distFromSolarSystemInM = vec3.length(glutil.view.pos);
-		var distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
-		var distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
-		var distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
+		let distFromSolarSystemInM = vec3.length(glutil.view.pos);
+		let distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
+		let distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
+		let distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
 		
 		//draw from furthest to nearest, so the varying-scaled objects don't get conflicting depth information
@@ -284,7 +286,7 @@ var showFPS = false;
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		//flat earth
-		var earth = solarSystem.planets[solarSystem.indexes.Earth];
+		let earth = solarSystem.planets[solarSystem.indexes.Earth];
 		flatEarthRelativeEarthPos = [];
 		vec3.sub(flatEarthRelativeEarthPos, earth.pos, orbitTarget.pos);
 		flatEarthRelativeEarthNorthDir = [0,0,1];
@@ -300,8 +302,8 @@ var showFPS = false;
 
 		//draw debug lines 
 		if (!picking) {
-			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				var planet = orbitStarSystem.planets[planetIndex];
+			for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				let planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 				if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 				if (orbitTarget.pos === undefined) continue;
@@ -326,7 +328,7 @@ var showFPS = false;
 
 					vec3.sub(delta, planet.pos, orbitTarget.pos);
 
-					var dist = vec3.length(delta);
+					let dist = vec3.length(delta);
 					vec3.scale(delta, delta, 1/dist);
 
 					lineObj.attrs.vertex.data[0] = delta[0] * orbitTarget.radius;
@@ -356,7 +358,7 @@ var showFPS = false;
 				//show rotation axis
 				if (showRotationAxis) {
 					vec3.sub(delta, planet.pos, orbitTarget.pos);
-					var axis = [0,0,1];
+					let axis = [0,0,1];
 					vec3.quatZAxis(axis, planet.angle);
 					lineObj.attrs.vertex.data[0] = delta[0] + axis[0] * 2 * planet.radius;
 					lineObj.attrs.vertex.data[1] = delta[1] + axis[1] * 2 * planet.radius;
@@ -427,26 +429,26 @@ var showFPS = false;
 
 		//update planet vis ratio
 		//for picking do we need to? TODO make sure the view doesn't change between the last render and a pick
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			var planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 
 			//update vis ratio
-			var dx = planet.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
-			var dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
-			var dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+			let dx = planet.pos[0] - glutil.view.pos[0] - orbitTarget.pos[0];
+			let dy = planet.pos[1] - glutil.view.pos[1] - orbitTarget.pos[1];
+			let dz = planet.pos[2] - glutil.view.pos[2] - orbitTarget.pos[2];
 			//approximated pixel width with a fov of 90 degrees
 			planet.visRatio = planetScaleExaggeration * planet.radius / (Math.sqrt(dx * dx + dy * dy + dz * dz) * tanFovY);
 		}
 
 		//draw sphere planets
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 		(function() {
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 
 			if (planet.sceneObj) {
 			
-				var canSee = !planet.hide && planet.visRatio >= planetPointVisRatio;
+				let canSee = !planet.hide && planet.visRatio >= planetPointVisRatio;
 
 				//if the planet is visible then
 				// if there is no texture then
@@ -510,9 +512,9 @@ var showFPS = false;
 					}
 
 					//calculate sun position for lighting
-					for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
-						var star = orbitStarSystem.stars[starIndex];
-						var tmp = [];
+					for (let starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
+						let star = orbitStarSystem.stars[starIndex];
+						let tmp = [];
 						vec3.sub(tmp, star.pos, planet.pos);
 						planet.sceneObj.uniforms.sunDir[0+3*starIndex] = tmp[0];
 						planet.sceneObj.uniforms.sunDir[1+3*starIndex] = tmp[1];
@@ -583,8 +585,8 @@ var showFPS = false;
 		//disable depth writing so orbits are drawn in front and behind them
 		//do this last so (without depth writing) other planets in the background don't show up in front of the rings
 		if (!picking) {
-			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				var planet = orbitStarSystem.planets[planetIndex];
+			for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				let planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 
 				if (planet.sceneObj &&
@@ -599,25 +601,25 @@ var showFPS = false;
 					//3) axis of planet rotation / normal of ring plane (for unlit side) ... can be derived from the angle, which is copied into the ring object
 
 					//TODO cache rotation axis -- for here and for showing axis (like we already do for orbit axis)
-					var axis = [];
-					var sunDir = [];
+					let axis = [];
+					let sunDir = [];
 					vec3.sub(sunDir, planet.pos, orbitStarSystem.planets[orbitStarSystem.indexes.Sun].pos);
 					vec3.normalize(sunDir, sunDir);
 					vec3.quatZAxis(axis, planet.ringObj.angle);
-					var axisDotSun = vec3.dot(axis, sunDir);
-					var lookingAtLitSide = vec3.dot(viewfwd, axis) * axisDotSun;
+					let axisDotSun = vec3.dot(axis, sunDir);
+					let lookingAtLitSide = vec3.dot(viewfwd, axis) * axisDotSun;
 					lookingAtLitSide = (lookingAtLitSide < 0 ? -1 : 1) * Math.pow(Math.abs(lookingAtLitSide), 1/4);	//preserve sign, so raise to odd power
 					planet.ringObj.uniforms.lookingAtLitSide = Math.clamp(.5 + .5 * lookingAtLitSide, 0, 1);
-					var viewDotSun = vec3.dot(viewfwd, sunDir);
+					let viewDotSun = vec3.dot(viewfwd, sunDir);
 					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;	//clamp(sqrt(sqrt(dot( normalize(sun.pos - planet.pos), axis ) * dot( viewfwd, axis ))), 0., 1.) * -.5 + .5
 
 					//have to recalculate these because the uniforms are shared, so they've been overwritten
 					//...and the ring objs have to be drawn last for transparency reasons...
 
 					//calculate sun position for lighting
-					for (var starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
-						var star = orbitStarSystem.stars[starIndex];
-						var tmp = [];
+					for (let starIndex = 0; starIndex < orbitStarSystem.stars.length; ++starIndex) {
+						let star = orbitStarSystem.stars[starIndex];
+						let tmp = [];
 						vec3.sub(tmp, star.pos, planet.pos);
 						planet.ringObj.uniforms.sunDir[0+3*starIndex] = tmp[0];
 						planet.ringObj.uniforms.sunDir[1+3*starIndex] = tmp[1];
@@ -647,8 +649,8 @@ var showFPS = false;
 		//draw point planets
 		// goes slow when comets are included
 		//TODO make a buffer with a vertex per-planet rather than changing a single vertex
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			var planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.hide) continue;
 
 			if (!planet.sceneObj || planet.visRatio < planetPointVisRatio) {
@@ -740,21 +742,21 @@ var showFPS = false;
 			!picking)
 		{
 			window.orbitPathsDrawn = 0;
-			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				var planet = orbitStarSystem.planets[planetIndex];
+			for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				let planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 
 				if (planet.renderOrbit) {
 
-					var semiMajorAxis = planet.keplerianOrbitalElements.semiMajorAxis;
-					var eccentricity = planet.keplerianOrbitalElements.eccentricity;
-					var distPeriapsis = semiMajorAxis * (1 + eccentricity);	//largest distance from the parent planet
+					let semiMajorAxis = planet.keplerianOrbitalElements.semiMajorAxis;
+					let eccentricity = planet.keplerianOrbitalElements.eccentricity;
+					let distPeriapsis = semiMajorAxis * (1 + eccentricity);	//largest distance from the parent planet
 
 					//vector from view to parent planet
-					var parentPlanet = planet.parent;
+					let parentPlanet = planet.parent;
 					vec3.sub(delta, parentPlanet.pos, orbitTarget.pos);
 					vec3.sub(delta, delta, glutil.view.pos);
-					var deltaLength = vec3.length(delta);
+					let deltaLength = vec3.length(delta);
 
 					planet.orbitVisRatio = distPeriapsis / (deltaLength * tanFovY);
 
@@ -792,20 +794,20 @@ var showFPS = false;
 		{
 			//do transformation math in double
 			//TODO just give gl-matrix a type param in its init
-			var glMvMat = [];
-			var viewAngleInvd = [];
+			let glMvMat = [];
+			let viewAngleInvd = [];
 			quat.conjugate(viewAngleInvd, glutil.view.angle);
 			quat.normalize(viewAngleInvd, viewAngleInvd);	//normalize in double precision
 			mat4.fromQuat(glMvMat, viewAngleInvd);
-			var viewPosInvd = [];
+			let viewPosInvd = [];
 			vec3.negate(viewPosInvd, glutil.view.pos);
 			mat4.translate(glMvMat, glMvMat, viewPosInvd);
 
-			var orbitBasis = [];
-			var orbitBasisInv = [];
-			var mvMat = [];
-			for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-				var planet = orbitStarSystem.planets[planetIndex];
+			let orbitBasis = [];
+			let orbitBasisInv = [];
+			let mvMat = [];
+			for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+				let planet = orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 				if (planet.radius === undefined) continue;
 				//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
@@ -813,10 +815,10 @@ var showFPS = false;
 
 				mat4.identity(orbitBasis);
 				mat4.identity(orbitBasisInv);
-				for (var i = 0; i < 16; ++i) {
+				for (let i = 0; i < 16; ++i) {
 					mvMat[i] = glMvMat[i];
 				}
-				for (var i = 0; i < 3; ++i) {
+				for (let i = 0; i < 3; ++i) {
 					orbitBasis[i] = planet.orbitBasis[0][i];
 					orbitBasis[4+i] = planet.orbitBasis[1][i];
 					orbitBasis[8+i] = planet.orbitBasis[2][i];
@@ -824,7 +826,7 @@ var showFPS = false;
 				//gravWellObjBasis = orbitBasis * gravityWellZScale * zOffsetByRadius * orbitBasis^-1 * planetPosBasis
 
 				//calc this for non-sceneObj planets.  maybe I should store it as a member variable?
-				var relPos = [
+				let relPos = [
 					planet.pos[0] - orbitTarget.pos[0],
 					planet.pos[1] - orbitTarget.pos[1],
 					planet.pos[2] - orbitTarget.pos[2]
@@ -845,7 +847,7 @@ var showFPS = false;
 					gravityWellTargetZScale = gravityWellScaleFixedValue;
 				} else if (gravityWellScaleNormalized) {
 					//causes larger wells to be much smaller and sharper ...
-					//var gravityWellTargetZScale = 2000000 * Math.log(1 + z);
+					//let gravityWellTargetZScale = 2000000 * Math.log(1 + z);
 					//normalized visually per-planet.  scale is not 1-1 across planets
 					gravityWellTargetZScale = 1 / orbitTarget.gravityWellScalar;
 				}
@@ -857,7 +859,7 @@ var showFPS = false;
 				mat4.transpose(orbitBasisInv, orbitBasis);
 				mat4.multiply(mvMat, mvMat, orbitBasisInv);
 
-				for (var i = 0; i < 16; ++i) {
+				for (let i = 0; i < 16; ++i) {
 					planet.gravWellObj.uniforms.mvMat[i] = mvMat[i];
 				}
 		
@@ -873,11 +875,11 @@ var showFPS = false;
 
 //unitsToTest should be largest to smallest
 function unitsToStr(measureInBaseUnits, otherUnitsInBaseUnits, unitsToTest) {
-	var bestUnit = 'm';
-	var bestDist = measureInBaseUnits;
-	for (var i = 0; i < unitsToTest.length; ++i) {
-		var unit = unitsToTest[i];
-		var ratio = measureInBaseUnits / otherUnitsInBaseUnits[unit];
+	let bestUnit = 'm';
+	let bestDist = measureInBaseUnits;
+	for (let i = 0; i < unitsToTest.length; ++i) {
+		let unit = unitsToTest[i];
+		let ratio = measureInBaseUnits / otherUnitsInBaseUnits[unit];
 		if (ratio > .1) {
 			bestUnit = unit;
 			bestDist = ratio;
@@ -887,13 +889,13 @@ function unitsToStr(measureInBaseUnits, otherUnitsInBaseUnits, unitsToTest) {
 	return bestDist.toFixed(4)+' '+bestUnit;
 }
 
-var distanceToStrUnits = ['Mpc', 'lyr', 'AU', 'km', 'm'];
+let distanceToStrUnits = ['Mpc', 'lyr', 'AU', 'km', 'm'];
 function distanceToStr(distInMeters) {
 	return unitsToStr(distInMeters, metersPerUnits, distanceToStrUnits);
 }
 
-var timeToStrUnits = ['years', 'days', 'm', 'h', 's'];
-var daysPerUnits = {
+let timeToStrUnits = ['years', 'days', 'm', 'h', 's'];
+let daysPerUnits = {
 	years : 365.4996816895717,
 	days : 1,
 	h : 1/24,
@@ -914,9 +916,9 @@ if (astro) {
 }
 }
 
-var primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
+let primaryPlanetHorizonIDs = [10, 199, 299, 301, 399, 499, 599, 699, 799, 899, 999];
 
-var ModifiedDepthShaderProgram;
+let ModifiedDepthShaderProgram;
 
 
 function floatToGLSL(x) {
@@ -926,8 +928,8 @@ function floatToGLSL(x) {
 }
 
 function mat3ToGLSL(m) {
-	var s = 'mat3(';
-	for (var i = 0; i < 9; ++i) {
+	let s = 'mat3(';
+	for (let i = 0; i < 9; ++i) {
 		if (i > 0) s += ',';
 		s += floatToGLSL(m[i]);
 	}
@@ -937,8 +939,8 @@ function mat3ToGLSL(m) {
 
 //GLSL code generator
 function unravelForLoop(varname, start, end, code) {
-	var lines = [];
-	for (var i = start; i <= end; ++i) {
+	let lines = [];
+	for (let i = start; i <= end; ++i) {
 		lines.push('#define '+varname+' '+i);
 		lines.push(code);
 		lines.push('#undef '+varname);
@@ -946,7 +948,7 @@ function unravelForLoop(varname, start, end, code) {
 	return lines.join('\n')+'\n';
 };
 
-var geodeticPositionCode = mlstr(function(){/*
+let geodeticPositionCode = `
 
 //takes in a vec2 of lat/lon
 //returns the ellipsoid coordinates in the planet's frame of reference
@@ -967,48 +969,48 @@ vec3 geodeticPosition(vec2 latLon) {
 		NPlusH * cosPhi * sin(lambda),
 		(N * (1. - eccentricitySquared) + height) * sinPhi);
 }
-*/});
+`;
 
-var quatRotateCode = mlstr(function(){/*
+let quatRotateCode = `
 vec3 quatRotate(vec4 q, vec3 v){
 	return v + 2. * cross(cross(v, q.xyz) - q.w * v, q.xyz);
 }
-*/});
+`;
 
 //used by milkyway and skycube
 //which really both do the same thing: display the milky way in the foreground or background
-var coordinateSystemCode = 
-'const mat3 eclipticalToGalactic = '+mat3ToGLSL(eclipticalToGalacticTransform)+';\n'
-+'const mat3 equatorialToEcliptical = '+mat3ToGLSL(equatorialToEclipticalTransform)+';\n';
-
-
+let coordinateSystemCode = 
+`
+const mat3 eclipticalToGalactic = `+mat3ToGLSL(eclipticalToGalacticTransform)+`;
+const mat3 equatorialToEcliptical = `+mat3ToGLSL(equatorialToEclipticalTransform)+`;
+`;
 
 $(document).ready(init);
 
 function calendarToJulian(d) {
-	var year = d.getUTCFullYear();
-	var month = d.getUTCMonth();
-	var day = d.getUTCDate();
-	var hour = d.getUTCHours();
-	var min = d.getUTCMinutes();
-	var sec = d.getUTCSeconds();
+	let year = d.getUTCFullYear();
+	let month = d.getUTCMonth();
+	let day = d.getUTCDate();
+	let hour = d.getUTCHours();
+	let min = d.getUTCMinutes();
+	let sec = d.getUTCSeconds();
 //http://quasar.as.utexas.edu/BillInfo/JulianDatesG.html
 //testing against results in Wikipedia page: http://en.wikipedia.org/wiki/Julian_day
 // (notice I couldn't recreate these results with the algorithm on the same page)
 //for UTC date 2000 jan 1 12:00:00 this gives 2451545 - right on
 //for UTC date 2013 jan 1 00:30:00 this gives 2456294.0208333335 - right on
-	var oneBasedMonth = 1 + month;
-	var astronomicalYear = year < 0 ? year + 1 : year;
+	let oneBasedMonth = 1 + month;
+	let astronomicalYear = year < 0 ? year + 1 : year;
 	if (oneBasedMonth <= 2) {	//jan or feb
 		--astronomicalYear;
 		oneBasedMonth += 12;
 	}
-	var a = Math.floor(astronomicalYear / 100);
-	var b = Math.floor(a / 4);
-	var c = 2 - a + b;
-	var e = Math.floor(365.25 * (astronomicalYear + 4716));
-	var f = Math.floor(30.6001 * (oneBasedMonth + 1));
-	var jdn = c + day + e + f - 1524.5;
+	let a = Math.floor(astronomicalYear / 100);
+	let b = Math.floor(a / 4);
+	let c = 2 - a + b;
+	let e = Math.floor(365.25 * (astronomicalYear + 4716));
+	let f = Math.floor(30.6001 * (oneBasedMonth + 1));
+	let jdn = c + day + e + f - 1524.5;
 	jdn += (hour + (min + sec / 60) / 60) / 24;
 	return jdn;
 }
@@ -1018,13 +1020,12 @@ function init() {
 
 	//post-WebGL init:
 	
-	var depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
-	ModifiedDepthShaderProgram = makeClass({
-		super : glutil.ShaderProgram,
-		init : function(args) {
+	let depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
+	class ModifiedDepthShaderProgram extends glutil.ShaderProgram {
+		constructor(args) {
 			// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
 			//  but, true to the original design, I actually want more detail up front.  Maybe I'll map it to get more detail up front than it already has?
-			args.vertexCode = mlstr(function(){/*
+			args.vertexCode = `
 uniform float zNear, zFar, depthConstant;
 //float depthfunction(vec4 v) {
 	//return (log(v.w + 1.) * depthConstant - 1.) * v.w;
@@ -1079,18 +1080,17 @@ vec4 flatEarthXForm(vec4 pos) {
 	pos.xyz += earthPos;
 	return pos;
 }
-	*/}) + (args.vertexCode || '');
+	` + (args.vertexCode || '');
 			if (args.uniforms === undefined) args.uniforms = {};
 			args.uniforms.zNear = glutil.view.zNear;
 			args.uniforms.zFar = glutil.view.zFar;
 			args.uniforms.depthConstant = depthConstant;
 		
-			args.vertexPrecision = 'best';
-			args.fragmentPrecision = 'best';
-			
-			ModifiedDepthShaderProgram.super.call(this, args);
+			super(args);
 		}
-	});
+	}
+	// because javascript is retarded:
+	ModifiedDepthShaderProgram = ModifiedDepthShaderProgram_;
 
 	/*glutil.view.angle[0] = -0.4693271591372717;
 	glutil.view.angle[1] = 0.7157221264895661;
@@ -1119,9 +1119,9 @@ vec4 flatEarthXForm(vec4 pos) {
 	solarSystem.copyPlanets(solarSystem.initPlanets, solarSystem.planets);
 
 /*
-	var texURLs = [];
+	let texURLs = [];
 	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
-		var planet = solarSystem.planetForHorizonID[horizonID];
+		let planet = solarSystem.planetForHorizonID[horizonID];
 		texURLs.push('textures/'+planet.name.toLowerCase()+'.png');
 	});
 	texURLs.push('textures/jupiter-rings-color.png');
@@ -1155,8 +1155,8 @@ vec4 flatEarthXForm(vec4 pos) {
 	$('#toggleBodyInfo').click(function() {
 		if (!showBodyInfo) {
 			showBodyInfo = true;
-			var infoDivTop = $('#infoPanel').offset().top;
-			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+			let infoDivTop = $('#infoPanel').offset().top;
+			let infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
 			$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
 
 			$('#infoPanel')
@@ -1173,8 +1173,8 @@ vec4 flatEarthXForm(vec4 pos) {
 					{
 						duration : slideDuration,
 						step : function(now, fx) {
-							var frac = 1 - (now - infoDivDestTop) / (infoDivTop - infoDivDestTop);
-							var degrees = 180 * frac - 90;
+							let frac = 1 - (now - infoDivDestTop) / (infoDivTop - infoDivDestTop);
+							let degrees = 180 * frac - 90;
 							setCSSRotation($('#toggleBodyInfo'), degrees);
 						}
 					}
@@ -1182,8 +1182,8 @@ vec4 flatEarthXForm(vec4 pos) {
 		} else {
 			showBodyInfo = false;
 			$('#infoPanel').css('height', '104px');
-			var infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
-			var infoDivDestBottom = -25;
+			let infoDivBottom = window.innerHeight - ($('#infoPanel').offset().top + $('#infoPanel').height());
+			let infoDivDestBottom = -25;
 
 			$('#infoPanel')
 				//go from bottom-aligned to top-algined
@@ -1199,8 +1199,8 @@ vec4 flatEarthXForm(vec4 pos) {
 					{
 						duration : slideDuration,
 						step : function(now, fx) {
-							var frac = (now - infoDivDestBottom) / (infoDivBottom - infoDivDestBottom);
-							var degrees = 180 * frac - 90;
+							let frac = (now - infoDivDestBottom) / (infoDivBottom - infoDivDestBottom);
+							let degrees = 180 * frac - 90;
 							setCSSRotation($('#toggleBodyInfo'), degrees);
 						}
 					}
@@ -1214,8 +1214,8 @@ vec4 flatEarthXForm(vec4 pos) {
 	//$('#infoPanel').show();	//don't show here -- instead show upon first setOrbitTarget, when the css positioning gets fixed
 
 	colorShader = new ModifiedDepthShaderProgram({
-		vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
+		vertexCode : `
+in vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;
@@ -1227,13 +1227,14 @@ void main() {
 	gl_PointSize = pointSize;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-		fragmentCode : mlstr(function(){/*
+`,
+		fragmentCode : `
 uniform vec4 color;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = color;
+	fragColor = color;
 }
-*/}),
+`,
 		uniforms : {
 			color : [1,1,1,1],
 			pointSize : 4
@@ -1241,8 +1242,8 @@ void main() {
 	});
 
 	latLonShader = new ModifiedDepthShaderProgram({
-		vertexCode : mlstr(function(){/*
-attribute vec2 vertex;	//lat/lon pairs
+		vertexCode : `
+in vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform vec3 pos;
@@ -1251,7 +1252,7 @@ uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
 
-*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
+` + geodeticPositionCode + quatRotateCode + `
 
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
@@ -1262,13 +1263,14 @@ void main() {
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-		*/}),
-		fragmentCode : mlstr(function(){/*
+`,
+		fragmentCode : `
 uniform vec4 color;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = color;
+	fragColor = color;
 }
-		*/}),
+`,
 		uniforms : {
 			color : [1,1,1,1]
 		}
@@ -1386,13 +1388,13 @@ void main() {
 }
 
 function setOrbitTarget(newTarget) {
-	var selectingNewSystem = false;
+	let selectingNewSystem = false;
 	if (newTarget === undefined) {
 		newTarget = orbitStarSystem.stars[0];
 	}
 	if (newTarget.isa && newTarget.isa(StarSystem)) {
-		var targetSystem = newTarget;
-		var i = 0;
+		let targetSystem = newTarget;
+		let i = 0;
 		for (; i < targetSystem.planets.length; ++i) {
 			if (targetSystem.planets[i].type !== 'barycenter') {
 				newTarget = targetSystem.planets[i];
@@ -1422,8 +1424,8 @@ function setOrbitTarget(newTarget) {
 	if (selectingNewSystem) {
 		if (resetDistanceOnSelectingNewSystem) {
 			orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
-			for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
-				var planet = orbitStarSystem.planets[i];
+			for (let i = 0; i < orbitStarSystem.planets.length; ++i) {
+				let planet = orbitStarSystem.planets[i];
 		
 				//zoom out past orbit for planets
 				//TODO don't do this for stars orbiting the milky way
@@ -1516,7 +1518,7 @@ function setOrbitTarget(newTarget) {
 		if (!showBodyInfo) {
 			$('#infoPanel').css('height', '104px');
 		} else {
-			var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+			let infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
 			$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
 		}
 		setTimeout(function() {
@@ -1528,26 +1530,26 @@ function setOrbitTarget(newTarget) {
 //TODO use glutil.mouseDir?
 /*
 function mouseRay() {
-	var viewX = glutil.view.pos[0];
-	var viewY = glutil.view.pos[1];
-	var viewZ = glutil.view.pos[2];
-	var viewFwdX = -2 * (glutil.view.angle[0] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[1]);
-	var viewFwdY = -2 * (glutil.view.angle[1] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[0]);
-	var viewFwdZ = -(1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[1] * glutil.view.angle[1]));
-	var viewRightX = 1 - 2 * (glutil.view.angle[1] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[2]);
-	var viewRightY = 2 * (glutil.view.angle[0] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[3]);
-	var viewRightZ = 2 * (glutil.view.angle[0] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[1]);
-	var viewUpX = 2 * (glutil.view.angle[0] * glutil.view.angle[1] - glutil.view.angle[3] * glutil.view.angle[2]);
-	var viewUpY = 1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[2] * glutil.view.angle[2]);
-	var viewUpZ = 2 * (glutil.view.angle[1] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[0]);
-	var aspectRatio = canvas.width / canvas.height;
-	var mxf = mouse.xf * 2 - 1;
-	var myf = 1 - mouse.yf * 2;
-	var tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
-	var mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
-	var mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
-	var mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
-	var mouseDirLength = Math.sqrt(mouseDirX * mouseDirX + mouseDirY * mouseDirY + mouseDirZ * mouseDirZ);
+	let viewX = glutil.view.pos[0];
+	let viewY = glutil.view.pos[1];
+	let viewZ = glutil.view.pos[2];
+	let viewFwdX = -2 * (glutil.view.angle[0] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[1]);
+	let viewFwdY = -2 * (glutil.view.angle[1] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[0]);
+	let viewFwdZ = -(1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[1] * glutil.view.angle[1]));
+	let viewRightX = 1 - 2 * (glutil.view.angle[1] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[2]);
+	let viewRightY = 2 * (glutil.view.angle[0] * glutil.view.angle[1] + glutil.view.angle[2] * glutil.view.angle[3]);
+	let viewRightZ = 2 * (glutil.view.angle[0] * glutil.view.angle[2] - glutil.view.angle[3] * glutil.view.angle[1]);
+	let viewUpX = 2 * (glutil.view.angle[0] * glutil.view.angle[1] - glutil.view.angle[3] * glutil.view.angle[2]);
+	let viewUpY = 1 - 2 * (glutil.view.angle[0] * glutil.view.angle[0] + glutil.view.angle[2] * glutil.view.angle[2]);
+	let viewUpZ = 2 * (glutil.view.angle[1] * glutil.view.angle[2] + glutil.view.angle[3] * glutil.view.angle[0]);
+	let aspectRatio = canvas.width / canvas.height;
+	let mxf = mouse.xf * 2 - 1;
+	let myf = 1 - mouse.yf * 2;
+	let tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
+	let mouseDirX = viewFwdX + tanFovY * (viewRightX * mxf * aspectRatio + viewUpX * myf);
+	let mouseDirY = viewFwdY + tanFovY * (viewRightY * mxf * aspectRatio + viewUpY * myf);
+	let mouseDirZ = viewFwdZ + tanFovY * (viewRightZ * mxf * aspectRatio + viewUpZ * myf);
+	let mouseDirLength = Math.sqrt(mouseDirX * mouseDirX + mouseDirY * mouseDirY + mouseDirZ * mouseDirZ);
 	return [mouseDirX/mouseDirLength, mouseDirY/mouseDirLength, mouseDirZ/mouseDirLength];
 }
 */
@@ -1562,23 +1564,23 @@ function initScene() {
 	//assign our initial orbiting solar system
 	orbitStarSystem = solarSystem;
 
-	var trackPlanetName = 'Earth';
+	let trackPlanetName = 'Earth';
 	if ($.url().param('target') !== undefined) {
 		trackPlanetName = $.url().param('target');
 	}
 
-	var trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
+	let trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
 	setOrbitTarget(trackPlanet);
 	orbitTargetDistance = 2. * orbitTarget.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = orbitTargetDistance;
 
-	var tmpQ = quat.create();
+	let tmpQ = quat.create();
 	mouse = new Mouse3D({
 		pressObj : canvas,
 		move : function(dx,dy) {
-			var rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
-			var tanHalfFov = Math.tan(glutil.view.fovY * Math.PI / 360);
+			let rotAngle = Math.PI / 180 * .01 * Math.sqrt(dx*dx + dy*dy);
+			let tanHalfFov = Math.tan(glutil.view.fovY * Math.PI / 360);
 			if (orbitGeodeticLocation !== undefined) {
 				quat.setAxisAngle(tmpQ, [tanHalfFov * dy, tanHalfFov * dx, 0], rotAngle);
 			} else {
@@ -1588,7 +1590,7 @@ function initScene() {
 			quat.normalize(glutil.view.angle, glutil.view.angle);
 		},
 		zoom : function(zoomChange) {
-			var scale = Math.exp(-orbitZoomFactor * zoomChange);
+			let scale = Math.exp(-orbitZoomFactor * zoomChange);
 		
 			if (orbitGeodeticLocation !== undefined) {
 				glutil.view.fovY *= scale;
@@ -1627,21 +1629,21 @@ function update() {
 	
 	/* converage angle on target planet * /
 	
-	var delta = vec3.create();
+	let delta = vec3.create();
 	vec3.scale(delta, glutil.view.pos, -1);
-	var fwd = vec3.create();
+	let fwd = vec3.create();
 	vec3.quatZAxis(fwd, glutil.view.angle);
 	vec3.scale(fwd, fwd, -1);
-	var axis = vec3.create();
+	let axis = vec3.create();
 	vec3.cross(axis, fwd, delta);
 	vec3.scale(axis, axis, 1/vec3.length(delta));	//divide out length of delta so axis length is sin(theta)
-	var sinTheta = vec3.length(axis);
-	var theta = 0;
+	let sinTheta = vec3.length(axis);
+	let theta = 0;
 	if (sinTheta > 1e-3) {
 		vec3.scale(axis, axis, 1/sinTheta);	//normalize axis
 		theta = Math.asin(Math.clamp(sinTheta, -1,1));
-		var q = quat.create();
-		var convergeAngleCoeff = .5;
+		let q = quat.create();
+		let convergeAngleCoeff = .5;
 		quat.setAxisAngle(q, axis, theta * convergeAngleCoeff);
 		quat.mul(glutil.view.angle, glutil.view.angle, q);
 	}
@@ -1656,10 +1658,10 @@ function update() {
 	}
 
 	//if we are close enough to the planet then rotate with it
-	var fixViewToSurface = orbitTargetDistance < orbitTarget.radius * .1 &&
+	let fixViewToSurface = orbitTargetDistance < orbitTarget.radius * .1 &&
 		(!orbitTarget.isa || !orbitTarget.isa(Galaxy));	//don't allow perspetive from galaxy "surfaces"
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
-		var pos = [];
+		let pos = [];
 		vec3.add(pos, orbitTarget.pos, glutil.view.pos);
 		
 		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(orbitTarget, pos);
@@ -1670,7 +1672,7 @@ function update() {
 		
 		//...and in one fell swoop, turn the camera around
 		//TODO spread this out over a few frames
-		var rot = [];
+		let rot = [];
 		quat.identity(rot);
 		quat.rotateY(rot, rot, Math.PI);
 		quat.multiply(glutil.view.angle, glutil.view.angle, rot);
@@ -1681,7 +1683,7 @@ function update() {
 	if (orbitGeodeticLocation !== undefined) {
 		//fix the height at the surface
 		//TODO spread this out over a few frames
-		var height = (orbitTarget.equatorialRadius || orbitTarget.radius || 1000) * .01;//= orbitGeodeticLocation.height;
+		let height = (orbitTarget.equatorialRadius || orbitTarget.radius || 1000) * .01;//= orbitGeodeticLocation.height;
 		orbitDistance = orbitTargetDistance = height;
 		
 		planetGeodeticToSolarSystemBarycentric(
@@ -1695,13 +1697,13 @@ function update() {
 		resetOrbitViewPos();
 	}
 
-	var orbitConvergeCoeff = .9;
+	let orbitConvergeCoeff = .9;
 	vec3.scale(orbitOffset, orbitOffset, orbitConvergeCoeff);
 	{
-		var logDist = Math.log(orbitDistance);
-		var logTarget = Math.log(orbitTargetDistance);
-		var coeff = .05;
-		var newLogDist = (1 - coeff) * logDist + coeff * logTarget;
+		let logDist = Math.log(orbitDistance);
+		let logTarget = Math.log(orbitTargetDistance);
+		let coeff = .05;
+		let newLogDist = (1 - coeff) * logDist + coeff * logTarget;
 		orbitDistance = Math.exp(newLogDist);
 	}
 
@@ -1716,17 +1718,17 @@ function update() {
 		orbitStarSystem.updatePlanetsPos();
 
 		//recompute angle based on sidereal rotation period
-		for (var i = 0; i < orbitStarSystem.planets.length; ++i) {
-			var planet = orbitStarSystem.planets[i];
+		for (let i = 0; i < orbitStarSystem.planets.length; ++i) {
+			let planet = orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
-				var angle = ((julianDate % planet.rotationPeriod) / planet.rotationPeriod) * 2 * Math.PI;
+				let angle = ((julianDate % planet.rotationPeriod) / planet.rotationPeriod) * 2 * Math.PI;
 			
 				//I really don't like this variable.  I don't think it should be used.
 				if (planet.rotationOffset !== undefined) {
 					angle += planet.rotationOffset;
 				}
 				
-				var zrot = [0,0,0,1];
+				let zrot = [0,0,0,1];
 				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
 			} else {
@@ -1737,12 +1739,12 @@ function update() {
 		//if we're not fixed on the surface but we are close enough to orbit then spin with the planet
 		//TODO this is messing up on mercury, venus, pluto ... retrograde planets + mercury ... ?
 		if (orbitTargetDistance < orbitTarget.radius * 10) {
-			var orbitTargetAxis = [0,0,1];
+			let orbitTargetAxis = [0,0,1];
 			vec3.quatZAxis(orbitTargetAxis, orbitTarget.angle);
 	
-			var deltaJulianDate = julianDate - lastJulianDate;
+			let deltaJulianDate = julianDate - lastJulianDate;
 			
-			var deltaAngle = quat.create();
+			let deltaAngle = quat.create();
 			quat.setAxisAngle(deltaAngle, orbitTargetAxis, deltaJulianDate * (orbitTarget.rotationPeriod || 0) * 2 * Math.PI);
 		
 			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
@@ -1756,21 +1758,21 @@ function update() {
 		if (orbitGeodeticLocation !== undefined &&
 			mouseOverTarget !== undefined)
 		{
-			var viewFwd = [];
+			let viewFwd = [];
 			vec3.quatZAxis(viewFwd, glutil.view.angle);
 			vec3.scale(viewFwd, viewFwd, -1);
 			vec3.normalize(viewFwd, viewFwd);
 
-			var destViewFwd = [];
+			let destViewFwd = [];
 			vec3.sub(destViewFwd, mouseOverTarget.pos, glutil.view.pos); 
 			vec3.normalize(destViewFwd, destViewFwd);
 			
-			var axis = [];
+			let axis = [];
 			vec3.cross(axis, viewFwd, destViewFwd);
-			var sinTheta = vec3.length(axis);
+			let sinTheta = vec3.length(axis);
 			if (sinTheta > 1e-5) {
-				var theta = Math.asin(Math.clamp(sinTheta, -1, 1));
-				var rot = [];
+				let theta = Math.asin(Math.clamp(sinTheta, -1, 1));
+				let rot = [];
 				quat.setAxisAngle(rot, axis, theta);
 				quat.multiply(glutil.view.angle, rot, glutil.view.angle);
 				quat.normalize(glutil.view.angle, glutil.view.angle);

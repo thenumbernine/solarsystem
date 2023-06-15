@@ -1,9 +1,7 @@
-var Metric = makeClass();
+class Metric {}
 
 //low gravity newtonian approximation
-var NewtonApproximateMetric = makeClass({
-	super : Metric,
-
+class NewtonApproximateMetric extends Metric {
 	/*
 	geodesic calculation:
 	x''^u = -Conn^u_ab x'^a x'^b
@@ -13,24 +11,24 @@ var NewtonApproximateMetric = makeClass({
 	Conn^j_tt = dPhi/dx^j = G M x^j / |x|^3
 	so x''^j = G M x^j / |x|^3
 	*/
-	calcGravity : function(accel, pos) {
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+	calcGravity(accel, pos) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 			
-			var x = pos[0] - planet.pos[0];
-			var y = pos[1] - planet.pos[1];
-			var z = pos[2] - planet.pos[2];
+			let x = pos[0] - planet.pos[0];
+			let y = pos[1] - planet.pos[1];
+			let z = pos[2] - planet.pos[2];
 			r = Math.sqrt(x*x + y*y + z*z);
-			var r2 = r * r;
-			var accelMagn = gravitationalConstant * planet.mass / r2;
+			let r2 = r * r;
+			let accelMagn = gravitationalConstant * planet.mass / r2;
 			accel[0] -= x/r * accelMagn;
 			accel[1] -= y/r * accelMagn;
 			accel[2] -= z/r * accelMagn;
 		}
-	},
+	}
 
 	/*
 	geodesic deviation:
@@ -67,38 +65,36 @@ var NewtonApproximateMetric = makeClass({
 
 	But what if phi changes wrt time? then phi_,tt is nonzero, right? How does our Riemann metric change?
 	*/
-	calcTidal : function(accel, pos, srcPlanet) {
-		var nx = pos[0] - srcPlanet.pos[0];
-		var ny = pos[1] - srcPlanet.pos[1];
-		var nz = pos[2] - srcPlanet.pos[2];
+	calcTidal(accel, pos, srcPlanet) {
+		let nx = pos[0] - srcPlanet.pos[0];
+		let ny = pos[1] - srcPlanet.pos[1];
+		let nz = pos[2] - srcPlanet.pos[2];
 
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 
-			var x = pos[0] - planet.pos[0];
-			var y = pos[1] - planet.pos[1];
-			var z = pos[2] - planet.pos[2];
-			var r2 = x*x + y*y + z*z; 
-			var r = Math.sqrt(r2);
-			var r3 = r * r2;
-			var r5 = r2 * r3;
-			var xDotN = x * nx + y * ny + z * nz;
+			let x = pos[0] - planet.pos[0];
+			let y = pos[1] - planet.pos[1];
+			let z = pos[2] - planet.pos[2];
+			let r2 = x*x + y*y + z*z; 
+			let r = Math.sqrt(r2);
+			let r3 = r * r2;
+			let r5 = r2 * r3;
+			let xDotN = x * nx + y * ny + z * nz;
 
 			accel[0] += gravitationalConstant * planet.mass * (3 * xDotN * x / r5 - nx / r3);
 			accel[1] += gravitationalConstant * planet.mass * (3 * xDotN * y / r5 - ny / r3);
 			accel[2] += gravitationalConstant * planet.mass * (3 * xDotN * z / r5 - nz / r3);
 		}
 	}
-});
+}
 
 //rotation-less spherical body
-var SchwarzschildMetric = makeClass({
-	super : Metric,
-
+class SchwarzschildMetric extends Metric {
 	/*
 	geodesic calculation:
 	x''^u = -Conn^u_ab x'^a x'^b
@@ -106,28 +102,28 @@ var SchwarzschildMetric = makeClass({
 	Schwarzschild:
 	Conn^r_tt = R(r-R)/(2r^3)
 	*/
-	calcGravity : function(accel, pos) {
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+	calcGravity(accel, pos) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 			
-			var x = pos[0] - planet.pos[0];
-			var y = pos[1] - planet.pos[1];
-			var z = pos[2] - planet.pos[2];
-			var r2 = x*x + y*y + z*z;
-			var r = Math.sqrt(r2);
-			var r3 = r * r2;
-			var R = 2. * planet.mass * kilogramsPerMeter;
-			var accelMagn = R * (r - R) / (2 * r3);
+			let x = pos[0] - planet.pos[0];
+			let y = pos[1] - planet.pos[1];
+			let z = pos[2] - planet.pos[2];
+			let r2 = x*x + y*y + z*z;
+			let r = Math.sqrt(r2);
+			let r3 = r * r2;
+			let R = 2. * planet.mass * kilogramsPerMeter;
+			let accelMagn = R * (r - R) / (2 * r3);
 			accelMagn *= metersPerUnits.ls * metersPerUnits.ls;
 			
 			accel[0] -= x/r * accelMagn;
 			accel[1] -= y/r * accelMagn;
 			accel[2] -= z/r * accelMagn;
 		}
-	},
+	}
 	
 	/*
 	geodesic deviation:
@@ -158,36 +154,36 @@ var SchwarzschildMetric = makeClass({
 
 	difference between this and Newton is on the order of 1e-6 for Earth & Moon
 	*/
-	calcTidal : function(accel, pos, srcPlanet) {
-		var nx = pos[0] - srcPlanet.pos[0];
-		var ny = pos[1] - srcPlanet.pos[1];
-		var nz = pos[2] - srcPlanet.pos[2];
+	calcTidal(accel, pos, srcPlanet) {
+		let nx = pos[0] - srcPlanet.pos[0];
+		let ny = pos[1] - srcPlanet.pos[1];
+		let nz = pos[2] - srcPlanet.pos[2];
 		
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
 			
-			var x = pos[0] - planet.pos[0];
-			var y = pos[1] - planet.pos[1];
-			var z = pos[2] - planet.pos[2];
+			let x = pos[0] - planet.pos[0];
+			let y = pos[1] - planet.pos[1];
+			let z = pos[2] - planet.pos[2];
 			
-			var r2 = x*x + y*y + z*z;
-			var r = Math.sqrt(r2);
+			let r2 = x*x + y*y + z*z;
+			let r = Math.sqrt(r2);
 
-			var R = 2. * planet.mass * kilogramsPerMeter;
-			var scale = R * (R - r) / (2 * r2 * r2);
+			let R = 2. * planet.mass * kilogramsPerMeter;
+			let scale = R * (R - r) / (2 * r2 * r2);
 			scale *= metersPerUnits.ls * metersPerUnits.ls;
 		
-			var nDotR = nx * x + ny * y + nz * z;
+			let nDotR = nx * x + ny * y + nz * z;
 			accel[0] += scale * (nx - 3 * nDotR * x / r2);
 			accel[1] += scale * (ny - 3 * nDotR * y / r2);
 			accel[2] += scale * (nz - 3 * nDotR * z / r2);
 		}
 	}
-});
+}
 
 /*
 uncharged, rotating spherical body
@@ -210,60 +206,59 @@ Sigma(r) = r**2 + a**2 * cos(theta)**2
 kerr_gravity(r) = -2.*m(r) * Delta(r) * (r**2 - a**2 * cos(theta)**2) / (2 * Sigma(r)**3) * c**2
 
 */
-var KerrMetric = makeClass({
-	super : Metric,
-	calcGravity : function(accel, pos) {
-		for (var planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
+class KerrMetric extends Metric {
+	calcGravity(accel, pos) {
+		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
 			if (!planetInfluences[planetIndex]) continue;
-			var planet = orbitStarSystem.planets[planetIndex];
+			let planet = orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 
-			var x = pos[0] - planet.pos[0];
-			var y = pos[1] - planet.pos[1];
-			var z = pos[2] - planet.pos[2];
-			var r2DSq = x*x + y*y;
-			var r2D = Math.sqrt(r2DSq);
-			var rSq = r2DSq + z*z;
-			var r = Math.sqrt(rSq);
-			var cosTheta = r2D / r;
+			let x = pos[0] - planet.pos[0];
+			let y = pos[1] - planet.pos[1];
+			let z = pos[2] - planet.pos[2];
+			let r2DSq = x*x + y*y;
+			let r2D = Math.sqrt(r2DSq);
+			let rSq = r2DSq + z*z;
+			let r = Math.sqrt(rSq);
+			let cosTheta = r2D / r;
 
-			var M = planet.mass * gravitationalConstant / metersPerUnits.ls / metersPerUnits.ls;	//mass, in m
+			let M = planet.mass * gravitationalConstant / metersPerUnits.ls / metersPerUnits.ls;	//mass, in m
 
-			var rotationPeriod = planet.rotationPeriod !== undefined ? planet.rotationPeriod : 0;
-			var angularVelocity = 2. * Math.PI / ( rotationPeriod * (60. * 60. * 24.)) / metersPerUnits.ls;	// angular velocity, in 1/m
-			var inertia = 2./5. * M * planet.radius * planet.radius;					// moment of inertia about a sphere, in m^3
-			var angularMomentum = inertia * angularVelocity;						// angular momentum in m^2
-			var a = M == 0 ? 0 : angularMomentum / M;											// m
+			let rotationPeriod = planet.rotationPeriod !== undefined ? planet.rotationPeriod : 0;
+			let angularVelocity = 2. * Math.PI / ( rotationPeriod * (60. * 60. * 24.)) / metersPerUnits.ls;	// angular velocity, in 1/m
+			let inertia = 2./5. * M * planet.radius * planet.radius;					// moment of inertia about a sphere, in m^3
+			let angularMomentum = inertia * angularVelocity;						// angular momentum in m^2
+			let a = M == 0 ? 0 : angularMomentum / M;											// m
 
-			var Delta = r * r - 2 * M * r + a * a;
-			var Sigma = r * r + a * a * cosTheta * cosTheta;
-			var accelMagn = 2 * M * Delta * (r * r - a * a * cosTheta * cosTheta) / (2 * Sigma * Sigma * Sigma);
+			let Delta = r * r - 2 * M * r + a * a;
+			let Sigma = r * r + a * a * cosTheta * cosTheta;
+			let accelMagn = 2 * M * Delta * (r * r - a * a * cosTheta * cosTheta) / (2 * Sigma * Sigma * Sigma);
 			accelMagn *= metersPerUnits.ls * metersPerUnits.ls;
 
 			accel[0] -= x/r * accelMagn;
 			accel[1] -= y/r * accelMagn;
 			accel[2] -= z/r * accelMagn;
 		}
-	},
+	}
 	
 	//haven't got this yet
-	calcTidal : function(accel, pos, srcPlanet) {}
-});
+	calcTidal(accel, pos, srcPlanet) {}
+}
 
-var metricInfos = [
+let metricInfos = [
 	{name:'Newtonian', classObj:NewtonApproximateMetric},
 	{name:'Schwarzschild', classObj:SchwarzschildMetric},
 	{name:'Kerr', classObj:KerrMetric}
 ];
 
-//var metric = new NewtonApproximateMetric();
-var metric = new SchwarzschildMetric();
+//let metric = new NewtonApproximateMetric();
+let metric = new SchwarzschildMetric();
 
-var calcMetricForce;
-(function(){
-	var accel = [];
-	var norm = [];
+let calcMetricForce;
+{
+	let accel = [];
+	let norm = [];
 	calcMetricForce = function(x, planet) {
 		accel[0] = accel[1] = accel[2] = 0;
 		switch (displayMethod) {
@@ -288,26 +283,26 @@ var calcMetricForce;
 		norm[0] = x[0] - planet.pos[0];
 		norm[1] = x[1] - planet.pos[1];
 		norm[2] = x[2] - planet.pos[2];
-		var normLen = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
+		let normLen = Math.sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
 		norm[0] /= normLen;
 		norm[1] /= normLen;
 		norm[2] /= normLen;
 
-		//var toTheMoon = (solarSystem.planets[solarSystem.indexes.Moon].pos - x):normalize()
-		//var normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
-		//var tangentTowardsMoon = normCrossMoon:cross(norm)
-		//var tidalAccel = accel:dot(tangentTowardsMoon)
-		//var tidalAccel = accel:dot(toTheMoon)	// moonward component
+		//let toTheMoon = (solarSystem.planets[solarSystem.indexes.Moon].pos - x):normalize()
+		//let normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
+		//let tangentTowardsMoon = normCrossMoon:cross(norm)
+		//let tidalAccel = accel:dot(tangentTowardsMoon)
+		//let tidalAccel = accel:dot(toTheMoon)	// moonward component
 
-		var t;
+		let t;
 		switch (displayMethod) {
 		case 'Tangent Tidal':
 		case 'Tangent Gravitational':
 		case 'Tangent Total':
-			var dot = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
-			var dx = accel[0] - norm[0] * dot;
-			var dy = accel[1] - norm[1] * dot;
-			var dz = accel[2] - norm[2] * dot;
+			let dot = accel[0] * norm[0] + accel[1] * norm[1] + accel[2] * norm[2];
+			let dx = accel[0] - norm[0] * dot;
+			let dy = accel[1] - norm[1] * dot;
+			let dz = accel[2] - norm[2] * dot;
 			t = Math.sqrt(dx * dx + dy * dy + dz * dz);
 			break;
 		case 'Normal Tidal':
@@ -323,4 +318,4 @@ var calcMetricForce;
 		}
 		return t;
 	};
-})();
+}

@@ -4,30 +4,30 @@ kind of like starfield
 but that's just a point cloud
 */
 
-var starSystems = [];
-var starSystemForNames = {};
-var solarSystem;	//the one and only.  don't construct until after WebGL init so we can populate our float tex for the planets
+let starSystems = [];
+let starSystemForNames = {};
+let solarSystem;	//the one and only.  don't construct until after WebGL init so we can populate our float tex for the planets
 
 //ugly ugly singletons
-var starSystemsHasGotResults = false;
+let starSystemsHasGotResults = false;
 
-var planetSceneObj;
-var planetLatLonObj;
+let planetSceneObj;
+let planetLatLonObj;
 
-var latitudeMin = -90;
-var latitudeMax = 90;
-var latitudeStep = 5;
-var longitudeMin = -180;
-var longitudeMax = 180;
-var longitudeStep = 5;
-var latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
-var longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
+let latitudeMin = -90;
+let latitudeMax = 90;
+let latitudeStep = 5;
+let longitudeMin = -180;
+let longitudeMax = 180;
+let longitudeStep = 5;
+let latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
+let longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
 
 function initOrbitPaths() {
-	var gravWellShader = new ModifiedDepthShaderProgram({
-		vertexCode : mlstr(function(){/*
-attribute vec4 vertex;
-varying float alpha;
+	let gravWellShader = new ModifiedDepthShaderProgram({
+		vertexCode : `
+in vec4 vertex;
+out float alpha;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 void main() {
@@ -38,21 +38,22 @@ void main() {
 	gl_PointSize = 4.;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-		fragmentCode : mlstr(function(){/*
+`,
+		fragmentCode : `
 uniform vec4 color;
-varying float alpha;
+in float alpha;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = vec4(color.xyz, color.w * alpha);
+	fragColor = vec4(color.xyz, color.w * alpha);
 }
-*/})
+`
 	});
 
 	//for rendering the orbital path
-	var orbitPathShader = new ModifiedDepthShaderProgram({
-		vertexCode : mlstr(function(){/*
-attribute vec4 vertex;
-varying float alpha;
+	let orbitPathShader = new ModifiedDepthShaderProgram({
+		vertexCode : `
+in vec4 vertex;
+out float alpha;
 uniform mat4 viewMatInv;
 uniform mat4 localMat;
 uniform mat4 mvMat;
@@ -87,23 +88,24 @@ void main() {
 	gl_Position = projMat * (viewMatInv * flatEarthXForm(localMat * vec4(pos, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-		fragmentCode : mlstr(function(){/*
+`,
+		fragmentCode : `
 uniform vec4 color;
 uniform float fractionOffset;
-varying float alpha;
+in float alpha;
+out vec4 fragColor;
 void main() {
 	float a = mod(alpha - fractionOffset, 1.);
 	a = fract(a + 1.);
 	a = a * .75 + .25;
-	gl_FragColor = vec4(color.xyz, color.w * a);
+	fragColor = vec4(color.xyz, color.w * a);
 }
-*/})
+`
 	});
 
 	//iterate around the eccentric anomaly to reconstruct the path
-	var vertexes = [];
-	for (var i = 0; i < orbitPathResolution; ++i) {
+	let vertexes = [];
+	for (let i = 0; i < orbitPathResolution; ++i) {
 		vertexes.push(i / (orbitPathResolution - 1));
 	}
 	
@@ -124,15 +126,15 @@ void main() {
 	//associated with texture per-planet that stores position (and maybe velocity)
 
 	//TODO update these when we integrate!
-	var calcOrbitPathStartTime = Date.now();
+	let calcOrbitPathStartTime = Date.now();
 	//init solar system planets based on Horizons data
-	for (var i = 0; i < solarSystem.planets.length; ++i) {
+	for (let i = 0; i < solarSystem.planets.length; ++i) {
 		solarSystem.planets[i].calcKOEFromPosVel();
 	}
-	var calcOrbitPathEndTime = Date.now();
+	let calcOrbitPathEndTime = Date.now();
 
-	var setPlanetTiltAngleToMoonOrbitPlane = function(planet, moonName) {
-		var moon = solarSystem.planets[solarSystem.indexes[moonName]];
+	let setPlanetTiltAngleToMoonOrbitPlane = function(planet, moonName) {
+		let moon = solarSystem.planets[solarSystem.indexes[moonName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
@@ -140,14 +142,14 @@ void main() {
 
 	//accepts degrees
 	//TODO start at orbit axis plane rather than earth's (ie J2000) orbit axis plane
-	var setPlanetTiltAngleToFixedValue = function(planet, inclination, tiltDirection) {
+	let setPlanetTiltAngleToFixedValue = function(planet, inclination, tiltDirection) {
 		if (tiltDirection === undefined) tiltDirection = 0;
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
-	var setBy = {
+	let setBy = {
 		Mercury:{inclination:2.11/60},//TODO tilt from mercury orbit plane.  until then it's off
 		Venus:{inclination:177.3},//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
 		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},
@@ -160,10 +162,10 @@ void main() {
 	};
 
 	//now set all moon tilt angles to the orbit axis 
-	var Sun = solarSystem.planets[0];
-	for (var i = 0; i < solarSystem.planets.length; ++i) {
-		var planet = solarSystem.planets[i];
-		var sb = setBy[planet.name];
+	let Sun = solarSystem.planets[0];
+	for (let i = 0; i < solarSystem.planets.length; ++i) {
+		let planet = solarSystem.planets[i];
+		let sb = setBy[planet.name];
 		if (sb && sb.inclination !== undefined) {
 			setPlanetTiltAngleToFixedValue(planet, sb.inclination, sb.tiltDirection);
 		} else if (sb && sb.toMoon) {
@@ -180,9 +182,9 @@ void main() {
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
-	var calcGravWellStartTime = Date.now();
-	for (var planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-		var planet = solarSystem.planets[planetIndex];
+	let calcGravWellStartTime = Date.now();
+	for (let planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
+		let planet = solarSystem.planets[planetIndex];
 
 		/*
 		gravity wells
@@ -192,30 +194,30 @@ void main() {
 		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
 		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
 		*/
-		var R = planet.radius;
-		var Rs = planet.schwarzschildRadius;
-		var R_Rs = R / Rs;
-		var Rs_R = Rs / R;
-		var R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+		let R = planet.radius;
+		let Rs = planet.schwarzschildRadius;
+		let R_Rs = R / Rs;
+		let Rs_R = Rs / R;
+		let R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
 
 		//extract the normalized scalar to post-multiply after transformation (so small fields will not lose accuracy)
 		planet.gravityWellScalar = Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1);
 
 		//populate first vertex
-		var gravWellVtxs = [0,0,0,1];
+		let gravWellVtxs = [0,0,0,1];
 
-		var gravWellIndexes = [];
+		let gravWellIndexes = [];
 
-		var rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
-		var thimax = 60;
+		let rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
+		let thimax = 60;
 
-		for (var ri = 1; ri < rimax; ++ri) {
-			var r = R * Math.pow(100, ri / rimax * (gravityWellRadialMaxLog100 - gravityWellRadialMinLog100) + gravityWellRadialMinLog100);
+		for (let ri = 1; ri < rimax; ++ri) {
+			let r = R * Math.pow(100, ri / rimax * (gravityWellRadialMaxLog100 - gravityWellRadialMinLog100) + gravityWellRadialMinLog100);
 			//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
 
-			var z;
+			let z;
 			if (r <= R) {
-				var r_R = r / R;
+				let r_R = r / R;
 				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
 			} else {
 				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
@@ -224,11 +226,11 @@ void main() {
 			}
 			z /= planet.gravityWellScalar;
 
-			for (var thi = 0; thi < thimax; ++thi) {
-				var th = 2 * Math.PI * thi / thimax;
+			for (let thi = 0; thi < thimax; ++thi) {
+				let th = 2 * Math.PI * thi / thimax;
 
-				var x = r * Math.cos(th);
-				var y = r * Math.sin(th);
+				let x = r * Math.cos(th);
+				let y = r * Math.sin(th);
 
 				//it would be great to include influences of other planets' gravity wells ...
 				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
@@ -242,7 +244,7 @@ void main() {
 				gravWellVtxs.push(x * planet.orbitBasis[0][0] + y * planet.orbitBasis[1][0] + z * planet.orbitBasis[2][0]);
 				gravWellVtxs.push(x * planet.orbitBasis[0][1] + y * planet.orbitBasis[1][1] + z * planet.orbitBasis[2][1]);
 				gravWellVtxs.push(x * planet.orbitBasis[0][2] + y * planet.orbitBasis[1][2] + z * planet.orbitBasis[2][2]);
-				var tau = ri/(rimax-1);
+				let tau = ri/(rimax-1);
 				gravWellVtxs.push(1 - tau * tau * tau * tau * tau * tau * tau * tau);
 
 				if (ri == 1) {
@@ -283,7 +285,7 @@ void main() {
 		planet.gravWellObj.mvMat = mat4.create();
 		planet.gravWellObj.uniforms.mvMat = planet.gravWellObj.mvMat;
 	}
-	var calcGravWellEndTime = Date.now();
+	let calcGravWellEndTime = Date.now();
 
 	//on my machine this was 769ms
 	console.log('calc orbit path time ',calcOrbitPathEndTime-calcOrbitPathStartTime,'ms');
@@ -296,7 +298,7 @@ void main() {
 
 //collection of all star systems
 //kind of like starfield, but that's a point cloud
-var StarSystems = makeClass({
+let StarSystems = makeClass({
 
 	initSolarSystem : function() {
 		solarSystem = new SolarSystem();
@@ -309,23 +311,23 @@ var StarSystems = makeClass({
 
 	initPlanetSceneObjs : function() {
 		console.log('init planet shaders...');
-		var quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
-		var triIndexArray = [];
-		var latLonIndexArray = [];
-		var vertexArray = [];
+		let quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
+		let triIndexArray = [];
+		let latLonIndexArray = [];
+		let vertexArray = [];
 
-		for (var loni=0; loni <= longitudeDivisions; ++loni) {
-			var lon = longitudeMin + loni * longitudeStep;
-			for (var lati=0; lati <= latitudeDivisions; ++lati) {
-				var lat = latitudeMin + lati * latitudeStep;
+		for (let loni=0; loni <= longitudeDivisions; ++loni) {
+			let lon = longitudeMin + loni * longitudeStep;
+			for (let lati=0; lati <= latitudeDivisions; ++lati) {
+				let lat = latitudeMin + lati * latitudeStep;
 
 				vertexArray.push(lat);
 				vertexArray.push(lon);
 
 				if (loni < longitudeDivisions && lati < latitudeDivisions) {
-					for (var j = 0; j < quad.length; ++j) {
-						var ofs = quad[j];
-						var index = (lati + ofs[0]) + (latitudeDivisions + 1) * (loni + ofs[1]);
+					for (let j = 0; j < quad.length; ++j) {
+						let ofs = quad[j];
+						let index = (lati + ofs[0]) + (latitudeDivisions + 1) * (loni + ofs[1]);
 						triIndexArray.push(index);
 					}
 					//if we're using 5 div step then every 6 will be 30 degrees
@@ -342,7 +344,7 @@ var StarSystems = makeClass({
 		}
 
 		//these could be merged if you don't mind evaluating the cos() and sin() in-shader
-		var vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
+		let vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
 
 		planetSceneObj = new glutil.SceneObject({
 			mode : gl.TRIANGLES,
@@ -379,8 +381,8 @@ var StarSystems = makeClass({
 			parent : null
 		});	
 		
-		for (var i = 0; i < solarSystem.planets.length; ++i) { 
-			var planet = solarSystem.planets[i];
+		for (let i = 0; i < solarSystem.planets.length; ++i) { 
+			let planet = solarSystem.planets[i];
 			planet.initColorSchRadiusAngle();
 			planet.initSceneLatLonLineObjs();
 		}
@@ -390,21 +392,21 @@ var StarSystems = makeClass({
 	//ring texture for Jupiter
 	//http://www.celestiamotherlode.net/catalog/jupiter.php
 	(function(){
-		var jupiterRingShader = new ModifiedDepthShaderProgram({
+		let jupiterRingShader = new ModifiedDepthShaderProgram({
 			//vertex code matches Saturn
 			vertexCode :
 quatRotateCode
-+ mlstr(function(){/*
++ `
 #define M_PI 3.1415926535897931
-attribute vec2 vertex;
+in vec2 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float ringMinRadius;
 uniform float ringMaxRadius;
 uniform vec3 pos;
 uniform vec4 angle;
-varying vec2 texCoordv;
-varying vec3 worldPosv;	//varying in world coordinates
+out vec2 texCoordv;
+out vec3 worldPosv;	//in world coordinates
 
 void main() {
 	texCoordv = vertex;
@@ -426,11 +428,11 @@ void main() {
 	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 #define NUM_STARS 1
-varying vec2 texCoordv;
-varying vec3 worldPosv;
+in vec2 texCoordv;
+in vec3 worldPosv;
 
 uniform sampler2D colorTex;
 
@@ -456,40 +458,41 @@ float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadiu
 	return 1.;
 }
 
+out vec4 fragColor;
 void main() {
 	float luminance = 1.;
 	//notice that I have to scale down the meters here for shader accuracy to work
 	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos * 1e-8, planetRadius * 1e-8)));
 
-	gl_FragColor = texture2D(colorTex, texCoordv);
-	gl_FragColor.rgb *= sqrt(luminance);
+	fragColor = texture(colorTex, texCoordv);
+	fragColor.rgb *= sqrt(luminance);
 }
-*/})
+`
 		});
 
-		var planet = solarSystem.planets[solarSystem.indexes.Jupiter];
+		let planet = solarSystem.planets[solarSystem.indexes.Jupiter];
 
-		var texSrcInfo = [
+		let texSrcInfo = [
 			{field:'ringColorTex', url:'textures/jupiter-rings-color.png', format:gl.RGBA},
 		];
-		var numLoaded = 0;
-		var onLoadRingTex = function(url) {
+		let numLoaded = 0;
+		let onLoadRingTex = function(url) {
 			++numLoaded;
 			if (numLoaded < texSrcInfo.length) return;
 			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
 
 			//done! create the ring object
-			var vertexes = [];
-			for (var i = 0; i < ringResolution; ++i) {
-				var f = i / (ringResolution - 1);
+			let vertexes = [];
+			for (let i = 0; i < ringResolution; ++i) {
+				let f = i / (ringResolution - 1);
 				vertexes.push(1);
 				vertexes.push(f);
 				vertexes.push(0);
 				vertexes.push(f);
 			}
 
-			var texs = [];
-			for (var i = 0; i < texSrcInfo.length; ++i) {
+			let texs = [];
+			for (let i = 0; i < texSrcInfo.length; ++i) {
 				texs[i] = planet[texSrcInfo[i].field];
 			}
 
@@ -539,12 +542,12 @@ void main() {
 
 	//Saturn's rings
 	(function(){
-		var saturnRingShader = new ModifiedDepthShaderProgram({
+		let saturnRingShader = new ModifiedDepthShaderProgram({
 			vertexCode : 
 quatRotateCode
-+ mlstr(function(){/*
++ `
 #define M_PI 3.1415926535897931
-attribute vec2 vertex;
+in vec2 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float ringMinRadius;
@@ -556,8 +559,8 @@ uniform float ringMaxRadius;
 uniform vec3 pos;
 uniform vec4 angle;
 
-varying vec2 texCoordv;
-varying vec3 worldPosv;	//varying in world coordinates
+out vec2 texCoordv;
+out vec3 worldPosv;	//in world coordinates
 
 void main() {
 	texCoordv = vertex;
@@ -578,14 +581,14 @@ void main() {
 	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 #define NUM_STARS 1
 //described here:
 //http://www.mmedia.is/~bjj/data/s_rings/index.html
 
-varying vec2 texCoordv;
-varying vec3 worldPosv;
+in vec2 texCoordv;
+in vec3 worldPosv;
 
 uniform sampler2D colorTex;
 uniform sampler2D backScatteredTex;	//from the sun looking at the rings
@@ -618,15 +621,16 @@ float sphereIntersect(vec3 startPos, vec3 dir, vec3 spherePos, float sphereRadiu
 	return 1.;
 }
 
+out vec4 fragColor;
 void main() {
-	vec3 color = texture2D(colorTex, texCoordv).rgb;
-	gl_FragColor.rgb = color;
+	vec3 color = texture(colorTex, texCoordv).rgb;
+	fragColor.rgb = color;
 
-	float backScattered = texture2D(backScatteredTex, texCoordv).r;
-	float forwardScattered = texture2D(forwardScatteredTex, texCoordv).r;
+	float backScattered = texture(backScatteredTex, texCoordv).r;
+	float forwardScattered = texture(forwardScatteredTex, texCoordv).r;
 	float litSide = mix(backScattered, forwardScattered, backToFrontLitBlend);
 
-	float unlitSide = texture2D(unlitSideTex, texCoordv).r;
+	float unlitSide = texture(unlitSideTex, texCoordv).r;
 
 	//shadow from the sun
 	//raytrace from worldPosv along sunDir (non-normalized)
@@ -638,41 +642,41 @@ void main() {
 	luminance = min(luminance, step(1., sphereIntersect(worldPosv * 1e-8, sunDir[0] * 1e-8, pos * 1e-8, planetRadius * 1e-8)));
 	luminance *= mix(unlitSide, litSide, lookingAtLitSide);
 
-	gl_FragColor.rgb *= sqrt(luminance);
+	fragColor.rgb *= sqrt(luminance);
 
-	float transparency = texture2D(transparencyTex, texCoordv).r;
-	gl_FragColor.a = transparency;
+	float transparency = texture(transparencyTex, texCoordv).r;
+	fragColor.a = transparency;
 }
-*/})
+`
 		});
 
-		var planet = solarSystem.planets[solarSystem.indexes.Saturn];
+		let planet = solarSystem.planets[solarSystem.indexes.Saturn];
 
-		var texSrcInfo = [
+		let texSrcInfo = [
 			{field:'ringColorTex', url:'textures/saturn-rings-color.png', format:gl.RGBA},
 			{field:'ringBackScatteredTex', url:'textures/saturn-rings-back-scattered.png', format:gl.LUMINANCE},
 			{field:'ringForwardScatteredTex', url:'textures/saturn-rings-forward-scattered.png', format:gl.LUMINANCE},
 			{field:'ringTransparencyTex', url:'textures/saturn-rings-transparency.png', format:gl.LUMINANCE},
 			{field:'ringUnlitSideTex', url:'textures/saturn-rings-unlit-side.png', format:gl.LUMINANCE}
 		];
-		var numLoaded = 0;
-		var onLoadRingTex = function(url) {
+		let numLoaded = 0;
+		let onLoadRingTex = function(url) {
 			++numLoaded;
 			if (numLoaded < texSrcInfo.length) return;
 			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
 
 			//done! create the ring object
-			var vertexes = [];
-			for (var i = 0; i < ringResolution; ++i) {
-				var f = i / (ringResolution - 1);
+			let vertexes = [];
+			for (let i = 0; i < ringResolution; ++i) {
+				let f = i / (ringResolution - 1);
 				vertexes.push(1);
 				vertexes.push(f);
 				vertexes.push(0);
 				vertexes.push(f);
 			}
 
-			var texs = [];
-			for (var i = 0; i < texSrcInfo.length; ++i) {
+			let texs = [];
+			for (let i = 0; i < texSrcInfo.length; ++i) {
 				texs[i] = planet[texSrcInfo[i].field];
 			}
 
@@ -733,15 +737,15 @@ void main() {
 	//request this per solar system.  rebuild if we need, return from cache if we don't.
 	getPlanetShadersForNumberOfStars : function(numberOfStars) {
 		if (numberOfStars <= 0) numberOfStars = 1;	//huh, I guess I have a star system with no stars ... "CFBDSIR2149 / CFBDSIR J214947.2-040308.9 / CFBDS J214947-040308"
-		var shaders = this.planetShadersForNumStars[numberOfStars];
+		let shaders = this.planetShadersForNumStars[numberOfStars];
 		if (shaders !== undefined) return shaders;
 
 		shaders = {};
 		shaders.colorShader = new ModifiedDepthShaderProgram({
-			vertexCode :
-'#define NUM_STARS '+numberOfStars+'\n'+
-			mlstr(function(){/*
-attribute vec2 vertex;		//lat/lon pairs:
+			vertexCode :`
+#define NUM_STARS `+numberOfStars+`
+
+in vec2 vertex;		//lat/lon pairs:
 uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
@@ -751,43 +755,43 @@ uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
-varying vec3 lightDir[NUM_STARS];		//light position
-varying vec3 normal;		//surface normal
+out vec3 lightDir[NUM_STARS];		//light position
+out vec3 normal;		//surface normal
 
-*/}) 
-			+ geodeticPositionCode 
-			+ quatRotateCode 
-			+ mlstr(function(){/*
+`
++ geodeticPositionCode 
++ quatRotateCode 
++ `
 
 void main() {
 	//vertex is really the lat/lon in degrees
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
-			+ mlstr(function(){/*
+`
++ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
++ `
 	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode :
-'#define NUM_STARS '+numberOfStars+'\n'
-			+ mlstr(function(){/*
+`,
+			fragmentCode :`
+#define NUM_STARS `+numberOfStars+`
+
 uniform vec4 color;
-varying vec3 lightDir[NUM_STARS];
-varying vec3 normal;
+in vec3 lightDir[NUM_STARS];
+in vec3 normal;
 uniform float ambient;
+out vec4 fragColor;
 void main() {
 	float litLum = 0.;
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
-			+ mlstr(function(){/*
+` + unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
++ `
 	float luminance = min(1., litLum);
-	gl_FragColor = color * max(ambient, sqrt(luminance));
+	fragColor = color * max(ambient, sqrt(luminance));
 }
-*/}),
+`,
 			uniforms : {
 				color : [1,1,1,1],
 				pointSize : 4
@@ -796,9 +800,9 @@ void main() {
 
 		shaders.texShader = new ModifiedDepthShaderProgram({
 			vertexCode :
-'#define NUM_STARS '+numberOfStars+'\n'
-			+ mlstr(function(){/*
-attribute vec2 vertex;		//lat/lon pairs
+`#define NUM_STARS `+numberOfStars+`
+
+in vec2 vertex;		//lat/lon pairs
 uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
@@ -808,14 +812,14 @@ uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
-varying vec2 texCoordv;
-varying vec3 lightDir[NUM_STARS];
-varying vec3 normal;
+out vec2 texCoordv;
+out vec3 lightDir[NUM_STARS];
+out vec3 normal;
 
-*/}) 
-			+ geodeticPositionCode 
-			+ quatRotateCode 
-			+ mlstr(function(){/*
+`
++ geodeticPositionCode 
++ quatRotateCode 
++ `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -823,31 +827,30 @@ void main() {
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	normal = quatRotate(angle, normalize(modelVertex));
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
-			+ mlstr(function(){/*
+` + unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - vtx3);')
++ `
 	vec4 vtx4 = mvMat * flatEarthXForm(vec4(vtx3, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
+`,
 			fragmentCode :
-'#define NUM_STARS '+numberOfStars+'\n'
-			+ mlstr(function(){/*
-varying vec2 texCoordv;
-varying vec3 lightDir[NUM_STARS];
-varying vec3 normal;
+`#define NUM_STARS `+numberOfStars+`
+
+in vec2 texCoordv;
+in vec3 lightDir[NUM_STARS];
+in vec3 normal;
 uniform sampler2D tex;
 uniform float ambient;
+out vec4 fragColor;
 void main() {
 	float litLum = 0.;
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
-			+ mlstr(function(){/*
+` + unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
++ `
 	float luminance = min(1., litLum);
-	gl_FragColor = texture2D(tex, texCoordv) * max(ambient, sqrt(luminance));
+	fragColor = texture(tex, texCoordv) * max(ambient, sqrt(luminance));
 }
-*/}),
+`,
 			uniforms : {
 				tex : 0
 			}
@@ -855,9 +858,9 @@ void main() {
 
 		shaders.ringShadowShader = new ModifiedDepthShaderProgram({
 			vertexCode :
-'#define NUM_STARS '+numberOfStars+'\n'
-			+ mlstr(function(){/*
-attribute vec2 vertex;		//lat/lon pairs
+`#define NUM_STARS `+numberOfStars+`
+
+in vec2 vertex;		//lat/lon pairs
 uniform mat4 mvMat;			//modelview matrix
 uniform mat4 projMat;		//projection matrix
 uniform vec3 pos;			//offset to planet position
@@ -867,15 +870,15 @@ uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;	//exhaggerate planet sizes
 //to fragment shader:
-varying vec3 modelVertexv;
-varying vec3 normal;
-varying vec2 texCoordv;
-varying vec3 lightDir[NUM_STARS];
+out vec3 modelVertexv;
+out vec3 normal;
+out vec2 texCoordv;
+out vec3 lightDir[NUM_STARS];
 
-*/}) 	
-			+ geodeticPositionCode 
-			+ quatRotateCode 
-			+ mlstr(function(){/*
+`
++ geodeticPositionCode 
++ quatRotateCode 
++ `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -883,22 +886,22 @@ void main() {
 	texCoordv = vertex.yx / vec2(360., 180.) + vec2(.5, .5);
 	vec3 worldVertex = quatRotate(angle, modelVertexv) + pos;
 	normal = quatRotate(angle, normalize(modelVertexv));
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - worldVertex);')
-			+ mlstr(function(){/*
+`
++ unravelForLoop('i', 0, numberOfStars-1, 'lightDir[i] = normalize(sunDir[i] - worldVertex);')
++ `
 	vec4 vtx4 = mvMat * flatEarthXForm(vec4(worldVertex, 1.));
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
+`,
 			fragmentCode :
-'#define NUM_STARS '+numberOfStars+'\n'
-			+ quatRotateCode
-			+ mlstr(function(){/*
-varying vec2 texCoordv;
-varying vec3 lightDir[NUM_STARS];
-varying vec3 normal;
-varying vec3 modelVertexv;
+`#define NUM_STARS `+numberOfStars + `
+` + quatRotateCode
++ `
+in vec2 texCoordv;
+in vec3 lightDir[NUM_STARS];
+in vec3 normal;
+in vec3 modelVertexv;
 uniform sampler2D tex;
 uniform sampler2D ringTransparencyTex;
 uniform float ambient;
@@ -915,6 +918,7 @@ float ringIntersect(vec3 startPos, vec3 dir) {
 	return (r - ringMinRadius) / (ringMaxRadius - ringMinRadius);
 }
 
+out vec4 fragColor;
 void main() {
 	float luminance = 1.;
 
@@ -923,19 +927,17 @@ void main() {
 	vec3 lightDirInModelSpace = quatRotate(vec4(-angle.xyz, angle.w), lightDir[0]);
 	float intersectPos = ringIntersect(modelVertexv, lightDirInModelSpace);
 	if (intersectPos >= 0. && intersectPos <= 1.) {
-		luminance *= texture2D(ringTransparencyTex, vec2(intersectPos, .5)).r;
+		luminance *= texture(ringTransparencyTex, vec2(intersectPos, .5)).r;
 	}
 
 	float litLum = 0.;
-*/}) 
-			+ unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
-			+ mlstr(function(){/*
-	luminance *= min(1., litLum);
+` + unravelForLoop('i', 0, numberOfStars-1, 'litLum += max(0., dot(lightDir[i], normal));')
++ `	luminance *= min(1., litLum);
 
-	gl_FragColor.rgb = texture2D(tex, texCoordv).rgb * max(ambient, sqrt(luminance));
-	gl_FragColor.a = 1.;
+	fragColor.rgb = texture(tex, texCoordv).rgb * max(ambient, sqrt(luminance));
+	fragColor.a = 1.;
 }
-*/}),
+`,
 			uniforms : {
 				tex : 0,
 				ringTransparencyTex : 1
@@ -948,8 +950,8 @@ void main() {
 
 	initExoplanets : function() {
 		//just over a meg, so I might as well ajax it
-		var exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
-		var thiz = this;
+		let exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
+		let thiz = this;
 		$.ajax({
 			url : exoplanetURL,
 			dataType : 'json'
@@ -968,36 +970,36 @@ void main() {
 
 		//process results
 		$.each(results.systems, function(i,systemInfo) {
-			var systemName = assertExists(systemInfo, 'name');
+			let systemName = assertExists(systemInfo, 'name');
 
-			var rightAscension = systemInfo.rightAscension;
+			let rightAscension = systemInfo.rightAscension;
 			if (rightAscension === undefined) {
 				console.log('failed to find right ascension for system '+systemName);
 				return;
 			}
-			var declination = systemInfo.declination;
+			let declination = systemInfo.declination;
 			if (declination === undefined) {
 				console.log('failed to find declination for system '+systemName);
 				return;
 			}
-			var cosRA = Math.cos(rightAscension);
-			var sinRA = Math.sin(rightAscension);
-			var cosDec = Math.cos(declination);
-			var sinDec = Math.sin(declination);
+			let cosRA = Math.cos(rightAscension);
+			let sinRA = Math.sin(rightAscension);
+			let cosDec = Math.cos(declination);
+			let sinDec = Math.sin(declination);
 			//convert to coordinates
-			var pos = [];
+			let pos = [];
 			pos[0] = cosRA * cosDec;
 			pos[1] = sinRA * cosDec;
 			pos[2] = sinDec;
 			//rotate for earth's tilt
-			var epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
-			var cosEps = Math.cos(epsilon);
-			var sinEps = Math.sin(epsilon);
-			var yn = cosEps * pos[1] + sinEps * pos[2];
+			let epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
+			let cosEps = Math.cos(epsilon);
+			let sinEps = Math.sin(epsilon);
+			let yn = cosEps * pos[1] + sinEps * pos[2];
 			pos[2] = -sinEps * pos[1] + cosEps * pos[2];
 			pos[1] = yn;
 			//distance
-			var distance = systemInfo.distance;
+			let distance = systemInfo.distance;
 			if (distance === undefined) {
 //				console.log('failed to find distance for system '+systemName);
 				return;
@@ -1007,19 +1009,19 @@ void main() {
 			pos[2] *= distance;
 
 
-			var starSystem = new StarSystem();
+			let starSystem = new StarSystem();
 			starSystem.name = systemName;
 			starSystem.sourceData = systemInfo;
 			vec3.copy(starSystem.pos, pos);
 
 			//TODO absoluate magnitude of the collective system (sum of all parts?)
 
-			var minAbsMag = undefined;
+			let minAbsMag = undefined;
 
 			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
 
-				var name = assertExists(bodyInfo, 'name');
-				var radius = bodyInfo.radius;
+				let name = assertExists(bodyInfo, 'name');
+				let radius = bodyInfo.radius;
 				if (radius === undefined) {
 					if (bodyInfo.type !== 'barycenter') {
 						//console.log('no radius for body '+name);
@@ -1028,7 +1030,7 @@ void main() {
 					}
 				}
 
-				var mass = bodyInfo.mass;
+				let mass = bodyInfo.mass;
 				if (mass === undefined) {
 					if (bodyInfo.density && bodyInfo.radius) {
 						mass = 4/3 * Math.PI * bodyInfo.density * radius * radius * radius;
@@ -1040,7 +1042,7 @@ void main() {
 					mass = 2e+27;	//use a jupiter mass
 				}
 
-				var body = mergeInto(new Planet(), {
+				let body = mergeInto(new Planet(), {
 					type : assertExists(bodyInfo, 'type'),
 					name : name,
 					mass : mass,
@@ -1077,8 +1079,8 @@ void main() {
 
 			starSystem.doneBuildingPlanets();
 
-			for (var i = 0; i < starSystem.planets.length; ++i) {
-				var body = starSystem.planets[i];
+			for (let i = 0; i < starSystem.planets.length; ++i) {
+				let body = starSystem.planets[i];
 
 				//further hacks for orbit, now that the parent pointer has been established
 				if (body.sourceData.semiMajorAxis === undefined) {
@@ -1131,9 +1133,9 @@ void main() {
 	//call this once we get back our star data
 	initStarsControls : function() {
 		//TODO maybe some pages or something for this, like the asteroid/smallbody search?
-		for (var i = 0; i < starSystems.length; ++i) {
+		for (let i = 0; i < starSystems.length; ++i) {
 			(function(){
-				var starSystem = starSystems[i];
+				let starSystem = starSystems[i];
 				$('<div>', {
 					css : {
 						textDecoration : 'underline',
@@ -1150,4 +1152,4 @@ void main() {
 	}
 });
 
-var starSystemsExtra = new StarSystems(); 
+let starSystemsExtra = new StarSystems(); 

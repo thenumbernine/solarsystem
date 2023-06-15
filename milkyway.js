@@ -1,11 +1,11 @@
-var milkyWay = new function(){
+let milkyWay = new function(){
 	this.fadeMinDistInLyr = 50;
 	this.fadeMaxDistInLyr = 1000;
 	
 	this.init = function(
 	) {
-		var thiz = this;
-		var img = new Image();
+		let thiz = this;
+		let img = new Image();
 		img.onload = function() {
 			thiz.sceneObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
@@ -15,15 +15,14 @@ var milkyWay = new function(){
 				},
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
-'#define SCALE_OF_MILKY_WAY_SPRITE ' + floatToGLSL(160000 * metersPerUnits.lyr / interGalacticRenderScale) + '\n'
-+ mlstr(function(){/*
-attribute vec2 vertex;
-attribute vec2 texCoord;
+`#define SCALE_OF_MILKY_WAY_SPRITE ` + floatToGLSL(160000 * metersPerUnits.lyr / interGalacticRenderScale) + `
+in vec2 vertex;
+in vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
-varying vec2 texCoordv;
+out vec2 texCoordv;
 
-*/}) + coordinateSystemCode + mlstr(function(){/*
+` + coordinateSystemCode + `
 
 mat3 transpose(mat3 m) {
 	return mat3(m[0][0], m[1][0], m[2][0],
@@ -39,16 +38,17 @@ void main() {
     gl_Position = projMat * (mvMat * flatEarthXForm(vec4(modelPos, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-					fragmentCode : mlstr(function(){/*
+`,
+					fragmentCode : `
 uniform sampler2D tex;
 uniform float fadeInAlpha;
-varying vec2 texCoordv;
+in vec2 texCoordv;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = texture2D(tex, texCoordv);
-	gl_FragColor.a *= fadeInAlpha;
+	fragColor = texture(tex, texCoordv);
+	fragColor.a *= fadeInAlpha;
 }
-*/}),
+`,
 				}),
 				uniforms : {
 					tex : 0

@@ -1,19 +1,19 @@
-var PointOctreeNode = makeClass({
+class PointOctreeNode {
 	pointSize : 500,	//in m ... so maybe convert this to AU
 	pointAlpha : .75,
-	init : function(tree) {
+	constructor(tree) {
 		this.tree = tree;
 		this.mins = [];
 		this.maxs = [];
 		this.center = [];
-	},
-	loadData : function() {
+	}
+	loadData() {
 		if (this.sceneObj) return;		
 		if (this.loadingData) return;
 		this.unloaded = false;
 		this.loadingData = true;
-		var thiz = this;
-		var url = this.tree.urlBase+'/nodes/'+this.nodeID+'.json';
+		let thiz = this;
+		let url = this.tree.urlBase+'/nodes/'+this.nodeID+'.json';
 		$.ajax({
 			url : url,
 			dataType : 'json',
@@ -23,17 +23,17 @@ var PointOctreeNode = makeClass({
 //			if (thiz.unloaded) return;
 			thiz.processData(data);
 		});
-	},
-	processData : function(data) {
+	}
+	processData(data) {
 		assert(!this.sceneObj);	//TODO use this.sceneObj instead of this.loaded
 
 		//hold all parameters for each body
-		var len = data.length;
+		let len = data.length;
 		if (!len) return;
 
-		var rows = this.tree.rows;
-		for (var i = 0; i < rows.length; ++i) {
-			var buffer;
+		let rows = this.tree.rows;
+		for (let i = 0; i < rows.length; ++i) {
+			let buffer;
 			switch (rows[i].type) {
 			case 'vec3': buffer = new Float32Array(3*len); break;
 			case 'byte': buffer = new Uint8Array(len); break;
@@ -46,13 +46,13 @@ var PointOctreeNode = makeClass({
 			this[rows[i].name+'Array'] = buffer;
 		}
 
-		for (var i = 0; i < data.length; ++i) {
-			var e = 0;
-			for (var j = 0; j < rows.length; ++j) {
-				var buffer = this[rows[j].name+'Array'];
+		for (let i = 0; i < data.length; ++i) {
+			let e = 0;
+			for (let j = 0; j < rows.length; ++j) {
+				let buffer = this[rows[j].name+'Array'];
 				switch (rows[j].type) {
 				case 'vec3':
-					for (var k = 0; k < 3; ++k) {
+					for (let k = 0; k < 3; ++k) {
 						buffer[k+3*i] = data[i][e++];
 					}
 					break;
@@ -79,8 +79,8 @@ var PointOctreeNode = makeClass({
 			parent : null,
 			static : true
 		});
-	},
-	unloadData : function() {
+	}
+	unloadData() {
 //		if (!this.sceneObj) return;
 		this.unloaded = true;	//tell any loading operations to stop
 /*		this.loadedData = undefined;
@@ -94,17 +94,17 @@ var PointOctreeNode = makeClass({
 		delete this.sceneObj;
 		this.sceneObj = undefined;
 */
-	},
-	prepDraw : function(drawList, tanFovY) {
-		var radius = Math.max(
+	}
+	prepDraw(drawList, tanFovY) {
+		let radius = Math.max(
 			this.maxs[0] - this.mins[0],
 			this.maxs[1] - this.mins[1],
 			this.maxs[2] - this.mins[2]);
 		//from center 
-		var dx = this.center[0] - glutil.view.pos[0] - orbitTarget.pos[0];
-		var dy = this.center[1] - glutil.view.pos[1] - orbitTarget.pos[1];
-		var dz = this.center[2] - glutil.view.pos[2] - orbitTarget.pos[2];
-		var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+		let dx = this.center[0] - glutil.view.pos[0] - orbitTarget.pos[0];
+		let dy = this.center[1] - glutil.view.pos[1] - orbitTarget.pos[1];
+		let dz = this.center[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+		let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 		
 		//TODO test occlusion
 		
@@ -122,32 +122,32 @@ var PointOctreeNode = makeClass({
 		this.loadData();
 
 		//insert sorted by visRatio, lowest to highest, starting at the back (optimistic)
-		for (var i = drawList.length-1; i >= 0; --i) {
+		for (let i = drawList.length-1; i >= 0; --i) {
 			if (drawList[i].visRatio < this.visRatio) {
 				drawList.splice(i+1, 0, this);
 				return;
 			}
 		}
 		drawList.splice(0, 0, this);
-	},
-	drawAndAdd : function(drawList, tanFovY, distInM, picking) {
+	}
+	drawAndAdd(drawList, tanFovY, distInM, picking) {
 		this.draw(distInM, tanFovY, picking);
 		this.tree.drawnThisFrame.push(this);
 
 		if (this.children !== undefined) {
-			for (var i = 0; i < 8; ++i) {
-				var ch = this.children[i];
+			for (let i = 0; i < 8; ++i) {
+				let ch = this.children[i];
 				if (ch !== undefined) {
 					ch.prepDraw(drawList, tanFovY);
 				}
 			}
 		}
-	},
-	draw : function(distInM, tanFovY, picking) {
+	}
+	draw(distInM, tanFovY, picking) {
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
 		
-		var pointSize = 
+		let pointSize = 
 			this.pointSize 
 			* canvas.width 
 			* Math.sqrt(distInM) 
@@ -159,7 +159,7 @@ var PointOctreeNode = makeClass({
 		if (picking) {
 			//extra tough too-small threshold for picking
 			if (this.visRatio < this.tree.visRatioPickThreshold) return;	
-			var thiz = this;
+			let thiz = this;
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
@@ -174,11 +174,11 @@ var PointOctreeNode = makeClass({
 		} else {
 			this.sceneObj.draw();
 		}
-	},
-	find : function(x,y,z) {
+	}
+	find(x,y,z) {
 		if (this.children !== undefined) {
-			for (var i = 0; i < 8; ++i) {
-				var ch = this.children[i];
+			for (let i = 0; i < 8; ++i) {
+				let ch = this.children[i];
 				if (ch === undefined) continue;
 				if (x >= ch.mins[0] && x <= ch.maxs[0] &&
 					y >= ch.mins[1] && y <= ch.maxs[1] &&
@@ -190,9 +190,9 @@ var PointOctreeNode = makeClass({
 		}
 		return this;
 	}
-});
+}
 
-var PointOctree = makeClass({
+class PointOctree {
 	maxDrawnNodes : 400,	//there are 2185 for the small bodies
 	showAllAtOnce : false,
 	showWithDensity : false,	//don't change this after init
@@ -214,8 +214,8 @@ var PointOctree = makeClass({
 		this.cache = {};
 		
 		this.shader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
+			vertexCode : `
+in vec3 vertex;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform float pointSize;
@@ -225,13 +225,14 @@ void main() {
 	gl_PointSize = clamp(gl_PointSize, .25, 5.);
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 uniform float alpha;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = vec4(.75, .75, .75, alpha);
+	fragColor = vec4(.75, .75, .75, alpha);
 }
-*/}),
+`,
 		});
 
 
@@ -257,29 +258,28 @@ void main() {
 			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTex.obj, 0);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 			this.overlayShader = new glutil.ShaderProgram({
-				vertexPrecision : 'best',
-				vertexCode : mlstr(function(){/*
-attribute vec2 vertex;
-varying vec2 tc;
+				vertexCode : `
+in vec2 vertex;
+out vec2 tc;
 void main() {
 	tc = vertex;
 	gl_Position = vec4(vertex * 2. - 1., 0., 1.);
 }
-*/}),
-				fragmentPrecision : 'best',
-				fragmentCode : mlstr(function(){/*
+`,
+				fragmentCode : `
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
 uniform float logBase;
 uniform vec2 texSize;
-varying vec2 tc;
+in vec2 tc;
+out vec4 fragColor;
 void main() {
-	float alpha = texture2D(tex, tc * texSize).x;
+	float alpha = texture(tex, tc * texSize).x;
 	alpha = log(alpha + 1.) / logBase;
-	gl_FragColor = texture2D(hsvTex, vec2(alpha, .5));
-	gl_FragColor.a = min(alpha * 100., 1.);
+	fragColor = texture(hsvTex, vec2(alpha, .5));
+	fragColor.a = min(alpha * 100., 1.);
 }
-*/}),
+`,
 				uniforms : {
 					tex : 0,
 					hsvTex : 1,
@@ -292,8 +292,8 @@ void main() {
 		this.load();
 	},
 	load : function() {
-		var url = this.urlBase + '/octree.json';
-		var thiz = this;
+		let url = this.urlBase + '/octree.json';
+		let thiz = this;
 		$.ajax({
 			url : url,
 			dataType : 'json'
@@ -305,7 +305,7 @@ void main() {
 		}).done(function(data) {
 			thiz.processData(data);
 		});
-	},
+	}
 	
 	/*
 	data holds
@@ -313,10 +313,10 @@ void main() {
 		maxs
 		indexes (all valid child nodes)
 	*/
-	processData : function(data) {
+	processData(data) {
 		this.data = data;
 		this.nodeIDSet = {};
-		for (var i = 0; i < data.nodes.length; ++i) {
+		for (let i = 0; i < data.nodes.length; ++i) {
 			this.nodeIDSet[data.nodes[i]] = true;
 		}
 
@@ -325,7 +325,7 @@ void main() {
 		this.root.depth = 0;
 		this.root.levelID = 0;
 
-		for (var j = 0; j < 3; ++j) {
+		for (let j = 0; j < 3; ++j) {
 			this.root.mins[j] = data.mins[j];
 			this.root.maxs[j] = data.maxs[j];
 			this.root.center[j] = .5 * (data.mins[j] + data.maxs[j]);
@@ -334,26 +334,26 @@ void main() {
 		this.allNodes.push(this.root);
 
 		this.processNode(this.root);
-	},
+	}
 	
-	processNode : function(node) {
+	processNode(node) {
 		//node.nodeID includes offsets into each level
 
-		for (var ix = 0; ix < 2; ++ix) {
-			for (var iy = 0; iy < 2; ++iy) {
-				for (var iz = 0; iz < 2; ++iz) {
-					var is = [ix,iy,iz];
-					var childIndex = ix | ((iy | (iz<<1)) << 1);
+		for (let ix = 0; ix < 2; ++ix) {
+			for (let iy = 0; iy < 2; ++iy) {
+				for (let iz = 0; iz < 2; ++iz) {
+					let is = [ix,iy,iz];
+					let childIndex = ix | ((iy | (iz<<1)) << 1);
 
-					var childDepth = node.depth + 1;
-					var childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
-					var childLevelID = node.levelID | (childIndex << 3*node.depth);
-					var childNodeID = childLevelStart + childLevelID;
+					let childDepth = node.depth + 1;
+					let childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
+					let childLevelID = node.levelID | (childIndex << 3*node.depth);
+					let childNodeID = childLevelStart + childLevelID;
 					//if we find it in the master list 
 					// then create the node
 					if (!this.nodeIDSet[childNodeID]) continue;
 					if (!node.children) node.children = [];
-					var child = new PointOctreeNode(this);
+					let child = new PointOctreeNode(this);
 
 					child.nodeID = childNodeID;
 					child.depth = childDepth;
@@ -362,7 +362,7 @@ void main() {
 					node.children[childIndex] = child;
 					child.parent = node;
 					this.allNodes.push(child);
-					for (var j = 0; j < 3; ++j) {
+					for (let j = 0; j < 3; ++j) {
 						child.mins[j] = is[j] ? node.center[j] : node.mins[j];
 						child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
 						child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
@@ -372,16 +372,16 @@ void main() {
 				}
 			}
 		}
-	},
+	}
 
-	draw : function(
+	draw(
 		tanFovY,
 		picking,
 		viewPosInv,
 		invRotMat,
 		distFromSolarSystemInM
 	) {
-		var thiz = this;
+		let thiz = this;
 
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
@@ -391,30 +391,30 @@ void main() {
 			//TODO adjust based on LOD node depth
 			if (this.root) {
 				if (this.showAllAtOnce) {
-					for (var i = 0; i < this.allNodes.length; ++i) {
-						var node = this.allNodes[i];
+					for (let i = 0; i < this.allNodes.length; ++i) {
+						let node = this.allNodes[i];
 						node.draw(distFromSolarSystemInM, tanFovY, picking);
 					}
 				} else {	//good for selective rendering but bad for all rendering
-					var drawList = this.drawProcessing;
+					let drawList = this.drawProcessing;
 					drawList.length = 0;
 					this.drawnThisFrame.length = 0;
 					this.root.prepDraw(drawList, tanFovY);
-					for (var i = 0; i < this.maxDrawnNodes && drawList.length > 0; ++i) {
-						var node = drawList.splice(drawList.length-1, 1)[0];
+					for (let i = 0; i < this.maxDrawnNodes && drawList.length > 0; ++i) {
+						let node = drawList.splice(drawList.length-1, 1)[0];
 						node.drawAndAdd(drawList, tanFovY, distFromSolarSystemInM, picking);
 					}
 				}
 			}
 		} else { //this.showWithDensity
 			if (!picking) {
-				var viewport = gl.getParameter(gl.VIEWPORT);
+				let viewport = gl.getParameter(gl.VIEWPORT);
 				gl.viewport(0, 0, Math.min(canvas.width, this.fboTexWidth), Math.min(canvas.height, this.fboTexHeight));
 				this.fbo.draw({
 					callback : function() {
 						gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-						for (var i = 0; i < thiz.maxDrawnNodes && i < thiz.allNodes.length; ++i) {
-							var node = thiz.allNodes[i];
+						for (let i = 0; i < thiz.maxDrawnNodes && i < thiz.allNodes.length; ++i) {
+							let node = thiz.allNodes[i];
 							node.draw(distFromSolarSystemInM, tanFovY, picking);
 						}
 					}
@@ -442,14 +442,14 @@ void main() {
 		
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-	},
+	}
 
-	onPick : function(node, nodeLocalIndex) {
-		var data = node.sceneObj.attrs.vertex.buffer.data;
-		var x = data[0+3*nodeLocalIndex];
-		var y = data[1+3*nodeLocalIndex];
-		var z = data[2+3*nodeLocalIndex];
-		var index = node.indexArray[nodeLocalIndex];
+	onPick(node, nodeLocalIndex) {
+		let data = node.sceneObj.attrs.vertex.buffer.data;
+		let x = data[0+3*nodeLocalIndex];
+		let y = data[1+3*nodeLocalIndex];
+		let z = data[2+3*nodeLocalIndex];
+		let index = node.indexArray[nodeLocalIndex];
 
 		//TODO toggle on/off orbit data if we're selecting on/off a small body
 		//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -464,4 +464,4 @@ void main() {
 	
 		return this.createOrbitTarget(node,nodeLocalIndex,x,y,z,index);
 	}
-});
+}

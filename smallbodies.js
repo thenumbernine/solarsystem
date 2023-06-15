@@ -42,16 +42,16 @@ pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
 //TODO don't even download this until requested
 //and another TODO - organize the external datasets and have them all downloaded on request 
 // kinda like the universe visualization does
-var showSmallBodies = true;
-var allowSelectSmallBodies = true;
+let showSmallBodies = true;
+let allowSelectSmallBodies = true;
 
 //used with isa in the orbitTarget detection
 //instanciated when the user selects a node in the tree 
-var SmallBody = makeClass({
+let SmallBody = makeClass({
 	//callback from setOrbitTarget
 	onSelect : function() {
 		//add/removeSmallBody works with the UI controls to add/remove rows
-		var planet = solarSystem.addSmallBody(this.row);
+		let planet = solarSystem.addSmallBody(this.row);
 		
 		//for the orbit-target popup menu on the right
 		planet.type = this.row.bodyType;
@@ -61,7 +61,7 @@ var SmallBody = makeClass({
 
 		//hmm, this updates where the picking region goes
 		//but even when mousing over that region, the pick highlight still shows up at the old position
-		//var data = this.node.sceneObj.attrs.vertex.buffer.data;
+		//let data = this.node.sceneObj.attrs.vertex.buffer.data;
 		//data[0+3*this.nodeLocalIndex] = planet.pos[0];
 		//data[1+3*this.nodeLocalIndex] = planet.pos[1];
 		//data[2+3*this.nodeLocalIndex] = planet.pos[2];
@@ -72,7 +72,7 @@ var SmallBody = makeClass({
 	}
 });
 
-var SmallBodies = makeClass({
+let SmallBodies = makeClass({
 	pointSize : 1e+11,	//in m ... so maybe convert everything to AU
 	pointAlpha : .75,
 	showAllAtOnce : false,
@@ -86,8 +86,8 @@ var SmallBodies = makeClass({
 
 
 		this.shader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
+			vertexCode : `
+in vec3 vertex;
 uniform mat4 viewMatInv;
 uniform mat4 localMat;
 uniform mat4 projMat;
@@ -103,28 +103,29 @@ void main() {
 	gl_PointSize = clamp(gl_PointSize, .25, 5.);
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 uniform float alpha;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = vec4(.75, .75, .75, alpha);
+	fragColor = vec4(.75, .75, .75, alpha);
 }
-*/}),
+`,
 		});
 
 
-		var thiz = this;
+		let thiz = this;
 		
 		
-		var xhr = new XMLHttpRequest();
+		let xhr = new XMLHttpRequest();
 		//xhr.open('GET', 'jpl-ssd-smallbody/posvel.f64', true);
 		xhr.open('GET', 'jpl-ssd-smallbody/pos.f32', true);
 		xhr.responseType = 'arraybuffer';
 		// if we want a progress bar ...
-		var lastProgress = 0;
+		let lastProgress = 0;
 		xhr.onprogress = function(e) {
 			if (e.total) {
-				var thisProgress = Math.floor(e.loaded / e.total * 10);
+				let thisProgress = Math.floor(e.loaded / e.total * 10);
 				if (thisProgress != lastProgress) {
 					lastProgress = thisProgress;
 					console.log("smallbody loaded "+(thisProgress*10));
@@ -137,22 +138,22 @@ void main() {
 		this.added = 0;
 
 		xhr.onload = function(e) {
-			var data = new DataView(this.response);
-			//var len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
-			var len = data.byteLength / Float32Array.BYTES_PER_ELEMENT;
+			let data = new DataView(this.response);
+			//let len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
+			let len = data.byteLength / Float32Array.BYTES_PER_ELEMENT;
 				
 			//units are in parsecs
 			//don't forget velocity is not being rescaled (i'm not using it at the moment)
-			var floatBuffer = new Float32Array(len);
-			for (var j = 0; j < len; ++j) {
+			let floatBuffer = new Float32Array(len);
+			for (let j = 0; j < len; ++j) {
 				//floatBuffer[j] = data.getFloat64(j * Float64Array.BYTES_PER_ELEMENT, true);
 				floatBuffer[j] = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
 /*				
 				if (j % 6 == 5) {
-var n = floatBuffer.length;
-var x = floatBuffer[n-5];
-var y = floatBuffer[n-4];
-var z = floatBuffer[n-3];
+let n = floatBuffer.length;
+let x = floatBuffer[n-5];
+let y = floatBuffer[n-4];
+let z = floatBuffer[n-3];
 if (isFinite(x) && isFinite(y) && isFinite(z)
 	&& (x != 0 || y != 0 || z != 0)
 ) {
@@ -211,7 +212,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		invRotMat,
 		distFromSolarSystemInM
 	) {
-		var thiz = this;
+		let thiz = this;
 
 		if (!showSmallBodies) return;
 		if (picking && !allowSelectSmallBodies) return;
@@ -227,7 +228,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 		
-		var pointSize = 
+		let pointSize = 
 			this.pointSize 
 			* canvas.width 
 			* Math.sqrt(distInM) 
@@ -250,7 +251,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 /*
 			//extra tough too-small threshold for picking
 			if (this.visRatio < this.visRatioPickThreshold) return;	
-			var thiz = this;
+			let thiz = this;
 			pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
@@ -274,13 +275,13 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	},
 
 	onPick : function(node, index) {
-		var data = this.vertexArray;
-		var x = data[0+this.numElem*index];
-		var y = data[1+this.numElem*index];
-		var z = data[2+this.numElem*index];
-		//var vx = data[3+this.numElem*index];
-		//var vy = data[4+this.numElem*index];
-		//var vz = data[5+this.numElem*index];
+		let data = this.vertexArray;
+		let x = data[0+this.numElem*index];
+		let y = data[1+this.numElem*index];
+		let z = data[2+this.numElem*index];
+		//let vx = data[3+this.numElem*index];
+		//let vy = data[4+this.numElem*index];
+		//let vz = data[5+this.numElem*index];
 
 		//TODO toggle on/off orbit data if we're selecting on/off a small body
 		//TODO even more - don't query this, but instead use the local keplar orbital elements
@@ -299,7 +300,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	
 		//TODO a remote request to get the name
 
-		var smallBody = mergeInto(new SmallBody(), {
+		let smallBody = mergeInto(new SmallBody(), {
 			name : 'Small Body '+index,	//node.nameArray[index],
 			pos : [x,y,z],
 			//vel : [vx,vy,vz],
@@ -315,9 +316,9 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		*/
 
 /*
-		var row = {}
-		for (var i = 0; i < this.rows.length; ++i) {
-			var field = this.rows[i].name;
+		let row = {}
+		for (let i = 0; i < this.rows.length; ++i) {
+			let field = this.rows[i].name;
 			row[field] = node[field+'Array'][nodeLocalIndex];
 		}
 		row.bodyType = ['comet', 'numbered asteroid', 'unnumbered asteroid'][row.bodyType];
@@ -330,4 +331,4 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	}
 });
 
-var smallBodies;
+let smallBodies;

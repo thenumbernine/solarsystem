@@ -1,73 +1,19 @@
+<!doctype html>
 <html>
 	<head>
+		<meta charset="utf-8">
 		<title>Accurate Model of the Solar System</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 		<meta name='apple-mobile-web-app-capable' content='yes'/>
 		<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent'/>
-		
-		<link rel='stylesheet' href='themes/base/jquery.ui.all.css'></link>
-
-		<script type='text/javascript' src='../js/jquery-1.11.1.min.js'></script>
-		<script type='text/javascript' src='../js/purl.js'></script>
-		
-		<script src='ui/jquery.ui.widget.js'></script>
-		<script src='ui/jquery.ui.mouse.js'></script>
-		<script src='ui/jquery.ui.slider.js'></script>
-		
-		<script type='text/javascript' src='../js/gl-matrix.2.2.0.min.js'></script>
-		<script type='text/javascript'>
-glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
-		</script>
-		<script type='text/javascript' src='../js/webgl-debug.js'></script>
-		<script type='text/javascript' src='../js/util.js'></script>
-		<script type='text/javascript' src='../js/gl-util.js'></script>
-		<script type='text/javascript' src='../js/gl-util-gradient.js'></script>
-		<script type='text/javascript' src='../js/gl-util-unitquad.js'></script>
-		<script type='text/javascript' src='../js/gl-util-kernel.js'></script>
-		<script type='text/javascript' src='../js/mouse3d.js'></script>
-		<script type='text/javascript' src='../js/integrate.js'></script>
-		
-		<script type='text/javascript' src='astro-api.js'></script>	<!-- currently used for converting calendar to julian dates -->
 		
 		<script type='text/javascript' src='horizons/dynamic-vars.json'></script>
 		<script type='text/javascript' src='horizons/static-vars.json'></script>
 		<script type='text/javascript' src='hyg/namedStars.json'></script>
 		<script type='text/javascript' src='hyg/constellations.json'></script>
 
-		<script type='text/javascript' src='units.js'></script>
-		<script type='text/javascript' src='header.js'></script>
-		<script type='text/javascript' src='vec.js'></script>
-		<script type='text/javascript' src='planet.js'></script>
-		<script type='text/javascript' src='starsystem.js'></script>	<!-- TODO rename to exoplanets or planetarysystems or something -->
-		<script type='text/javascript' src='solarsystem.js'></script>
-		<script type='text/javascript' src='metric.js'></script>
-		<script type='text/javascript' src='milkyway.js'></script>
-		<script type='text/javascript' src='overlaytexts.js'></script>
-		<script type='text/javascript' src='pickobject.js'></script>
-		<script type='text/javascript' src='galaxies.js'></script>
-		<script type='text/javascript' src='starfield.js'></script>
-		<script type='text/javascript' src='pointoctree.js'></script>
-		<script type='text/javascript' src='jpl-ssd-smallbody/row-desc.json'></script>
-		<script type='text/javascript' src='smallbodies.js'></script>
-		<script type='text/javascript' src='skycube.js'></script>
-		<script type='text/javascript' src='calctides.js'></script>
-		<script type='text/javascript' src='starsystems.js'></script>
-		<script type='text/javascript' src='ui.js'></script>
-		<script type='text/javascript' src='main.js'></script>
-		
-<!-- script type='text/javascript'>
-var _gaq = _gaq || [];
-_gaq.push(['_setAccount', 'UA-17312646-1']);
-_gaq.push(['_trackPageview']);
-(function() {
-	var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-})();
-</script -->
-		
+		<script type='module' src='main.js' defer></script>
 		<style type='text/css'>
-
 body {
 	font-family:Georgia, serif;
 	background-color:black;
@@ -278,17 +224,6 @@ a:active {
 
 		<div id='webglfail' style='display:none'>
 			Sorry, your browser does not support WebGL<br>
-			Try one of these other, better browsers:<br>
-			<a href='http://www.google.com/chrome'>Chrome</a><br>
-			<a href='http://www.mozilla.org/firefox'>Firefox</a><br>
-			<a href='http://www.apple.com/safari'>Safari</a><br>
-			<b>Opera Users:</b><br>
-			Enter "opera:config" in the address bar.<br>
-			In the "User Prefs" section set both "Enable Hardware Acceleration" and "Enable WebGL" to "1" and then click "Save".<br>
-			It is still buggy.<br>
-			<b>IE Users:</b><br>
-			Sorry guys, IE doesn't plan to support WebGL.<br>
-			Consider using a more <a href='http://www.w3schools.com/browsers/browsers_stats.asp'>standard compliant</a> browser.<br>
 			<br>
 			<center>
 				<a href='images/screenshot.png'>

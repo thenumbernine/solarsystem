@@ -7,8 +7,8 @@ this is really the job of a separate thread, but I haven't taken the time to lea
 here's my thought: if the galaxies can't be selected / seen then resolve the search in one frame
 otherwise wait til the search is done
 */
-var PickObject = makeClass({ 
-	init : function() {
+class PickObject {
+	constructor() {
 		this.fboTexWidth = 32;
 		this.fboTexHeight = 32;
 		this.fboTex = new glutil.Texture2D({
@@ -38,13 +38,13 @@ var PickObject = makeClass({
 		//this is the shader to use with point clouds 
 		//point sets pass 'vertexID' as a sequential list of numbers
 		this.pickPointShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec3 vertex;
+			vertexCode : `
+in vec3 vertex;
 
 //there is no gl_VertexID in webgl ... so I'll just have to allocate 500k of sequential values
 //ch0 holds the first 11 bytes, ch1 holds the next 11
-attribute float vertexIDCh0;
-attribute float vertexIDCh1;
+in float vertexIDCh0;
+in float vertexIDCh1;
 
 uniform mat4 mvMat, projMat;
 uniform float pointSize;
@@ -52,7 +52,7 @@ uniform float pointSizeMin;
 uniform float pointSizeMax;
 uniform bool pointSizeScaleWithDist;
 
-varying vec3 vertexIDv;	
+out vec3 vertexIDv;	
 
 void main() {
 	vertexIDv = vec3(
@@ -72,18 +72,19 @@ void main() {
 
 	gl_Position.z = depthfunction(gl_Position); 
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 uniform vec3 startID;
-varying vec3 vertexIDv;
+in vec3 vertexIDv;
+out vec4 fragColor;
 void main() {
 	vec4 v = vec4(startID + vertexIDv, 0.);
 	vec3 carry = floor(v.xyz / 256.);
 	v.xyz = v.xyz - 256. * carry;
 	v.yzw = v.yzw + carry;
-	gl_FragColor = vec4(v.xyz / 256., 1.);
+	fragColor = vec4(v.xyz / 256., 1.);
 }
-*/}),
+`,
 			uniforms : {
 				startID : [0,0,0],
 				pointSize : 1,
@@ -94,8 +95,8 @@ void main() {
 		});
 
 		this.pickPlanetShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec2 vertex;	//lat/lon pairs
+			vertexCode : `
+in vec2 vertex;	//lat/lon pairs
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform vec3 pos;
@@ -103,20 +104,21 @@ uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
-*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
+` + geodeticPositionCode + quatRotateCode + `
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
 	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vtx3, 1.)));
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 uniform vec3 id;
+out vec4 fragColor;
 void main() {
-	gl_FragColor = vec4(id / 256., 1.);
+	fragColor = vec4(id / 256., 1.);
 }
-*/}),
+`,
 			uniforms : {
 				id : [0,0,0]
 			}
@@ -124,14 +126,14 @@ void main() {
 
 		this.pickProjMat = mat4.create();
 
-		var maxPickID = 600000;	//max point size
+		let maxPickID = 600000;	//max point size
 		//http://stackoverflow.com/questions/27874983/webgl-how-to-use-integer-attributes-in-glsl/27884245#27884245
-		var bitsPerChannel = 11;
-		var vertexIDCh0 = new Float32Array(maxPickID);
-		var vertexIDCh1 = new Float32Array(maxPickID);
+		let bitsPerChannel = 11;
+		let vertexIDCh0 = new Float32Array(maxPickID);
+		let vertexIDCh1 = new Float32Array(maxPickID);
 		//as big as our largest point buffer
-		for (var i = 0; i < maxPickID; ++i) {
-			var mask = (1 << (bitsPerChannel - 1)) - 1;
+		for (let i = 0; i < maxPickID; ++i) {
+			let mask = (1 << (bitsPerChannel - 1)) - 1;
 			vertexIDCh0[i] = i & mask;
 			vertexIDCh1[i] = (i >> bitsPerChannel) & mask;
 		}
@@ -141,10 +143,10 @@ void main() {
 		//because i'm lazy ...
 		//and it's more flexible to non-LInf metrics
 		this.pixelOrder = [];
-		for (var j = 0; j < this.fboTexHeight; ++j) {
-			var y = j - this.fboTexHeight/2;
-			for (var i = 0; i < this.fboTexWidth; ++i) {
-				var x = i - this.fboTexWidth/2;
+		for (let j = 0; j < this.fboTexHeight; ++j) {
+			let y = j - this.fboTexHeight/2;
+			for (let i = 0; i < this.fboTexWidth; ++i) {
+				let x = i - this.fboTexWidth/2;
 				this.pixelOrder.push([i,j,x*x + y*y]);
 			}
 		}
@@ -153,16 +155,16 @@ void main() {
 		});
 
 		this.callbacks = [];
-	},
+	}
 	
-	pick : function(doChoose, skipProjection) {
-		var viewport = gl.getParameter(gl.VIEWPORT);
+	pick(doChoose, skipProjection) {
+		let viewport = gl.getParameter(gl.VIEWPORT);
 		
 		//pick window size
-		var sizeX = this.fboTexWidth;
-		var sizeY = this.fboTexHeight;
-		var x = mouse.lastX;
-		var y = canvas.height - mouse.lastY - 1;
+		let sizeX = this.fboTexWidth;
+		let sizeY = this.fboTexHeight;
+		let x = mouse.lastX;
+		let y = canvas.height - mouse.lastY - 1;
 		
 		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
 		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
@@ -177,12 +179,12 @@ if (!skipProjection) {
 		this.pickID = this.startPickID;
 		this.callbacks.length = 0;
 		
-		var foundIndex = 0;
+		let foundIndex = 0;
 if (!skipProjection) {
 		gl.viewport(0, 0, sizeX, sizeY);
 }
-		var thiz = this;
-		var fboCallback = function() {
+		let thiz = this;
+		let fboCallback = function() {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
 			
 			// run the render loop
@@ -191,15 +193,15 @@ if (!skipProjection) {
 			drawScene(true);
 
 if (!skipProjection) {
-			var pixels = new Float32Array(sizeX * sizeY * 4);
+			let pixels = new Float32Array(sizeX * sizeY * 4);
 			gl.readPixels(0, 0, sizeX, sizeY, gl.RGBA, gl.FLOAT, pixels);
-			for (var e = 0; e < thiz.pixelOrder.length; ++e) {
-				var p = thiz.pixelOrder[e];
-				var i = p[0];
-				var j = p[1];
-				var r = 256 * pixels[0 + 4 * (i + sizeX * j)];
-				var g = 256 * pixels[1 + 4 * (i + sizeX * j)];
-				var b = 256 * pixels[2 + 4 * (i + sizeX * j)];
+			for (let e = 0; e < thiz.pixelOrder.length; ++e) {
+				let p = thiz.pixelOrder[e];
+				let i = p[0];
+				let j = p[1];
+				let r = 256 * pixels[0 + 4 * (i + sizeX * j)];
+				let g = 256 * pixels[1 + 4 * (i + sizeX * j)];
+				let b = 256 * pixels[2 + 4 * (i + sizeX * j)];
 				foundIndex = r | (g << 8) | (b << 16);
 				if (foundIndex) break;
 			}
@@ -211,9 +213,9 @@ if (skipProjection) {
 	this.fbo.draw({callback : fboCallback});
 }
 
-		var body = undefined;
-		for (var i = 0; i < this.callbacks.length; ++i) {
-			var cb = this.callbacks[i];
+		let body = undefined;
+		for (let i = 0; i < this.callbacks.length; ++i) {
+			let cb = this.callbacks[i];
 			if (foundIndex >= cb.start && foundIndex < cb.end) {
 				if (cb.callbackObj.isa && cb.callbackObj.isa(Planet)) {
 					body = cb.callbackObj;
@@ -234,10 +236,10 @@ if (skipProjection) {
 		}
 
 		gl.viewport.apply(gl, viewport);
-	},
+	}
 
-	registerCallback : function(callbackObj, count) {
-		var i = this.pickID;
+	registerCallback(callbackObj, count) {
+		let i = this.pickID;
 		this.callbacks.push({
 			start : this.pickID,
 			end : this.pickID + count,
@@ -245,25 +247,25 @@ if (skipProjection) {
 		});
 		this.pickID += count;
 		return [i & 255, (i >> 8) & 255, (i >> 16) & 255];
-	},
+	}
 
-	drawPoints : function(args) {
-		var sceneObj = assertExists(args, 'sceneObj');
-		var callbackObj = assertExists(args, 'targetCallback');
-		var pointSize = assertExists(args, 'pointSize');
-		var pointSizeMin = args.pointSizeMin !== undefined ? args.pointSizeMin : -Infinity;
-		var pointSizeMax = args.pointSizeMax !== undefined ? args.pointSizeMax : Infinity;
-		var pointSizeScaleWithDist = !!args.pointSizeScaleWithDist;
-		var vertexAttr = sceneObj.attrs.vertex;
+	drawPoints(args) {
+		let sceneObj = assertExists(args, 'sceneObj');
+		let callbackObj = assertExists(args, 'targetCallback');
+		let pointSize = assertExists(args, 'pointSize');
+		let pointSizeMin = args.pointSizeMin !== undefined ? args.pointSizeMin : -Infinity;
+		let pointSizeMax = args.pointSizeMax !== undefined ? args.pointSizeMax : Infinity;
+		let pointSizeScaleWithDist = !!args.pointSizeScaleWithDist;
+		let vertexAttr = sceneObj.attrs.vertex;
 		assertExists(vertexAttr, 'isa');
-		var vertexBuffer = undefined;
+		let vertexBuffer = undefined;
 		if (vertexAttr.isa(glutil.Attribute)) {
 			vertexBuffer = vertexAttr.buffer;
 		} else if (vertexAttr.isa(glutil.ArrayBuffer)) {
 			vertexBuffer = vertexAttr;
 		}
 		
-		var count = vertexBuffer.count || (vertexBuffer.data.length / vertexBuffer.dim);
+		let count = vertexBuffer.count || (vertexBuffer.data.length / vertexBuffer.dim);
 		this.pickPointShader.use();
 		this.pickPointShader.setAttrs({
 			vertex : assert(sceneObj.attrs.vertex),
@@ -282,9 +284,9 @@ if (skipProjection) {
 		});
 		sceneObj.geometry.draw();
 		this.pickPointShader.useNone();
-	},
+	}
 
-	drawPlanet : function(sceneObj, callbackObj) {
+	drawPlanet(sceneObj, callbackObj) {
 		this.pickPlanetShader.use();
 		this.pickPlanetShader.setAttrs({
 			vertex : sceneObj.attrs.vertex
@@ -306,6 +308,6 @@ if (skipProjection) {
 		sceneObj.geometry.draw();
 		this.pickPlanetShader.useNone();
 	}
-});
+}
 
-var pickObject;
+let pickObject;

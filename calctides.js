@@ -1,39 +1,36 @@
 //tried an experiment of doing surface calculations on the GPU
 //it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
 //I might try worker threads later...
-var CALCULATE_TIDES_WITH_GPU = false;
+let CALCULATE_TIDES_WITH_GPU = false;
 
-var colorBarHSVRange = 2/3;	// how much of the rainbow to use
-var tideTexWidth = 128;
-var tideTexHeight = 128;
+let colorBarHSVRange = 2/3;	// how much of the rainbow to use
+let tideTexWidth = 128;
+let tideTexHeight = 128;
 
-var CalcTides = makeClass({
-	initGL : function() {
+class CalcTides {
+	initGL() {
 		this.hsvTex = new glutil.HSVTexture(256);
-	},
+	}
 
-	invalidateForces : function() {
+	invalidateForces() {
 		//invalidate all
-		for (var starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
-			var starSystem = starSystems[starSystemIndex];
-			for (var planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
-				var planet = starSystem.planets[planetIndex];
+		for (let starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
+			let starSystem = starSystems[starSystemIndex];
+			for (let planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
+				let planet = starSystem.planets[planetIndex];
 				planet.lastMeasureCalcDate = undefined;
 			}
 		}
 	}
-});
+}
 
-var CalcTidesCPU = makeClass({
-	super : CalcTides,
-	initGL : function() {
-		CalcTidesCPU.superProto.initGL.apply(this, arguments);
+class CalcTidesCPU extends CalcTides {
+	initGL(...args) {
+		super.initGL(...args);
 
 		//renders a heat map from the float values of the 'tide' attribute
 		this.planetHeatMapAttrShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec2 vertex;		//lat/lon pairs
-attribute float tide;
+			vertexCode : `
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform vec3 pos;
@@ -41,10 +38,12 @@ uniform vec4 angle;
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;
-varying float tidev;
-varying vec2 texCoordv;
+in vec2 vertex;		//lat/lon pairs
+in float tide;
+out float tidev;
+out vec2 texCoordv;
 
-*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
+` + geodeticPositionCode + quatRotateCode + `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -56,44 +55,45 @@ void main() {
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
-varying float tidev;
-varying vec2 texCoordv;
+`,
+			fragmentCode : `
+in float tidev;
+in vec2 texCoordv;
 uniform sampler2D tex;
 uniform sampler2D hsvTex;
 uniform float heatAlpha;
+out vec4 fragColor;
 void main() {
-	vec4 hsvColor = texture2D(hsvTex, vec2(tidev, .5));
-	vec4 planetColor = texture2D(tex, texCoordv);
-	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+	vec4 hsvColor = texture(hsvTex, vec2(tidev, .5));
+	vec4 planetColor = texture(tex, texCoordv);
+	fragColor = mix(planetColor, hsvColor, heatAlpha);
 }
-*/}),
+`,
 			uniforms : {
 				tex : 0,
 				hsvTex : 1
 			}
 		});
-	},
+	}
 
-	initPlanetSceneObj : function(planet) {
+	initPlanetSceneObj(planet) {
 		//old way, per-vertex storage, updated by CPU
 		
-		var tideArray = [];
+		let tideArray = [];
 		tideArray.length = planetSceneObj.attrs.vertex.count;
-		for (var i = 0; i < tideArray.length; ++i) tideArray[i] = 0;
+		for (let i = 0; i < tideArray.length; ++i) tideArray[i] = 0;
 	
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
-	},
+	}
 
-	updateHeatMapAlpha : function(heatAlpha) {
+	updateHeatMapAlpha(heatAlpha) {
 		gl.useProgram(this.planetHeatMapAttrShader.obj);
 		gl.uniform1f(this.planetHeatMapAttrShader.uniforms.heatAlpha.loc, heatAlpha);
 		gl.useProgram(null);
-	},
+	}
 
 	// old way -- calculate on CPU, upload to vertex buffer 
-	updatePlanetSceneObj : function(planet) {
+	updatePlanetSceneObj(planet) {
 		//TODO what if planet.tex === undefined?
 		planet.sceneObj.shader = this.planetHeatMapAttrShader;
 		planet.sceneObj.texs.length = 2;
@@ -104,16 +104,16 @@ void main() {
 		if (planet.lastMeasureCalcDate !== julianDate) {
 			planet.lastMeasureCalcDate = julianDate;
 
-			var measureMin = undefined;
-			var measureMax = undefined;
-			var vertexIndex = 0;
-			for (var tideIndex = 0; tideIndex < planet.tideBuffer.data.length; ++tideIndex) {
-				var lat = planet.sceneObj.attrs.vertex.data[vertexIndex++];
-				var lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
-var x = [];
+			let measureMin = undefined;
+			let measureMax = undefined;
+			let vertexIndex = 0;
+			for (let tideIndex = 0; tideIndex < planet.tideBuffer.data.length; ++tideIndex) {
+				let lat = planet.sceneObj.attrs.vertex.data[vertexIndex++];
+				let lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
+let x = [];
 				planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 
-				var t = calcMetricForce(x, planet);
+				let t = calcMetricForce(x, planet);
 
 				if (measureMin === undefined || t < measureMin) measureMin = t;
 				if (measureMax === undefined || t > measureMax) measureMax = t;
@@ -121,7 +121,7 @@ var x = [];
 			}
 			planet.measureMin = measureMin;
 			planet.measureMax = measureMax;
-			for (var i = 0; i < planet.tideBuffer.data.length; ++i) {
+			for (let i = 0; i < planet.tideBuffer.data.length; ++i) {
 				planet.tideBuffer.data[i] =
 					(255/256 - (planet.tideBuffer.data[i] - measureMin)
 						/ (measureMax - measureMin) * 254/256) * colorBarHSVRange;
@@ -132,17 +132,16 @@ var x = [];
 				refreshMeasureText();
 			}
 		}
-	},
+	}
 
-	drawPlanet : function(planet) {
+	drawPlanet(planet) {
 		planet.sceneObj.attrs.tide = planet.tideBuffer;
 	}
-});
+}
 
-var CalcTidesGPU = makeClass({
-	super : CalcTides,
-	initGL : function() {
-		CalcTidesCPU.superProto.initGL.apply(this, arguments);
+class CalcTidesGPU = extends CalcTides {
+	initGL(...args) {
+		super.initGL(...args);
 		
 		this.fbo = new glutil.Framebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
@@ -150,8 +149,7 @@ var CalcTidesGPU = makeClass({
 		
 		//renders a heat map from the float values of the 'tide' texture 
 		this.planetHeatMapTexShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec2 vertex;		//lat/lon pairs
+			vertexCode : `
 uniform mat4 mvMat;
 uniform mat4 projMat;
 uniform vec3 pos;
@@ -159,9 +157,10 @@ uniform vec4 angle;
 uniform float equatorialRadius;		//or use planet radius
 uniform float inverseFlattening;	//default 1 if it does not exist
 uniform float scaleExaggeration;
-varying vec2 texCoordv;
+in vec2 vertex;		//lat/lon pairs
+out vec2 texCoordv;
 
-*/}) + geodeticPositionCode + quatRotateCode + mlstr(function(){/*
+` + geodeticPositionCode + quatRotateCode + `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -172,23 +171,24 @@ void main() {
 	gl_Position = projMat * vtx4;
 	gl_Position.z = depthfunction(gl_Position);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 precision highp sampler2D;
 
-varying vec2 texCoordv;
+in vec2 texCoordv;
 uniform sampler2D tex;
 uniform sampler2D tideTex;
 uniform sampler2D hsvTex;
 uniform float heatAlpha;
 uniform float forceMin, forceMax;	//for clamping range
+out vec4 fragColor;
 void main() {
-	float gradientValue = (texture2D(tideTex, texCoordv).r - forceMin) / (forceMax - forceMin);
-	vec4 hsvColor = texture2D(hsvTex, vec2(gradientValue, .5));
-	vec4 planetColor = texture2D(tex, texCoordv);
-	gl_FragColor = mix(planetColor, hsvColor, heatAlpha);
+	float gradientValue = (texture(tideTex, texCoordv).r - forceMin) / (forceMax - forceMin);
+	vec4 hsvColor = texture(hsvTex, vec2(gradientValue, .5));
+	vec4 planetColor = texture(tex, texCoordv);
+	fragColor = mix(planetColor, hsvColor, heatAlpha);
 }
-*/}),
+`,
 			uniforms : {
 				tex : 0,
 				tideTex : 1,
@@ -202,19 +202,19 @@ void main() {
 		// (possibly need double precision in GLSL ... )
 		// ( use https://thasler.com/blog/?p=93 for emulated double precision in GLSL code)
 		planetSurfaceCalculationShader = new ModifiedDepthShaderProgram({
-			vertexCode : mlstr(function(){/*
-attribute vec2 vertex;
-attribute vec2 texCoord;
-varying vec2 texCoordv;
+			vertexCode : `
+in vec2 vertex;
+in vec2 texCoord;
+out vec2 texCoordv;
 void main() {
 	texCoordv = texCoord;
 	gl_Position = vec4(vertex, 0., 1.);
 }
-*/}),
-			fragmentCode : mlstr(function(){/*
+`,
+			fragmentCode : `
 precision highp sampler2D;
 
-varying vec2 texCoordv;
+in vec2 texCoordv;
 
 uniform vec3 pos;					//planet position, relative to the sun
 uniform vec4 angle;					//planet angle
@@ -234,11 +234,10 @@ uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z 
 // w = normal gravitational
 uniform bvec4 flags; 
 
-*/}) 
-			+ 'const float gravitationalConstant = '+(gravitationalConstant*1e+11)+';	// m^3 / (kg * s^2)\n'
-			+ geodeticPositionCode 
-			+ quatRotateCode 
-			+ mlstr(function(){/*
+` + `const float gravitationalConstant = `+(gravitationalConstant*1e+11)+`;	// m^3 / (kg * s^2)
+` + geodeticPositionCode 
++ quatRotateCode 
++ `
 
 //while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
 //1e+19 is still an upper bound for our floating point numbers
@@ -536,7 +535,7 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 	for (int i = 0; i < NEEDLESSUPPERBOUND; ++i) {
 		//...so I just have to put another upper bound here ...
 		if (i >= planetStateTexHeight) break;
-		vec4 planetState = texture2D(planetStateTex, vec2(.5, (float(i)+.5)*delta_i));
+		vec4 planetState = texture(planetStateTex, vec2(.5, (float(i)+.5)*delta_i));
 		if (planetState.w == 0.) continue;
 
 		double3 planetPos = double3_set(planetState.xyz * distancePrecisionBias);
@@ -567,6 +566,7 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 	return force.v.x;
 }
 
+out vec4 fragColor;
 void main() {
 	vec2 latLonCoord = ((texCoordv - vec2(.5, .5)) * vec2(360., 180.)).yx;
 	vec3 planetVertex = geodeticPosition(latLonCoord) * scaleExaggeration;	//planet's local frame
@@ -574,9 +574,9 @@ void main() {
 	vec3 solarSystemVertex = solarSystemRotatedVertex + pos;	///...translated to be relative to the SSB 
 	vec3 solarSystemNormal = normalize(solarSystemRotatedVertex);	//normalize() doesn't correctly handle ellipses.  you're supposed to scale the normal by [1/sx, 1/sy, 1/sz] or something to correct for the flattening distortion of the normals.
 	float forceValue = calcForceValue(solarSystemVertex, solarSystemNormal);
-	gl_FragColor = vec4(forceValue);
+	fragColor = vec4(forceValue);
 }
-*/}),
+`,
 			uniforms : {
 				planetStateTex : 0
 			}
@@ -585,7 +585,7 @@ void main() {
 		//tex used for performing min/max across tide tex
 		console.log('init tide reduce texs...');
 		this.tideReduceTexs = [];
-		var thiz = this;
+		let thiz = this;
 		$.each([0,1],function() {
 			thiz.tideReduceTexs.push(new glutil.Texture2D({
 				width : tideTexWidth,
@@ -620,20 +620,21 @@ void main() {
 
 		console.log('init min reduce shader...');
 		this.minReduceShader = new glutil.KernelShader({
-			code : mlstr(function(){/*
+			code : `
+out vec4 fragColor;
 void main() {
-vec2 intPos = pos * viewsize - .5;
+	vec2 intPos = pos * viewsize - .5;
 
-float a = texture2D(srcTex, (intPos * 2. + .5) / texsize).x;
-float b = texture2D(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
-float c = texture2D(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
-float d = texture2D(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
-float e = min(a,b);
-float f = min(c,d);
-float g = min(e,f);
-gl_FragColor = vec4(g, 0., 0., 0.);
+	float a = texture(srcTex, (intPos * 2. + .5) / texsize).x;
+	float b = texture(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
+	float c = texture(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
+	float d = texture(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
+	float e = min(a,b);
+	float f = min(c,d);
+	float g = min(e,f);
+	fragColor = vec4(g, 0., 0., 0.);
 }
-*/}),
+`,
 			uniforms : {
 				texsize : 'vec2',
 				viewsize : 'vec2'
@@ -644,20 +645,21 @@ gl_FragColor = vec4(g, 0., 0., 0.);
 		//should I just double this up in the one reduciton pass?
 		//it would mean twice as many operations anyways
 		this.maxReduceShader = new glutil.KernelShader({
-			code : mlstr(function(){/*
+			code : `
+out vec4 fragColor;
 void main() {
-vec2 intPos = pos * viewsize - .5;
+	vec2 intPos = pos * viewsize - .5;
 
-float a = texture2D(srcTex, (intPos * 2. + .5) / texsize).x;
-float b = texture2D(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
-float c = texture2D(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
-float d = texture2D(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
-float e = max(a,b);
-float f = max(c,d);
-float g = max(e,f);
-gl_FragColor = vec4(g, 0., 0., 0.);
+	float a = texture(srcTex, (intPos * 2. + .5) / texsize).x;
+	float b = texture(srcTex, (intPos * 2. + vec2(1., 0.) + .5) / texsize).x;
+	float c = texture(srcTex, (intPos * 2. + vec2(0., 1.) + .5) / texsize).x;
+	float d = texture(srcTex, (intPos * 2. + vec2(1., 1.) + .5) / texsize).x;
+	float e = max(a,b);
+	float f = max(c,d);
+	float g = max(e,f);
+	fragColor = vec4(g, 0., 0., 0.);
 }
-*/}),
+`,
 			uniforms : {
 				texsize : 'vec2',
 				viewsize : 'vec2'
@@ -668,9 +670,9 @@ gl_FragColor = vec4(g, 0., 0., 0.);
 		//http://lab.concord.org/experiments/webgl-gpgpu/webgl.html
 		console.log('init encode shader...');
 		this.encodeShader = [];
-		for (var channel = 0; channel < 4; ++channel) {
+		for (let channel = 0; channel < 4; ++channel) {
 			this.encodeShader[channel] = new glutil.KernelShader({
-				code : mlstr(function(){/*
+				code : `
 float shift_right(float v, float amt) {
 	v = floor(v) + 0.5;
 	return floor(v / exp2(amt));
@@ -710,17 +712,18 @@ vec4 encode_float(float val) {
 	return vec4(byte4, byte3, byte2, byte1);
 }
 
+out vec4 fragColor;
 void main() {
-	vec4 data = texture2D(tex, pos);
-	gl_FragColor = encode_float(data[$channel]);
+	vec4 data = texture(tex, pos);
+	fragColor = encode_float(data[$channel]);
 }
-*/}).replace(/\$channel/g, channel),
+`.replace(/\$channel/g, channel),
 				texs : ['tex']
 			});
 		}	
-	},
+	}
 	
-	initPlanetSceneObj : function(planet) {
+	initPlanetSceneObj(planet) {
 		//new way, per-texel storage, updated by GPU FBO kernel
 		//TODO pull these by request rather than allocating them per-planet (since we only ever see one or two or maybe 10 or 20 at a time .. never all 180+ local and even more)
 		planet.tideTex = new glutil.Texture2D({
@@ -735,16 +738,16 @@ void main() {
 				t : gl.CLAMP_TO_EDGE
 			}
 		});
-	},
+	}
 	
-	updateHeatMapAlpha : function(heatAlpha) {
+	updateHeatMapAlpha(heatAlpha) {
 		gl.useProgram(this.planetHeatMapTexShader.obj);
 		gl.uniform1f(this.planetHeatMapTexShader.uniforms.heatAlpha.loc, heatAlpha);
 		gl.useProgram(null);
-	},
+	}
 
 	//new way -- update planet state buffer to reflect position & mass
-	updatePlanetSceneObj : function(planet) {
+	updatePlanetSceneObj(planet) {
 		planet.sceneObj.shader = this.planetHeatMapTexShader;
 		planet.sceneObj.texs.length = 3;
 		planet.sceneObj.texs[0] = planet.tex;
@@ -763,7 +766,7 @@ void main() {
 			//fbo render to the tide tex to calcuate the float values 
 	
 			//look in the shader's code for which does what
-			var flags;
+			let flags;
 			switch (displayMethod) {
 			case 'Tangent Tidal':
 				flags = [true, false, false, false];
@@ -795,7 +798,7 @@ void main() {
 				break;
 			}
 	
-			var viewport = gl.getParameter(gl.VIEWPORT);
+			let viewport = gl.getParameter(gl.VIEWPORT);
 
 			this.fbo.setColorAttachmentTex2D(0, planet.tideTex);
 			gl.viewport(0, 0, tideTexWidth, tideTexHeight);
@@ -825,12 +828,12 @@ void main() {
 
 			//...then min/max reduce
 
-			var thiz = this;
-			var reduce = function(kernelShader, src) {
-				var width = tideTexWidth;
-				var height = tideTexHeight;
-				var dstIndex = 0; 
-				var current = src;
+			let thiz = this;
+			let reduce = function(kernelShader, src) {
+				let width = tideTexWidth;
+				let height = tideTexHeight;
+				let dstIndex = 0; 
+				let current = src;
 
 				while (width > 1 && height > 1) {
 					width >>= 1;
@@ -868,12 +871,12 @@ void main() {
 					texs : [current]
 				});
 
-				var cflUint8Result = new Uint8Array(4);
+				let cflUint8Result = new Uint8Array(4);
 				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, cflUint8Result);
 				thiz.fbo.unbind();
 				
-				var cflFloat32Result = new Float32Array(cflUint8Result.buffer);
-				var result = cflFloat32Result[0];
+				let cflFloat32Result = new Float32Array(cflUint8Result.buffer);
+				let result = cflFloat32Result[0];
 				return result;
 			};
 
@@ -896,11 +899,11 @@ planet.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + p
 			//...then use the float buffer, min, and max, to do the hsv overlay rendering
 
 		}
-	},
+	}
 	
-	drawPlanet : function(planet) {}
-});
+	drawPlanet(planet) {}
+}
 
-var calcTides = CALCULATE_TIDES_WITH_GPU
+let calcTides = CALCULATE_TIDES_WITH_GPU
 	? new CalcTidesGPU()
 	: new CalcTidesCPU();

@@ -1,10 +1,10 @@
-var slideDuration = 500;
-var slideWidth = 300;
-var currentOpenSidePanelID = undefined;
-var showBodyInfo = false;
-var allSidePanelIDs = [];
-var displayConstellations = [];
-var constellationIndexForName = {};
+let slideDuration = 500;
+let slideWidth = 300;
+let currentOpenSidePanelID = undefined;
+let showBodyInfo = false;
+let allSidePanelIDs = [];
+let displayConstellations = [];
+let constellationIndexForName = {};
 
 function resize() {
 	canvas.width = window.innerWidth;
@@ -17,7 +17,7 @@ function resize() {
 
 	//fix info panel height
 	if (showBodyInfo) {
-		var infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
+		let infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
 		$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
 	}
 
@@ -27,16 +27,16 @@ function resize() {
 	//glutil.view.fovY = Math.min(1, canvas.height / canvas.width) * 90;
 
 	/*
-	var aspectRatio = canvas.width / canvas.height;
-	var nearHeight = Math.tan(glutil.view.fovY * Math.PI / 360);
-	var nearWidth = aspectRatio * nearHeight;
+	let aspectRatio = canvas.width / canvas.height;
+	let nearHeight = Math.tan(glutil.view.fovY * Math.PI / 360);
+	let nearWidth = aspectRatio * nearHeight;
 	*/
 
 	/** /
 	//setup infinite projection matrix
 	//http://www.terathon.com/gdc07_lengyel.pdf
 	//http://www.gamasutra.com/view/feature/131351/the_mechanics_of_robust_stencil_.php?page=2
-	var epsilon = 0;
+	let epsilon = 0;
 	mat4.identity(glutil.scene.projMat);
 	glutil.scene.projMat[0] = glutil.view.zNear / nearWidth;
 	glutil.scene.projMat[5] = glutil.view.zNear / nearHeight;
@@ -49,8 +49,8 @@ function resize() {
 	/* or we could just linearly ramp the depth over the range we want, since the rest is going to full anyways * /
 	//(-z - zNear) / (zFar - zNear) * 2 - 1
 	//z * (-2 / (zFar - zNear)) + ( - 2 * zNear / (zFar - zNear) - 1)
-	var resZNear = 1e+4;
-	var resZFar = 1e+8;
+	let resZNear = 1e+4;
+	let resZFar = 1e+8;
 	mat4.identity(glutil.scene.projMat);
 	glutil.scene.projMat[0] = glutil.view.zNear / nearWidth;
 	glutil.scene.projMat[5] = glutil.view.zNear / nearHeight;
@@ -68,7 +68,7 @@ function showSidePanel(sidePanelID) {
 	$.each(allSidePanelIDs, function(i,sidePanelID) {
 		$('#'+sidePanelID).css('z-index', 1);
 	});
-	var sidePanel = $('#'+sidePanelID);
+	let sidePanel = $('#'+sidePanelID);
 	sidePanel.css('z-index', 2);
 	sidePanel.show();
 	$('#menu').animate(
@@ -77,7 +77,7 @@ function showSidePanel(sidePanelID) {
 		}, {
 			duration : slideDuration,
 			step : function(now, fx) {
-				var degrees = now / slideWidth * 180;
+				let degrees = now / slideWidth * 180;
 				setCSSRotation($(this), degrees);
 			}
 		}
@@ -88,7 +88,7 @@ function showSidePanel(sidePanelID) {
 
 function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	if (sidePanelID === currentOpenSidePanelID) currentOpenSidePanelID = undefined;
-	var sidePanel = $('#'+sidePanelID);
+	let sidePanel = $('#'+sidePanelID);
 	if (!dontMoveOpenButton) {
 		$('#menu').animate(
 			{
@@ -97,7 +97,7 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 			{
 				duration : slideDuration,
 				step : function(now, fx) {
-					var degrees = (now / slideWidth) * 180;
+					let degrees = (now / slideWidth) * 180;
 					setCSSRotation($(this), degrees);
 				}
 			}
@@ -111,7 +111,7 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	});
 }
 
-var ui = new function() {
+let ui = new function() {
 	this.init = function() {
 		allSidePanelIDs = [
 			'mainSidePanel',
@@ -222,9 +222,9 @@ var ui = new function() {
 	};
 
 	this.initSidePanel = function() {
-		var overlaySidePanelMetric = $('#overlaySidePanelMetric');
+		let overlaySidePanelMetric = $('#overlaySidePanelMetric');
 		$.each(metricInfos, function(metricIndex, metricInfo) {
-			var radio = $('<input>', {
+			let radio = $('<input>', {
 				type : 'radio',
 				name : 'calculationMetric',
 				value : metricIndex,
@@ -240,11 +240,11 @@ var ui = new function() {
 			$('<br>').appendTo(overlaySidePanelMetric);
 		});
 
-		var overlaySidePanelContents = $('#overlaySidePanelContents');
+		let overlaySidePanelContents = $('#overlaySidePanelContents');
 		$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanelContents);
 		$('<br>').appendTo(overlaySidePanelContents);
 		$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
-			var radio = $('<input>', {
+			let radio = $('<input>', {
 				type : 'radio',
 				name : 'displayMethods',
 				value : displayMethodIndex,
@@ -264,9 +264,9 @@ var ui = new function() {
 		$('<br>').appendTo(overlaySidePanelContents);
 
 		//add radio buttons hierarchically ...
-		var overlayControlsForPlanets = {};
+		let overlayControlsForPlanets = {};
 
-		var HierarchicalCheckboxControl = makeClass({
+		let HierarchicalCheckboxControl = makeClass({
 			/*
 			args:
 				title		<- used to identify this checkbox
@@ -282,12 +282,12 @@ var ui = new function() {
 					css : {paddingLeft:'5px'}
 				});
 
-				var thiz = this;
+				let thiz = this;
 				this.checkbox = $('<input>', {
 					type : 'checkbox',
 					change : function() {
 						//refresh all parent controls' moon checkboxes -- to whiteout or grey them
-						for (var c = thiz.parentControls; c; c = c.parentControls) {
+						for (let c = thiz.parentControls; c; c = c.parentControls) {
 							c.recomputeMoonCheckbox();
 						}
 
@@ -350,8 +350,8 @@ var ui = new function() {
 				this.childControls.push(childControl);
 			},
 			setAllChildren : function(checked) {
-				for (var i = 0; i < this.childControls.length; ++i) {
-					var ch = this.childControls[i].checkbox;
+				for (let i = 0; i < this.childControls.length; ++i) {
+					let ch = this.childControls[i].checkbox;
 					if (checked) {
 						if (!ch.prop('checked')) { ch.prop('checked', 1); ch.trigger('change'); }
 					} else {
@@ -361,9 +361,9 @@ var ui = new function() {
 				}
 			},
 			recomputeMoonCheckbox : function() {
-				var numChecked = 0;
-				var total = 0;
-				for (var i = 0; i < this.childControls.length; ++i) {
+				let numChecked = 0;
+				let total = 0;
+				for (let i = 0; i < this.childControls.length; ++i) {
 					++total;
 					//check the child
 					if (this.childControls[i].checkbox.prop('checked')) {
@@ -403,7 +403,7 @@ var ui = new function() {
 			//and if it's a barycenter then skip it ... or at least process its children?
 			if (planet.isBarycenter) return;
 
-			var parentPlanet = planet.parent;
+			let parentPlanet = planet.parent;
 			if (parentPlanet !== undefined) {
 				if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
 				//skip past any parent planets that don't have controls (i.e. barycenters)
@@ -412,7 +412,7 @@ var ui = new function() {
 				}
 			}
 
-			var controls = new HierarchicalCheckboxControl({
+			let controls = new HierarchicalCheckboxControl({
 				title : planet.name,
 				isChecked : true,
 				change : function() {
@@ -436,9 +436,9 @@ var ui = new function() {
 			overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
 		});
 
-		for (var planetIndex in overlayControlsForPlanets) {
-			var planetIndex = +planetIndex;
-			var controls = overlayControlsForPlanets[planetIndex];
+		for (let planetIndex in overlayControlsForPlanets) {
+			let planetIndex = +planetIndex;
+			let controls = overlayControlsForPlanets[planetIndex];
 
 			controls.recomputeMoonCheckbox();
 
@@ -461,7 +461,7 @@ var ui = new function() {
 
 		// display options side panel
 
-		var radioGroups = [
+		let radioGroups = [
 			['gravityWellScaleNormalized', 'gravityWellScaleFixed'],
 			['overlayShowOrbitTarget', 'overlayShowCurrentPosition']
 		];
@@ -490,17 +490,17 @@ var ui = new function() {
 			'overlayShowOrbitTarget',
 			'overlayShowCurrentPosition'
 		], function(_, toggle) {
-			var checkbox = $('#'+toggle);
+			let checkbox = $('#'+toggle);
 			if (window[toggle]) checkbox.attr('checked', 'checked');
 			checkbox.change(function() {
 				window[toggle] = checkbox.is(':checked');
 				
-				var found = false;
-				for (var i = 0; i < radioGroups.length; ++i) {
-					var group = radioGroups[i];
-					for (var j = 0; j < group.length; ++j) {
+				let found = false;
+				for (let i = 0; i < radioGroups.length; ++i) {
+					let group = radioGroups[i];
+					for (let j = 0; j < group.length; ++j) {
 						if (group[j] == toggle) {
-							for (var k = 0; k < group.length; ++k) {
+							for (let k = 0; k < group.length; ++k) {
 								if (k == j) continue;
 								window[group[k]] = false;
 							}
@@ -529,7 +529,7 @@ var ui = new function() {
 			'planetScaleExaggeration'
 		], function(_, toggle) {
 			(function(){
-				var textfield = $('#'+toggle);
+				let textfield = $('#'+toggle);
 				textfield.val(window[toggle]);
 				textfield.change(function() {
 					window[toggle] = textfield.val();
@@ -541,21 +541,21 @@ var ui = new function() {
 		// celestial bodies side panel
 
 
-		var solarSystemSidePanel = $('#solarSystemSidePanel');
+		let solarSystemSidePanel = $('#solarSystemSidePanel');
 
 		//add radio buttons hierarchically ...
-		var celestialBodiesControlsForPlanets = {};
+		let celestialBodiesControlsForPlanets = {};
 
-		var cometParent;
+		let cometParent;
 
 		$.each(solarSystem.planets, function(planetIndex,planet) {
 
-			var parentPlanet = planet.parent;
+			let parentPlanet = planet.parent;
 			if (parentPlanet !== undefined) {
 				if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
 			}
 
-			var controls = new HierarchicalCheckboxControl({
+			let controls = new HierarchicalCheckboxControl({
 				title : planet.name,
 				isChecked : !planet.hide,
 				change : function() {
@@ -577,9 +577,9 @@ var ui = new function() {
 		});
 
 		if (cometParent) cometParent.recomputeMoonCheckbox();
-		for (var planetIndex in celestialBodiesControlsForPlanets) {
-			var planetIndex = +planetIndex;
-			var controls = celestialBodiesControlsForPlanets[planetIndex];
+		for (let planetIndex in celestialBodiesControlsForPlanets) {
+			let planetIndex = +planetIndex;
+			let controls = celestialBodiesControlsForPlanets[planetIndex];
 
 			controls.recomputeMoonCheckbox();
 
@@ -603,19 +603,19 @@ var ui = new function() {
 		//they should get greyed upon new query (search, prev, next click)
 		//they should be regenerated upon new content
 		//they should be re-enabled upon error
-		var nextButton = undefined;
-		var prevButton = undefined;
+		let nextButton = undefined;
+		let prevButton = undefined;
 
-		var searchResults = [];
+		let searchResults = [];
 
-		var searchLastID = 0;	//uid to inc so if we search twice, the first can be invalidated
+		let searchLastID = 0;	//uid to inc so if we search twice, the first can be invalidated
 
 		//dataSource = 'remote' for remote queries, 'local' for the currently-selected planets
-		var processSearch = function(pageIndex, dataSource) {
+		let processSearch = function(pageIndex, dataSource) {
 console.log("small-bodies got a search request...");			
-			var button = $('#celestialBodiesSearch');
-			var searchText = $('#celestialBodiesSearchText');
-			var searchStr = searchText.val();
+			let button = $('#celestialBodiesSearch');
+			let searchText = $('#celestialBodiesSearchText');
+			let searchStr = searchText.val();
 			button.prop('disabled', 1);
 			searchText.val('searching...');
 			searchText.prop('disabled', 1);
@@ -623,9 +623,9 @@ console.log("small-bodies got a search request...");
 			if (prevButton) prevButton.prop('disabled', 1);
 			if (nextButton) nextButton.prop('disabled', 1);
 
-			var searchID = ++searchLastID;
+			let searchID = ++searchLastID;
 
-			var processResults = function(results) {
+			let processResults = function(results) {
 				if (searchID < searchLastID-1) return;	//someone else has searched
 
 				searchText.val(searchStr);
@@ -634,21 +634,21 @@ console.log("small-bodies got a search request...");
 
 				$('#celestialBodiesSearchToggleAll').prop('checked', 0);	//disable too?
 
-				var pageSize = 20;	//fixed atm
-				var pageMax = Math.floor((results.count-1) / pageSize);
+				let pageSize = 20;	//fixed atm
+				let pageMax = Math.floor((results.count-1) / pageSize);
 
 				searchResults = [];
 
-				var resultsDiv = $('#celestialBodiesSearchResults');
+				let resultsDiv = $('#celestialBodiesSearchResults');
 				resultsDiv.empty();
 				$.each(results.rows, function(i,row) {
-					var rowDiv = $('<div>');
+					let rowDiv = $('<div>');
 					rowDiv.appendTo(resultsDiv);
 
-					var name = row.name;
+					let name = row.name;
 
-					var titleSpan;
-					var checkbox = $('<input>', {
+					let titleSpan;
+					let checkbox = $('<input>', {
 						type : 'checkbox',
 						change : function() {
 							if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
@@ -666,7 +666,7 @@ console.log("small-bodies got a search request...");
 					titleSpan = $('<span>', {
 						text : name,
 						click : function() {
-							var targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
+							let targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
 							if (targetPlanet !== undefined) setOrbitTarget(targetPlanet);
 						}
 					}).appendTo(rowDiv);
@@ -684,7 +684,7 @@ console.log("small-bodies got a search request...");
 
 				//and add prev/next/pages if there is
 				if (pageMax > 0) {
-					var changePage = function(dir) {
+					let changePage = function(dir) {
 						//TODO remove or grey out results as well?
 						if (nextButton) nextButton.prop('disabled', 1);
 						if (prevButton) prevButton.prop('disabled', 1);
@@ -732,7 +732,7 @@ console.log("search error", arguments);
 					if (prevButton) prevButton.prop('disabled', 0);
 					if (nextButton) nextButton.prop('disabled', 0);
 
-					var warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
+					let warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
 					$('#celestialBodiesSearchWarning').after(warning);
 					setTimeout(function() {
 						//after five seconds, fade away
@@ -748,13 +748,13 @@ console.log("search error", arguments);
 					}, 3000);
 				}).done(processResults);
 			} else if (dataSource == 'local') {
-				var rows = [];
-				var searchingComets = $('#celestialBodiesSearchComets').prop('checked');
-				var searchingNumbered = $('#celestialBodiesSearchNumbered').prop('checked');
-				var searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
-				for (var i = 0; i < solarSystem.planets.length; ++i) {
-					var planet = solarSystem.planets[i];
-					var row = planet.sourceData;
+				let rows = [];
+				let searchingComets = $('#celestialBodiesSearchComets').prop('checked');
+				let searchingNumbered = $('#celestialBodiesSearchNumbered').prop('checked');
+				let searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
+				for (let i = 0; i < solarSystem.planets.length; ++i) {
+					let planet = solarSystem.planets[i];
+					let row = planet.sourceData;
 					if (row) {
 						if ((row.bodyType == 'comet' && searchingComets) ||
 							(row.bodyType == 'numbered asteroid' && searchingNumbered) ||
@@ -845,7 +845,7 @@ if (true) {	//recent asteroid passing by
 		});
 
 		$('#celestialBodiesSearchToggleAll').click(function() {
-			var checked = $(this).is(':checked');
+			let checked = $(this).is(':checked');
 			$.each(searchResults, function(i,result) {
 				if (result.checkbox.prop('checked') != checked) {
 					result.checkbox.trigger('click');
@@ -866,7 +866,7 @@ if (true) {	//recent asteroid passing by
 
 
 
-		var constellationsResults = $('#constellationsResults');
+		let constellationsResults = $('#constellationsResults');
 		
 		
 		//TODO - slider / min/max for filtering stars by ... (a) app. mag, or (b) abs mag
@@ -906,7 +906,7 @@ if (true) {	//recent asteroid passing by
 */
 
 
-		var sortedConstellationNames = [];
+		let sortedConstellationNames = [];
 		$.each(constellations, function(i,con) {
 			sortedConstellationNames.push(con.name);
 		});
@@ -916,10 +916,10 @@ if (true) {	//recent asteroid passing by
 			constellationIndexForName[con.name] = i;
 		});
 
-		var updateMagMinMax = function() {
-			var magmin = Infinity;
-			var magmax = -Infinity;
-			for (var k = 0; k < constellations.length; ++k) {
+		let updateMagMinMax = function() {
+			let magmin = Infinity;
+			let magmax = -Infinity;
+			for (let k = 0; k < constellations.length; ++k) {
 				if (displayConstellations[k]) {
 					magmin = Math.min(magmin, constellations[k].mag.min);
 					magmax = Math.max(magmax, constellations[k].mag.max);
@@ -933,7 +933,7 @@ if (true) {	//recent asteroid passing by
 			$('<input>', {
 				type : 'checkbox',
 				change : function() {
-					var index = constellationIndexForName[name];
+					let index = constellationIndexForName[name];
 					displayConstellations[index] = !displayConstellations[index];
 					updateMagMinMax();
 				}
