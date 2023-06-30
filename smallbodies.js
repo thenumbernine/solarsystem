@@ -333,4 +333,4 @@ SmallBodies.prototype.visRatioPickThreshold = .1;
 SmallBodies.prototype.numElem = 3;
 SmallBodies.prototype.show = true;
 
-export {SmallBodies}
+export {SmallBody, SmallBodies}

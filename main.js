@@ -3,10 +3,12 @@ glMatrix.setMatrixArrayType(Array);	//use double rather than float precision wit
 import {quatZAxis} from '/js/gl-util.js';
 import {DOM, show, hide, assert, animate, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
-import {SmallBodies} from './smallbodies.js';
-import {Galaxies} from './galaxies.js';
+import {SmallBody, SmallBodies} from './smallbodies.js';
+import {Galaxy, Galaxies} from './galaxies.js';
 import {PickObject} from './pickobject.js';
 import {Mouse3D} from '/js/mouse3d.js';
+import {StarSystem} from './starsystem.js';
+import {Planet} from './planet.js';
 
 import {overlayTexts} from './overlaytexts.js';
 import {metersPerUnits} from './units.js';
@@ -42,14 +44,6 @@ let lineObj;
 let quadObj;
 
 let planetAmbientLight = .1;
-
-class Galaxy {
-	constructor(args) {
-		for (k in args) {
-			this[k] = args[k];
-		}
-	}
-}
 
 function clearGeodeticLocation() {
 	const glutil = ui.glutil;
@@ -118,7 +112,9 @@ let showFPS = false;
 			cfg.flatEarthCoeff += cfg.flatEarthConvCoeff * (cfg.targetFlatEarthCoeff - cfg.flatEarthCoeff);
 		}
 
-		if (cfg.overlayShowCurrentPosition && cfg.orbitTarget.isa(Planet)) {
+		if (cfg.overlayShowCurrentPosition && 
+			cfg.orbitTarget instanceof Planet
+		) {
 			//update the min and max to reflect the current position
 			let x = glutil.view.pos[0] + cfg.orbitTarget.pos[0];
 			let y = glutil.view.pos[1] + cfg.orbitTarget.pos[1];
@@ -1275,7 +1271,7 @@ function setOrbitTarget(newTarget) {
 	if (newTarget === undefined) {
 		newTarget = cfg.orbitStarSystem.stars[0];
 	}
-	if (newTarget.isa && newTarget.isa(StarSystem)) {
+	if (newTarget instanceof StarSystem) {
 		let targetSystem = newTarget;
 		let i = 0;
 		for (; i < targetSystem.planets.length; ++i) {
@@ -1291,7 +1287,7 @@ function setOrbitTarget(newTarget) {
 			console.log("failed to find a planet in the system to select!");
 		}
 	}
-	if (newTarget.isa && newTarget.isa(Planet)) {
+	if (newTarget instanceof Planet) {
 		//if we're changing star systems...
 		if (newTarget.starSystem !== cfg.orbitStarSystem) {
 			selectingNewSystem = true;
@@ -1300,7 +1296,7 @@ function setOrbitTarget(newTarget) {
 	}
 
 	//query the server for this small body's orbit data
-	if (newTarget.isa && newTarget.isa(SmallBody)) {
+	if (newTarget instanceof SmallBody) {
 		newTarget.onSelect();
 	}
 
@@ -1545,7 +1541,7 @@ function update() {
 
 	//if we are close enough to the planet then rotate with it
 	let fixViewToSurface = cfg.orbitTargetDistance < cfg.orbitTarget.radius * .1 &&
-		(!(cfg.orbitTarget instanceof Galaxy));	//don't allow perspetive from galaxy "surfaces"
+		!(cfg.orbitTarget instanceof Galaxy);	//don't allow perspetive from galaxy "surfaces"
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
 		let pos = [];
 		vec3.add(pos, cfg.orbitTarget.pos, glutil.view.pos);

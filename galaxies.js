@@ -8,6 +8,14 @@ import {metersPerUnits} from './units.js';
 //if we're orbiting at 1AU then we can only click things at 1000 AU
 const ratioOfOrbitDistanceToAllowSelection = 10000;
 
+class Galaxy {
+	constructor(args) {
+		for (k in args) {
+			this[k] = args[k];
+		}
+	}
+}
+
 class Galaxies {
 	constructor() {
 		this.closestDistInM = undefined;	//for occlusion of all selection stuff
@@ -181,4 +189,4 @@ void main() {
 	}
 }
 
-export {Galaxies};
+export {Galaxy, Galaxies};

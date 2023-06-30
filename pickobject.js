@@ -10,6 +10,7 @@ otherwise wait til the search is done
 import {mat4} from '/js/gl-matrix-3.4.1/index.js';
 import {cfg} from './globals.js';
 import {ui} from './ui.js';
+import {Planet} from './planet.js';
 
 class PickObject {
 	constructor() {
@@ -35,11 +36,13 @@ class PickObject {
 		this.fbo = new glutil.Framebuffer({
 			width : this.fboTexWidth,
 			height : this.fboTexHeight,
-			useDepth : true
+			useDepth : true,
 		});
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTex.obj, 0);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		
+		this.fbo.bind();
+		this.fbo.setColorAttachment(this.fboTex);
+		this.fbo.check();
+		this.fbo.unbind();
 
 		//this is the shader to use with point clouds
 		//point sets pass 'vertexID' as a sequential list of numbers
@@ -220,14 +223,14 @@ if (!skipProjection) {
 if (skipProjection) {
 	fboCallback();
 } else {
-//	this.fbo.draw({callback : fboCallback});
+	this.fbo.draw({callback : fboCallback});
 }
 
 		let body = undefined;
 		for (let i = 0; i < this.callbacks.length; ++i) {
 			let cb = this.callbacks[i];
 			if (foundIndex >= cb.start && foundIndex < cb.end) {
-				if (cb.callbackObj.isa && cb.callbackObj.isa(Planet)) {
+				if (cb.callbackObj instanceof Planet) {
 					body = cb.callbackObj;
 				} else {
 					body = cb.callbackObj(foundIndex - cb.start);
@@ -260,6 +263,7 @@ if (skipProjection) {
 	}
 
 	drawPoints(args) {
+		const glutil = ui.glutil;
 		let sceneObj = assertExists(args, 'sceneObj');
 		let callbackObj = assertExists(args, 'targetCallback');
 		let pointSize = assertExists(args, 'pointSize');
@@ -267,11 +271,10 @@ if (skipProjection) {
 		let pointSizeMax = args.pointSizeMax !== undefined ? args.pointSizeMax : Infinity;
 		let pointSizeScaleWithDist = !!args.pointSizeScaleWithDist;
 		let vertexAttr = sceneObj.attrs.vertex;
-		assertExists(vertexAttr, 'isa');
 		let vertexBuffer = undefined;
-		if (vertexAttr.isa(glutil.Attribute)) {
+		if (vertexAttr instanceof glutil.Attribute) {
 			vertexBuffer = vertexAttr.buffer;
-		} else if (vertexAttr.isa(glutil.ArrayBuffer)) {
+		} else if (vertexAttr instanceof glutil.ArrayBuffer) {
 			vertexBuffer = vertexAttr;
 		}
 
