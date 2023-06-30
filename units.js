@@ -10,7 +10,7 @@ let metersPerUnits = {
 };
 
 let speedOfLight = metersPerUnits.ls;	// m/s
-let gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
+const gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
 
 //1 = c m/s  <-> c m = 1 s
 let metersPerSecond = speedOfLight;
@@ -20,5 +20,6 @@ const kilogramsPerMeter = gravitationalConstant / (metersPerSecond * metersPerSe
 
 export {
 	metersPerUnits,
+	gravitationalConstant,
 	kilogramsPerMeter,
 };

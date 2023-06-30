@@ -23,7 +23,7 @@ though atm i don't think I use vel but TODO fix this
 import {vec3, quat} from '/js/gl-matrix-3.4.1/index.js';
 import {assertExists} from '/js/util.js';
 import {cfg} from './globals.js';
-import {kilogramsPerMeter} from './units.js';
+import {kilogramsPerMeter, gravitationalConstant} from './units.js';
 import {starSystemsExtra} from './starsystems.js';
 import {calcTides} from './calctides.js';
 import {calcBasis} from './vec.js';
@@ -280,7 +280,7 @@ class Planet {
 	}
 
 	calcKOEFromPosVel() {
-		
+//console.log("this.mass", this.mass);		
 		// based on this position and velocity, find plane of orbit
 		let parentBody = this.parent;
 		if (parentBody === undefined) {
@@ -288,11 +288,7 @@ class Planet {
 			this.calcOrbitBasis();
 			return;
 		}
-
-		//used by planets to offset reconstructed orbit coordinates to exact position of this
-		let checkPosToPosX = 0;
-		let checkPosToPosY = 0;
-		let checkPosToPosZ = 0;
+//console.log("parentBody.mass", parentBody.mass);		
 
 		//consider position relative to orbiting parent
 		// should I be doing the same thing with the velocity?  probably...
@@ -321,9 +317,12 @@ class Planet {
 
 		const velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
 		const distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-		const gravitationalParameter = cfg.gravitationalConstant * ((this.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+//console.log("gravitationalConstant", gravitationalConstant);
+		const gravitationalParameter = gravitationalConstant * ((this.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+//console.log("gravitationalParameter", gravitationalParameter);
 		const specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
 		const semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
+//console.log("semiMajorAxis", semiMajorAxis);
 		const semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
 		const eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);		//e, unitless (assuming elliptical orbit)
 
@@ -391,20 +390,26 @@ if (this.orbitalPeriod !== undefined) {
 		const B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
+//console.log("A", A);
+//console.log("B", B);
 
 		/*
 		to convert back:
 		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
 		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly)
 		*/
+//console.log("pos", posX, posY, posZ);   
 		const checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
 		const checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
 		const checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-
-		checkPosToPosX = checkPosX - posX;
-		checkPosToPosY = checkPosY - posY;
-		checkPosToPosZ = checkPosZ - posZ;
+//console.log("checkPos", checkPosX, checkPosY, checkPosZ);   
+		//used by planets to offset reconstructed orbit coordinates to exact position of this
+		const checkPosToPosX = checkPosX - posX;
+		const checkPosToPosY = checkPosY - posY;
+		const checkPosToPosZ = checkPosZ - posZ;
+//console.log("checkPosToPos", checkPosToPosX, checkPosToPosY, checkPosToPosZ);   
 		const checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
+//console.log("checkPosToPosDist", checkPosToPosDist);  	
 		const checkPosError = checkPosToPosDist / distanceToParent;
 		if (checkPosError === checkPosError) {
 			if (checkPosError > 1e-5) {	//only report significant error
@@ -508,7 +513,7 @@ if (this.orbitalPeriod !== undefined) {
 			semiMajorAxis = this.sourceData.semiMajorAxis || 0;
 		}
 
-		const gravitationalParameter = cfg.gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
+		const gravitationalParameter = gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		const semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		
 		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)

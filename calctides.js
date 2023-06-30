@@ -1,6 +1,7 @@
 import {cfg} from './globals.js';
 import {ui} from './ui.js';
 import {starSystemsExtra} from './starsystems.js';
+import {gravitationalConstant} from './units.js';
 
 //tried an experiment of doing surface calculations on the GPU
 //it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
@@ -248,7 +249,7 @@ uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z 
 // w = normal gravitational
 uniform bvec4 flags; 
 
-` + `const float gravitationalConstant = `+(gravitationalConstant*1e+11)+`;	// m^3 / (kg * s^2)
+` + `const float gravitationalConstant = `+(cfg.gravitationalConstant*1e+11)+`;	// m^3 / (kg * s^2)
 ` + cfg.geodeticPositionCode 
 + cfg.quatRotateCode 
 + `
