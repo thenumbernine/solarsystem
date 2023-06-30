@@ -1,12 +1,15 @@
+import {assert, merge} from '/js/util.js';
+import {cfg} from './globals.js';
+import {StarSystem} from './starsystem.js';
+import {Planet} from './planet.js';
+
 //our solar system
-let SolarSystem = makeClass({
-	super : StarSystem,
-	name : 'Solar System',
-	init : function() {
-		SolarSystem.super.apply(this, arguments);
+class SolarSystem extends StarSystem {
+	constructor(...args) {
+		super(...args);
 
 		//add our initial planets ...
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 10,
 			name : 'Sun',
 			mass : 1.9891e+30,
@@ -14,7 +17,7 @@ let SolarSystem = makeClass({
 			//inverseFlattening : 1/0.00005,
 			type : 'star'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 199,
 			name : 'Mercury',
 			parent : 'Sun',
@@ -24,7 +27,7 @@ let SolarSystem = makeClass({
 			rotationPeriod : 58.6462,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 299,
 			name : 'Venus',
 			parent : 'Sun',
@@ -34,7 +37,7 @@ let SolarSystem = makeClass({
 			rotationPeriod : -243.0185,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 3,
 			name : 'Earth Barycenter',
 			parent : 'Sun',
@@ -45,7 +48,7 @@ let SolarSystem = makeClass({
 		hmm, technically the earth barycenter orbits the sun every 365 days
 		and the earth and moon both orbit the barycenter ever 28 days ...
 		*/
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 399,
 			name : 'Earth',
 			parent : 'Earth Barycenter',
@@ -58,7 +61,7 @@ let SolarSystem = makeClass({
 			rotationOffset : -2/24 * 2*Math.PI,	//looks about 2 hours off
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 301,
 			name : 'Moon',
 			parent : 'Earth Barycenter',
@@ -69,13 +72,13 @@ let SolarSystem = makeClass({
 			rotationOffset : 0,//180 * Math.PI / 360,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 4,
 			name : 'Mars Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 499,
 			name : 'Mars',
 			parent : 'Mars Barycenter',
@@ -86,13 +89,13 @@ let SolarSystem = makeClass({
 			rotationPeriod : 24.622962/24,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 5,
 			name : 'Jupiter Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 599,
 			name : 'Jupiter',
 			parent : 'Jupiter Barycenter',
@@ -103,13 +106,13 @@ let SolarSystem = makeClass({
 			ringRadiusRange : [102200000,227000000],
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 6,
 			name : 'Saturn Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 699,
 			name : 'Saturn',
 			parent : 'Saturn Barycenter',
@@ -120,13 +123,13 @@ let SolarSystem = makeClass({
 			ringRadiusRange : [74510000,140390000],
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 7,
 			name : 'Uranus Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 799,
 			name : 'Uranus',
 			parent : 'Uranus Barycenter',
@@ -136,13 +139,13 @@ let SolarSystem = makeClass({
 			inverseFlattening : 1/0.02293,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 8,
 			name : 'Neptune Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 899,
 			name : 'Neptune',
 			parent : 'Neptune Barycenter',
@@ -152,13 +155,13 @@ let SolarSystem = makeClass({
 			inverseFlattening : 1/0.0171,
 			type : 'planet'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 9,
 			name : 'Pluto Barycenter',
 			parent : 'Sun',
 			type : 'barycenter'
 		}));
-		this.planets.push(mergeInto(new Planet(), {
+		this.planets.push(merge(new Planet(), {
 			id : 999,
 			name : 'Pluto',
 			parent : 'Pluto Barycenter',
@@ -219,7 +222,7 @@ let SolarSystem = makeClass({
 					} else {
 						console.log("couldn't read parent of ",staticData);
 					}
-					this.planets.push(mergeInto(new Planet(), {
+					this.planets.push(merge(new Planet(), {
 						id:dynamicData.id,
 						name:staticData.name,
 						mass:staticData.mass,
@@ -268,15 +271,13 @@ let SolarSystem = makeClass({
 			if (!planet.isBarycenter) continue;
 			assert(planet.mass === undefined);
 			planet.mass = 0;
-			$.each(this.planets, function(j, childPlanet) {
+			this.planets.forEach((childPlanet, j) => {
 				if (childPlanet.parent != planet.name) return;
 				if (childPlanet.mass !== undefined) {
 					planet.mass += childPlanet.mass;
 				}
 			});
 		}
-
-
 
 		// get texture name 
 		for (let i = 0; i < this.planets.length; ++i) { 
@@ -316,14 +317,14 @@ let SolarSystem = makeClass({
 
 		//once we're done making planets, make a copy of the init
 		this.initPlanets = this.clonePlanets();
-	},
+	}
 
 	// interface with smallbodies point cloud picking system
 	// for creating/removing Planet objects into this StarSystem:
 
 	//specific to solarsystem / smallbodies:
 
-	removeSmallBody : function(row) {
+	removeSmallBody(row) {
 		let name = row.name;
 
 		//only add if it's already there
@@ -337,7 +338,7 @@ let SolarSystem = makeClass({
 		for (let i = index; i < solarSystem.planets.length; ++i) {
 			solarSystem.planets[index].index = i;
 		}
-		if (orbitTarget === planet) {
+		if (cfg.orbitTarget === planet) {
 			setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
 		}
 		//TODO destruct WebGL geometry?  or is it gc'd automatically?
@@ -346,9 +347,9 @@ let SolarSystem = makeClass({
 		for (let i = 0; i < solarSystem.planets.length; ++i) {
 			solarSystem.indexes[solarSystem.planets[i].name] = i;
 		}
-	},
+	}
 
-	addSmallBody : function(row) {
+	addSmallBody(row) {
 		let name = row.name;
 
 		//only add if it's not there
@@ -359,7 +360,7 @@ let SolarSystem = makeClass({
 		//add the row to the bodies
 
 		let index = solarSystem.planets.length;
-		let planet = mergeInto(new Planet(), {
+		let planet = merge(new Planet(), {
 			name : name,
 			isComet : row.bodyType == 'comet',
 			isAsteroid : row.bodyType == 'numbered asteroid' || row.bodyType == 'unnumbered asteroid',
@@ -388,5 +389,8 @@ let SolarSystem = makeClass({
 
 		return planet;
 	}
+}
 
-});
+SolarSystem.prototype.name = 'Solar System';
+
+export {SolarSystem}

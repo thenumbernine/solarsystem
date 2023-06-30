@@ -16,4 +16,9 @@ let gravitationalConstant = 6.6738480e-11;	// m^3 / (kg * s^2)
 let metersPerSecond = speedOfLight;
 
 //1 = G m^3 / (kg s^2) <=> G m^3 / (c m)^2 = kg <=> G/c^2 = kg/m
-let kilogramsPerMeter = gravitationalConstant / (metersPerSecond * metersPerSecond);
+const kilogramsPerMeter = gravitationalConstant / (metersPerSecond * metersPerSecond);
+
+export {
+	metersPerUnits,
+	kilogramsPerMeter,
+};

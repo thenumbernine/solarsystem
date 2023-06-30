@@ -1,15 +1,20 @@
+import {cfg} from './globals.js';
+import {ui} from './ui.js';
+import {starSystemsExtra} from './starsystems.js';
+
 //tried an experiment of doing surface calculations on the GPU
 //it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
 //I might try worker threads later...
-let CALCULATE_TIDES_WITH_GPU = false;
+const CALCULATE_TIDES_WITH_GPU = false;
 
-let colorBarHSVRange = 2/3;	// how much of the rainbow to use
-let tideTexWidth = 128;
-let tideTexHeight = 128;
+const colorBarHSVRange = 2/3;	// how much of the rainbow to use
+const tideTexWidth = 128;
+const tideTexHeight = 128;
 
 class CalcTides {
 	initGL() {
-		this.hsvTex = new glutil.HSVTexture(256);
+		const glutil = ui.glutil;
+		this.hsvTex = new glutil.Gradient.HSVTexture(256);
 	}
 
 	invalidateForces() {
@@ -27,6 +32,7 @@ class CalcTides {
 class CalcTidesCPU extends CalcTides {
 	initGL(...args) {
 		super.initGL(...args);
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 
 		//renders a heat map from the float values of the 'tide' attribute
 		this.planetHeatMapAttrShader = new ModifiedDepthShaderProgram({
@@ -43,7 +49,9 @@ in float tide;
 out float tidev;
 out vec2 texCoordv;
 
-` + geodeticPositionCode + quatRotateCode + `
+`
++ cfg.geodeticPositionCode 
++ cfg.quatRotateCode + `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -77,16 +85,17 @@ void main() {
 	}
 
 	initPlanetSceneObj(planet) {
+		const gl = ui.gl;
 		//old way, per-vertex storage, updated by CPU
 		
 		let tideArray = [];
-		tideArray.length = planetSceneObj.attrs.vertex.count;
-		for (let i = 0; i < tideArray.length; ++i) tideArray[i] = 0;
+		for (let i = 0; i < starSystemsExtra.planetSceneObj.attrs.vertex.count; ++i) tideArray.push(0);
 	
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
 	}
 
 	updateHeatMapAlpha(heatAlpha) {
+		const gl = ui.gl;
 		gl.useProgram(this.planetHeatMapAttrShader.obj);
 		gl.uniform1f(this.planetHeatMapAttrShader.uniforms.heatAlpha.loc, heatAlpha);
 		gl.useProgram(null);
@@ -101,8 +110,8 @@ void main() {
 		planet.sceneObj.texs[1] = this.hsvTex;
 			
 		//and update calculated variable if it is out of date ...
-		if (planet.lastMeasureCalcDate !== julianDate) {
-			planet.lastMeasureCalcDate = julianDate;
+		if (planet.lastMeasureCalcDate !== cfg.julianDate) {
+			planet.lastMeasureCalcDate = cfg.julianDate;
 
 			let measureMin = undefined;
 			let measureMax = undefined;
@@ -128,7 +137,7 @@ let x = [];
 			}
 			planet.tideBuffer.updateData();
 			//if it updated...
-			if (planet == orbitTarget) {
+			if (planet == cfg.orbitTarget) {
 				refreshMeasureText();
 			}
 		}
@@ -139,9 +148,11 @@ let x = [];
 	}
 }
 
-class CalcTidesGPU = extends CalcTides {
+class CalcTidesGPU extends CalcTides {
 	initGL(...args) {
 		super.initGL(...args);
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		
 		this.fbo = new glutil.Framebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
@@ -160,7 +171,10 @@ uniform float scaleExaggeration;
 in vec2 vertex;		//lat/lon pairs
 out vec2 texCoordv;
 
-` + geodeticPositionCode + quatRotateCode + `
+`
++ cfg.geodeticPositionCode
++ cfg.quatRotateCode 
++ `
 
 void main() {
 	//vertex is really the lat/lon in degrees
@@ -235,8 +249,8 @@ uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z 
 uniform bvec4 flags; 
 
 ` + `const float gravitationalConstant = `+(gravitationalConstant*1e+11)+`;	// m^3 / (kg * s^2)
-` + geodeticPositionCode 
-+ quatRotateCode 
+` + cfg.geodeticPositionCode 
++ cfg.quatRotateCode 
 + `
 
 //while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
@@ -586,7 +600,7 @@ void main() {
 		console.log('init tide reduce texs...');
 		this.tideReduceTexs = [];
 		let thiz = this;
-		$.each([0,1],function() {
+		[0,1].forEach(() => {
 			thiz.tideReduceTexs.push(new glutil.Texture2D({
 				width : tideTexWidth,
 				height : tideTexHeight,
@@ -755,8 +769,8 @@ void main() {
 		planet.sceneObj.texs[2] = this.hsvTex;
 		
 		//and update calculated variable if it is out of date ...
-		if (planet.lastMeasureCalcDate !== julianDate) {
-			planet.lastMeasureCalcDate = julianDate;
+		if (planet.lastMeasureCalcDate !== cfg.julianDate) {
+			planet.lastMeasureCalcDate = cfg.julianDate;
 
 
 			// (could store tide values in a texture then reduce to find min/max, but this means a texture per planet ... that's lots of textures ...)
@@ -817,11 +831,11 @@ void main() {
 							equatorialRadius : planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius,
 							inverseFlattening : planet.inverseFlattening !== undefined ? planet.inverseFlattening : .5,
 							sourcePlanetIndex : planet.index,
-							planetStateTexHeight : orbitStarSystem.planetStateTex.height,
+							planetStateTexHeight : cfg.orbitStarSystem.planetStateTex.height,
 							scaleExaggeration : planetScaleExaggeration,
 							flags : flags
 						},
-						texs : [orbitStarSystem.planetStateTex],
+						texs : [cfg.orbitStarSystem.planetStateTex],
 					});
 				}
 			});
@@ -883,7 +897,7 @@ void main() {
 			planet.measureMin = reduce(this.minReduceShader, planet.tideTex);
 			planet.measureMax = reduce(this.maxReduceShader, planet.tideTex);
 //console.log('measure min', planet.measureMin, 'max', planet.measureMax);
-			if (planet == orbitTarget) {
+			if (planet == cfg.orbitTarget) {
 				refreshMeasureText();
 			}
 
@@ -904,6 +918,8 @@ planet.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + p
 	drawPlanet(planet) {}
 }
 
-let calcTides = CALCULATE_TIDES_WITH_GPU
+const calcTides = CALCULATE_TIDES_WITH_GPU
 	? new CalcTidesGPU()
 	: new CalcTidesCPU();
+
+export {calcTides};

@@ -3,7 +3,7 @@
 let glutil;
 GLUtil.prototype.oninit.push(function() {
 	glutil = this;
-	class KernelShader extends glutil.ShaderProgram {
+	class KernelShader extends glutil.Program {
 		/*
 		args:
 			code : the fragment code
@@ -16,15 +16,27 @@ GLUtil.prototype.oninit.push(function() {
 			precision : (optional) mediump (default), highp, etc
 		*/
 		constructor(args) {
-			let varyingVar = args.varying !== undefined ? args.varying : 'pos';
-			
-			let varyingCodePrefix = 'varying vec2 '+varyingVar+';\n';
+			const varyingVar = args.varying !== undefined ? args.varying : 'pos';
+			const varyingCodePrefix = 'varying vec2 '+varyingVar+';\n';
+throw "TODO use unitQuad, so varyingVar = vertex.xy; gl_Position = vec4(vertex.xy * 2. - 1.), and pos varies [0,1]";
+			const vertexCode = 
+varyingCodePrefix.replace(/varying/g, 'out')
++ `
+in vec2 vertex;
+in vec2 texCoord;
+void main() {
+	` + varyingVar + ` = texCoord; 
+	gl_Position = vec4(vertex, 0., 1.);
+}
+`;
+
 
 			let fragmentCodePrefix = '';
 			let uniforms = {};
 			if (args.uniforms !== undefined) {
-				$.each(args.uniforms, function(uniformName, uniformType) {
-					if ($.isArray(uniformType)) {
+				Object.entries(args.uniforms).forEach(entry => {
+					let [uniformName, uniformType] = entry;
+					if (Array.isArray(uniformType)) {
 						//save initial value
 						uniforms[uniformName] = uniformType[1];
 						uniformType = uniformType[0];
@@ -33,51 +45,29 @@ GLUtil.prototype.oninit.push(function() {
 				});
 			}
 			if (args.texs !== undefined) {
-				for (let i = 0; i < args.texs.length; ++i) {
-					let v = args.texs[i];
+				args.texs.forEach((v, i) => {
 					let name, vartype;
 					if (typeof(v) == 'string') {
-						name = v;
-						vartype = 'sampler2D';
+						[name, vartype] = [v, 'sampler2D'];
 					} else {
-						name = v[0];
-						vartype = v[1];
+						[name, vartype] = v;
 					}
 					fragmentCodePrefix += 'uniform '+vartype+' '+name+';\n';
 					uniforms[name] = i;
-				}
+				});
 			}
 
-			if (!glutil.KernelShader.prototype.kernelVertexShader) {
-				glutil.KernelShader.prototype.kernelVertexShader = new glutil.VertexShader({
-					code : `#version 300 es
-precision `+glutil.vertexBestPrec+` float;
-` + varyingCodePrefix.replace(/varying/g, 'out') + `
-in vec2 vertex;
-in vec2 texCoord;
-void main() {
-	` + varyingVar + ` = texCoord; 
-	gl_Position = vec4(vertex, 0., 1.);
-}
-`
-				});	
-			}
-
-			args.vertexShader = glutil.KernelShader.prototype.kernelVertexShader;
-			args.fragmentCode = 
-varyingCodePrefix.replace(/varying/g, 'in') 
-+ fragmentCodePrefix 
-+ args.code;
-			delete args.code;
-			args.uniforms = uniforms;	
-			glutil.KernelShader.super.call(this, args);
+			super({
+				vertexPrecision : args.precision,
+				vertexCode : args.vertexCode !== undefined ? args.vertexCode : vertexCode,
+				fragmentPrecision : args.precision,
+				fragmentCode : 
+					varyingCodePrefix.replace(/varying/g, 'in') 
+					+ fragmentCodePrefix 
+					+ (args.code !== undefined ? args.code : ''),
+				uniforms : uniforms,
+			});
 		}
 	}
 	glutil.KernelShader = KernelShader;
 });
-
-function setCSSRotation(obj, degrees) {
-	obj.css('-webkit-transform','rotate('+degrees+'deg)');
-	obj.css('-moz-transform','rotate('+degrees+'deg)');
-	obj.css('transform','rotate('+degrees+'deg)');
-}

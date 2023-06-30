@@ -1,3 +1,6 @@
+import {cfg} from './globals.js';
+import {kilogramsPerMeter} from './units.js';
+
 class Metric {}
 
 //low gravity newtonian approximation
@@ -12,9 +15,9 @@ class NewtonApproximateMetric extends Metric {
 	so x''^j = G M x^j / |x|^3
 	*/
 	calcGravity(accel, pos) {
-		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			let planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
+			if (!cfg.planetInfluences[planetIndex]) continue;
+			let planet = cfg.orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 			
@@ -70,9 +73,9 @@ class NewtonApproximateMetric extends Metric {
 		let ny = pos[1] - srcPlanet.pos[1];
 		let nz = pos[2] - srcPlanet.pos[2];
 
-		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			let planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
+			if (!cfg.planetInfluences[planetIndex]) continue;
+			let planet = cfg.orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
@@ -103,9 +106,9 @@ class SchwarzschildMetric extends Metric {
 	Conn^r_tt = R(r-R)/(2r^3)
 	*/
 	calcGravity(accel, pos) {
-		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			let planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
+			if (!cfg.planetInfluences[planetIndex]) continue;
+			let planet = cfg.orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 			
@@ -159,9 +162,9 @@ class SchwarzschildMetric extends Metric {
 		let ny = pos[1] - srcPlanet.pos[1];
 		let nz = pos[2] - srcPlanet.pos[2];
 		
-		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			let planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
+			if (!cfg.planetInfluences[planetIndex]) continue;
+			let planet = cfg.orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.index === srcPlanet.index) continue;
 			if (planet.mass === undefined) continue;
@@ -208,9 +211,9 @@ kerr_gravity(r) = -2.*m(r) * Delta(r) * (r**2 - a**2 * cos(theta)**2) / (2 * Sig
 */
 class KerrMetric extends Metric {
 	calcGravity(accel, pos) {
-		for (let planetIndex = 0; planetIndex < orbitStarSystem.planets.length; ++planetIndex) {
-			if (!planetInfluences[planetIndex]) continue;
-			let planet = orbitStarSystem.planets[planetIndex];
+		for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
+			if (!cfg.planetInfluences[planetIndex]) continue;
+			let planet = cfg.orbitStarSystem.planets[planetIndex];
 			if (planet.isBarycenter) continue;
 			if (planet.mass === undefined) continue;
 
@@ -246,14 +249,14 @@ class KerrMetric extends Metric {
 	calcTidal(accel, pos, srcPlanet) {}
 }
 
-let metricInfos = [
+const metricInfos = [
 	{name:'Newtonian', classObj:NewtonApproximateMetric},
 	{name:'Schwarzschild', classObj:SchwarzschildMetric},
 	{name:'Kerr', classObj:KerrMetric}
 ];
 
-//let metric = new NewtonApproximateMetric();
-let metric = new SchwarzschildMetric();
+//cfg.metric = new NewtonApproximateMetric();
+cfg.metric = new SchwarzschildMetric();
 
 let calcMetricForce;
 {
@@ -261,22 +264,22 @@ let calcMetricForce;
 	let norm = [];
 	calcMetricForce = function(x, planet) {
 		accel[0] = accel[1] = accel[2] = 0;
-		switch (displayMethod) {
+		switch (cfg.displayMethod) {
 		case 'Tangent Tidal':
 		case 'Normal Tidal':
 		case 'Total Tidal':
-			metric.calcTidal(accel, x, planet);
+			cfg.metric.calcTidal(accel, x, planet);
 			break;
 		case 'Tangent Gravitational':
 		case 'Normal Gravitational':
 		case 'Total Gravitational':
-			metric.calcGravity(accel, x);
+			cfg.metric.calcGravity(accel, x);
 			break;
 		case 'Tangent Total':
 		case 'Normal Total':
 		case 'Total':
-			metric.calcTidal(accel, x, planet);
-			metric.calcGravity(accel, x);
+			cfg.metric.calcTidal(accel, x, planet);
+			cfg.metric.calcGravity(accel, x);
 			break;
 		}
 
@@ -295,7 +298,7 @@ let calcMetricForce;
 		//let tidalAccel = accel:dot(toTheMoon)	// moonward component
 
 		let t;
-		switch (displayMethod) {
+		switch (cfg.displayMethod) {
 		case 'Tangent Tidal':
 		case 'Tangent Gravitational':
 		case 'Tangent Total':
@@ -319,3 +322,5 @@ let calcMetricForce;
 		return t;
 	};
 }
+
+export {metricInfos};

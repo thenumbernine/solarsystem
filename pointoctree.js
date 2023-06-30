@@ -1,3 +1,6 @@
+import {vec3, mat4} from '/js/gl-matrix-3.4.1/index.js';
+import {cfg} from './globals.js';
+
 class PointOctreeNode {
 	pointSize : 500,	//in m ... so maybe convert this to AU
 	pointAlpha : .75,
@@ -14,14 +17,16 @@ class PointOctreeNode {
 		this.loadingData = true;
 		let thiz = this;
 		let url = this.tree.urlBase+'/nodes/'+this.nodeID+'.json';
-		$.ajax({
-			url : url,
-			dataType : 'json',
-		}).error(function() {
+		fetch(url)
+		.then(response => {
+			if (!response.ok) return Promise.reject('not ok');
+			response.json()
+			.then(data => {
+				//if (thiz.unloaded) return;
+				thiz.processData(data);
+			})
+		}).catch(e => {
 			console.log('failed to get node '+thiz.nodeID+' from '+url);
-		}).done(function(data) {
-//			if (thiz.unloaded) return;
-			thiz.processData(data);
 		});
 	}
 	processData(data) {
@@ -87,7 +92,7 @@ class PointOctreeNode {
 		this.loadingData = undefined;
 
 		if (this.sceneObj.attrs !== undefined) {
-			$.each(this.sceneObj.attrs, function(k,attr) {
+			this.sceneObj.attrs.forEach((attr,k) => {
 				gl.deleteBuffer(attr.buffer.obj);
 			});
 		}
@@ -101,9 +106,9 @@ class PointOctreeNode {
 			this.maxs[1] - this.mins[1],
 			this.maxs[2] - this.mins[2]);
 		//from center 
-		let dx = this.center[0] - glutil.view.pos[0] - orbitTarget.pos[0];
-		let dy = this.center[1] - glutil.view.pos[1] - orbitTarget.pos[1];
-		let dz = this.center[2] - glutil.view.pos[2] - orbitTarget.pos[2];
+		let dx = this.center[0] - glutil.view.pos[0] - cfg.orbitTarget.pos[0];
+		let dy = this.center[1] - glutil.view.pos[1] - cfg.orbitTarget.pos[1];
+		let dz = this.center[2] - glutil.view.pos[2] - cfg.orbitTarget.pos[2];
 		let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 		
 		//TODO test occlusion
@@ -154,13 +159,13 @@ class PointOctreeNode {
 			/ tanFovY;
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
-		this.sceneObj.uniforms.julianDate = julianDate;
+		this.sceneObj.uniforms.julianDate = cfg.julianDate;
 		
 		if (picking) {
 			//extra tough too-small threshold for picking
 			if (this.visRatio < this.tree.visRatioPickThreshold) return;	
 			let thiz = this;
-			pickObject.drawPoints({
+			cfg.pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
 					return thiz.tree.onPick(thiz, i);
@@ -199,6 +204,7 @@ class PointOctree {
 	visRatioThreshold : .03,
 	visRatioPickThreshold : .1,
 	init : function() {
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		assertExists(this, 'urlBase');
 		assertExists(this, 'rows');
 		//I could just have PointOctree provide these two fields:
@@ -294,16 +300,18 @@ void main() {
 	load : function() {
 		let url = this.urlBase + '/octree.json';
 		let thiz = this;
-		$.ajax({
-			url : url,
-			dataType : 'json'
-		}).error(function() {
+		fetch(url)
+		.then(response => {
+			if (!response.ok) return Promise.reject('not ok');
+			response.json()
+			.then(data => {
+				thiz.processData(data);
+			});
+		}).catch(e => {
 			console.log('failed to get octree info from '+url+' , trying again...');
 			setTimeout(function() {
 				thiz.load(url);
 			}, 5000);
-		}).done(function(data) {
-			thiz.processData(data);
 		});
 	}
 	
@@ -384,7 +392,7 @@ void main() {
 		let thiz = this;
 
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
-		vec3.sub(viewPosInv, viewPosInv, orbitTarget.pos);
+		vec3.sub(viewPosInv, viewPosInv, cfg.orbitTarget.pos);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	
 		if (!this.showWithDensity) {

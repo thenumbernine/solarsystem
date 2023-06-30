@@ -20,6 +20,14 @@ in calcKOEFromPosVel and calcOrbitBasis the vel is converted from m/day to m/s (
  ... pretty sure one of these is in m/s and the other in m/day
 though atm i don't think I use vel but TODO fix this
 */
+import {vec3, quat} from '/js/gl-matrix-3.4.1/index.js';
+import {assertExists} from '/js/util.js';
+import {cfg} from './globals.js';
+import {kilogramsPerMeter} from './units.js';
+import {starSystemsExtra} from './starsystems.js';
+import {calcTides} from './calctides.js';
+import {calcBasis} from './vec.js';
+
 class Planet {
 	constructor(args) {
 		if (args !== undefined) {
@@ -48,7 +56,7 @@ class Planet {
 	}
 
 	clone() {
-		let p = new this.init();
+		const p = new Planet();
 		vec3.copy(p.pos, this.pos);
 		vec3.copy(p.vel, this.vel);
 		quat.copy(p.angle, this.angle);
@@ -67,16 +75,16 @@ class Planet {
 
 	//TODO the math ... don't be lazy
 	fromGeodeticPosition(pos) {
-		let x = pos[0];
-		let y = pos[1];
-		let z = pos[2];
+		const x = pos[0];
+		const y = pos[1];
+		const z = pos[2];
 		//if (this.inverseFlattening === undefined) {
-		let r2 = Math.sqrt(x*x + y*y);
-		let r = Math.sqrt(r2*r2 + z*z);
-		let phi = Math.atan2(z, r2);
-		let lambda = Math.atan2(y, x);
+		const r2 = Math.sqrt(x*x + y*y);
+		const r = Math.sqrt(r2*r2 + z*z);
+		const phi = Math.atan2(z, r2);
+		const lambda = Math.atan2(y, x);
 
-		let equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
+		const equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
 		if (equatorialRadius === undefined) {
 			return {
 				lat : 0,
@@ -96,26 +104,26 @@ class Planet {
 	//this is only used for getting positions for updating the tidal array calculations
 	// and for (geosynchronously) orbiting geodetic locations (which is currently disabled)
 	geodeticPosition(destX, lat, lon, height) {
-		let phi = Math.rad(lat);
-		let lambda = Math.rad(lon);
-		let cosPhi = Math.cos(phi);
-		let sinPhi = Math.sin(phi);
+		const phi = Math.rad(lat);
+		const lambda = Math.rad(lon);
+		const cosPhi = Math.cos(phi);
+		const sinPhi = Math.sin(phi);
 
-		let equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
+		const equatorialRadius = this.equatorialRadius !== undefined ? this.equatorialRadius : this.radius;
 		if (equatorialRadius === undefined) {
 			destX[0] = 0;
 			destX[1] = 0;
 			destX[2] = 0;
 		} else if (this.inverseFlattening !== undefined) {
-			let eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
-			let sinPhiSquared = sinPhi * sinPhi;
-			let N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
-			let NPlusH = N + height;
+			const eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
+			const sinPhiSquared = sinPhi * sinPhi;
+			const N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
+			const NPlusH = N + height;
 			destX[0] = NPlusH * cosPhi * Math.cos(lambda);
 			destX[1] = NPlusH * cosPhi * Math.sin(lambda);
 			destX[2] = (N * (1 - eccentricitySquared) + height) * sinPhi;
 		} else {
-			let NPlusH = equatorialRadius + height;
+			const NPlusH = equatorialRadius + height;
 			destX[0] = NPlusH * cosPhi * Math.cos(lambda);
 			destX[1] = NPlusH * cosPhi * Math.sin(lambda);
 			destX[2] = NPlusH * Math.sin(phi);
@@ -123,12 +131,12 @@ class Planet {
 	}
 
 	geodeticNormal(lat, lon) {
-		let phi = Math.rad(lat)
-		let lambda = Math.rad(lon)
-		let cosPhi = Math.cos(phi)
-		let sinPhi = Math.sin(phi)
+		const phi = Math.rad(lat)
+		const lambda = Math.rad(lon)
+		const cosPhi = Math.cos(phi)
+		const sinPhi = Math.sin(phi)
 
-		let equatorialRadius = this.equatorialRadius !== undefined
+		const equatorialRadius = this.equatorialRadius !== undefined
 			? this.equatorialRadius
 			: this.radius;
 		if (equatorialRadius === undefined) {
@@ -136,31 +144,31 @@ class Planet {
 		}
 		if (this.inverseFlattening !== undefined) {
 			//mind you this is the planet shape eccentricity, not to be confused with the orbit path eccentricity
-			let eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
-			let sinPhiSquared = sinPhi * sinPhi;
-			let N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
-			let oneMinusEccSq = 1 - eccentricitySquared;
-			let NPlusH = N + height;
-			let NPrime = sinPhi * eccentricitySquared / (equatorialRadius * equatorialRadius) * N * N * N;
-			let sinPhi = Math.sin(phi);
-			let cosPhi = Math.cos(phi);
-			let sinLambda = Math.sin(lambda);
-			let cosLambda = Math.cos(lambda);
-			let nx = oneMinusEccSq * NPlusH * cosPhi * cosLambda * (NPrime * sinPhi + NPlusH * cosPhi);
-			let nx = oneMinusEccSq * NPlusH * cosPhi * sinLambda * (NPrime * sinPhi + NPlusH * cosPhi);
-			let nz = -NPlusH * cosPhi * (NPrime * cosPhi - NPlusH * sinPhi);
-			let l = Math.sqrt(nx*nx + ny*ny + nz*nz);
+			const eccentricitySquared = (2 * this.inverseFlattening - 1) / (this.inverseFlattening * this.inverseFlattening);
+			const sinPhiSquared = sinPhi * sinPhi;
+			const N = equatorialRadius / Math.sqrt(1 - eccentricitySquared * sinPhiSquared);
+			const oneMinusEccSq = 1 - eccentricitySquared;
+			const NPlusH = N + height;
+			const NPrime = sinPhi * eccentricitySquared / (equatorialRadius * equatorialRadius) * N * N * N;
+			const sinPhi = Math.sin(phi);
+			const cosPhi = Math.cos(phi);
+			const sinLambda = Math.sin(lambda);
+			const cosLambda = Math.cos(lambda);
+			const nx = oneMinusEccSq * NPlusH * cosPhi * cosLambda * (NPrime * sinPhi + NPlusH * cosPhi);
+			const ny = oneMinusEccSq * NPlusH * cosPhi * sinLambda * (NPrime * sinPhi + NPlusH * cosPhi);
+			const nz = -NPlusH * cosPhi * (NPrime * cosPhi - NPlusH * sinPhi);
+			const l = Math.sqrt(nx*nx + ny*ny + nz*nz);
 			return [nx/l, ny/l, nz/l];
 		} else {
-			let x = cosPhi * Math.cos(lambda);
-			let y = cosPhi * Math.sin(lambda);
-			let z = Math.sin(phi);
+			const x = cosPhi * Math.cos(lambda);
+			const y = cosPhi * Math.sin(lambda);
+			const z = Math.sin(phi);
 			return [x, y, z]
 		}
 	}
 
 	initColorSchRadiusAngle() {
-		let colors = {
+		const colors = {
 			Sun:[1,1,0],
 			Mercury:[.7,0,.2],
 			Venus:[0,1,0],
@@ -173,7 +181,7 @@ class Planet {
 			Neptune:[1,0,1],
 			Pluto:[0,.5,1]
 		};
-		let color = colors[this.name];
+		const color = colors[this.name];
 		if (!color) {
 			//console.log("failed to find color for "+this.name);
 			this.color = [Math.random(), Math.random(), Math.random(), 1];
@@ -189,16 +197,16 @@ class Planet {
 		if (this.radius === undefined) {
 			//only/always use a point/basis/etc?
 		} else {
-			this.sceneObj = planetSceneObj;
+			this.sceneObj = starSystemsExtra.planetSceneObj;
 			calcTides.initPlanetSceneObj(this);
 		}
 	}
 
 	updateSceneObj() {
-		let planetShaders = starSystemsExtra.getPlanetShadersForNumberOfStars(this.starSystem.stars.length);
+		const planetShaders = starSystemsExtra.getPlanetShadersForNumberOfStars(this.starSystem.stars.length);
 
 		//update tide attributes
-		let useOverlay = overlayShowOrbitTarget && displayMethod != 'None';
+		const useOverlay = cfg.overlayShowOrbitTarget && cfg.displayMethod != 'None';
 		if (!useOverlay) {
 			if (this.tex === undefined) {
 				this.sceneObj.shader = planetShaders.colorShader;
@@ -239,33 +247,33 @@ class Planet {
 		}
 
 		//consider position relative to orbiting parent
-		let posX = this.pos[0] - parentBody.pos[0];
-		let posY = this.pos[1] - parentBody.pos[1];
-		let posZ = this.pos[2] - parentBody.pos[2];
+		const posX = this.pos[0] - parentBody.pos[0];
+		const posY = this.pos[1] - parentBody.pos[1];
+		const posZ = this.pos[2] - parentBody.pos[2];
 
 		//convert from m/day to m/s to coincide with the units of our gravitational constant
-		let velX = (this.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
-		let velY = (this.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
-		let velZ = (this.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
+		const velX = (this.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
+		const velY = (this.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
+		const velZ = (this.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
 
-		let angularMomentumX = posY * velZ - posZ * velY; //m^2/s
-		let angularMomentumY = posZ * velX - posX * velZ;
-		let angularMomentumZ = posX * velY - posY * velX;
-		let angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
-		let angularMomentumMag = Math.sqrt(angularMomentumMagSq);
+		const angularMomentumX = posY * velZ - posZ * velY; //m^2/s
+		const angularMomentumY = posZ * velX - posX * velZ;
+		const angularMomentumZ = posX * velY - posY * velX;
+		const angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
+		const angularMomentumMag = Math.sqrt(angularMomentumMagSq);
 
 		if (angularMomentumMag < 1e-9) {
 			this.orbitAxis = [0,0,1];
 		} else {
-			let axisX = angularMomentumX / angularMomentumMag;
-			let axisY = angularMomentumY / angularMomentumMag;
-			let axisZ = angularMomentumZ / angularMomentumMag;
+			const axisX = angularMomentumX / angularMomentumMag;
+			const axisY = angularMomentumY / angularMomentumMag;
+			const axisZ = angularMomentumZ / angularMomentumMag;
 			this.orbitAxis = [axisX, axisY, axisZ];
 		}
 
-		let basisX = [0,0,0];
-		let basisY = [0,0,0];
-		let basisZ = this.orbitAxis;
+		const basisX = [0,0,0];
+		const basisY = [0,0,0];
+		const basisZ = this.orbitAxis;
 		calcBasis(basisX, basisY, basisZ);
 		//a[j][i] = a_ij, so our indexing is backwards, but our storage is column-major
 		this.orbitBasis = [basisX, basisY, basisZ];
@@ -288,22 +296,22 @@ class Planet {
 
 		//consider position relative to orbiting parent
 		// should I be doing the same thing with the velocity?  probably...
-		let posX = this.pos[0] - parentBody.pos[0];
-		let posY = this.pos[1] - parentBody.pos[1];
-		let posZ = this.pos[2] - parentBody.pos[2];
+		const posX = this.pos[0] - parentBody.pos[0];
+		const posY = this.pos[1] - parentBody.pos[1];
+		const posZ = this.pos[2] - parentBody.pos[2];
 
 		//convert from m/day to m/s to coincide with the units of our gravitational constant
-		let velX = (this.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
-		let velY = (this.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
-		let velZ = (this.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
+		const velX = (this.vel[0] - parentBody.vel[0]) / (60 * 60 * 24);
+		const velY = (this.vel[1] - parentBody.vel[1]) / (60 * 60 * 24);
+		const velZ = (this.vel[2] - parentBody.vel[2]) / (60 * 60 * 24);
 
-		let posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
+		const posDotVel = posX * velX + posY * velY + posZ * velZ;	//m^2/s
 
-		let angularMomentumX = posY * velZ - posZ * velY; //m^2/s
-		let angularMomentumY = posZ * velX - posX * velZ;
-		let angularMomentumZ = posX * velY - posY * velX;
-		let angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
-		let angularMomentumMag = Math.sqrt(angularMomentumMagSq);
+		const angularMomentumX = posY * velZ - posZ * velY; //m^2/s
+		const angularMomentumY = posZ * velX - posX * velZ;
+		const angularMomentumZ = posX * velY - posY * velX;
+		const angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
+		const angularMomentumMag = Math.sqrt(angularMomentumMagSq);
 		
 		//now decompose the relative position in the coordinates of the orbit basis
 		//i've eliminated all but one of the rotation degrees of freedom ...
@@ -311,16 +319,16 @@ class Planet {
 		//http://www.mathworks.com/matlabcentral/fileexchange/31333-orbital-elements-from-positionvelocity-vectors/content/vec2orbElem.m
 		//http://space.stackexchange.com/questions/1904/how-to-programmatically-calculate-orbital-elements-using-position-velocity-vecto
 
-		let velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
-		let distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
-		let gravitationalParameter = gravitationalConstant * ((this.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
-		let specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
-		let semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
-		let semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
-		let eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);		//e, unitless (assuming elliptical orbit)
+		const velSq = velX * velX + velY * velY + velZ * velZ;		//(m/s)^2
+		const distanceToParent = Math.sqrt(posX * posX + posY * posY + posZ * posZ);		//m
+		const gravitationalParameter = cfg.gravitationalConstant * ((this.mass || 0) + parentBody.mass);	//m^3 / (kg s^2) * kg = m^3 / s^2
+		const specificOrbitalEnergy  = .5 * velSq - gravitationalParameter / distanceToParent;		//m^2 / s^2 - m^3 / s^2 / m = m^2/s^2, supposed to be negative for elliptical orbits
+		const semiMajorAxis = -.5 * gravitationalParameter / specificOrbitalEnergy;		//m^3/s^2 / (m^2/s^2) = m
+		const semiLatusRectum = angularMomentumMagSq / gravitationalParameter;			//m^4/s^2 / (m^3/s^2) = m
+		const eccentricity = Math.sqrt(1 - semiLatusRectum / semiMajorAxis);		//e, unitless (assuming elliptical orbit)
 
 		let orbitType = undefined;
-		let parabolicEccentricityEpsilon = 1e-7;
+		const parabolicEccentricityEpsilon = 1e-7;
 //		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
 //console.log("danger! got a parabolic orbit for ",this," based on eccentricity epsilon",Math.abs(eccentricity-1));
 //			orbitType = 'parabolic';
@@ -331,23 +339,23 @@ class Planet {
 			orbitType = 'elliptic';
 		}
 
-		let cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
-		let sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
-		let eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//E, in radians (unitless)
+		const cosEccentricAnomaly = (1 - distanceToParent / semiMajorAxis) / eccentricity;						//unitless
+		const sinEccentricAnomaly = posDotVel / (eccentricity * Math.sqrt(gravitationalParameter * semiMajorAxis));	//m^2/s / sqrt(m^3/s^2 * m) = m^2/s / sqrt(m^4/s^2) = m^2/s / (m^2/s) = unitless
+		const eccentricAnomaly = Math.atan2(sinEccentricAnomaly, cosEccentricAnomaly);	//E, in radians (unitless)
 
-		let sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
-		let cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
-		let inclination = Math.atan2(sinInclination, cosInclination);	//i
+		const sinInclination = Math.sqrt(angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY) / angularMomentumMag;	//unitless
+		const cosInclination = angularMomentumZ / angularMomentumMag;	//unitless
+		const inclination = Math.atan2(sinInclination, cosInclination);	//i
 
-		let sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
-		let cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
-		let argumentOfPeriapsis = Math.atan2(sinPericenter, cosPericenter);	//omega
+		const sinPericenter = ((velX * angularMomentumY - velY * angularMomentumX) / gravitationalParameter - posZ / distanceToParent) / (eccentricity * sinInclination);
+		const cosPericenter = (angularMomentumMag * velZ / gravitationalParameter - (angularMomentumX * posY - angularMomentumY * posX) / (angularMomentumMag * distanceToParent)) / (eccentricity * sinInclination);
+		const argumentOfPeriapsis = Math.atan2(sinPericenter, cosPericenter);	//omega
 
-		let cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
-		let sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
-		let longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);	//Omega
+		const cosAscending = -angularMomentumY / (angularMomentumMag * sinInclination);
+		const sinAscending = angularMomentumX / (angularMomentumMag * sinInclination);
+		const longitudeOfAscendingNode = Math.atan2(sinAscending, cosAscending);	//Omega
 
-		let semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
+		const semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;	//m^3
 		let orbitalPeriod;
 		if (orbitType == 'elliptic') {
 			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
@@ -358,7 +366,7 @@ if (this.orbitalPeriod !== undefined) {
 }
 		}
 
-		let longitudeOfPeriapsis = longitudeOfAscendingNode + argumentOfPeriapsis;	//omega-bar
+		const longitudeOfPeriapsis = longitudeOfAscendingNode + argumentOfPeriapsis;	//omega-bar
 		
 		let meanAnomaly;
 		if (orbitType == 'parabolic') {
@@ -369,18 +377,18 @@ if (this.orbitalPeriod !== undefined) {
 			meanAnomaly = eccentricAnomaly - eccentricity * sinEccentricAnomaly;
 		}
 
-		let meanLongitude = meanAnomaly + longitudeOfPeriapsis;
+		const meanLongitude = meanAnomaly + longitudeOfPeriapsis;
 		
 		//can I do this?
-		let epoch = initJulianDate;
-		let meanAnomalyAtEpoch = meanAnomaly;
+		const epoch = cfg.initJulianDate;
+		const meanAnomalyAtEpoch = meanAnomaly;
 
-		let timeOfPeriapsisCrossing = -meanAnomaly / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
+		const timeOfPeriapsisCrossing = -meanAnomaly / Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (60*60*24);	//julian day
 
-		let A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+		const A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 				 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
 				 semiMajorAxis * sinPericenter * sinInclination];
-		let B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+		const B = [-semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
 				 semiMajorAxis * Math.sqrt(1 - eccentricity * eccentricity) * cosPericenter * sinInclination];
 
@@ -389,15 +397,15 @@ if (this.orbitalPeriod !== undefined) {
 		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
 		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly)
 		*/
-		let checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
-		let checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
-		let checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
+		const checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
+		const checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
+		const checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
 
 		checkPosToPosX = checkPosX - posX;
 		checkPosToPosY = checkPosY - posY;
 		checkPosToPosZ = checkPosZ - posZ;
-		let checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
-		let checkPosError = checkPosToPosDist / distanceToParent;
+		const checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
+		const checkPosError = checkPosToPosDist / distanceToParent;
 		if (checkPosError === checkPosError) {
 			if (checkPosError > 1e-5) {	//only report significant error
 				console.log(this.name+' error of reconstructed position '+ checkPosError);
@@ -455,24 +463,16 @@ if (this.orbitalPeriod !== undefined) {
 	getKOEFromSourceData() {
 
 		// based on this position and velocity, find plane of orbit
-		let parentBody = this.parent;
+		const parentBody = this.parent;
 		if (parentBody === undefined) {
 			this.calcOrbitBasis();
 			return;
 		}
 
-		//calculated variables:
-		let semiMajorAxis = undefined;
-		let eccentricity = undefined;
-		let eccentricAnomaly = undefined;
-		let orbitType = undefined;
-		let meanAnomaly = undefined;
-		let A, B;
-
 		//used by planets to offset reconstructed orbit coordinates to exact position of this
-		let checkPosToPosX = 0;
-		let checkPosToPosY = 0;
-		let checkPosToPosZ = 0;
+		const checkPosToPosX = 0;
+		const checkPosToPosY = 0;
+		const checkPosToPosZ = 0;
 
 		/*
 		we have:
@@ -482,9 +482,10 @@ if (this.orbitalPeriod !== undefined) {
 		we compute:
 		*/
 
-		eccentricity = assertExists(this.sourceData, 'eccentricity');
+		const eccentricity = assertExists(this.sourceData, 'eccentricity');
 
-		let parabolicEccentricityEpsilon = 1e-7;
+		let orbitType = undefined;
+		const parabolicEccentricityEpsilon = 1e-7;
 		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
 			orbitType = 'parabolic';
 		} else if (eccentricity > 1) {
@@ -494,6 +495,7 @@ if (this.orbitalPeriod !== undefined) {
 		}
 
 		let pericenterDistance;
+		let semiMajorAxis = undefined;
 		if (this.isComet) {
 			pericenterDistance = assert(this.sourceData.perihelionDistance);
 			if (orbitType !== 'parabolic') {
@@ -506,8 +508,8 @@ if (this.orbitalPeriod !== undefined) {
 			semiMajorAxis = this.sourceData.semiMajorAxis || 0;
 		}
 
-		let gravitationalParameter = gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
-		let semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
+		const gravitationalParameter = cfg.gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
+		const semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
 		
 		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
 		let orbitalPeriod = undefined;
@@ -515,27 +517,31 @@ if (this.orbitalPeriod !== undefined) {
 			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed / gravitationalParameter) / (60*60*24);	//julian day
 		}
 
-		let longitudeOfAscendingNode = assertExists(this.sourceData, 'longitudeOfAscendingNode');
-		let cosAscending = Math.cos(longitudeOfAscendingNode);
-		let sinAscending = Math.sin(longitudeOfAscendingNode);
+		const longitudeOfAscendingNode = assertExists(this.sourceData, 'longitudeOfAscendingNode');
+		const cosAscending = Math.cos(longitudeOfAscendingNode);
+		const sinAscending = Math.sin(longitudeOfAscendingNode);
 
-		let argumentOfPeriapsis = assertExists(this.sourceData, 'argumentOfPeriapsis');
-		let cosPericenter = Math.cos(argumentOfPeriapsis);
-		let sinPericenter = Math.sin(argumentOfPeriapsis);
+		const argumentOfPeriapsis = assertExists(this.sourceData, 'argumentOfPeriapsis');
+		const cosPericenter = Math.cos(argumentOfPeriapsis);
+		const sinPericenter = Math.sin(argumentOfPeriapsis);
 
-		let inclination = assertExists(this.sourceData, 'inclination');
-		let cosInclination = Math.cos(inclination);
-		let sinInclination = Math.sin(inclination);
+		const inclination = assertExists(this.sourceData, 'inclination');
+		const cosInclination = Math.cos(inclination);
+		const sinInclination = Math.sin(inclination);
 
-		let oneMinusEccentricitySquared = 1 - eccentricity * eccentricity;
+		const oneMinusEccentricitySquared = 1 - eccentricity * eccentricity;
 		//magnitude of A is a 
-		A = [semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
+		const A = [
+			semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
-			 semiMajorAxis * sinPericenter * sinInclination];
+			 semiMajorAxis * sinPericenter * sinInclination
+		];
 		//magnitude of B is a * sqrt(|1 - e^2|)
-		B = [semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
+		const B = [
+			semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * -(cosAscending * sinPericenter + sinAscending * cosPericenter * cosInclination),
 			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * (-sinAscending * sinPericenter + cosAscending * cosPericenter * cosInclination),
-			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination];
+			 semiMajorAxis * Math.sqrt(Math.abs(oneMinusEccentricitySquared)) * cosPericenter * sinInclination
+		];
 		//inner product: A dot B = 0
 
 		let timeOfPeriapsisCrossing;
@@ -545,7 +551,7 @@ if (this.orbitalPeriod !== undefined) {
 
 		let meanAnomaly = this.sourceData.meanAnomaly;
 		let eccentricAnomaly = this.sourceData.eccentricAnomaly;
-		let epoch = this.sourceData.epoch;
+		const epoch = this.sourceData.epoch;
 		if (orbitType === 'parabolic') {
 			if (eccentricAnomaly === undefined || eccentricAnomaly === null) {
 				eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
@@ -566,10 +572,10 @@ if (this.orbitalPeriod !== undefined) {
 			if (meanAnomaly === undefined || meanAnomaly === null) {
 				if (this.isComet) {
 					timeOfPeriapsisCrossing = this.sourceData.timeOfPerihelionPassage;	//julian day
-					let timeSinceLastPeriapsisCrossing = initJulianDate - timeOfPeriapsisCrossing;
+					const timeSinceLastPeriapsisCrossing = cfg.initJulianDate - timeOfPeriapsisCrossing;
 					meanAnomaly = timeSinceLastPeriapsisCrossing * 2 * Math.PI / orbitalPeriod;
 				} else if (this.isAsteroid) {
-					meanAnomaly = this.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (initJulianDate - epoch);
+					meanAnomaly = this.sourceData.meanAnomalyAtEpoch + 2 * Math.PI / orbitalPeriod * (cfg.initJulianDate - epoch);
 				} else if (this.isExoplanet) {
 					meanAnomaly = this.sourceData.meanAnomaly !== undefined ? this.sourceData.meanAnomaly : 0;
 				} else {
@@ -607,14 +613,14 @@ if (this.orbitalPeriod !== undefined) {
 					throw 'here';
 				}
 
-				let delta = func / deriv;
+				const delta = func / deriv;
 				if (Math.abs(delta) < 1e-15) break;
 				eccentricAnomaly -= delta;
 			}
 		}
 
-		let sinEccentricAnomaly = Math.sin(eccentricAnomaly);
-		let cosEccentricAnomaly = Math.cos(eccentricAnomaly);
+		const sinEccentricAnomaly = Math.sin(eccentricAnomaly);
+		const cosEccentricAnomaly = Math.cos(eccentricAnomaly);
 		
 		//parabolas and hyperbolas don't define orbitalPeriod
 		// so no need to recalculate it
@@ -676,7 +682,7 @@ r^2 = a^2 (cos(E)
 		} else if (orbitType == 'hyperbolic') {
 			dt_dE = Math.sqrt(semiMajorAxisCubed / gravitationalParameter) * (eccentricity * Math.cosh(eccentricAnomaly) - 1);
 		}
-		let dE_dt = 1/dt_dE;
+		const dE_dt = 1/dt_dE;
 		//finally using http://en.wikipedia.org/wiki/Kepler_orbit like I should've in the first place ...
 		let coeffA, coeffB;
 		let coeffDerivA, coeffDerivB;
@@ -694,9 +700,9 @@ r^2 = a^2 (cos(E)
 			coeffDerivB = Math.cosh(eccentricAnomaly) * dE_dt;
 		}
 		
-		let posX = A[0] * coeffA + B[0] * coeffB;
-		let posY = A[1] * coeffA + B[1] * coeffB;
-		let posZ = A[2] * coeffA + B[2] * coeffB;
+		const posX = A[0] * coeffA + B[0] * coeffB;
+		const posY = A[1] * coeffA + B[1] * coeffB;
+		const posZ = A[2] * coeffA + B[2] * coeffB;
 		//v^2 = (a^2 sin^2(E) + a^2 |1 - e^2| cos^2(E)) * mu/a^3 / (1 - e cos(E))
 		//v^2 = (sin^2(E) + |1 - e^2| cos^2(E)) * mu/(a (1 - e cos(E)))
 		
@@ -709,15 +715,16 @@ r^2 = a^2 (cos(E)
 		//...	a/r should = (1 - cos(nu)) / (1 - e^2)
 		//...	r/a should = (1 - e^2) / (1 - cos(nu))
 		//...	r should = a (1 - e^2) / (1 - cos(nu))
-		let velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
-		let velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
-		let velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
+		const velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
+		const velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
+		const velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
 		this.pos[0] = posX + parentBody.pos[0];
 		this.pos[1] = posY + parentBody.pos[1];
 		this.pos[2] = posZ + parentBody.pos[2];
 		this.vel[0] = velX + parentBody.vel[0];
 		this.vel[1] = velY + parentBody.vel[1];
 		this.vel[2] = velZ + parentBody.vel[2];
+		const solarSystem = starSystemsExtra.solarSystem;
 		vec3.copy(solarSystem.initPlanets[this.index].pos, this.pos);
 		vec3.copy(solarSystem.initPlanets[this.index].vel, this.vel);
 
@@ -752,10 +759,10 @@ r^2 = a^2 (cos(E)
 	}
 
 	updatePosVel() {
-		let timeAdvanced = julianDate - initJulianDate;
+		const timeAdvanced = cfg.julianDate - cfg.initJulianDate;
 		if (!this.parent) return;
-		let ke = this.keplerianOrbitalElements;
-		let orbitType = ke.orbitType;
+		const ke = this.keplerianOrbitalElements;
+		const orbitType = ke.orbitType;
 
 		//https://en.wikipedia.org/wiki/Kepler%27s_laws_of_planetary_motion#Position_as_a_function_of_time
 
@@ -764,11 +771,11 @@ r^2 = a^2 (cos(E)
 			assertExists(ke, 'orbitalPeriod');
 			assertExists(ke, 'meanAnomalyAtEpoch');	//not always there.  esp not in planets.
 			meanMotion = 2 * Math.PI / ke.orbitalPeriod;
-			meanAnomaly = ke.meanAnomalyAtEpoch + meanMotion * (julianDate - ke.epoch);
+			meanAnomaly = ke.meanAnomalyAtEpoch + meanMotion * (cfg.julianDate - ke.epoch);
 		} else if (orbitType == 'hyperbolic') {
 			assertExists(ke, 'timeOfPeriapsisCrossing');
 			meanAnomaly = ke.meanAnomaly;
-			meanMotion = ke.meanAnomaly / (julianDate - ke.timeOfPeriapsisCrossing);
+			meanMotion = ke.meanAnomaly / (cfg.julianDate - ke.timeOfPeriapsisCrossing);
 		} else if (orbitType == 'parabolic') {
 console.log('parabolic orbit for planet',this);			
 			throw 'got a parabolic orbit';
@@ -776,7 +783,7 @@ console.log('parabolic orbit for planet',this);
 			throw 'here';
 		}
 
-		let eccentricity = ke.eccentricity;
+		const eccentricity = ke.eccentricity;
 
 		//solve eccentricAnomaly from meanAnomaly via Newton Rhapson
 		//for elliptical orbits:
@@ -804,22 +811,22 @@ console.log('parabolic orbit for planet',this);
 				throw 'here';
 			}
 
-			let delta = func / deriv;
+			const delta = func / deriv;
 			if (Math.abs(delta) < 1e-15) break;
 			eccentricAnomaly -= delta;
 		}
 
 		//TODO don't use meanMotion for hyperbolic orbits
-		let fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
+		const fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
 		// TODO where did I get this from?  I think it's more like 'theta == eccentricAnomaly' cuz I'm doubling the value by adding this ...
-		//let theta = timeAdvanced * meanMotion;
-		let pathEccentricAnomaly = eccentricAnomaly;	// + theta;
-		let A = ke.A;
-		let B = ke.B;
+		//const theta = timeAdvanced * meanMotion;
+		const pathEccentricAnomaly = eccentricAnomaly;	// + theta;
+		const A = ke.A;
+		const B = ke.B;
 
 		//matches above
 		let dt_dE;
-		let semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
+		const semiMajorAxisCubed = ke.semiMajorAxis * ke.semiMajorAxis * ke.semiMajorAxis;
 		if (orbitType == 'parabolic') {
 			dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (1 + pathEccentricAnomaly * pathEccentricAnomaly);
 		} else if (orbitType == 'elliptic') {
@@ -827,7 +834,7 @@ console.log('parabolic orbit for planet',this);
 		} else if (orbitType == 'hyperbolic') {
 			dt_dE = Math.sqrt(semiMajorAxisCubed / ke.gravitationalParameter) * (ke.eccentricity * Math.cosh(pathEccentricAnomaly) - 1);
 		}
-		let dE_dt = 1/dt_dE;
+		const dE_dt = 1/dt_dE;
 		let coeffA, coeffB;
 		let coeffDerivA, coeffDerivB;
 		if (orbitType == 'parabolic') {
@@ -843,12 +850,12 @@ console.log('parabolic orbit for planet',this);
 			coeffDerivA = -Math.sinh(pathEccentricAnomaly) * dE_dt;
 			coeffDerivB = Math.cosh(pathEccentricAnomaly) * dE_dt;
 		}
-		let posX = A[0] * coeffA + B[0] * coeffB;
-		let posY = A[1] * coeffA + B[1] * coeffB;
-		let posZ = A[2] * coeffA + B[2] * coeffB;
-		let velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
-		let velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
-		let velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
+		const posX = A[0] * coeffA + B[0] * coeffB;
+		const posY = A[1] * coeffA + B[1] * coeffB;
+		const posZ = A[2] * coeffA + B[2] * coeffB;
+		const velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
+		const velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
+		const velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
 		
 		this.pos[0] = posX + this.parent.pos[0];
 		this.pos[1] = posY + this.parent.pos[1];
@@ -877,3 +884,5 @@ epsilon = precession during one period of revolution, in radians
 [epsilon] = [a]^2 / ([T]^2 [c]^2 (1 + [e]^2))
 [epsilon] = m^2 / (s^2/rev^2 m^2/s^2) = rev^2 = 1
 */
+
+export {Planet};

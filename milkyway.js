@@ -1,9 +1,15 @@
+import {cfg, floatToGLSL} from './globals.js';
+import {ui} from './ui.js';
+import {metersPerUnits} from './units.js';
+
 let milkyWay = new function(){
 	this.fadeMinDistInLyr = 50;
 	this.fadeMaxDistInLyr = 1000;
 	
 	this.init = function(
 	) {
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let thiz = this;
 		let img = new Image();
 		img.onload = function() {
@@ -15,20 +21,14 @@ let milkyWay = new function(){
 				},
 				shader : new ModifiedDepthShaderProgram({
 					vertexCode :
-`#define SCALE_OF_MILKY_WAY_SPRITE ` + floatToGLSL(160000 * metersPerUnits.lyr / interGalacticRenderScale) + `
+`#define SCALE_OF_MILKY_WAY_SPRITE ` + floatToGLSL(160000 * metersPerUnits.lyr / cfg.interGalacticRenderScale) + `
 in vec2 vertex;
 in vec2 texCoord;
 uniform mat4 mvMat;
 uniform mat4 projMat;
 out vec2 texCoordv;
 
-` + coordinateSystemCode + `
-
-mat3 transpose(mat3 m) {
-	return mat3(m[0][0], m[1][0], m[2][0],
-				m[0][1], m[1][1], m[2][1],
-				m[0][2], m[1][2], m[2][2]);
-}
+` + cfg.coordinateSystemCode + `
 
 void main() {
 	//the image is rotated 90 degrees ...
@@ -86,10 +86,10 @@ void main() {
 		//draw milky way if we're far enough out
 		if (distFromSolarSystemInLyr <= this.fadeMinDistInLyr) return;
 			
-		if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-			this.sceneObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[0] / interGalacticRenderScale;
-			this.sceneObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[1] / interGalacticRenderScale;
-			this.sceneObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / interGalacticRenderScale) - orbitTarget.pos[2] / interGalacticRenderScale;
+		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
+			this.sceneObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[0] / cfg.interGalacticRenderScale;
+			this.sceneObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[1] / cfg.interGalacticRenderScale;
+			this.sceneObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[2] / cfg.interGalacticRenderScale;
 		}
 	
 		//apply milky way local transforms to mpc mv mat
@@ -101,3 +101,5 @@ void main() {
 		gl.depthMask(true);
 	};
 };
+
+export {milkyWay};

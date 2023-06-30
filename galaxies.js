@@ -1,27 +1,31 @@
-let showGalaxies = true;
-let allowSelectGalaxies = true;
+import {vec3} from '/js/gl-matrix-3.4.1/index.js';
+import {cfg} from './globals.js';
+import {ui} from './ui.js';
+import {milkyWay} from './milkyway.js';
+import {galaxyCenterInEquatorialCoordsInMpc} from './vec.js';
+import {metersPerUnits} from './units.js';
 
-//too small (1e+3) and the depth buffer precision gets destroyed - which is important for color-picking
-//too big (1e+20) and the scene gets zfar clipped away
-//used by milkyway.js and galaxies.js
-let interGalacticRenderScale = 1e+15;
+//if we're orbiting at 1AU then we can only click things at 1000 AU
+const ratioOfOrbitDistanceToAllowSelection = 10000;
 
-let galaxies = new function() {
-
-	this.closestDistInM = undefined;	//for occlusion of all selection stuff
+class Galaxies {
+	constructor() {
+		this.closestDistInM = undefined;	//for occlusion of all selection stuff
+		this.cache = {};
 	
-	this.init = function() {
 		let thiz = this;
 		let xhr = new XMLHttpRequest();
 		xhr.open('GET', 'simbad/galaxies.f32', true);
 		xhr.responseType = 'arraybuffer';
-		xhr.onload = function(e) {
-			thiz.onload(this.response);
-		};
+		xhr.addEventListener('load',  e => {
+			thiz.onload(xhr.response);
+		});
 		xhr.send();
-	};
+	}
 
-	this.onload = function(arrayBuffer) {
+	onload(arrayBuffer) {
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let data = new DataView(arrayBuffer);
 
 		let floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
@@ -45,7 +49,7 @@ let galaxies = new function() {
 					this.closestDistInM = Math.min(len, this.closestDistInM); 
 				}
 			}
-			floatBuffer[j] = x / interGalacticRenderScale;
+			floatBuffer[j] = x / cfg.interGalacticRenderScale;
 		}
 
 		//now that we have the float buffer ...
@@ -94,26 +98,29 @@ void main() {
 		console.log("loaded galaxies");
 		
 		this.loadNames();
-	};
+	}
 
 	//this is a 1mb json file ... maybe I should just remotely query it?
 	//orrr just do another point octree, and load names with leaf nodes
-	this.loadNames = function() {
+	loadNames() {
 		let thiz = this;
 		let url = 'simbad/galaxyNames.json';
-		$.ajax({
-			url : url,
-			dataType : 'json'
-		}).error(function() {
+		fetch(url)
+		.then(response => {
+			if (!response.ok) return Promise.reject('not ok');
+			response.json()
+			.then(names => {
+				thiz.names = names;
+				console.log("loaded galaxy names");
+			});
+		}).catch(e => {
+			console.log(e);
 			console.log('failed to load url '+url+', trying again...');
 			thiz.loadNames();
-		}).done(function(names) {
-			thiz.names = names;
-			console.log("loaded galaxy names");
 		});
-	};
+	}
 
-	this.draw = function(
+	draw(
 		tanFovY,
 		picking,
 		distFromSolarSystemInMpc
@@ -121,25 +128,26 @@ void main() {
 		//wait for the milky way obj to load and grab its texture
 		//TODO work out loading and what a mess it has become
 		if (!milkyWay.sceneObj) return;
-		if (!showGalaxies) return;
+		if (!cfg.showGalaxies) return;
 		if (!this.sceneObj) return;
 			
 		this.sceneObj.texs[0] = milkyWay.sceneObj.texs[0];	
 	
-		if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-			this.sceneObj.pos[0] = -orbitTarget.pos[0] / interGalacticRenderScale;
-			this.sceneObj.pos[1] = -orbitTarget.pos[1] / interGalacticRenderScale;
-			this.sceneObj.pos[2] = -orbitTarget.pos[2] / interGalacticRenderScale;
+		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
+			this.sceneObj.pos[0] = -cfg.orbitTarget.pos[0] / cfg.interGalacticRenderScale;
+			this.sceneObj.pos[1] = -cfg.orbitTarget.pos[1] / cfg.interGalacticRenderScale;
+			this.sceneObj.pos[2] = -cfg.orbitTarget.pos[2] / cfg.interGalacticRenderScale;
 		}
 
-		let pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width * metersPerUnits.Mpc / interGalacticRenderScale / tanFovY;
+		const canvas = ui.canvas;
+		let pointSize = .02 * Math.sqrt(distFromSolarSystemInMpc) * canvas.width * metersPerUnits.Mpc / cfg.interGalacticRenderScale / tanFovY;
 		if (picking) {
-			if (allowSelectGalaxies &&
-				this.closestDistInM < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance)
-			//	&& dist < ratioOfOrbitDistanceToAllowSelection * orbitTargetDistance
+			if (cfg.allowSelectGalaxies &&
+				this.closestDistInM < ratioOfOrbitDistanceToAllowSelection * cfg.orbitTargetDistance)
+			//	&& dist < ratioOfOrbitDistanceToAllowSelection * cfg.orbitTargetDistance
 			{
 				let thiz = this;
-				pickObject.drawPoints({
+				cfg.pickObject.drawPoints({
 					sceneObj : this.sceneObj,
 					targetCallback : function(index) {
 						return thiz.getCached(index);
@@ -155,15 +163,13 @@ void main() {
 			this.sceneObj.uniforms.pointSize = pointSize;
 			this.sceneObj.draw();
 		}
-	};
+	}
 
-	this.cache = {};
-
-	this.getCached = function(index) {
+	getCached(index) {
 		if (this.cache[index]) return this.cache[index];
-		let x = this.buffer.data[3*index+0] * interGalacticRenderScale;
-		let y = this.buffer.data[3*index+1] * interGalacticRenderScale;
-		let z = this.buffer.data[3*index+2] * interGalacticRenderScale;
+		let x = this.buffer.data[3*index+0] * cfg.interGalacticRenderScale;
+		let y = this.buffer.data[3*index+1] * cfg.interGalacticRenderScale;
+		let z = this.buffer.data[3*index+2] * cfg.interGalacticRenderScale;
 		let galaxy = new Galaxy({
 			name : this.names === undefined ? ('Galaxy #'+index) : this.names[index].id,
 			index : index,
@@ -173,4 +179,6 @@ void main() {
 		this.cache[index] = galaxy;
 		return galaxy;
 	}
-};
+}
+
+export {Galaxies};

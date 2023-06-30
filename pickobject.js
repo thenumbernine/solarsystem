@@ -7,8 +7,14 @@ this is really the job of a separate thread, but I haven't taken the time to lea
 here's my thought: if the galaxies can't be selected / seen then resolve the search in one frame
 otherwise wait til the search is done
 */
+import {mat4} from '/js/gl-matrix-3.4.1/index.js';
+import {cfg} from './globals.js';
+import {ui} from './ui.js';
+
 class PickObject {
 	constructor() {
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		this.fboTexWidth = 32;
 		this.fboTexHeight = 32;
 		this.fboTex = new glutil.Texture2D({
@@ -104,7 +110,9 @@ uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
-` + geodeticPositionCode + quatRotateCode + `
+` + cfg.geodeticPositionCode 
++ cfg.quatRotateCode 
++ `
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
 	vec3 vtx3 = quatRotate(angle, modelVertex) + pos;
@@ -158,13 +166,15 @@ void main() {
 	}
 	
 	pick(doChoose, skipProjection) {
+		const gl = ui.gl;
+		const canvas = ui.canvas;
 		let viewport = gl.getParameter(gl.VIEWPORT);
 		
 		//pick window size
 		let sizeX = this.fboTexWidth;
 		let sizeY = this.fboTexHeight;
-		let x = mouse.lastX;
-		let y = canvas.height - mouse.lastY - 1;
+		let x = cfg.mouse.lastX;
+		let y = canvas.height - cfg.mouse.lastY - 1;
 		
 		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
 		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
@@ -226,10 +236,10 @@ if (skipProjection) {
 			}
 		}
 		
-		mouseOverTarget = undefined;
+		cfg.mouseOverTarget = undefined;
 		if (body !== undefined) {
-			mouseOverTarget = body;
-			if (body !== orbitTarget && doChoose) {
+			cfg.mouseOverTarget = body;
+			if (body !== cfg.orbitTarget && doChoose) {
 				setOrbitTarget(body);
 				refreshMeasureText();
 			}
@@ -300,9 +310,9 @@ if (skipProjection) {
 			equatorialRadius : sceneObj.uniforms.equatorialRadius,
 			inverseFlattening : sceneObj.uniforms.inverseFlattening,
 			scaleExaggeration : sceneObj.uniforms.scaleExaggeration,
-			flatEarthCoeff : flatEarthCoeff,
-			earthPos : flatEarthRelativeEarthPos,
-			earthNorthDir : flatEarthRelativeEarthNorthDir,
+			flatEarthCoeff : cfg.flatEarthCoeff,
+			earthPos : cfg.flatEarthRelativeEarthPos,
+			earthNorthDir : cfg.flatEarthRelativeEarthNorthDir,
 			id : this.registerCallback(callbackObj, 1)
 		});
 		sceneObj.geometry.draw();
@@ -310,4 +320,4 @@ if (skipProjection) {
 	}
 }
 
-let pickObject;
+export {PickObject};

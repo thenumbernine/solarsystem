@@ -2,21 +2,24 @@
 a planetary system orbitting a star / collection of stars
 TODO rename to PlanetarySystem
 */
-let StarSystem = makeClass({
-	init : function() {
+import {assert, assertExists} from '/js/util.js';
+import {ui} from './ui.js';
+
+class StarSystem {
+	constructor() {
 		this.pos = [0,0,0];
 		this.vel = [0,0,0];
 		this.angle = [0,0,0,1];
 		this.planets = [];
 		this.stars = [];
-	},
+	}
 
 	//this calls 'createPlanetsFBOTex' which shouldn't be called until after WebGL init
-	doneBuildingPlanets : function() {
+	doneBuildingPlanets() {
 		this.buildIndexes();
 		this.mapParents();
 		this.createPlanetsFBOTex();
-	},
+	}
 
 	/*
 	need the following texture per-planet:
@@ -38,7 +41,8 @@ let StarSystem = makeClass({
 		
 	eventually set up a mask tex to hold what planets the user flags on/off
 	*/
-	createPlanetsFBOTex : function() {
+	createPlanetsFBOTex() {
+		const gl = ui.gl;
 		this.planetStateTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,		//xyz = pos, w = mass.  double this up if you need more precision
 			type : gl.FLOAT,
@@ -51,11 +55,11 @@ let StarSystem = makeClass({
 				t : gl.CLAMP_TO_EDGE
 			}
 		});
-	},
+	}
 
 	//builds solarSystem.indexes[planetName]
 	//and remaps solarSystem.planets[i].parent from a name to an index (why not a pointer?)
-	buildIndexes : function() {
+	buildIndexes() {
 		this.indexes = {};
 		for (let i = 0; i < this.planets.length; ++i) {
 			this.planets[i].index = i;
@@ -64,10 +68,10 @@ let StarSystem = makeClass({
 			//while we're here...
 			planet.starSystem = this;
 		}
-	},
+	}
 
 	//map parent field from name to index (or should it be to object?)
-	mapParents : function() {
+	mapParents() {
 		//convert parent from name to class (or undefined if no such name exists)
 		for (let i = 0; i < this.planets.length; ++i) {
 			let planet = this.planets[i];
@@ -77,30 +81,32 @@ let StarSystem = makeClass({
 				planet.parent = assertExists(this.planets, index);
 			}
 		}
-	},
+	}
 
 	//this is the old Planets behavior
 	// which I might recreate
 	// combination of Array and integration functions
-	clonePlanets : function() {
+	clonePlanets() {
 		let planets = [];
 		for (let i = 0; i < this.planets.length; ++i) {
 			planets[i] = this.planets[i].clone();
 		}
 		return planets;
-	},
+	}
 
 	//static
-	copyPlanets : function(dest, src) {
+	copyPlanets(dest, src) {
 		assert(dest.length == src.length);
 		for (let i = 0; i < src.length; ++i) {
 			dest[i].copy(src[i]);
 		}
-	},
+	}
 
-	updatePlanetsPos : function() {
+	updatePlanetsPos() {
 		for (let i = 0; i < this.planets.length; ++i) {	//or do it for all systems?
 			this.planets[i].updatePosVel();
 		}
 	}
-});
+}
+
+export {StarSystem}

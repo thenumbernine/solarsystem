@@ -1,10 +1,12 @@
 //all the unused init code for various other system goes here
 
+import {cfg} from './globals.js';
+
 // with a little help from
 // http://www.cv.nrao.edu/~rfisher/Ephemerides/ephem_descr.html
 // ftp://ftp.cv.nrao.edu/NRAO-staff/rfisher/SSEphem/jpl_eph.cc
 // http://www.astro-phys.com/js/astro/api.js
-let EphemerisData = makeClass({
+class EphemerisData {
 
 	//parsed from header.406
 	hdr : {
@@ -191,7 +193,7 @@ let EphemerisData = makeClass({
 		]
 	},
 
-	interp : function(coeff, numCoeffs, intervalLength, time) {
+	interp(coeff, numCoeffs, intervalLength, time) {
 		let pc = new Float64Array(18);//ffi.new('double[18]')
 		let vc = new Float64Array(18);//ffi.new('double[18]')
 	
@@ -224,9 +226,9 @@ let EphemerisData = makeClass({
 		}
 		vel *= 2 / intervalLength;
 		return [pos, vel];
-	},
+	}
 
-	posVel : function(planetIndex, timeOrigin, timeOffset) {
+	posVel(planetIndex, timeOrigin, timeOffset) {
 		timeOffset = +timeOffset;
 		let coeffBuffer = this.getCoeffBuffer(timeOrigin, timeOffset);
 		let coeff, numCoeffs, subintervalLength, subintervalFrac = getCoeffSubinterval(planetIndex, coeffBuffer, timeOrigin, timeOffset);
@@ -240,19 +242,19 @@ let EphemerisData = makeClass({
 			coeff = coeff + numCoeffs
 		}
 		return [pos, vel];
-	},
+	}
 
-	mercury : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mercury, timeOrigin, timeOffset); },
-	venus : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Venus, timeOrigin, timeOffset); },
-	mars : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mars, timeOrigin, timeOffset); },
-	jupiter : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Jupiter, timeOrigin, timeOffset); },
-	saturn : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Saturn, timeOrigin, timeOffset); },
-	uranus : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Uranus, timeOrigin, timeOffset); },
-	neptune : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Neptune, timeOrigin, timeOffset); },
-	pluto : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Pluto, timeOrigin, timeOffset); },
-	sun : function(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Sun, timeOrigin, timeOffset); },
+	mercury(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mercury, timeOrigin, timeOffset); }
+	venus(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Venus, timeOrigin, timeOffset); }
+	mars(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Mars, timeOrigin, timeOffset); }
+	jupiter(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Jupiter, timeOrigin, timeOffset); }
+	saturn(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Saturn, timeOrigin, timeOffset); }
+	uranus(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Uranus, timeOrigin, timeOffset); }
+	neptune(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Neptune, timeOrigin, timeOffset); }
+	pluto(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Pluto, timeOrigin, timeOffset); }
+	sun(timeOrigin, timeOffset) { return this.posVel(this.objIndexForName.Sun, timeOrigin, timeOffset); }
 
-	earth : function(timeOrigin, timeOffset) {
+	earth(timeOrigin, timeOffset) {
 		let tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
 		let earthMoonPos = tmp[0];
 		let earthMoonVel = tmp[1] 
@@ -273,9 +275,9 @@ let EphemerisData = makeClass({
 		];
 
 		return [earthPos, earthVel];
-	},
+	}
 
-	moon : function(timeOrigin, timeOffset) {
+	moon(timeOrigin, timeOffset) {
 		let tmp = this.posVel(this.objIndexForName.EM_Bary, timeOrigin, timeOffset);
 		let earthMoonPos = tmp[0];
 		let earthMoonVel = tmp[1];
@@ -306,7 +308,7 @@ let EphemerisData = makeClass({
 		];
 		
 		return [moonPos, moonVel];
-	},
+	}
 
 	objNames : [
 		'Mercury',
@@ -323,9 +325,9 @@ let EphemerisData = makeClass({
 		'Nutation',
 		'Libration'
 	]
-});
+}
 EphemerisData.prototype.objIndexForName = {};
-$.each(EphemerisData.prototype.objNames, function(objIndex,objName) {
+EphemerisData.prototype.objNames.forEach((objName,objIndex) => {
 	EphemerisData.prototype.objIndexForName[objName] = objIndex;
 });
 let ephemerisData = new EphemerisData();
@@ -335,46 +337,48 @@ function initAstroPhysPlanetsByRecords() {
 	let url = 'http://www.astro-phys.com/api/de406/records';
 	//let url = 'astro-phys-records.json';
 	console.log('reading from '+url);
-	$.ajax({
-		url : url,
-		dataType : 'jsonp'
-	}).done(function(data) {
-		//copied from astro-api.  i need to change the apicall but keep the function the same
-		let results = data.results;
-		let start = data.start;
-		let end = data.end;
-		for(let body in results) {
-			let nchunks = results[body].length
-			let c_step = (end - start) / nchunks;
-			for(let i = 0; i < nchunks; ++i) {
-				let c_start = start + i * c_step;
-				let c_end = c_start + c_step;
-				let coeffs = results[body][i];
-				results[body][i] = new astro.CoeffSet(coeffs, c_start, c_end);
+	fetch(url)
+	.then(response => {
+		if (!response.ok) return Promise.reject('not ok');
+		response.json()
+		.then(data => {
+			//copied from astro-api.  i need to change the apicall but keep the function the same
+			let results = data.results;
+			let start = data.start;
+			let end = data.end;
+			for(let body in results) {
+				let nchunks = results[body].length
+				let c_step = (end - start) / nchunks;
+				for(let i = 0; i < nchunks; ++i) {
+					let c_start = start + i * c_step;
+					let c_end = c_start + c_step;
+					let coeffs = results[body][i];
+					results[body][i] = new astro.CoeffSet(coeffs, c_start, c_end);
+				}
 			}
-		}
-		
-		let record = new astro.Record(results, start, end);
-		julianDate = data.date;
-		initPlanets = planets.clone();
-		initJulianDate = julianDate;
-		refreshCurrentTimeText();
-		
-		//record.getStates is giving back the whole coefficients ... ?	
-		let positions = record.getPositions(julianDate);
-		planets = new Planets();
-		for (let i = 0; i < planets.length; ++i) {
-			let planet = planets[i];
-			//convert km to m
-			planet.pos[0] = positions[planet.name.toLowerCase()][0] * 1000;
-			planet.pos[1] = positions[planet.name.toLowerCase()][1] * 1000;
-			planet.pos[2] = positions[planet.name.toLowerCase()][2] * 1000;
-			planet.vel[0] = 0;
-			planet.vel[1] = 0;
-			planet.vel[2] = 0;
-		}
-		init2();
-	});
+			
+			let record = new astro.Record(results, start, end);
+			cfg.julianDate = data.date;
+			initPlanets = planets.clone();
+			initJulianDate = cfg.julianDate;
+			refreshCurrentTimeText();
+			
+			//record.getStates is giving back the whole coefficients ... ?	
+			let positions = record.getPositions(cfg.julianDate);
+			planets = new Planets();
+			for (let i = 0; i < planets.length; ++i) {
+				let planet = planets[i];
+				//convert km to m
+				planet.pos[0] = positions[planet.name.toLowerCase()][0] * 1000;
+				planet.pos[1] = positions[planet.name.toLowerCase()][1] * 1000;
+				planet.pos[2] = positions[planet.name.toLowerCase()][2] * 1000;
+				planet.vel[0] = 0;
+				planet.vel[1] = 0;
+				planet.vel[2] = 0;
+			}
+			init2();
+		});
+	}).catch(console.log);
 }
 
 //not used at the moment
@@ -400,7 +404,7 @@ function initAstroPhysPlanetsByStates() {
 	//getting single sets of states ...
 	//returning a single state
 	let planetNames = [];
-	$.each(primaryPlanetHorizonIDs, function(_,horizonID) {
+	primaryPlanetHorizonIDs.forEach(horizonID => {
 		let planetClassPrototype = Planets.prototype.planetClassForHorizonID[horizonID].prototype;
 		planetNames.push(planetClassPrototype.name.toLowerCase());
 	});
@@ -410,32 +414,34 @@ function initAstroPhysPlanetsByStates() {
 		let url = 'http://www.astro-phys.com/api/de406/states?bodies=' + planetNames.join(',');
 		//let url = 'astro-phys-state.json';
 		console.log('reading from '+url);
-		$.ajax({
-			url : url,
-			dataType : 'jsonp'
-		}).done(function(d) {
-			planets = makePlanetsFromAstroPhysState(d.results);
-			julianDate = d.date;
-			
-			initPlanets = planets.clone();
-			initJulianDate = julianDate;
-			refreshCurrentTimeText();
-			
-			init2();
-		});
+		fetch(url)
+		.then(response => {
+			if (!response.ok) return Promise.reject('not ok');
+			response.json()
+			.then(d => {
+				planets = makePlanetsFromAstroPhysState(d.results);
+				cfg.julianDate = d.date;
+				
+				initPlanets = planets.clone();
+				initJulianDate = cfg.julianDate;
+				refreshCurrentTimeText();
+				
+				init2();
+			});
+		}).catch(console.log);
 	}
 
 	if (false) { // astro.getStates not working as well as my own manual call ...
 		console.log('planetNames '+JSON.stringify(planetNames));
-		console.log('julianDate '+julianDate);
-		astro.getStates(planetNames, julianDate, function(results, date) {
+		console.log('julianDate '+cfg.julianDate);
+		astro.getStates(planetNames, cfg.julianDate, function(results, date) {
 			console.log('results '+JSON.stringify(results));
 			console.log('date '+date);
 			planets = makePlanetsFromAstroPhysState(results);
-			julianDate = date;
+			cfg.julianDate = date;
 			
 			initPlanets = planets.clone();
-			initJulianDate = julianDate;
+			initJulianDate = cfg.julianDate;
 			refreshCurrentTimeText();
 			
 			init2();
@@ -477,18 +483,18 @@ function makePlanetsFromEphemeris(date, denum, dir) {
 //TODO if this gets reinstated then go from clone to copy
 function updateTimeForEphemeris() {
 	if (targetJulianDate !== undefined) {
-		let logDate = Math.log(julianDate);
+		let logDate = Math.log(cfg.julianDate);
 		let logTarget = Math.log(targetJulianDate);
 		let coeff = .5;
 		let deltaLog = logTarget - logDate;
 		if (deltaLog < 0) {
 			let newLogDate = logDate + coeff * deltaLog;
-			julianDate = Math.exp(newLogDate);
+			cfg.julianDate = Math.exp(newLogDate);
 		} else {
-			julianDate = targetJulianDate;
+			cfg.julianDate = targetJulianDate;
 			targetJulianDate = undefined; 
 		}
-		planets = makePlanetsFromEphemeris(julianDate);
+		planets = makePlanetsFromEphemeris(cfg.julianDate);
 	} else
 }
 
@@ -578,7 +584,7 @@ function utc2last(mjd,utc,lon) {
 	return last;
 }
 function getEarthAngle(jd) {
-	let jdofs = julianDate - 2400000.5;
+	let jdofs = cfg.julianDate - 2400000.5;
 	let ttmjd = Math.floor(jdofs);
 	let tt = jdofs - ttmjd;
 	let tmp = tt2utc(ttmjd, tt);

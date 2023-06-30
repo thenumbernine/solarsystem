@@ -1,3 +1,7 @@
+import {mathClamp} from '/js/util.js';
+import {cfg} from './globals.js';
+import {ui} from './ui.js';
+
 let skyCubeObj;
 let skyCubeMaxBrightness = .3;
 let skyCubeFadeOutStartDistInLyr = 100;
@@ -6,6 +10,10 @@ let skyCubeFadeOutEndDistInLyr = 200;
 let skyCube = new function() {
 
 	this.init = function() {
+		const thiz = this;
+		const glutil = ui.glutil;
+		const gl = ui.gl;
+
 		//looks like doing these in realtime will mean toning the detail down a bit ...
 		//if the image is too big, how do we downsample the skymap without lagging the whole browser?  1) browsers start using LuaJIT (not going to happen, stupid JS) 2) provide pre-computed sampled down versions.
 		
@@ -24,7 +32,6 @@ let skyCube = new function() {
 			return filename + Math.min(1024, glMaxCubeMapTextureSize) +'.png';
 		});
 
-		let thiz = this;
 		new glutil.TextureCube({
 			flipY : true,
 			generateMipmap : true,
@@ -43,6 +50,9 @@ let skyCube = new function() {
 	};
 	
 	this.texLoaded = function(skyTex) {
+		const glutil = ui.glutil;
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let cubeShader = new ModifiedDepthShaderProgram({
 			vertexCode : `
 in vec3 vertex;
@@ -61,14 +71,14 @@ uniform float brightness;
 //uniform vec4 angle;
 uniform vec4 viewAngle;
 
-` + coordinateSystemCode + quatRotateCode + `
+` + cfg.coordinateSystemCode + cfg.quatRotateCode + `
 
 out vec4 fragColor;
 void main() {
 	vec3 dir = vertexv;
 	dir = quatRotate(viewAngle, dir);
 	dir = eclipticalToGalactic * equatorialToEcliptical * dir;
-	fragColor.rgb = brightness * textureCube(skyTex, dir).rgb;
+	fragColor.rgb = brightness * texture(skyTex, dir).rgb;
 	fragColor.a = 1.;
 }
 `,
@@ -121,8 +131,9 @@ void main() {
 		if (!skyCubeObj) return;
 		if (picking) return;
 		if (distFromSolarSystemInLyr >= skyCubeFadeOutEndDistInLyr) return;
-			
-		let brightness = skyCubeMaxBrightness * (1 - Math.clamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
+		
+		const gl = ui.gl;
+		const brightness = skyCubeMaxBrightness * (1 - mathClamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
 		
 		gl.disable(gl.DEPTH_TEST);
 		skyCubeObj.uniforms.brightness = brightness;
@@ -130,3 +141,5 @@ void main() {
 		gl.enable(gl.DEPTH_TEST);
 	};
 };
+
+export {skyCube};

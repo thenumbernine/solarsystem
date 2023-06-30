@@ -37,19 +37,21 @@ xyz <= (const) A, B, (dyn) coeffA, coeffB
 coeffA, coeffB <= (const) eccentricity, (dyn) pathEccentricAnomaly, dE_dt
 dE_dt <= (const) sqrt(semiMajorAxis^3/gravitationalParameter), eccentricity, (dyn) pathEccentricAnomaly
 pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
+
+
+TODO don't even download this until requested
+and another TODO - organize the external datasets and have them all downloaded on request 
+ kinda like the universe visualization does
 */
+import {vec3, mat4} from '/js/gl-matrix-3.4.1/index.js';
+import {ui} from './ui.js';
+import {cfg} from './globals.js';
 
-//TODO don't even download this until requested
-//and another TODO - organize the external datasets and have them all downloaded on request 
-// kinda like the universe visualization does
-let showSmallBodies = true;
-let allowSelectSmallBodies = true;
-
-//used with isa in the orbitTarget detection
+//used with isa in the cfg.orbitTarget detection
 //instanciated when the user selects a node in the tree 
-let SmallBody = makeClass({
+class SmallBody {
 	//callback from setOrbitTarget
-	onSelect : function() {
+	onSelect() {
 		//add/removeSmallBody works with the UI controls to add/remove rows
 		let planet = solarSystem.addSmallBody(this.row);
 		
@@ -70,21 +72,11 @@ let SmallBody = makeClass({
 		//but then you'd have to restore it once the body was hidden
 		//this.node.sceneObj.attrs.vertex.buffer.updateData();
 	}
-});
+}
 
-let SmallBodies = makeClass({
-	pointSize : 1e+11,	//in m ... so maybe convert everything to AU
-	pointAlpha : .75,
-	showAllAtOnce : false,
-	showWithDensity : false,	//don't change this after init
-	visRatioThreshold : .03,
-	visRatioPickThreshold : .1,
-	numElem : 3,
-	
-	show : true,
-	init : function() {
-
-
+class SmallBodies {
+	constructor() {
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		this.shader = new ModifiedDepthShaderProgram({
 			vertexCode : `
 in vec3 vertex;
@@ -173,10 +165,10 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			thiz.doneLoading(floatBuffer);
 		};
 		xhr.send();
+	}
 	
-	},
-	
-	doneLoading : function(float32data) {
+	doneLoading(float32data) {
+		const gl = ui.gl;
 		this.vertexArray = float32data;
 		this.vertexBuffer  = new glutil.ArrayBuffer({
 			dim : this.numElem,
@@ -203,9 +195,9 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			parent : null,
 			static : false
 		});
-	},
+	}
 	
-	draw : function(
+	draw(
 		tanFovY,
 		picking,
 		viewPosInv,
@@ -214,20 +206,21 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	) {
 		let thiz = this;
 
-		if (!showSmallBodies) return;
-		if (picking && !allowSelectSmallBodies) return;
+		if (!cfg.showSmallBodies) return;
+		if (picking && !cfg.allowSelectSmallBodies) return;
 		if (this.sceneObj === undefined) return;
 
 		this.doDraw(distFromSolarSystemInM, tanFovY, picking, viewPosInv, invRotMat);
-	},
+	}
 
-	doDraw : function(distInM, tanFovY, picking, viewPosInv, invRotMat) {
+	doDraw(distInM, tanFovY, picking, viewPosInv, invRotMat) {
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
 		
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-		
+	
+		const canvas = ui.canvas;
 		let pointSize = 
 			this.pointSize 
 			* canvas.width 
@@ -235,24 +228,24 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			/ tanFovY;
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
-		this.sceneObj.uniforms.julianDate = julianDate;
+		this.sceneObj.uniforms.julianDate = cfg.julianDate;
 			
-		if (orbitTarget !== undefined && orbitTarget.pos !== undefined) {
-			this.sceneObj.pos[0] = -orbitTarget.pos[0];
-			this.sceneObj.pos[1] = -orbitTarget.pos[1];
-			this.sceneObj.pos[2] = -orbitTarget.pos[2];
+		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
+			this.sceneObj.pos[0] = -cfg.orbitTarget.pos[0];
+			this.sceneObj.pos[1] = -cfg.orbitTarget.pos[1];
+			this.sceneObj.pos[2] = -cfg.orbitTarget.pos[2];
 		}
 		
-		this.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
-		this.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
-		this.sceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
+		this.sceneObj.uniforms.flatEarthCoeff = cfg.flatEarthCoeff;
+		this.sceneObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
+		this.sceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 		
 		if (picking) {
 /*
 			//extra tough too-small threshold for picking
 			if (this.visRatio < this.visRatioPickThreshold) return;	
 			let thiz = this;
-			pickObject.drawPoints({
+			cfg.pickObject.drawPoints({
 				sceneObj : this.sceneObj,
 				targetCallback : function(i) {
 					return thiz.onPick(thiz, i);
@@ -272,9 +265,9 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 				}
 			});
 		}
-	},
+	}
 
-	onPick : function(node, index) {
+	onPick(node, index) {
 		let data = this.vertexArray;
 		let x = data[0+this.numElem*index];
 		let y = data[1+this.numElem*index];
@@ -329,6 +322,15 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	
 		return smallBody;
 	}
-});
+}
 
-let smallBodies;
+SmallBodies.prototype.pointSize = 1e+11;	//in m ... so maybe convert everything to AU
+SmallBodies.prototype.pointAlpha = .75;
+SmallBodies.prototype.showAllAtOnce = false;
+SmallBodies.prototype.showWithDensity = false;	//don't change this after init
+SmallBodies.prototype.visRatioThreshold = .03;
+SmallBodies.prototype.visRatioPickThreshold = .1;
+SmallBodies.prototype.numElem = 3;
+SmallBodies.prototype.show = true;
+
+export {SmallBodies}

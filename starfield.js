@@ -3,31 +3,25 @@ all stars of the milky way
 TODO OOP this, and make one per galaxy (which we have observed stars within) 
 */
 
-let showStars = true;
-let starPointSizeScale = 3;
-let starPointSizeBias = -3;
-
-let starPointAlpha = 1;
-let allowSelectStars = true;
-
-let bubbleStartFadeDistInLyr = .25;
-let bubbleStopFadeDistInLyr = 1.25;
+import {vec3, mat4} from '/js/gl-matrix-3.4.1/index.js';
+import {mathClamp, assert} from '/js/util.js';
+import {cfg, floatToGLSL} from './globals.js';
+import {ui} from './ui.js';
+import {metersPerUnits} from './units.js';
+import {starSystems, starSystemsExtra} from './starsystems.js';
 
 //TODO merge with starSystems[] ... keep the StarField for point rendering of all StarSystems (or make it a Galaxy object, honestly, that's where thignsn are going)
 // and remove StarInField ... make that just StarSystem (even for zero-planet systems)
 //
 //only instanciate these for the named stars.  87 in all.
 
-let drawConstellationColorScalar = 20;
-let drawConstellationPointSizeMax = 10;
-
 //hardwired from the color tex
-let colorTempMin = 1000;
-let colorTempMax = 40000;
+const colorTempMin = 1000;
+const colorTempMax = 40000;
 
-let LSun = 3.828e+26; 	// Watts
-let L0 = 3.0128e+28;	// Watts
-let LSunOverL0 = LSun / L0;
+const LSun = 3.828e+26; 	// Watts
+const L0 = 3.0128e+28;	// Watts
+const LSunOverL0 = LSun / L0;
 
 //maps from constellation index to list of vertex indexes in the point cloud
 //let indexesForConstellations = [];
@@ -49,6 +43,8 @@ let starfield = new function() {
 	this.renderScale = metersPerUnits.pc;	//1:1 Pc/scale
 	
 	this.init = function() {
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let thiz = this;
 		
 		let bubbleTexWidth = 64;
@@ -61,9 +57,9 @@ let starfield = new function() {
 				let ax = Math.abs(x);
 				let r = Math.sqrt(x*x + y*y);
 				let lum = Math.pow(r,10) * (1 - r);
-				bubbleTexData[0+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
-				bubbleTexData[1+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
-				bubbleTexData[2+3*(i+j*bubbleTexWidth)] = 255*Math.clamp(lum,0,1);
+				bubbleTexData[0+3*(i+j*bubbleTexWidth)] = 255*mathClamp(lum,0,1);
+				bubbleTexData[1+3*(i+j*bubbleTexWidth)] = 255*mathClamp(lum,0,1);
+				bubbleTexData[2+3*(i+j*bubbleTexWidth)] = 255*mathClamp(lum,0,1);
 			}
 		}
 		this.bubbleTex = new glutil.Texture2D({
@@ -104,7 +100,7 @@ let starfield = new function() {
 				let l = Math.exp(-50 * Math.pow(r - .75, 2))
 				/**/
 				
-				l = Math.floor(255 * Math.clamp(l, 0, 1));
+				l = Math.floor(255 * mathClamp(l, 0, 1));
 				starTexData[0+3*(i+j*starTexSize)] = l;
 				starTexData[1+3*(i+j*starTexSize)] = l;
 				starTexData[2+3*(i+j*starTexSize)] = l;
@@ -427,9 +423,9 @@ console.log('num stars within 1pc:', numClose);
 					uniforms : {
 						tempTex : 0,
 						starTex : 1,
-						starPointSizeBias : starPointSizeBias,
-						starPointSizeScale : starPointSizeScale,
-						starPointAlpha : starPointAlpha 
+						starPointSizeBias : cfg.starPointSizeBias,
+						starPointSizeScale : cfg.starPointSizeScale,
+						starPointAlpha : cfg.starPointAlpha 
 					},
 					texs : [
 						assert(thiz.tempTex),
@@ -468,7 +464,7 @@ console.log('num stars within 1pc:', numClose);
 	//this is called after the exoplanets load
 	this.addStarSystems = function() {
 		if (this.alreadyAddedStarSystems) return;	// already processed
-		if (!starSystemsHasGotResults) return;		// starsystems not ready yet?
+		if (!cfg.starSystemsHasGotResults) return;		// starsystems not ready yet?
 		if (this.buffer === undefined) return;		// we're not ready yet?
 
 /* add stars from open exoplanet data */
@@ -495,6 +491,7 @@ console.log('num stars within 1pc:', numClose);
 				array.push(0);	//constellation
 			}
 
+			const gl = ui.gl;
 			this.buffer.setData(array, gl.STATIC_DRAW, true);
 		}
 /**/
@@ -572,9 +569,11 @@ console.log('num stars within 1pc:', numClose);
 		distFromSolarSystemInLyr,
 		distFromSolarSystemInMpc
 	) {
-		let thiz = this;
+		const gl = ui.gl;
+		const canvas = ui.canvas;
+		const thiz = this;
 
-		if (!showStars) return;
+		if (!cfg.showStars) return;
 			
 		gl.clear(gl.DEPTH_BUFFER_BIT)
 		vec3.scale(viewPosInv, glutil.view.pos, -1/this.renderScale);
@@ -582,8 +581,8 @@ console.log('num stars within 1pc:', numClose);
 
 		if (distFromSolarSystemInLyr < this.maxDistInLyr &&
 			this.sceneObj !== undefined && 
-			orbitTarget !== undefined &&
-			orbitTarget.pos !== undefined)
+			cfg.orbitTarget !== undefined &&
+			cfg.orbitTarget.pos !== undefined)
 		{
 			let pointSize = 
 				canvas.width 
@@ -592,16 +591,16 @@ console.log('num stars within 1pc:', numClose);
 				/ this.renderScale 
 				/ tanFovY;
 
-			this.sceneObj.uniforms.starPointSizeBias = starPointSizeBias;
-			this.sceneObj.uniforms.starPointSizeScale = starPointSizeScale;
-			this.sceneObj.uniforms.starPointAlpha = starPointAlpha;
-			this.sceneObj.pos[0] = -orbitTarget.pos[0] / this.renderScale;
-			this.sceneObj.pos[1] = -orbitTarget.pos[1] / this.renderScale;
-			this.sceneObj.pos[2] = -orbitTarget.pos[2] / this.renderScale;
+			this.sceneObj.uniforms.starPointSizeBias = cfg.starPointSizeBias;
+			this.sceneObj.uniforms.starPointSizeScale = cfg.starPointSizeScale;
+			this.sceneObj.uniforms.starPointAlpha = cfg.starPointAlpha;
+			this.sceneObj.pos[0] = -cfg.orbitTarget.pos[0] / this.renderScale;
+			this.sceneObj.pos[1] = -cfg.orbitTarget.pos[1] / this.renderScale;
+			this.sceneObj.pos[2] = -cfg.orbitTarget.pos[2] / this.renderScale;
 
-			this.sceneObj.uniforms.flatEarthCoeff = flatEarthCoeff;
-			this.sceneObj.uniforms.earthPos = flatEarthRelativeEarthPos;
-			this.sceneObj.uniforms.earthNorthDir = flatEarthRelativeEarthNorthDir;
+			this.sceneObj.uniforms.flatEarthCoeff = cfg.flatEarthCoeff;
+			this.sceneObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
+			this.sceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 
 			if (!picking) {
 				
@@ -621,9 +620,9 @@ glutil.updateProjection();
 
 				//only draw bubbles around stars once we're out of the star system
 				//then fade them into display
-				if (distFromSolarSystemInLyr > bubbleStartFadeDistInLyr) {
-					//let colorScale = starfield.colorScale || .5;//(distFromSolarSystemInLyr - bubbleStartFadeDistInLyr) / (bubbleStopFadeDistInLyr - bubbleStartFadeDistInLyr);
-					//colorScale = Math.clamp(colorScale, 0, 1);
+				if (distFromSolarSystemInLyr > cfg.bubbleStartFadeDistInLyr) {
+					//let colorScale = starfield.colorScale || .5;//(distFromSolarSystemInLyr - cfg.bubbleStartFadeDistInLyr) / (cfg.bubbleStopFadeDistInLyr - cfg.bubbleStartFadeDistInLyr);
+					//colorScale = mathClamp(colorScale, 0, 1);
 
 					let pointSize = 
 						canvas.width 
@@ -634,9 +633,9 @@ glutil.updateProjection();
 					
 					this.sceneObj.draw({
 						uniforms : {
-							starPointSizeBias : starPointSizeBias,
-							starPointSizeScale : starPointSizeScale,
-							starPointAlpha : starPointAlpha  
+							starPointSizeBias : cfg.starPointSizeBias,
+							starPointSizeScale : cfg.starPointSizeScale,
+							starPointAlpha : cfg.starPointAlpha  
 						},
 						texs : [this.tempTex, this.bubbleTex]
 					});
@@ -650,9 +649,9 @@ glutil.updateProjection();
 //						this.sceneObj.geometry.indexes = indexesForConstellations[k];
 //						this.sceneObj.draw({
 //							uniforms : {
-//								starPointSizeBias : starPointSizeBias,
-//								starPointSizeScale : starPointSizeScale,
-//								colorScale : drawConstellationColorScalar,
+//								starPointSizeBias : cfg.starPointSizeBias,
+//								starPointSizeScale : cfg.starPointSizeScale,
+//								colorScale : cfg.drawConstellationColorScalar,
 //							},
 //							texs : [this.tempTex, this.bubbleTex]
 //						});
@@ -677,12 +676,12 @@ glutil.updateProjection();
 //
 //								dist1 *= metersPerUnits.pc / this.renderScale;
 //								dist2 *= metersPerUnits.pc / this.renderScale;
-//								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (sunPos[0] - orbitTarget.pos[0]) / this.renderScale;
-//								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (sunPos[1] - orbitTarget.pos[1]) / this.renderScale;
-//								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (sunPos[2] - orbitTarget.pos[2]) / this.renderScale;
-//								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - orbitTarget.pos[0]) / this.renderScale;
-//								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - orbitTarget.pos[1]) / this.renderScale;
-//								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - orbitTarget.pos[2]) / this.renderScale;
+//								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
+//								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
+//								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
+//								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
+//								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
+//								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
 //					
 //								lineObj.attrs.vertex.updateData();
 //								lineObj.draw({uniforms : { color : [1,1,1,1] }});
@@ -701,20 +700,20 @@ glutil.updateProjection();
 				//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
 				//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 				//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
-				if (allowSelectStars) {
+				if (cfg.allowSelectStars) {
 				
 					/* TODO render via buffer? * /
 					//also TODO:
-					//if (list === this && target == orbitStarSystem) continue;
+					//if (list === this && target == cfg.orbitStarSystem) continue;
 					//...and then there's the fact that the old ray code only checked the exoplanets
 					// whereas this is rendering all hyg stars ...
 					//so I'll turn it off for now
-					pickObject.drawPoints({
+					cfg.pickObject.drawPoints({
 						sceneObj : this.sceneObj,
 						targetCallback : function(index) {
 							for (let i = 0; i < namedStars.length; ++i) {
 								if (namedStars[i].index == index) {	//namedStars[i].index is the index in the hyg 120,000 star buffer
-									//if (orbitStarSystem == starSystems[whatever starsystem index matches]) return
+									//if (cfg.orbitStarSystem == starSystems[whatever starsystem index matches]) return
 									return starSystems[i];
 								}
 							}
@@ -725,16 +724,16 @@ glutil.updateProjection();
 					});
 					/**/
 					/* until then ... manually? * /
-					$.each(starSystems, function(i,starSystem) {
-						if (starSystem !== orbitStarSystem) {
+					starSystems.forEach((starSystem,i) => {
+						if (starSystem !== cfg.orbitStarSystem) {
 							if (starSystem.constellationIndex === undefined ||
 								displayConstellations[starSystem.constellationIndex]
 							) {
-								pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - orbitTarget.pos[0]) / thiz.renderScale;
-								pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - orbitTarget.pos[1]) / thiz.renderScale;
-								pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - orbitTarget.pos[2]) / thiz.renderScale;
+								pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - cfg.orbitTarget.pos[0]) / thiz.renderScale;
+								pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - cfg.orbitTarget.pos[1]) / thiz.renderScale;
+								pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - cfg.orbitTarget.pos[2]) / thiz.renderScale;
 								pointObj.attrs.vertex.updateData();
-								pickObject.drawPoints({
+								cfg.pickObject.drawPoints({
 									sceneObj : pointObj,
 									targetCallback : function() { return starSystem; },
 									pointSizeScaleWithDist : true,
@@ -753,11 +752,11 @@ glutil.updateProjection();
 								let x = thiz.buffer.data[0 + thiz.buffer.dim * i];
 								let y = thiz.buffer.data[1 + thiz.buffer.dim * i];
 								let z = thiz.buffer.data[2 + thiz.buffer.dim * i];
-								pointObj.attrs.vertex.data[0] = x - orbitTarget.pos[0] / thiz.renderScale;
-								pointObj.attrs.vertex.data[1] = y - orbitTarget.pos[1] / thiz.renderScale;
-								pointObj.attrs.vertex.data[2] = z - orbitTarget.pos[2] / thiz.renderScale;
+								pointObj.attrs.vertex.data[0] = x - cfg.orbitTarget.pos[0] / thiz.renderScale;
+								pointObj.attrs.vertex.data[1] = y - cfg.orbitTarget.pos[1] / thiz.renderScale;
+								pointObj.attrs.vertex.data[2] = z - cfg.orbitTarget.pos[2] / thiz.renderScale;
 								pointObj.attrs.vertex.updateData();
-								pickObject.drawPoints({
+								cfg.pickObject.drawPoints({
 									sceneObj : pointObj,
 									targetCallback : function() { return starSystem; },
 									pointSizeScaleWithDist : true,
@@ -789,9 +788,9 @@ glutil.updateProjection();
 				
 				//if the star system is close enough
 				//TODO use luminance
-				let deltaX = starSystem.pos[0] - orbitTarget.pos[0];
-				let deltaY = starSystem.pos[1] - orbitTarget.pos[1];
-				let deltaZ = starSystem.pos[2] - orbitTarget.pos[2];
+				let deltaX = starSystem.pos[0] - cfg.orbitTarget.pos[0];
+				let deltaY = starSystem.pos[1] - cfg.orbitTarget.pos[1];
+				let deltaZ = starSystem.pos[2] - cfg.orbitTarget.pos[2];
 				let dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY + deltaZ*deltaZ);
 				//TODO if the dist is lower than the max radius of the star system then don't draw it
 				let ratio = dist / orbitTargetDistance
@@ -803,3 +802,5 @@ glutil.updateProjection();
 		*/
 	};
 };
+
+export {starfield};

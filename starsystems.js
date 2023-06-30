@@ -3,15 +3,21 @@ this hold static data used by all the star systems
 kind of like starfield
 but that's just a point cloud
 */
+import {vec3, mat4, quat} from '/js/gl-matrix-3.4.1/index.js';
+import {DOM, mathRad, assertExists, merge} from '/js/util.js';
+import {cfg} from './globals.js';
+import {SolarSystem} from './solarsystem.js';
+import {ui} from './ui.js';
+import {StarSystem} from './starsystem.js';
+import {Planet} from './planet.js';
+import {metersPerUnits} from './units.js';
+import {starfield} from './starfield.js';
 
-let starSystems = [];
+const starSystems = [];
 let starSystemForNames = {};
 let solarSystem;	//the one and only.  don't construct until after WebGL init so we can populate our float tex for the planets
+let starSystemsExtra;
 
-//ugly ugly singletons
-let starSystemsHasGotResults = false;
-
-let planetSceneObj;
 let planetLatLonObj;
 
 let latitudeMin = -90;
@@ -23,7 +29,20 @@ let longitudeStep = 5;
 let latitudeDivisions = Math.floor((latitudeMax-latitudeMin)/latitudeStep);
 let longitudeDivisions = Math.floor((longitudeMax-longitudeMin)/longitudeStep);
 
+//GLSL code generator
+function unravelForLoop(varname, start, end, code) {
+	let lines = [];
+	for (let i = start; i <= end; ++i) {
+		lines.push('#define '+varname+' '+i);
+		lines.push(code);
+		lines.push('#undef '+varname);
+	}
+	return lines.join('\n')+'\n';
+}
+
 function initOrbitPaths() {
+	const gl = ui.gl;
+	const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 	let gravWellShader = new ModifiedDepthShaderProgram({
 		vertexCode : `
 in vec4 vertex;
@@ -62,9 +81,6 @@ uniform vec3 A, B;
 uniform float eccentricity;
 uniform float eccentricAnomaly;
 uniform int orbitType;
-
-float cosh(float x) { return .5 * (exp(x) + exp(-x)); }
-float sinh(float x) { return .5 * (exp(x) - exp(-x)); }
 
 #define TWO_PI 6.283185307179586231995926937088
 void main() {
@@ -105,11 +121,11 @@ void main() {
 
 	//iterate around the eccentric anomaly to reconstruct the path
 	let vertexes = [];
-	for (let i = 0; i < orbitPathResolution; ++i) {
-		vertexes.push(i / (orbitPathResolution - 1));
+	for (let i = 0; i < cfg.orbitPathResolution; ++i) {
+		vertexes.push(i / (cfg.orbitPathResolution - 1));
 	}
 	
-	orbitPathSceneObj = new glutil.SceneObject({
+	starSystemsExtra.orbitPathSceneObj = new glutil.SceneObject({
 		mode : gl.LINE_STRIP,
 		shader : orbitPathShader,
 		attrs : {
@@ -144,8 +160,8 @@ void main() {
 	//TODO start at orbit axis plane rather than earth's (ie J2000) orbit axis plane
 	let setPlanetTiltAngleToFixedValue = function(planet, inclination, tiltDirection) {
 		if (tiltDirection === undefined) tiltDirection = 0;
-		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, Math.rad(tiltDirection));
-		quat.rotateX(planet.tiltAngle, planet.tiltAngle, Math.rad(inclination));
+		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, mathRad(tiltDirection));
+		quat.rotateX(planet.tiltAngle, planet.tiltAngle, mathRad(inclination));
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
@@ -212,8 +228,8 @@ void main() {
 		let thimax = 60;
 
 		for (let ri = 1; ri < rimax; ++ri) {
-			let r = R * Math.pow(100, ri / rimax * (gravityWellRadialMaxLog100 - gravityWellRadialMinLog100) + gravityWellRadialMinLog100);
-			//max radial dist is R * Math.pow(100, gravityWellRadialMaxLog100)
+			let r = R * Math.pow(100, ri / rimax * (cfg.gravityWellRadialMaxLog100 - cfg.gravityWellRadialMinLog100) + cfg.gravityWellRadialMinLog100);
+			//max radial dist is R * Math.pow(100, cfg.gravityWellRadialMaxLog100)
 
 			let z;
 			if (r <= R) {
@@ -298,18 +314,27 @@ void main() {
 
 //collection of all star systems
 //kind of like starfield, but that's a point cloud
-let StarSystems = makeClass({
-
-	initSolarSystem : function() {
+class StarSystems {
+	constructor() {
+		this.planetShadersForNumStars = {};
+	}
+	
+	// alot of this is intented to be singleton
+	// and that means it needs to be straightened out ...
+	// remove solarSystem from starSystemsExtra
+	initSolarSystem() {
 		solarSystem = new SolarSystem();
+		this.solarSystem = solarSystem;
 		starSystemForNames[solarSystem.name] = solarSystem;
 		solarSystem.index = starSystems.length;
 		starSystems.push(solarSystem);
 		solarSystem.doneBuildingPlanets();
 		solarSystem.magnitude = solarSystem.planets[solarSystem.indexes.Sun].magnitude;
-	},
+	}
 
-	initPlanetSceneObjs : function() {
+	initPlanetSceneObjs() {
+		const gl = ui.gl;
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		console.log('init planet shaders...');
 		let quad = [[0,0],[0,1],[1,1],[1,1],[1,0],[0,0]];
 		let triIndexArray = [];
@@ -346,7 +371,7 @@ let StarSystems = makeClass({
 		//these could be merged if you don't mind evaluating the cos() and sin() in-shader
 		let vertexBuffer = new glutil.ArrayBuffer({dim : 2, data : vertexArray});
 
-		planetSceneObj = new glutil.SceneObject({
+		this.planetSceneObj = new glutil.SceneObject({
 			mode : gl.TRIANGLES,
 			indexes : new glutil.ElementArrayBuffer({data : triIndexArray}),
 			attrs : {
@@ -363,12 +388,13 @@ let StarSystems = makeClass({
 			parent : null,
 			static : true
 		});
+
 		planetLatLonObj = new glutil.SceneObject({
 			mode : gl.LINES,
 			indexes : new glutil.ElementArrayBuffer({
 				data : latLonIndexArray
 			}),
-			shader : latLonShader,
+			shader : cfg.latLonShader,
 			attrs : {
 				vertex : vertexBuffer
 			},
@@ -389,13 +415,13 @@ let StarSystems = makeClass({
 	
 		initOrbitPaths();
 	
-	//ring texture for Jupiter
-	//http://www.celestiamotherlode.net/catalog/jupiter.php
-	(function(){
-		let jupiterRingShader = new ModifiedDepthShaderProgram({
-			//vertex code matches Saturn
-			vertexCode :
-quatRotateCode
+		//ring texture for Jupiter
+		//http://www.celestiamotherlode.net/catalog/jupiter.php
+		(function(){
+			let jupiterRingShader = new ModifiedDepthShaderProgram({
+				//vertex code matches Saturn
+				vertexCode :
+cfg.quatRotateCode
 + `
 #define M_PI 3.1415926535897931
 in vec2 vertex;
@@ -429,7 +455,7 @@ void main() {
 	gl_Position.z = depthfunction(gl_Position);
 }
 `,
-			fragmentCode : `
+				fragmentCode : `
 #define NUM_STARS 1
 in vec2 texCoordv;
 in vec3 worldPosv;
@@ -468,83 +494,83 @@ void main() {
 	fragColor.rgb *= sqrt(luminance);
 }
 `
-		});
+			});
 
-		let planet = solarSystem.planets[solarSystem.indexes.Jupiter];
+			let planet = solarSystem.planets[solarSystem.indexes.Jupiter];
 
-		let texSrcInfo = [
-			{field:'ringColorTex', url:'textures/jupiter-rings-color.png', format:gl.RGBA},
-		];
-		let numLoaded = 0;
-		let onLoadRingTex = function(url) {
-			++numLoaded;
-			if (numLoaded < texSrcInfo.length) return;
-			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
+			let texSrcInfo = [
+				{field:'ringColorTex', url:'textures/jupiter-rings-color.png', format:gl.RGBA},
+			];
+			let numLoaded = 0;
+			let onLoadRingTex = function(url) {
+				++numLoaded;
+				if (numLoaded < texSrcInfo.length) return;
+				if (numLoaded > texSrcInfo.length) throw "already created the rings!";
 
-			//done! create the ring object
-			let vertexes = [];
-			for (let i = 0; i < ringResolution; ++i) {
-				let f = i / (ringResolution - 1);
-				vertexes.push(1);
-				vertexes.push(f);
-				vertexes.push(0);
-				vertexes.push(f);
-			}
+				//done! create the ring object
+				let vertexes = [];
+				for (let i = 0; i < cfg.ringResolution; ++i) {
+					let f = i / (cfg.ringResolution - 1);
+					vertexes.push(1);
+					vertexes.push(f);
+					vertexes.push(0);
+					vertexes.push(f);
+				}
 
-			let texs = [];
-			for (let i = 0; i < texSrcInfo.length; ++i) {
-				texs[i] = planet[texSrcInfo[i].field];
-			}
+				let texs = [];
+				for (let i = 0; i < texSrcInfo.length; ++i) {
+					texs[i] = planet[texSrcInfo[i].field];
+				}
 
-			//and a ring object
-			planet.ringObj = new glutil.SceneObject({
-				mode : gl.TRIANGLE_STRIP,
-				shader : jupiterRingShader,
-				attrs : {
-					vertex : new glutil.ArrayBuffer({
-						dim : 2,
-						data : vertexes
-					})
-				},
-				uniforms : {
-					colorTex : 0,
-					ringMinRadius : planet.ringRadiusRange[0],
-					ringMaxRadius : planet.ringRadiusRange[1],
-					planetRadius : planet.radius,
-					sunDir : [0,0,0, 0,0,0, 0,0,0, 0,0,0],
+				//and a ring object
+				planet.ringObj = new glutil.SceneObject({
+					mode : gl.TRIANGLE_STRIP,
+					shader : jupiterRingShader,
+					attrs : {
+						vertex : new glutil.ArrayBuffer({
+							dim : 2,
+							data : vertexes
+						})
+					},
+					uniforms : {
+						colorTex : 0,
+						ringMinRadius : planet.ringRadiusRange[0],
+						ringMaxRadius : planet.ringRadiusRange[1],
+						planetRadius : planet.radius,
+						sunDir : [0,0,0, 0,0,0, 0,0,0, 0,0,0],
+						pos : [0,0,0],
+						angle : [0,0,0,1]
+					},
+					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+					texs : texs,
 					pos : [0,0,0],
-					angle : [0,0,0,1]
-				},
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				texs : texs,
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				parent : null
+					angle : [0,0,0,1],
+					parent : null
+				});
+			};
+			texSrcInfo.forEach((info,i) => {
+				planet[info.field] = new glutil.Texture2D({
+					url : info.url,
+					format : info.format,
+					internalFormat : info.format,
+					minFilter : gl.LINEAR_MIPMAP_LINEAR,
+					magFilter : gl.LINEAR,
+					wrap : {
+						s :  gl.CLAMP_TO_EDGE,
+						t : gl.REPEAT
+					},
+					generateMipmap : true,
+					onload : onLoadRingTex
+				});
 			});
-		};
-		$.each(texSrcInfo, function(i,info) {
-			planet[info.field] = new glutil.Texture2D({
-				url : info.url,
-				format : info.format,
-				internalFormat : info.format,
-				minFilter : gl.LINEAR_MIPMAP_LINEAR,
-				magFilter : gl.LINEAR,
-				wrap : {
-					s :  gl.CLAMP_TO_EDGE,
-					t : gl.REPEAT
-				},
-				generateMipmap : true,
-				onload : onLoadRingTex
-			});
-		});
-	})();
+		})();
 
 
-	//Saturn's rings
-	(function(){
-		let saturnRingShader = new ModifiedDepthShaderProgram({
-			vertexCode : 
-quatRotateCode
+		//Saturn's rings
+		(function(){
+			let saturnRingShader = new ModifiedDepthShaderProgram({
+				vertexCode : 
+cfg.quatRotateCode
 + `
 #define M_PI 3.1415926535897931
 in vec2 vertex;
@@ -648,94 +674,91 @@ void main() {
 	fragColor.a = transparency;
 }
 `
-		});
+			});
 
-		let planet = solarSystem.planets[solarSystem.indexes.Saturn];
+			let planet = solarSystem.planets[solarSystem.indexes.Saturn];
 
-		let texSrcInfo = [
-			{field:'ringColorTex', url:'textures/saturn-rings-color.png', format:gl.RGBA},
-			{field:'ringBackScatteredTex', url:'textures/saturn-rings-back-scattered.png', format:gl.LUMINANCE},
-			{field:'ringForwardScatteredTex', url:'textures/saturn-rings-forward-scattered.png', format:gl.LUMINANCE},
-			{field:'ringTransparencyTex', url:'textures/saturn-rings-transparency.png', format:gl.LUMINANCE},
-			{field:'ringUnlitSideTex', url:'textures/saturn-rings-unlit-side.png', format:gl.LUMINANCE}
-		];
-		let numLoaded = 0;
-		let onLoadRingTex = function(url) {
-			++numLoaded;
-			if (numLoaded < texSrcInfo.length) return;
-			if (numLoaded > texSrcInfo.length) throw "already created the rings!";
+			let texSrcInfo = [
+				{field:'ringColorTex', url:'textures/saturn-rings-color.png', format:gl.RGBA},
+				{field:'ringBackScatteredTex', url:'textures/saturn-rings-back-scattered.png', format:gl.LUMINANCE},
+				{field:'ringForwardScatteredTex', url:'textures/saturn-rings-forward-scattered.png', format:gl.LUMINANCE},
+				{field:'ringTransparencyTex', url:'textures/saturn-rings-transparency.png', format:gl.LUMINANCE},
+				{field:'ringUnlitSideTex', url:'textures/saturn-rings-unlit-side.png', format:gl.LUMINANCE}
+			];
+			let numLoaded = 0;
+			let onLoadRingTex = function(url) {
+				++numLoaded;
+				if (numLoaded < texSrcInfo.length) return;
+				if (numLoaded > texSrcInfo.length) throw "already created the rings!";
 
-			//done! create the ring object
-			let vertexes = [];
-			for (let i = 0; i < ringResolution; ++i) {
-				let f = i / (ringResolution - 1);
-				vertexes.push(1);
-				vertexes.push(f);
-				vertexes.push(0);
-				vertexes.push(f);
-			}
+				//done! create the ring object
+				let vertexes = [];
+				for (let i = 0; i < cfg.ringResolution; ++i) {
+					let f = i / (cfg.ringResolution - 1);
+					vertexes.push(1);
+					vertexes.push(f);
+					vertexes.push(0);
+					vertexes.push(f);
+				}
 
-			let texs = [];
-			for (let i = 0; i < texSrcInfo.length; ++i) {
-				texs[i] = planet[texSrcInfo[i].field];
-			}
+				let texs = [];
+				for (let i = 0; i < texSrcInfo.length; ++i) {
+					texs[i] = planet[texSrcInfo[i].field];
+				}
 
-			//and a ring object
-			planet.ringObj = new glutil.SceneObject({
-				mode : gl.TRIANGLE_STRIP,
-				shader : saturnRingShader,
-				attrs : {
-					vertex : new glutil.ArrayBuffer({
-						dim : 2,
-						data : vertexes
-					})
-				},
-				uniforms : {
-					colorTex : 0,
-					backScatteredTex : 1,
-					forwardScatteredTex : 2,
-					transparencyTex : 3,
-					unlitSideTex : 4,
-					ringMinRadius : planet.ringRadiusRange[0],
-					ringMaxRadius : planet.ringRadiusRange[1],
-					planetRadius : planet.radius,
-					lookingAtLitSide : 1,
-					backToFrontLitBlend : 0,
-					sunDir : [0,0,0, 0,0,0, 0,0,0, 0,0,0],
+				//and a ring object
+				planet.ringObj = new glutil.SceneObject({
+					mode : gl.TRIANGLE_STRIP,
+					shader : saturnRingShader,
+					attrs : {
+						vertex : new glutil.ArrayBuffer({
+							dim : 2,
+							data : vertexes
+						})
+					},
+					uniforms : {
+						colorTex : 0,
+						backScatteredTex : 1,
+						forwardScatteredTex : 2,
+						transparencyTex : 3,
+						unlitSideTex : 4,
+						ringMinRadius : planet.ringRadiusRange[0],
+						ringMaxRadius : planet.ringRadiusRange[1],
+						planetRadius : planet.radius,
+						lookingAtLitSide : 1,
+						backToFrontLitBlend : 0,
+						sunDir : [0,0,0, 0,0,0, 0,0,0, 0,0,0],
+						pos : [0,0,0],
+						angle : [0,0,0,1]
+					},
+					blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
+					texs : texs,
 					pos : [0,0,0],
-					angle : [0,0,0,1]
-				},
-				blend : [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA],
-				texs : texs,
-				pos : [0,0,0],
-				angle : [0,0,0,1],
-				parent : null
+					angle : [0,0,0,1],
+					parent : null
+				});
+			};
+			texSrcInfo.forEach((info,i) => {
+				planet[info.field] = new glutil.Texture2D({
+					url : info.url,
+					format : info.format,
+					internalFormat : info.format,
+					minFilter : gl.LINEAR_MIPMAP_LINEAR,
+					magFilter : gl.LINEAR,
+					wrap : {
+						s :  gl.CLAMP_TO_EDGE,
+						t : gl.REPEAT
+					},
+					generateMipmap : true,
+					onload : onLoadRingTex
+				});
 			});
-		};
-		$.each(texSrcInfo, function(i,info) {
-			planet[info.field] = new glutil.Texture2D({
-				url : info.url,
-				format : info.format,
-				internalFormat : info.format,
-				minFilter : gl.LINEAR_MIPMAP_LINEAR,
-				magFilter : gl.LINEAR,
-				wrap : {
-					s :  gl.CLAMP_TO_EDGE,
-					t : gl.REPEAT
-				},
-				generateMipmap : true,
-				onload : onLoadRingTex
-			});
-		});
-	})();
-
-	
-	},
-
-	planetShadersForNumStars : {},
+		})();
+	}
 
 	//request this per solar system.  rebuild if we need, return from cache if we don't.
-	getPlanetShadersForNumberOfStars : function(numberOfStars) {
+	getPlanetShadersForNumberOfStars(numberOfStars) {
+		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		if (numberOfStars <= 0) numberOfStars = 1;	//huh, I guess I have a star system with no stars ... "CFBDSIR2149 / CFBDSIR J214947.2-040308.9 / CFBDS J214947-040308"
 		let shaders = this.planetShadersForNumStars[numberOfStars];
 		if (shaders !== undefined) return shaders;
@@ -759,8 +782,8 @@ out vec3 lightDir[NUM_STARS];		//light position
 out vec3 normal;		//surface normal
 
 `
-+ geodeticPositionCode 
-+ quatRotateCode 
++ cfg.geodeticPositionCode 
++ cfg.quatRotateCode 
 + `
 
 void main() {
@@ -817,8 +840,8 @@ out vec3 lightDir[NUM_STARS];
 out vec3 normal;
 
 `
-+ geodeticPositionCode 
-+ quatRotateCode 
++ cfg.geodeticPositionCode 
++ cfg.quatRotateCode 
 + `
 
 void main() {
@@ -876,8 +899,8 @@ out vec2 texCoordv;
 out vec3 lightDir[NUM_STARS];
 
 `
-+ geodeticPositionCode 
-+ quatRotateCode 
++ cfg.geodeticPositionCode 
++ cfg.quatRotateCode 
 + `
 
 void main() {
@@ -896,7 +919,7 @@ void main() {
 `,
 			fragmentCode :
 `#define NUM_STARS `+numberOfStars + `
-` + quatRotateCode
+` + cfg.quatRotateCode
 + `
 in vec2 texCoordv;
 in vec3 lightDir[NUM_STARS];
@@ -946,30 +969,32 @@ void main() {
 
 		this.planetShadersForNumStars[numberOfStars] = shaders;
 		return shaders;
-	},
+	}
 
-	initExoplanets : function() {
+	initExoplanets() {
 		//just over a meg, so I might as well ajax it
-		let exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
-		let thiz = this;
-		$.ajax({
-			url : exoplanetURL,
-			dataType : 'json'
-		}).error(function() {
+		const exoplanetURL = 'exoplanet/openExoplanetCatalog.json';
+		const thiz = this;
+		fetch(exoplanetURL)
+		.then(response => {
+			if (!response.ok) return Promise.reject('not ok');
+			response.json()
+			.then(data => {
+				thiz.processResults(data);
+			});
+		}).catch(e => {
 			console.log('failed to get exoplanets from '+exoplanetURL+' , trying again...');
 			setTimeout(function() {
 				thiz.initExoplanets();
 			}, 5000);
-		}).done(function(data) {
-			thiz.processResults(data);
 		});
-	},
+	}
 
-	processResults : function(results) {
-		starSystemsHasGotResults = true;
+	processResults(results) {
+		cfg.starSystemsHasGotResults = true;
 
 		//process results
-		$.each(results.systems, function(i,systemInfo) {
+		results.systems.forEach((systemInfo,i) => {
 			let systemName = assertExists(systemInfo, 'name');
 
 			let rightAscension = systemInfo.rightAscension;
@@ -992,7 +1017,7 @@ void main() {
 			pos[1] = sinRA * cosDec;
 			pos[2] = sinDec;
 			//rotate for earth's tilt
-			let epsilon = Math.rad(23 + 1/60*(26 + 1/60*(21.4119)));
+			let epsilon = mathRad(23 + 1/60*(26 + 1/60*(21.4119)));
 			let cosEps = Math.cos(epsilon);
 			let sinEps = Math.sin(epsilon);
 			let yn = cosEps * pos[1] + sinEps * pos[2];
@@ -1018,7 +1043,7 @@ void main() {
 
 			let minAbsMag = undefined;
 
-			$.each(assertExists(systemInfo, 'bodies'), function(j, bodyInfo) {
+			assertExists(systemInfo, 'bodies').forEach((bodyInfo,j) => {
 
 				let name = assertExists(bodyInfo, 'name');
 				let radius = bodyInfo.radius;
@@ -1042,7 +1067,7 @@ void main() {
 					mass = 2e+27;	//use a jupiter mass
 				}
 
-				let body = mergeInto(new Planet(), {
+				let body = merge(new Planet(), {
 					type : assertExists(bodyInfo, 'type'),
 					name : name,
 					mass : mass,
@@ -1128,28 +1153,28 @@ void main() {
 
 		//now that we've built all our star system data ... add it to the star field
 		starfield.addStarSystems();
-	},
+	}
 
 	//call this once we get back our star data
-	initStarsControls : function() {
+	initStarsControls() {
 		//TODO maybe some pages or something for this, like the asteroid/smallbody search?
-		for (let i = 0; i < starSystems.length; ++i) {
-			(function(){
-				let starSystem = starSystems[i];
-				$('<div>', {
-					css : {
-						textDecoration : 'underline',
-						cursor : 'pointer',
-						paddingLeft : '10px'
-					},
-					click : function() {
-						setOrbitTarget(starSystem);
-					},
-					text : starSystem.name
-				}).appendTo($('#starSystemContents'));
-			})();
-		}
+		starSystems.forEach(starSystem => {
+			DOM('div', {
+				css : {
+					textDecoration : 'underline',
+					cursor : 'pointer',
+					paddingLeft : '10px',
+				},
+				click : e => {
+					setOrbitTarget(starSystem);
+				},
+				text : starSystem.name,
+				appendTo : ids.starSystemContents,
+			});
+		});
 	}
-});
+}
 
-let starSystemsExtra = new StarSystems(); 
+starSystemsExtra = new StarSystems();
+
+export {starSystems, starSystemsExtra, StarSystems}

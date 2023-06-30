@@ -1,24 +1,44 @@
+import {DOM, show, hide, toggleHidden, removeFromParent} from '/js/util.js';
+import {GLUtil} from '/js/gl-util.js';
+import {ids, cfg} from './globals.js';
+import {metricInfos} from './metric.js';
+import {starSystemsExtra} from './starsystems.js';
+import {makeGradient} from '/js/gl-util-Gradient.js';
+
 let slideDuration = 500;
 let slideWidth = 300;
 let currentOpenSidePanelID = undefined;
-let showBodyInfo = false;
 let allSidePanelIDs = [];
 let displayConstellations = [];
 let constellationIndexForName = {};
+let canvas, gl, glutil;
+
+const displayMethods = [
+	'None',
+	'Tangent Tidal',
+	'Normal Tidal',
+	'Total Tidal',
+	'Tangent Gravitational',
+	'Normal Gravitational',
+	'Total Gravitational',
+	'Tangent Total',
+	'Normal Total',
+	'Total'
+];
 
 function resize() {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 
 	//fix side panel heights
-	$.each(allSidePanelIDs, function(i,sidePanelID) {
-		$('#'+sidePanelID).css('height', window.innerHeight);
+	allSidePanelIDs.forEach(sidePanelID => {
+		ids[sidePanelID].style.height = window.innerHeight+'px';
 	});
 
 	//fix info panel height
-	if (showBodyInfo) {
-		let infoDivDestTop = $('#timeControlDiv').offset().top + $('#timeControlDiv').height();
-		$('#infoPanel').css('height', window.innerHeight - infoDivDestTop);
+	if (ui.showBodyInfo) {
+		let infoDivDestTop = ids.timeControlDiv.offsetTop + ids.timeControlDiv.offsetHeight;
+		ids.infoPanel.style.height = (window.innerHeight - infoDivDestTop)+'px';
 	}
 
 	glutil.resize();
@@ -65,54 +85,55 @@ function showSidePanel(sidePanelID) {
 	if (currentOpenSidePanelID !== undefined) {
 		hideSidePanel(currentOpenSidePanelID, true);
 	}
-	$.each(allSidePanelIDs, function(i,sidePanelID) {
-		$('#'+sidePanelID).css('z-index', 1);
+	allSidePanelIDs.forEach(sidePanelID => {
+		ids[sidePanelID].style.zIndex = 1;
 	});
-	let sidePanel = $('#'+sidePanelID);
-	sidePanel.css('z-index', 2);
-	sidePanel.show();
-	$('#menu').animate(
-		{
-			left : slideWidth
-		}, {
-			duration : slideDuration,
-			step : function(now, fx) {
-				let degrees = now / slideWidth * 180;
-				setCSSRotation($(this), degrees);
-			}
-		}
-	);
-	sidePanel.animate({left:0}, {duration:slideDuration});
+	let sidePanel = ids[sidePanelID];
+	sidePanel.style.zIndex = 2;
+	show(sidePanel);
+	const startMenuLeft = ids.menu.offsetLeft;
+	const startSidePanelLeft = sidePanel.offetLeft;
+	animate({
+		duration : slideDuration,
+		callback : frac => {
+			const degrees = frac * 180;
+			ids.menu.style.transform = 'rotate('+degrees+')';
+			ids.menu.style.left = (startMenuLeft*(1-frac) + slideWidth*frac)+'px';
+			sidePanel.style.left = (startSidePanelLeft*(1-frac) + 0*frac)+'px';
+		},
+	});
 	currentOpenSidePanelID = sidePanelID;
 }
 
 function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	if (sidePanelID === currentOpenSidePanelID) currentOpenSidePanelID = undefined;
-	let sidePanel = $('#'+sidePanelID);
+	let sidePanel = ids[sidePanelID];
 	if (!dontMoveOpenButton) {
-		$('#menu').animate(
-			{
-				left : 0
+		const startMenuLeft = ids.menu.offsetLeft;
+		animate({
+			duration : slideDuration,
+			callback : frac => {
+				const degrees = frac * 180;
+				ids.menu.style.transform = 'rotate('+degrees+')';
+				ids.menu.style.left = (startMenuLeft*(1-frac) + 0*frac)+'px';
 			},
-			{
-				duration : slideDuration,
-				step : function(now, fx) {
-					let degrees = (now / slideWidth) * 180;
-					setCSSRotation($(this), degrees);
-				}
-			}
-		);
+		});
 	}
-	sidePanel.animate({left:-slideWidth}, {
-		duration:slideDuration,
-		complete:function() {
-			sidePanel.hide();
-		}
+	const startSidePanelLeft = sidePanel.offetLeft;
+	animate({
+		duration : slideDuration,
+		callback : frac => {
+			sidePanel.style.left = (startSidePanelLeft*(1-frac) + -slideWidth*frac)+'px';
+		},
+		done : () => {
+			hide(sidePanel);
+		},
 	});
 }
 
 let ui = new function() {
 	this.init = function() {
+		this.showBodyInfo = false;
 		allSidePanelIDs = [
 			'mainSidePanel',
 			'displayOptionsSidePanel',
@@ -123,12 +144,11 @@ let ui = new function() {
 			'starSystemsSidePanel',
 			'controlsSidePanel'
 		];
-		mainSidePanel = $('#mainSidePanel');
 
 		//keep track of what menu is open
 		//if none are open, open the main menu
 		//if any are ... if it's not main
-		$('#menu').click(function() {
+		ids.menu.addEventListener('click', e => {
 			if (currentOpenSidePanelID === undefined) {
 				showSidePanel('mainSidePanel');
 			} else if (currentOpenSidePanelID == 'mainSidePanel') {
@@ -138,7 +158,7 @@ let ui = new function() {
 			}
 		});
 
-		$.each([
+		[
 			{buttonID:'mainButtonDisplayOptions', divID:'displayOptionsSidePanel'},
 			{buttonID:'mainButtonOverlay', divID:'overlaySidePanel'},
 			{buttonID:'mainButtonSolarSystem', divID:'solarSystemSidePanel'},
@@ -146,127 +166,133 @@ let ui = new function() {
 			{buttonID:'mainButtonConstellations', divID:'constellationsSidePanel'},
 			{buttonID:'mainButtonStarSystems', divID:'starSystemsSidePanel'},
 			{buttonID:'mainButtonControls', divID:'controlsSidePanel'},
-		], function(i, info) {
-			$('#'+info.buttonID).click(function() {
+		].forEach(info => {
+			ids[info.buttonID].addEventListener('click', e => {
 				showSidePanel(info.divID);
 			});
 		});
 
-		$('#reset').click(function() {
-			integrationPaused = true;
-			integrateTimeStep = defaultIntegrateTimeStep;
-			julianDate = initJulianDate;
+		ids.reset.addEventListener('click', e => {
+			cfg.integrationPaused = true;
+			cfg.integrateTimeStep = cfg.defaultIntegrateTimeStep;
+			cfg.julianDate = cfg.initJulianDate;
 			refreshCurrentTimeText();
 		});
-		$('#play').click(function() {
-			integrationPaused = false;
-			integrateTimeStep = Math.abs(integrateTimeStep);
+		ids.play.addEventListener('click', e => {
+			cfg.integrationPaused = false;
+			cfg.integrateTimeStep = Math.abs(cfg.integrateTimeStep);
 		});
-		$('#reverse').click(function() {
-			integrationPaused = false;
-			integrateTimeStep = -Math.abs(integrateTimeStep);
+		ids.reverse.addEventListener('click', e => {
+			cfg.integrationPaused = false;
+			cfg.integrateTimeStep = -Math.abs(cfg.integrateTimeStep);
 		});
-		$('#pause').click(function() {
-			integrationPaused = true;
+		ids.pause.addEventListener('click', e => {
+			cfg.integrationPaused = true;
 		});
 		//fast/slow vs ffwd/rewind?
-		$('#ffwd').click(function() {
-			integrateTimeStep *= 2;
+		ids.ffwd.addEventListener('click', e => {
+			cfg.integrateTimeStep *= 2;
 		});
-		$('#rewind').click(function() {
-			integrateTimeStep /= 2;
+		ids.rewind.addEventListener('click', e => {
+			cfg.integrateTimeStep /= 2;
 		});
 
-		canvas = $('<canvas>', {
+		canvas = DOM('canvas', {
 			css : {
 				left : 0,
 				top : 0,
 				position : 'absolute',
-				background : 'red'
-			}
-		}).prependTo(document.body).get(0);
-
-		$(canvas).disableSelection();
+				background : 'red',
+				userSelect : 'none',
+			},
+			prependTo : document.body,
+		});
 
 		try {
 			glutil = new GLUtil({canvas:canvas});
 			gl = glutil.context;
 		} catch (e) {
-			$('#menu').remove();
-			$(canvas).remove();
-			$('#webglfail').show();
+			removeFromParent(ids.menu);
+			removeFromParent(canvas);
+			show(ids.webglfail);
 			throw e;
 		}
+		glutil.import('Gradient', makeGradient);
+		ui.canvas = canvas;
+		ui.gl = gl;
+		ui.glutil = glutil;
 
-		$(document).keydown(function(e) {
+		document.addEventListener('keydown', e => {
 			switch (e.keyCode) {
 			case 32:	//space
-				integrationPaused = !integrationPaused;
+				cfg.integrationPaused = !cfg.integrationPaused;
 				break;
 			case 38:	//up
-				integrateTimeStep *= 2;
+				cfg.integrateTimeStep *= 2;
 				break;
 			case 40:	//down
-				integrateTimeStep /= 2;
+				cfg.integrateTimeStep /= 2;
 				break;
 			case 39:	//right
-				integrationPaused = false;
-				integrateTimeStep = Math.abs(integrateTimeStep);
+				cfg.integrationPaused = false;
+				cfg.integrateTimeStep = Math.abs(cfg.integrateTimeStep);
 				break;
 			case 37:	//left
-				integrationPaused = false;
-				integrateTimeStep = -Math.abs(integrateTimeStep);
+				cfg.integrationPaused = false;
+				cfg.integrateTimeStep = -Math.abs(cfg.integrateTimeStep);
 				break;
 			}
 		});
 	};
 
 	this.initSidePanel = function() {
-		let overlaySidePanelMetric = $('#overlaySidePanelMetric');
-		$.each(metricInfos, function(metricIndex, metricInfo) {
-			let radio = $('<input>', {
+		metricInfos.forEach((metricInfo, metricIndex) => {
+			let radio = DOM('input', {
 				type : 'radio',
 				name : 'calculationMetric',
 				value : metricIndex,
-				click : function() {
-					metric = new metricInfo.classObj();
+				click : e => {
+					cfg.metric = new metricInfo.classObj();
 					calcTides.invalidateForces();
-				}
+				},
+				attrs : {
+					name : 'metric',
+				},
+				appendTo : ids.overlaySidePanelMetric,
 			})
-				.attr('name', 'metric')
-				.appendTo(overlaySidePanelMetric);
-			if (metric.isa(metricInfo.classObj)) radio.attr('checked', 'checked');
-			$('<span>', {text:metricInfo.name}).appendTo(overlaySidePanelMetric);
-			$('<br>').appendTo(overlaySidePanelMetric);
+			if (cfg.metric instanceof metricInfo.classObj) radio.checked = true;
+			DOM('span', {text:metricInfo.name, appendTo:ids.overlaySidePanelMetric});
+			DOM('br', {appendTo:ids.overlaySidePanelMetric});
 		});
 
-		let overlaySidePanelContents = $('#overlaySidePanelContents');
-		$('<span>', {text:'Overlay:'}).appendTo(overlaySidePanelContents);
-		$('<br>').appendTo(overlaySidePanelContents);
-		$.each(displayMethods, function(displayMethodIndex,thisDisplayMethod) {
-			let radio = $('<input>', {
+		DOM('span', {text:'Overlay:', appendTo:ids.overlaySidePanelContents});
+		DOM('br', {appendTo:ids.overlaySidePanelContents});
+		displayMethods.forEach((thisDisplayMethod,displayMethodIndex) => {
+			const radio = DOM('input', {
 				type : 'radio',
 				name : 'displayMethods',
 				value : displayMethodIndex,
-				click : function() {
-					displayMethod = thisDisplayMethod;
+				click : e => {
+					cfg.displayMethod = thisDisplayMethod;
 					calcTides.invalidateForces();
-				}
+				},
+				attrs : {
+					name : 'display',
+				},
+				appendTo : ids.overlaySidePanelContents,
 			})
-				.attr('name', 'display')
-				.appendTo(overlaySidePanelContents);
-			if (thisDisplayMethod == displayMethod) radio.attr('checked', 'checked');
-			$('<span>', {text:thisDisplayMethod}).appendTo(overlaySidePanelContents);
-			$('<br>').appendTo(overlaySidePanelContents);
+			if (thisDisplayMethod == cfg.displayMethod) radio.checked = true;
+			DOM('span', {text:thisDisplayMethod, appendTo:ids.overlaySidePanelContents});
+			DOM('br', {appendTo:ids.overlaySidePanelContents});
 		});
-		$('<br>').appendTo(overlaySidePanelContents);
-		$('<span>', {text:'Influencing Planets:'}).appendTo(overlaySidePanelContents);
-		$('<br>').appendTo(overlaySidePanelContents);
+		DOM('br', {appendTo:ids.overlaySidePanelContents});
+		DOM('span', {text:'Influencing Planets:', appendTo:ids.overlaySidePanelContents});
+		DOM('br', {appendTo:ids.overlaySidePanelContents});
 
 		//add radio buttons hierarchically ...
 		let overlayControlsForPlanets = {};
 
-		let HierarchicalCheckboxControl = makeClass({
+		class HierarchicalCheckboxControl {
 			/*
 			args:
 				title		<- used to identify this checkbox
@@ -275,104 +301,103 @@ let ui = new function() {
 				isChecked
 				... and anything else that can be referenced through this.args
 			*/
-			init : function(args) {
+			constructor(args) {
 				this.args = args;
 				this.childControls = [];
-				this.div = $('<div>', {
-					css : {paddingLeft:'5px'}
+				this.div = DOM('div', {
+					css : {paddingLeft:'5px'},
 				});
 
 				let thiz = this;
-				this.checkbox = $('<input>', {
+				this.checkbox = DOM('input', {
 					type : 'checkbox',
-					change : function() {
+					change : e => {
 						//refresh all parent controls' moon checkboxes -- to whiteout or grey them
 						for (let c = thiz.parentControls; c; c = c.parentControls) {
 							c.recomputeMoonCheckbox();
 						}
 
 						args.change.call(thiz);
-					}
-				})
-					.prop('checked', args.isChecked)
-					.appendTo(this.div);
+					},
+					checked : args.isChecked,
+					appendTo : this.div,
+				});
 
-				$('<span>', {
+				DOM('span', {
 					text : args.title,
 					css : {
 						textDecoration : 'underline',
 						cursor : 'pointer',
 					},
-					click : function(e) {
+					click : e => {
 						args.clickTitle.call(thiz);
-					}
-				}).appendTo(this.div);
+					},
+					appendTo : this.div,
+				});
 
-				this.toggleChildDiv = $('<span>', {
+				this.toggleChildDiv = DOM('span', {
 					css : {
 						paddingLeft : '10px',
-						cursor : 'pointer'
-					}
-				}).appendTo(this.div);
+						cursor : 'pointer',
+					},
+					appendTo:this.div,
+				});
 
-				this.moonCheckbox = $('<input>', {
+				this.moonCheckbox = DOM('input', {
 					type : 'checkbox',
-					change : function() {
+					change : e => {
 						//select / deselect all children
-						thiz.setAllChildren($(this).prop('checked'));
-					}
-				})
-					.prop('checked', 1)
-					.appendTo(this.toggleChildDiv);
+						thiz.setAllChildren(thiz.moonCheckbox.checked);
+					},
+					checked : true,
+					appendTo : this.toggleChildDiv,
+				});
 
-				$('<span>', {
+				DOM('span', {
 					css : {
 						cursor : 'pointer'
 					},
 					text : '...',
-					click : function() {
-						if (thiz.childDiv.css('display') == 'none') {
-							thiz.childDiv.show();
-						} else {
-							thiz.childDiv.hide();
-						}
-					}
-				}).appendTo(this.toggleChildDiv);
+					click : e => { toggleHidden(thiz.childDiv); },
+					appendTo : this.toggleChildDiv,
+				});
 
-				$('<br>').appendTo(this.div);
+				DOM('br', {appendTo:this.div});
 
-				this.childDiv = $('<div>').appendTo(this.div);
-
-			},
-			addChild : function(childControl) {
-				childControl.div.appendTo(this.childDiv);
+				this.childDiv = DOM('div', {appendTo:this.div});
+			}
+			
+			addChild(childControl) {
+				this.childDiv.appendChild(childControl.div);
 				childControl.parentControls = this;
 				this.childControls.push(childControl);
-			},
-			setAllChildren : function(checked) {
+			}
+			
+			setAllChildren(checked) {
 				for (let i = 0; i < this.childControls.length; ++i) {
 					let ch = this.childControls[i].checkbox;
 					if (checked) {
-						if (!ch.prop('checked')) { ch.prop('checked', 1); ch.trigger('change'); }
+						if (!ch.checked) { ch.checked = true; ch.dispatchEvent(new Event('change')); }
 					} else {
-						if (ch.prop('checked')) { ch.prop('checked', 0); ch.trigger('change'); }
+						if (ch.checked) { ch.checked = fale; ch.dispatchEvent(new Event('change')); }
 					}
 					this.childControls[i].setAllChildren(checked);
 				}
-			},
-			recomputeMoonCheckbox : function() {
+			}
+			
+			recomputeMoonCheckbox() {
 				let numChecked = 0;
 				let total = 0;
 				for (let i = 0; i < this.childControls.length; ++i) {
 					++total;
 					//check the child
-					if (this.childControls[i].checkbox.prop('checked')) {
+					if (this.childControls[i].checkbox.checked) {
 						++numChecked;
 					}
 					//check the child's children if they exist
 					if (this.childControls[i].childControls.length > 0) {
-						if (this.childControls[i].moonCheckbox.prop('checked')) {
-							if (this.childControls[i].moonCheckbox.prop('indeterminate')) {
+						if (this.childControls[i].moonCheckbox.checked) {
+							if (this.childControls[i].moonCheckbox.indeterminate) {
 								numChecked += .5;
 							} else {
 								++numChecked;
@@ -382,20 +407,21 @@ let ui = new function() {
 					}
 				}
 				if (numChecked == 0) {
-					this.moonCheckbox.prop('checked', 0)
-						.prop('indeterminate', 0);
+					this.moonCheckbox.checked = false;
+					this.moonCheckbox.indeterminate = false;
 				} else if (numChecked == total) {
-					this.moonCheckbox.prop('checked', 1)
-						.prop('indeterminate', 0);
+					this.moonCheckbox.checked = true;
+					this.moonCheckbox.indeterminate = false;
 				} else {
-					this.moonCheckbox.prop('checked', 1)
-						.prop('indeterminate', 1);
+					this.moonCheckbox.checked = true;
+					this.moonCheckbox.indeterminate = true;
 				}
 			}
-		});
+		}
 
 		//TODO add star systems
-		$.each(solarSystem.planets, function(planetIndex, planet) {
+		const solarSystem = starSystemsExtra.solarSystem;
+		solarSystem.planets.forEach((planet, planetIndex) => {
 			
 			//if any other planet doesn't have recorded mass then skip it
 			if (planet.mass === undefined) return;
@@ -416,7 +442,7 @@ let ui = new function() {
 				title : planet.name,
 				isChecked : true,
 				change : function() {
-					planetInfluences[this.args.planetIndex] = this.checkbox.is(':checked');
+					cfg.planetInfluences[this.args.planetIndex] = this.checkbox.is(':checked');
 					calcTides.invalidateForces();
 				},
 				clickTitle : function() {
@@ -427,24 +453,24 @@ let ui = new function() {
 
 			//add to parent or to the side panel
 			if (parentPlanet === undefined) {
-				controls.div.appendTo(overlaySidePanelContents);
+				ids.overlaySidePanelContents.appendChild(controls.div);
 			} else {
 				overlayControlsForPlanets[parentPlanet.index].addChild(controls);
 			}
 
-			planetInfluences[planetIndex] = true;
+			cfg.planetInfluences[planetIndex] = true;
 			overlayControlsForPlanets[planetIndex] = controls;	//JS only handles string keys, so get ready to typecast back to int
 		});
 
 		for (let planetIndex in overlayControlsForPlanets) {
-			let planetIndex = +planetIndex;
+			planetIndex = +planetIndex;
 			let controls = overlayControlsForPlanets[planetIndex];
 
 			controls.recomputeMoonCheckbox();
 
 			//if a planet didn't get any children, hide its 'toggle child div'
-			if (controls.childDiv.children().length == 0) {
-				controls.toggleChildDiv.hide();
+			if (controls.childDiv.children.length == 0) {
+				hide(controls.toggleChildDiv);
 				continue;
 			}
 
@@ -452,21 +478,21 @@ let ui = new function() {
 			if (planetIndex !== solarSystem.indexes.Sun &&
 				planetIndex !== solarSystem.indexes.Earth)
 			{
-				controls.childDiv.hide();
+				hide(controls.childDiv);
 			}
 		}
 
-		$('<br>').appendTo(overlaySidePanelContents);
+		DOM('br', {appendTo:ids.overlaySidePanelContents});
 
 
 		// display options side panel
 
-		let radioGroups = [
+		const radioGroups = [
 			['gravityWellScaleNormalized', 'gravityWellScaleFixed'],
 			['overlayShowOrbitTarget', 'overlayShowCurrentPosition']
 		];
 
-		$.each([
+		[
 			'showLinesToOtherPlanets',
 			'showVelocityVectors',
 			'showRotationAxis',
@@ -489,20 +515,20 @@ let ui = new function() {
 			//radio
 			'overlayShowOrbitTarget',
 			'overlayShowCurrentPosition'
-		], function(_, toggle) {
-			let checkbox = $('#'+toggle);
-			if (window[toggle]) checkbox.attr('checked', 'checked');
-			checkbox.change(function() {
-				window[toggle] = checkbox.is(':checked');
+		].forEach(toggle => {
+			let checkbox = ids[toggle];
+			if (cfg[toggle]) checkbox.checked = true;
+			checkbox.addEventListener('change', e => {
+				cfg[toggle] = checkbox.checked;
 				
 				let found = false;
 				for (let i = 0; i < radioGroups.length; ++i) {
-					let group = radioGroups[i];
+					const group = radioGroups[i];
 					for (let j = 0; j < group.length; ++j) {
 						if (group[j] == toggle) {
 							for (let k = 0; k < group.length; ++k) {
 								if (k == j) continue;
-								window[group[k]] = false;
+								cfg[group[k]] = false;
 							}
 							found = true;
 							break;
@@ -514,42 +540,39 @@ let ui = new function() {
 		});
 
 		//checkbox but the reflected variable is a number not a bool
-		$('#flatEarthMode').change(() => {
-			if ($('#flatEarthMode').is(':checked')) {
-				window.targetFlatEarthCoeff = 1;
+		ids.flatEarthMode.addEventListener('change', e => {
+			if (ids.flatEarthMode.checked) {
+				cfg.targetFlatEarthCoeff = 1;
 			} else {
-				window.targetFlatEarthCoeff = 0;
+				cfg.targetFlatEarthCoeff = 0;
 			}
 		});
 
-		$.each([
+		[
 			'gravityWellScaleFixedValue',
 			'starPointSizeBias',	//in starfield.js
 			'starPointSizeScale',	//in starfield.js
 			'planetScaleExaggeration'
-		], function(_, toggle) {
-			(function(){
-				let textfield = $('#'+toggle);
-				textfield.val(window[toggle]);
-				textfield.change(function() {
-					window[toggle] = textfield.val();
-				});
-			})();
+		].forEach(toggle => {
+			const textfield = ids[toggle];
+			textfield.value = cfg[toggle];
+			textfield.addEventListener('change', e => {
+				cfg[toggle] = textfield.value;
+			});
 		});
 
 
 		// celestial bodies side panel
 
 
-		let solarSystemSidePanel = $('#solarSystemSidePanel');
+		let solarSystemSidePanel = ids.solarSystemSidePanel;
 
 		//add radio buttons hierarchically ...
 		let celestialBodiesControlsForPlanets = {};
 
 		let cometParent;
 
-		$.each(solarSystem.planets, function(planetIndex,planet) {
-
+		solarSystem.planets.forEach((planet, planetIndex) => {
 			let parentPlanet = planet.parent;
 			if (parentPlanet !== undefined) {
 				if (parentPlanet.index >= planetIndex) throw "parent index should be < planet index or undefined";
@@ -568,7 +591,7 @@ let ui = new function() {
 			});
 
 			if (parentPlanet === undefined) {
-				controls.div.appendTo($('#celestialBodiesVisiblePlanets'));
+				ids.celestialBodiesVisiblePlanets.appendChild(controls.div);
 			} else {
 				celestialBodiesControlsForPlanets[parentPlanet.index].addChild(controls);
 			}
@@ -578,14 +601,14 @@ let ui = new function() {
 
 		if (cometParent) cometParent.recomputeMoonCheckbox();
 		for (let planetIndex in celestialBodiesControlsForPlanets) {
-			let planetIndex = +planetIndex;
+			planetIndex = +planetIndex;
 			let controls = celestialBodiesControlsForPlanets[planetIndex];
 
 			controls.recomputeMoonCheckbox();
 
 			//if a planet didn't get any children, hide its 'toggle child div'
-			if (controls.childDiv.children().length == 0) {
-				controls.toggleChildDiv.hide();
+			if (controls.childDiv.children.length == 0) {
+				hide(controls.toggleChildDiv);
 				continue;
 			}
 
@@ -593,11 +616,11 @@ let ui = new function() {
 			if (planetIndex !== solarSystem.indexes.Sun &&
 				planetIndex !== solarSystem.indexes.Earth)
 			{
-				controls.childDiv.hide();
+				hide(controls.childDiv);
 			}
 		}
 
-		$('<br>').appendTo($('#celestialBodiesVisiblePlanets'));
+		DOM('br', {appendTo:ids.celestialBodiesVisiblePlanets});
 
 		//these are added to the end of the result
 		//they should get greyed upon new query (search, prev, next click)
@@ -613,15 +636,15 @@ let ui = new function() {
 		//dataSource = 'remote' for remote queries, 'local' for the currently-selected planets
 		let processSearch = function(pageIndex, dataSource) {
 console.log("small-bodies got a search request...");			
-			let button = $('#celestialBodiesSearch');
-			let searchText = $('#celestialBodiesSearchText');
+			let button = ids.celestialBodiesSearch;
+			let searchText = ids.celestialBodiesSearchText;
 			let searchStr = searchText.val();
-			button.prop('disabled', 1);
+			button.disabled = true;
 			searchText.val('searching...');
-			searchText.prop('disabled', 1);
+			searchText.disabled = true;
 
-			if (prevButton) prevButton.prop('disabled', 1);
-			if (nextButton) nextButton.prop('disabled', 1);
+			if (prevButton) prevButton.disabled = true;
+			if (nextButton) nextButton.disabled = true;
 
 			let searchID = ++searchLastID;
 
@@ -629,47 +652,49 @@ console.log("small-bodies got a search request...");
 				if (searchID < searchLastID-1) return;	//someone else has searched
 
 				searchText.val(searchStr);
-				searchText.prop('disabled', 0);
-				button.prop('disabled', 0);
+				searchText.disabled = false;
+				button.disabled = false;
 
-				$('#celestialBodiesSearchToggleAll').prop('checked', 0);	//disable too?
+				ids.celestialBodiesSearchToggleAll.checked = false;	//disable too?
 
 				let pageSize = 20;	//fixed atm
 				let pageMax = Math.floor((results.count-1) / pageSize);
 
 				searchResults = [];
 
-				let resultsDiv = $('#celestialBodiesSearchResults');
-				resultsDiv.empty();
-				$.each(results.rows, function(i,row) {
-					let rowDiv = $('<div>');
-					rowDiv.appendTo(resultsDiv);
+				let resultsDiv = ids.celestialBodiesSearchResults;
+				resultsDiv.innerHTML = '';
+				results.rows.forEach((row,i) => {
+					let rowDiv = DOM('div', 
+						{appendTo:resultsDiv}
+					);
 
 					let name = row.name;
 
 					let titleSpan;
-					let checkbox = $('<input>', {
+					let checkbox = DOM('input', {
 						type : 'checkbox',
-						change : function() {
-							if (!$(this).is(':checked')) {	//uncheck checkbox => remove planet
+						change : e => {
+							if (!checkbox.checked) {	//uncheck checkbox => remove planet
 								solarSystem.removeSmallBody(row);
 								titleSpan.css({textDecoration:'', cursor:''});
 							} else {	//check checkbox => add planet
 								solarSystem.addSmallBody(row);
 								titleSpan.css({textDecoration:'underline', cursor:'pointer'});
 							}
-						}
+						},
+						checked : solarSystem.indexes[name] !== undefined,
+						appendTo : rowDiv,
 					})
-						.prop('checked', solarSystem.indexes[name] !== undefined)
-						.appendTo(rowDiv);
 
-					titleSpan = $('<span>', {
+					titleSpan = DOM('span', {
 						text : name,
-						click : function() {
+						click : e => {
 							let targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
 							if (targetPlanet !== undefined) setOrbitTarget(targetPlanet);
-						}
-					}).appendTo(rowDiv);
+						},
+						appendTo : rowDiv,
+					});
 					//TODO put an 'add' button next to each
 					//on clicking it, add the body to the planet list
 					//and repopulate the 'extra' div
@@ -686,54 +711,58 @@ console.log("small-bodies got a search request...");
 				if (pageMax > 0) {
 					let changePage = function(dir) {
 						//TODO remove or grey out results as well?
-						if (nextButton) nextButton.prop('disabled', 1);
-						if (prevButton) prevButton.prop('disabled', 1);
+						if (nextButton) nextButton.disabled = true;
+						if (prevButton) prevButton.disabled = true;
 						processSearch(pageIndex+dir, dataSource);
 					};
 					if (pageIndex > 0) {
-						prevButton = $('<button>', {
+						prevButton = DOM('button', {
 							text : 'Prev',
-							click : function() {
-								changePage(-1);
-							}
-						}).appendTo($('#celestialBodiesSearchResults'));
+							click : e => { changePage(-1); },
+							appendTo : ids.celestialBodiesSearchResults,
+						});
 					}
 					if (pageIndex < pageMax-1) {
-						nextButton = $('<button>', {
+						nextButton = DOM('button', {
 							text : 'Next',
-							click : function() {
-								changePage(1);
-							}
-						}).appendTo($('#celestialBodiesSearchResults'));
+							click : e => { changePage(1); },
+							appendTo : ids.celestialBodiesSearchResults,
+						});
 					}
-					$('<span>', {text:(pageIndex+1)+' of '+pageMax}).appendTo($('#celestialBodiesSearchResults'));
+					DOM('span', {
+						text : (pageIndex+1)+' of '+pageMax,
+						appendTo : ids.celestialBodiesSearchResults,
+					});
 				}
 			};
 
 			if (dataSource == 'remote') {
-				$.ajax({
-					url : '/solarsystem/jpl-ssd-smallbody/search.lua',
-					dataType : 'json',
-					data : {
-						comet : $('#celestialBodiesSearchComets').prop('checked')?1:0,
-						numbered : $('#celestialBodiesSearchNumbered').prop('checked')?1:0,
-						unnumbered : $('#celestialBodiesSearchUnnumbered').prop('checked')?1:0,
-						text : searchStr,
-						page : pageIndex+1	//1-based
-					},
-					cache : false,
-					timeout : 30000
-				}).error(function() {
+				const fetchArgs = new URLSearchParams();
+				fetchArgs.set('comet', ids.celestialBodiesSearchComets.checked?1:0);
+				fetchArgs.set('numbered' , ids.celestialBodiesSearchNumbered.checked?1:0);
+				fetchArgs.set('unnumbered', ids.celestialBodiesSearchUnnumbered.checked?1:0);
+				fetchArgs.set('text', searchStr);
+				fetchArgs.set('page', pageIndex+1);	//1-based
+				//cache : false,
+				//timeout : 30000
+				fetch('/solarsystem/jpl-ssd-smallbody/search.lua?'+fetchArgs.toString())
+				.then(response => {
+					if (!response.ok) return Promise.reject('not ok');
+					response.json()
+					.then(obj => {
+						processResults(obj);
+					});
+				}).catch(e => {
 console.log("search error", arguments);
 					searchText.val(searchStr);
-					searchText.prop('disabled', 0);
-					button.prop('disabled', 0);
+					searchText.disabled = false;
+					button.disabled = false;
 					//TODO animate background color of search text
-					if (prevButton) prevButton.prop('disabled', 0);
-					if (nextButton) nextButton.prop('disabled', 0);
+					if (prevButton) prevButton.setAttribute('disabled', 0);
+					if (nextButton) nextButton.setAttribute('disabled', 0);
 
-					let warning = $('<div>', {text:'Connection Failed!', css:{color:'red'}});
-					$('#celestialBodiesSearchWarning').after(warning);
+					let warning = DOM('div', {text:'Connection Failed!', css:{color:'red'}});
+					ids.celestialBodiesSearchWarning.after(warning);
 					setTimeout(function() {
 						//after five seconds, fade away
 						warning.animate({
@@ -746,12 +775,12 @@ console.log("search error", arguments);
 							}
 						});
 					}, 3000);
-				}).done(processResults);
+				});
 			} else if (dataSource == 'local') {
 				let rows = [];
-				let searchingComets = $('#celestialBodiesSearchComets').prop('checked');
-				let searchingNumbered = $('#celestialBodiesSearchNumbered').prop('checked');
-				let searchingUnnumbered = $('#celestialBodiesSearchUnnumbered').prop('checked');
+				let searchingComets = ids.celestialBodiesSearchComets.checked;
+				let searchingNumbered = ids.celestialBodiesSearchNumbered.checked;
+				let searchingUnnumbered = ids.celestialBodiesSearchUnnumbered.checked;
 				for (let i = 0; i < solarSystem.planets.length; ++i) {
 					let planet = solarSystem.planets[i];
 					let row = planet.sourceData;
@@ -826,93 +855,101 @@ if (true) {	//recent asteroid passing by
 			}
 		};
 
-		$('#celestialBodiesSearchText').keydown(function(e){
+		ids.celestialBodiesSearchText.addEventListener('keydown', e => {
 			if (e.keyCode == 13) {
-				$('#celestialBodiesSearch').trigger('click');
+				ids.celestialBodiesSearch.dispatchEvent(new Event('click'));
 			}
 		});
 
 		//change a check box, immediately update search results
-		$.each([
-			$('#celestialBodiesSearchComets'),
-			$('#celestialBodiesSearchNumbered'),
-			$('#celestialBodiesSearchUnnumbered'),
-			$('#celestialBodiesSearchVisible')
-		], function(_,checkbox) {
-			checkbox.change(function() {
-				$('#celestialBodiesSearch').trigger('click');
+		[
+			ids.celestialBodiesSearchComets,
+			ids.celestialBodiesSearchNumbered,
+			ids.celestialBodiesSearchUnnumbered,
+			ids.celestialBodiesSearchVisible
+		].forEach(checkbox => {
+			checkbox.addEventListener('change', e => {
+				ids.celestialBodiesSearch.dispatchEvent(new Event('click'));
 			});
 		});
 
-		$('#celestialBodiesSearchToggleAll').click(function() {
-			let checked = $(this).is(':checked');
-			$.each(searchResults, function(i,result) {
-				if (result.checkbox.prop('checked') != checked) {
-					result.checkbox.trigger('click');
+		ids.celestialBodiesSearchToggleAll.addEventListener('click', e => {
+			let checked = ids.celestialBodiesSearchToggleAll.checked;
+			searchResults.forEach((result, i) => {
+				if (result.checkbox.checked != checked) {
+					result.checkbox.dispatchEvent(new Event('click'));
 				}
 			});
 		});
 
-		$('#celestialBodiesSearch').click(function() {
+		ids.celestialBodiesSearch.addEventListener('click', e => {
 			processSearch(0,
-				$('#celestialBodiesSearchVisible').prop('checked') ? 'local' : 'remote'
+				ids.celestialBodiesSearchVisible.checked ? 'local' : 'remote'
 			);
 		});
 		
-//		$('#celestialBodiesSearch').trigger('click');	//fire one off
+//		ids.celestialBodiesSearch.dispatchEvent(new Event('click'));	//fire one off
 
 		
 		// constellations
 
 
 
-		let constellationsResults = $('#constellationsResults');
+		let constellationsResults = ids.constellationsResults;
 		
 		
 		//TODO - slider / min/max for filtering stars by ... (a) app. mag, or (b) abs mag
 		// (or (c) app. mag from custom location?)
-		$('<span>', {
-			text : 'selected min:'
-		}).appendTo(constellationsResults);
-		$('<span>', {
-			id : 'constellationsSelMinMag'
-		}).appendTo(constellationsResults);
-		$('<br>').appendTo(constellationsResults);
+		DOM('span', {
+			text : 'selected min:',
+			appendTo : constellationsResults,
+		});
+		ids.constellationsSelMinMag = DOM('span', {
+			id : 'constellationsSelMinMag',
+			appendTo : constellationsResults,
+		});
+		DOM('br', {appendTo : constellationsResults});
 		
-		$('<span>', {
-			text : 'selected max:'
-		}).appendTo(constellationsResults);
-		$('<span>', {
+		DOM('span', {
+			text : 'selected max:',
+			appendTo : constellationsResults,
+		});
+		ids.constellationsSelMaxMag = DOM('span', {
 			id : 'constellationsSelMaxMag',
-		}).appendTo(constellationsResults);
-		$('<br>').appendTo(constellationsResults);
+			appendTo : constellationsResults,
+		});
+		DOM('br', {appendTo : constellationsResults});
 	
 /* TODO finish me
-		$('<span>', {
-			text : 'filter min:'
-		}).appendTo(constellationsResults);
-		$('<span>', {
+		DOM('span', {
+			text : 'filter min:',
+			appendTo : constellationsResults,
+		});
+		ids.constellationsMinMag = DOM('span', {
 			id : 'constellationsMinMag'
-		}).appendTo(constellationsResults);
-		$('<br>').appendTo(constellationsResults);
+			appendTo : constellationsResults,
+		});
+		DOM('br', {appendTo : constellationsResults});
 		
-		$('<span>', {
+		DOM('span', {
 			text : 'filter max:'
-		}).appendTo(constellationsResults);
-		$('<span>', {
+			appendTo : constellationsResults,
+		});
+		ids.constellationsMaxMag = DOM('span', {
 			id : 'constellationsMaxMag',
-		}).appendTo(constellationsResults);
-		$('<br>').appendTo(constellationsResults);
+			appendTo : constellationsResults,
+		});
+		DOM('br', {appendTo : constellationsResults});
 */
 
 
 		let sortedConstellationNames = [];
-		$.each(constellations, function(i,con) {
+		constellations.forEach((con,i) => {
 			sortedConstellationNames.push(con.name);
 		});
 		sortedConstellationNames.sort();
 		
-		$.each(constellations, function(i,con) {
+		constellations.forEach((con,i) => {
 			constellationIndexForName[con.name] = i;
 		});
 
@@ -925,26 +962,26 @@ if (true) {	//recent asteroid passing by
 					magmax = Math.max(magmax, constellations[k].mag.max);
 				}
 			}
-			$('#constellationsSelMinMag').text(magmin);
-			$('#constellationsSelMaxMag').text(magmax);
+			ids.constellationsSelMinMag.innerText = magmin;
+			ids.constellationsSelMaxMag.innerText = magmax;
 		};
 
-		$.each(sortedConstellationNames, function(i,name) {
-			$('<input>', {
+		sortedConstellationNames.forEach((name,i) => {
+			DOM('input', {
 				type : 'checkbox',
 				change : function() {
 					let index = constellationIndexForName[name];
 					displayConstellations[index] = !displayConstellations[index];
 					updateMagMinMax();
-				}
-			})
-				.appendTo(constellationsResults);
+				},
+				appendTo : constellationsResults,
+			});
 		
-			$('<span>', {
+			DOM('span', {
 				text : name,
-			})
-				.appendTo(constellationsResults);
-			$('<br>').appendTo(constellationsResults);
+				appendTo : constellationsResults,
+			});
+			DOM('br', {appendTo : constellationsResults});
 		});
 
 		updateMagMinMax();
@@ -952,7 +989,9 @@ if (true) {	//recent asteroid passing by
 		// rest of the init
 
 
-		$(window).resize(resize);
+		window.addEventListener('resize', resize);
 		resize();
 	};
 };
+
+export {ui}

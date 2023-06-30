@@ -1,24 +1,29 @@
-let showNames = true;
+import {vec3, vec4} from '/js/gl-matrix-3.4.1/index.js';
+import {cfg} from './globals.js';
+import {ui} from './ui.js';
+import {metersPerUnits} from './units.js';
 
-let overlayTexts = new function() {
-	this.overlays = [];
-	this.index = 0;
-	this.maxOverlays = 20;
-
-	this.updateBegin = function() {
+class OverlayTexts {
+	constructor() {
+		this.overlays = [];
 		this.index = 0;
-	};
+		this.maxOverlays = 20;
+	}
 
-	this.updateEnd = function() {
+	updateBegin() {
+		this.index = 0;
+	}
+
+	updateEnd() {
 		for (let i = this.index; i < this.overlays.length; ++i) {
-			let div = this.overlays[i].div
-			let parent = div.parentNode;
+			const div = this.overlays[i].div;
+			const parent = div.parentNode;
 			if (parent) parent.removeChild(div);
 		}
-	};
+	}
 
-	this.add = function(target) {
-		if (!showNames) return;
+	add(target) {
+		if (!cfg.showNames) return;
 		
 		for (let i = 0; i < this.index; ++i) {
 			if (this.overlays[i].target == target) return;
@@ -39,7 +44,7 @@ let overlayTexts = new function() {
 		}
 
 		let pos = [];
-		vec3.sub(pos, target.pos, orbitTarget.pos);
+		vec3.sub(pos, target.pos, cfg.orbitTarget.pos);
 		pos[3] = 1;
 		vec4.transformMat4(pos, pos, glutil.scene.mvMat);
 let distInM = vec3.length(pos);
@@ -47,6 +52,7 @@ let distInM = vec3.length(pos);
 		vec4.scale(pos, pos, 1/pos[3]);
 		if (pos[0] < -1 || pos[0] > 1 || pos[1] < -1 || pos[1] > 1 || pos[2] < -1 || pos[2] > 1) return;
 		
+		const canvas = ui.canvas;
 		let sx = parseInt((1+pos[0])/2 * canvas.width);
 		let sy = parseInt((1-pos[1])/2 * canvas.height);
 		//if (sx == overlayText.x && sy == overlayText.y) return;
@@ -54,9 +60,9 @@ let distInM = vec3.length(pos);
 let distInParsecs = distInM / metersPerUnits.pc;
 let apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 		
-		$(overlayText.div).text(
+		overlayText.div.innerText =
 			target.name	//+' '+apparentMagnitude.toFixed(4)
-		);
+		;
 
 		overlayText.target = target;
 		overlayText.x = sx;
@@ -125,5 +131,7 @@ let apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 		}
 		
 		++this.index;
-	};
-};
+	}
+}
+const overlayTexts = new OverlayTexts();
+export {overlayTexts};
