@@ -1,11 +1,10 @@
-import {DOM, show, hide, toggleHidden, removeFromParent} from '/js/util.js';
+import {DOM, show, hide, toggleHidden, removeFromParent, animate} from '/js/util.js';
 import {GLUtil} from '/js/gl-util.js';
 import {ids, cfg} from './globals.js';
 import {metricInfos} from './metric.js';
 import {starSystemsExtra} from './starsystems.js';
 import {makeGradient} from '/js/gl-util-Gradient.js';
 
-let slideDuration = 500;
 let slideWidth = 300;
 let currentOpenSidePanelID = undefined;
 let allSidePanelIDs = [];
@@ -94,10 +93,10 @@ function showSidePanel(sidePanelID) {
 	const startMenuLeft = ids.menu.offsetLeft;
 	const startSidePanelLeft = sidePanel.offetLeft;
 	animate({
-		duration : slideDuration,
+		duration : cfg.slideDuration,
 		callback : frac => {
 			const degrees = frac * 180;
-			ids.menu.style.transform = 'rotate('+degrees+')';
+			ids.menu.style.transform = 'rotate('+degrees+'deg)';
 			ids.menu.style.left = (startMenuLeft*(1-frac) + slideWidth*frac)+'px';
 			sidePanel.style.left = (startSidePanelLeft*(1-frac) + 0*frac)+'px';
 		},
@@ -111,17 +110,17 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 	if (!dontMoveOpenButton) {
 		const startMenuLeft = ids.menu.offsetLeft;
 		animate({
-			duration : slideDuration,
+			duration : cfg.slideDuration,
 			callback : frac => {
-				const degrees = frac * 180;
-				ids.menu.style.transform = 'rotate('+degrees+')';
+				const degrees = (1 - frac) * 180;
+				ids.menu.style.transform = 'rotate('+degrees+'deg)';
 				ids.menu.style.left = (startMenuLeft*(1-frac) + 0*frac)+'px';
 			},
 		});
 	}
 	const startSidePanelLeft = sidePanel.offetLeft;
 	animate({
-		duration : slideDuration,
+		duration : cfg.slideDuration,
 		callback : frac => {
 			sidePanel.style.left = (startSidePanelLeft*(1-frac) + -slideWidth*frac)+'px';
 		},

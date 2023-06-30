@@ -156,4 +156,6 @@ export {
 	equatorialToEclipticalTransform,
 	galaxyCenterInEquatorialCoordsInMpc,
 	calcBasis,
+	solarSystemBarycentricToPlanetGeodetic,
+	planetGeodeticToSolarSystemBarycentric,
 }

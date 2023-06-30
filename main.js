@@ -1,7 +1,7 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
 glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
 import {quatZAxis} from '/js/gl-util.js';
-import {DOM, show, hide, assert, mathDeg} from '/js/util.js';
+import {DOM, show, hide, assert, animate, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
 import {SmallBodies} from './smallbodies.js';
 import {Galaxies} from './galaxies.js';
@@ -16,6 +16,10 @@ import {calcTides} from './calctides.js';
 import {milkyWay} from './milkyway.js';
 import {starfield} from './starfield.js';
 import {skyCube} from './skycube.js';
+import {
+	solarSystemBarycentricToPlanetGeodetic,
+	planetGeodeticToSolarSystemBarycentric,
+} from './vec.js';
 
 const orbitPathIndexForType = {elliptic:0, hyperbolic:1, parabolic:2};	//used in the shader
 
@@ -1039,7 +1043,7 @@ vec4 flatEarthXForm(vec4 pos) {
 		}
 	});
 
-	ids.toggleBodyInfo.style.transform = 'rotate(-90)';
+	ids.toggleBodyInfo.style.transform = 'rotate(-90deg)';
 	//ids.infoPanel.style.height = (ids.infoDiv.offset().top - ids.infoPanel.offset().top))+'px';
 	//ids.infoPanel.style.bottom = '-25px';
 	let currentAnimation;
@@ -1057,10 +1061,10 @@ vec4 flatEarthXForm(vec4 pos) {
 			//interpolate up to the time controls ... or some fixed distance to it
 			if (currentAnimation) currentAnimation.stop();
 			currentAnimation = animate({
-				duration : slideDuration,
+				duration : cfg.slideDuration,
 				callback : frac => {
 					const degrees = 180 * frac - 90;
-					ids.toggleBodyInfo.style.transform = 'rotate('+degrees+')';
+					ids.toggleBodyInfo.style.transform = 'rotate('+degrees+'deg)';
 					ids.infoPanel.style.top = (infoDivTop*(1-frac) + infoDivDestTop*frac)+'px';
 				},
 				done : () => {
@@ -1080,10 +1084,10 @@ vec4 flatEarthXForm(vec4 pos) {
 			//interpolate up to the time controls ... or some fixed distance to it
 			if (currentAnimation) currentAnimation.stop();
 			currentAnimation = animate({
-				duration : slideDuration,
+				duration : cfg.slideDuration,
 				callback : frac => {
-					const degrees = 180 * frac - 90;
-					ids.toggleBodyInfo.style.transform = 'rotate('+degrees+')';
+					const degrees = 180 * (1 - frac) - 90;
+					ids.toggleBodyInfo.style.transform = 'rotate('+degrees+'deg)';
 					ids.infoPanel.style.bottom = (infoDivBottom*(1-frac) + infoDivDestBottom*frac)+'px';
 				},
 				done : () => {

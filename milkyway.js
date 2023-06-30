@@ -1,6 +1,7 @@
 import {cfg, floatToGLSL} from './globals.js';
 import {ui} from './ui.js';
 import {metersPerUnits} from './units.js';
+import {galaxyCenterInEquatorialCoordsInMpc} from './vec.js';
 
 let milkyWay = new function(){
 	this.fadeMinDistInLyr = 50;

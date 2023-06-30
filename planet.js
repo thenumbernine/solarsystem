@@ -21,7 +21,7 @@ in calcKOEFromPosVel and calcOrbitBasis the vel is converted from m/day to m/s (
 though atm i don't think I use vel but TODO fix this
 */
 import {vec3, quat} from '/js/gl-matrix-3.4.1/index.js';
-import {assertExists} from '/js/util.js';
+import {mathRad, mathDeg, assertExists} from '/js/util.js';
 import {cfg} from './globals.js';
 import {kilogramsPerMeter, gravitationalConstant} from './units.js';
 import {starSystemsExtra} from './starsystems.js';
@@ -93,8 +93,8 @@ class Planet {
 			};
 		}
 		return {
-			lat : Math.deg(phi),
-			lon : Math.deg(lambda),
+			lat : mathDeg(phi),
+			lon : mathDeg(lambda),
 			height : r - equatorialRadius
 		}
 		//} else it is a nonlinear problem and I will think about it later 
@@ -104,8 +104,8 @@ class Planet {
 	//this is only used for getting positions for updating the tidal array calculations
 	// and for (geosynchronously) orbiting geodetic locations (which is currently disabled)
 	geodeticPosition(destX, lat, lon, height) {
-		const phi = Math.rad(lat);
-		const lambda = Math.rad(lon);
+		const phi = mathRad(lat);
+		const lambda = mathRad(lon);
 		const cosPhi = Math.cos(phi);
 		const sinPhi = Math.sin(phi);
 
@@ -131,8 +131,8 @@ class Planet {
 	}
 
 	geodeticNormal(lat, lon) {
-		const phi = Math.rad(lat)
-		const lambda = Math.rad(lon)
+		const phi = mathRad(lat)
+		const lambda = mathRad(lon)
 		const cosPhi = Math.cos(phi)
 		const sinPhi = Math.sin(phi)
 

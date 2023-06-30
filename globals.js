@@ -82,6 +82,8 @@ const cfg = {
 	
 	//ugly ugly singletons
 	starSystemsHasGotResults : false,
+
+	slideDuration : 500,
 };
 cfg.integrateTimeStep = cfg.defaultIntegrateTimeStep;
 cfg.planetInfluences = [];
