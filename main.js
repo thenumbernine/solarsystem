@@ -74,7 +74,6 @@ function refreshMeasureText() {
 	ids.measureMax.innerText = cfg.orbitTarget.measureMax === undefined ? '' : (cfg.orbitTarget.measureMax.toExponential() + ' m/s^2');
 }
 
-let drawScene;
 let gravityWellZScale = 1;
 let gravityWellTargetZScale = 1;
 let planetPointVisRatio = .001;
@@ -93,7 +92,7 @@ let showFPS = false;
 	//used for new gpu update of tide tex
 	let updatePlanetStateBuffer = new Float32Array(1);
 
-	drawScene = function(picking) {
+	cfg.drawScene = function(picking) {
 		const glutil = ui.glutil;
 
 		//should picking count towards fps? nah
@@ -911,7 +910,7 @@ function init() {
 
 	//post-WebGL init:
 	
-	let depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
+	const depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
 	ui.ModifiedDepthShaderProgram = class extends glutil.Program {
 		constructor(args) {
 			// maximizing depth range: http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
@@ -1669,7 +1668,7 @@ function update() {
 	if (window.showPickScene) {
 		cfg.pickObject.pick(false, true);
 	} else {
-		drawScene(false);
+		cfg.drawScene(false);
 	}
 	glutil.clearAlpha();
 

@@ -8,6 +8,7 @@ here's my thought: if the galaxies can't be selected / seen then resolve the sea
 otherwise wait til the search is done
 */
 import {mat4} from '/js/gl-matrix-3.4.1/index.js';
+import {assert, assertExists} from '/js/util.js';
 import {cfg} from './globals.js';
 import {ui} from './ui.js';
 import {Planet} from './planet.js';
@@ -19,7 +20,7 @@ class PickObject {
 		this.fboTexWidth = 32;
 		this.fboTexHeight = 32;
 		this.fboTex = new glutil.Texture2D({
-			internalFormat : gl.RGBA,
+			internalFormat : gl.RGBA32F,
 			format : gl.RGBA,
 			type : gl.FLOAT,
 			width : this.fboTexWidth,
@@ -28,8 +29,8 @@ class PickObject {
 			minFilter : gl.NEAREST,
 			wrap : {
 				s : gl.CLAMP_TO_EDGE,
-				t : gl.CLAMP_TO_EDGE
-			}
+				t : gl.CLAMP_TO_EDGE,
+			},
 		});
 
 		//do we need our own fbo?  this one needs depth info, so maybe
@@ -39,12 +40,11 @@ class PickObject {
 			useDepth : true,
 		});
 
-/* TODO * /
 		this.fbo.bind();
 		this.fbo.setColorAttachment(this.fboTex);
 		this.fbo.check();
 		this.fbo.unbind();
-/**/
+
 		//this is the shader to use with point clouds
 		//point sets pass 'vertexID' as a sequential list of numbers
 		this.pickPointShader = new ModifiedDepthShaderProgram({
@@ -204,7 +204,7 @@ if (!skipProjection) {
 			// run the render loop
 			// set the scene to 'picking'
 			// change the projection matrix to be a pick-matrix
-			drawScene(true);
+			cfg.drawScene(true);
 
 if (!skipProjection) {
 			let pixels = new Float32Array(sizeX * sizeY * 4);
@@ -224,9 +224,7 @@ if (!skipProjection) {
 if (skipProjection) {
 	fboCallback();
 } else {
-	/* TODO * /
 	this.fbo.draw({callback : fboCallback});
-	/**/
 }
 
 		let body = undefined;
