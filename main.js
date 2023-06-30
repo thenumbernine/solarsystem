@@ -1,5 +1,5 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
-glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
+glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix
 import {quatZAxis} from '/js/gl-util.js';
 import {DOM, show, hide, assert, animate, mathClamp, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
@@ -57,7 +57,7 @@ function clearGeodeticLocation() {
 	//...and in one fell swoop, restore the original camera angle
 	//TODO spread this out over a few frames
 	quat.copy(glutil.view.angle, orbitGeodeticLocation.lastViewAngle);
-	
+
 	orbitGeodeticLocation = undefined;
 }
 
@@ -84,7 +84,7 @@ let showFPS = false;
 	let invRotMat = mat4.create();
 	let viewPosInv = vec3.create();
 	let viewfwd = vec3.create();
-	
+
 	//fps counter
 	let frames = 0;
 	let lastFPSTime = Date.now();
@@ -105,13 +105,13 @@ let showFPS = false;
 					console.log('fps '+fps);
 				}
 				frames = 0;
-				lastFPSTime = thisTime;	
+				lastFPSTime = thisTime;
 			}
-		
+
 			cfg.flatEarthCoeff += cfg.flatEarthConvCoeff * (cfg.targetFlatEarthCoeff - cfg.flatEarthCoeff);
 		}
 
-		if (cfg.overlayShowCurrentPosition && 
+		if (cfg.overlayShowCurrentPosition &&
 			cfg.orbitTarget instanceof Planet
 		) {
 			//update the min and max to reflect the current position
@@ -122,7 +122,7 @@ let showFPS = false;
 			ids.measureMin.innerText = t === undefined ? '' : t.toExponential() + ' m/s^2';
 			ids.measureMax.innerText = t === undefined ? '' : t.toExponential() + ' m/s^2';
 		}
-		
+
 		//update the planet state texture
 		// right now it's only used for tide calcs so
 		//1) only update it if tide calcs are on
@@ -130,9 +130,9 @@ let showFPS = false;
 		// more discernment later when i make it general purpose
 		let useOverlay = cfg.overlayShowOrbitTarget && cfg.displayMethod != 'None';
 		if (useOverlay && !picking) {
-		
+
 			let targetSize = cfg.orbitStarSystem.planetStateTex.width * cfg.orbitStarSystem.planetStateTex.height * 4;
-			
+
 			if (updatePlanetStateBuffer.length != targetSize) {
 				updatePlanetStateBuffer = new Float32Array(targetSize);
 			}
@@ -143,13 +143,13 @@ let showFPS = false;
 				updatePlanetStateBuffer[0 + 4 * planetIndex] = planet.pos[0];
 				updatePlanetStateBuffer[1 + 4 * planetIndex] = planet.pos[1];
 				updatePlanetStateBuffer[2 + 4 * planetIndex] = planet.pos[2];
-				
+
 				if (!cfg.planetInfluences[planetIndex]) {
 					//if we're not using this planet then set the mass to zero
 					// works the same as not using it
 					updatePlanetStateBuffer[3 + 4 * planetIndex] = 0;
 				} else {
-					updatePlanetStateBuffer[3 + 4 * planetIndex] = 
+					updatePlanetStateBuffer[3 + 4 * planetIndex] =
 						(planet.mass === undefined ? 0 : planet.mass)
 						* 1e-18;	//shader mass precision bias
 				}
@@ -157,7 +157,7 @@ let showFPS = false;
 
 			//update orbit star system's planet state tex
 			cfg.orbitStarSystem.planetStateTex.bind();
-			
+
 			gl.texSubImage2D(
 				gl.TEXTURE_2D,
 				0,
@@ -168,32 +168,32 @@ let showFPS = false;
 				gl.RGBA,
 				gl.FLOAT,
 				updatePlanetStateBuffer);
-			
+
 			cfg.orbitStarSystem.planetStateTex.unbind();
 		}
 
 		//get our calculations for orientation
-		
+
 		quat.conjugate(viewAngleInv, glutil.view.angle);
 		mat4.fromQuat(invRotMat, viewAngleInv);
-		
+
 		mat4.copy(glutil.scene.mvMat, invRotMat);
 
 		//TODO pull from matrix
 		quatZAxis(viewfwd, glutil.view.angle);
 		vec3.scale(viewfwd, viewfwd, -1);
-					
+
 		let tanFovY = Math.tan(glutil.view.fovY * Math.PI / 360);
-		
+
 		let distFromSolarSystemInM = vec3.length(glutil.view.pos);
 		let distFromSolarSystemInLyr = distFromSolarSystemInM / metersPerUnits.lyr;
 		let distFromSolarSystemInPc = distFromSolarSystemInM / metersPerUnits.pc;
 		let distFromSolarSystemInMpc = distFromSolarSystemInM / metersPerUnits.Mpc;
 
-		
+
 		//draw from furthest to nearest, so the varying-scaled objects don't get conflicting depth information
 		// be sure to clear the depth buffer between each scale
-		
+
 		//first comes the sky cube (with no depth information)
 
 		skyCube.draw(
@@ -232,7 +232,7 @@ let showFPS = false;
 			distFromSolarSystemInLyr,
 			distFromSolarSystemInMpc
 		);
-	
+
 		//last is planets
 
 		const gl = ui.gl;
@@ -243,7 +243,7 @@ let showFPS = false;
 		//flat earth
 		const solarSystem = starSystemsExtra.solarSystem;
 		const earth = solarSystem.planets[solarSystem.indexes.Earth];
-assert(earth);		
+assert(earth);
 		cfg.flatEarthRelativeEarthPos = [];
 		vec3.sub(cfg.flatEarthRelativeEarthPos, earth.pos, cfg.orbitTarget.pos);
 		cfg.flatEarthRelativeEarthNorthDir = [0,0,1];
@@ -257,14 +257,14 @@ assert(earth);
 		pointObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
 		pointObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 
-		//draw debug lines 
+		//draw debug lines
 		if (!picking) {
 			for (let planetIndex = 0; planetIndex < cfg.orbitStarSystem.planets.length; ++planetIndex) {
 				let planet = cfg.orbitStarSystem.planets[planetIndex];
 				if (planet.hide) continue;
 				if (planet.pos === undefined) continue;	//comets don't have pos yet, but I'm working on that
 				if (cfg.orbitTarget.pos === undefined) continue;
-			
+
 				/*
 				if (planet.isComet) continue;
 				if (planet.isAsteroid) continue;
@@ -272,7 +272,7 @@ assert(earth);
 					planet !== solarSystem.planets[solarSystem.indexes.Sun] &&
 					planet !== solarSystem.planets[solarSystem.indexes.Moon]) continue;
 				*/
-					
+
 
 				//draw lines to other planets
 				if (cfg.showLinesToOtherPlanets &&
@@ -280,7 +280,7 @@ assert(earth);
 					cfg.orbitTarget !== planet &&
 					(!planet.parent || planet.parent.index == 0))
 				{
-					
+
 					//while here, update lines
 
 					vec3.sub(delta, planet.pos, cfg.orbitTarget.pos);
@@ -339,11 +339,11 @@ assert(earth);
 					lineObj.attrs.vertex.buffer.updateData();
 					lineObj.draw({uniforms : { color : planet.color }});
 				}
-		
+
 				//show ellipses major and minor axis
 				if (cfg.showEllipseAxis &&
 					planet.keplerianOrbitalElements &&
-					planet.keplerianOrbitalElements.A && 
+					planet.keplerianOrbitalElements.A &&
 					planet.keplerianOrbitalElements.B)
 				{
 					if (planet.parent) {
@@ -359,12 +359,12 @@ assert(earth);
 					lineObj.attrs.vertex.buffer.data[5] = delta[2] + planet.keplerianOrbitalElements.A[2];
 					lineObj.attrs.vertex.buffer.updateData();
 					lineObj.draw({uniforms : { color : planet.color }});
-				
+
 					if (planet.parent) {
 						vec3.sub(delta, planet.parent.pos, cfg.orbitTarget.pos);
 					} else {
 						vec3.copy(delta, cfg.orbitTarget.pos);
-					}				
+					}
 					lineObj.attrs.vertex.buffer.data[0] = delta[0] - planet.keplerianOrbitalElements.B[0];
 					lineObj.attrs.vertex.buffer.data[1] = delta[1] - planet.keplerianOrbitalElements.B[1];
 					lineObj.attrs.vertex.buffer.data[2] = delta[2] - planet.keplerianOrbitalElements.B[2];
@@ -403,14 +403,14 @@ assert(earth);
 			let planet = cfg.orbitStarSystem.planets[planetIndex];
 
 			if (planet.sceneObj) {
-			
+
 				let canSee = !planet.hide && planet.visRatio >= planetPointVisRatio;
 
 				//if the planet is visible then
 				// if there is no texture then
 				//  load the texture and bind it
 				if (canSee) {
-					//if we have no image ... then load it 
+					//if we have no image ... then load it
 					if (!planet.img) {
 						if (planet.imgURL) {
 							planet.imgIsLoading = true;
@@ -425,7 +425,7 @@ assert(earth);
 								planet.imgIsLoading = undefined;
 							};
 							//console.log('loading planet '+planet.name+' tex '+planet.imgURL);
-							planet.img.src = planet.imgURL; 
+							planet.img.src = planet.imgURL;
 						}
 					//if we do have an image ... see if it's done yet
 					} else if (planet.imgIsLoading) {
@@ -451,10 +451,10 @@ assert(earth);
 						delete planet.tex;
 					}
 				}
-				
+
 				if (canSee) {
 					planet.updateSceneObj();
-							
+
 					//update scene object
 					//don't forget one is shared among all planets
 					vec3.sub(planet.sceneObj.uniforms.pos, planet.pos, cfg.orbitTarget.pos);
@@ -497,20 +497,20 @@ assert(earth);
 
 					calcTides.drawPlanet(planet);
 
-					//TODO FIXME something is overriding this between the update calc and here 
+					//TODO FIXME something is overriding this between the update calc and here
 					// making me need to re-assign it ...
 					planet.sceneObj.uniforms.forceMin = planet.forceMin;
 					planet.sceneObj.uniforms.forceMax = planet.forceMax;
 
 					planet.sceneObj.uniforms.ambient = planet.type == 'star' ? 1 : planetAmbientLight;
-					planet.sceneObj.uniforms.scaleExaggeration = cfg.planetScaleExaggeration;	
+					planet.sceneObj.uniforms.scaleExaggeration = cfg.planetScaleExaggeration;
 
 					//flat earth
 					planet.sceneObj.uniforms.flatEarthCoeff = cfg.flatEarthCoeff;
 					planet.sceneObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
 					planet.sceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 
-					
+
 					if (picking) {
 						cfg.pickObject.drawPlanet(planet.sceneObj, planet);
 					} else {
@@ -611,7 +611,7 @@ assert(earth);
 			if (!planet.sceneObj || planet.visRatio < planetPointVisRatio) {
 				if (picking) {
 					//condition to skip moons ...
-					if (planet.orbitVisRatio === undefined || planet.orbitVisRatio >= .03) { 
+					if (planet.orbitVisRatio === undefined || planet.orbitVisRatio >= .03) {
 						vec3.sub(pointObj.attrs.vertex.buffer.data, planet.pos, cfg.orbitTarget.pos);
 						pointObj.attrs.vertex.buffer.updateData();
 						cfg.pickObject.drawPoints({
@@ -652,7 +652,7 @@ assert(earth);
 							starTex : 1,
 							starPointSizeBias : cfg.starPointSizeBias,
 							starPointSizeScale : cfg.starPointSizeScale,
-							starsPointAlpha : starsPointAlpha 
+							starsPointAlpha : starsPointAlpha
 							//old vars
 							//pointSize : 1,
 							//pointSizeMax : 5,
@@ -662,7 +662,7 @@ assert(earth);
 				}
 			}
 		}
-		
+
 		//show small bodies in the solar system
 
 		smallBodies.draw(
@@ -672,7 +672,7 @@ assert(earth);
 			invRotMat,
 			distFromSolarSystemInM
 		);
-		
+
 		//draw mouse-over highlight
 		if (cfg.mouseOverTarget !== undefined &&
 			!picking)
@@ -732,7 +732,7 @@ assert(earth);
 						orbitPathSceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 
 						orbitPathSceneObj.draw();
-						
+
 						++orbitPathsDrawn;
 					}
 
@@ -818,7 +818,7 @@ assert(earth);
 				for (let i = 0; i < 16; ++i) {
 					planet.gravWellObj.uniforms.mvMat[i] = mvMat[i];
 				}
-		
+
 				planet.gravWellObj.uniforms.flatEarthCoeff = cfg.flatEarthCoeff;
 				planet.gravWellObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
 				planet.gravWellObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
@@ -909,7 +909,7 @@ function init() {
 	const glutil = ui.glutil;
 
 	//post-WebGL init:
-	
+
 	const depthConstant = 1e-6;//2 / Math.log(1e+7 + 1);
 	ui.ModifiedDepthShaderProgram = class extends glutil.Program {
 		constructor(args) {
@@ -930,42 +930,42 @@ uniform vec3 earthNorthDir;
 uniform float flatEarthCoeff;	//0. is original, 1. is fully flat-earth
 vec4 flatEarthXForm(vec4 pos) {
 	if (flatEarthCoeff == 0.) return pos;
-	
+
 	pos.xyz -= earthPos;
-	
+
 	float z = dot(pos.xyz, earthNorthDir);
 	vec3 xy = pos.xyz - earthNorthDir * z;	//no 2D basis chosen mind you
 	float r2 = length(xy);
 	float r3 = length(pos);
 	vec3 unitxy = xy / r2;
 	float theta = atan(r2, z);
-	
+
 	// so we are mapping the spherical theta to the new cylindrical distance
 	// but what about objects beyond the earth?  they need to be mapped above earth
 	// and cannot exceed a certain distance... how to do this ... hyperbolic mapping?
 	vec3 newPos = unitxy * theta;	// times planet radius ... len xyz always messes us up.
-	
+
 	//works fine for earth, but stars are too far out
 	//newPos *= r3;
-	
+
 	//better for distant objects like orbits and stars
 	newPos *= earthRadius;
 
-	//what about the new z?  
+	//what about the new z?
 	// for vertices within the earth radius, they map to z=0
-	// for vertices outside that radius, map to z=radius and map to xy = 
+	// for vertices outside that radius, map to z=radius and map to xy =
 	// well, for most objects away from earth, they will be at theta=pi/2 ... so how do i map them in more diverse locations?
 	if (r3 > 1.1 * earthRadius) {
 		z = earthRadius;
-		newPos.xyz += z * earthNorthDir;	
+		newPos.xyz += z * earthNorthDir;
 	}
 
-	// past some threshold, wrap antarctica around the bottom.  
+	// past some threshold, wrap antarctica around the bottom.
 	// the threshold angle is probably whatever the angle of the triangles touching the south pole on the sphere model.
 	if (theta > 3.1) {
 		newPos = pos.xyz;
 	}
-	
+
 	pos.xyz = mix(pos.xyz, newPos.xyz, flatEarthCoeff);
 	pos.xyz += earthPos;
 	return pos;
@@ -975,7 +975,7 @@ vec4 flatEarthXForm(vec4 pos) {
 			args.uniforms.zNear = glutil.view.zNear;
 			args.uniforms.zFar = glutil.view.zFar;
 			args.uniforms.depthConstant = depthConstant;
-		
+
 			super(args);
 		}
 	}
@@ -988,7 +988,7 @@ vec4 flatEarthXForm(vec4 pos) {
 	glutil.view.zFar = 1e+25;
 
 
-	//now that GL is initialized, and before we are referencing planets, 
+	//now that GL is initialized, and before we are referencing planets,
 	// build the solar sytsem
 
 	starSystemsExtra.initSolarSystem();
@@ -1135,7 +1135,7 @@ uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
 
-` + cfg.geodeticPositionCode 
+` + cfg.geodeticPositionCode
 + cfg.quatRotateCode + `
 
 void main() {
@@ -1200,7 +1200,7 @@ void main() {
 		},
 		parent : null
 	});
-	
+
 	lineObj = new glutil.SceneObject({
 		mode : gl.LINES,
 		shader : colorShader,
@@ -1216,7 +1216,7 @@ void main() {
 		parent : null,
 		static : true
 	});
-	
+
 	quadObj = new glutil.SceneObject({
 		mode : gl.TRIANGLE_STRIP,
 		attrs : {
@@ -1231,9 +1231,9 @@ void main() {
 		},
 		parent : null,
 		static : true
-	});	
+	});
 
-	
+
 	//init our planet shaders
 
 	console.log('solarSystemExtra.initPlanetSceneObjs...');
@@ -1254,9 +1254,9 @@ void main() {
 	console.log('galaxies.init...');
 	galaxies = new Galaxies();
 
-	//initialize here after webgl canvas is up	
+	//initialize here after webgl canvas is up
 	cfg.pickObject = new PickObject();
-	
+
 	//only do this after the orbit shader is made
 	starSystemsExtra.initExoplanets();
 
@@ -1304,7 +1304,7 @@ cfg.setOrbitTarget = function(newTarget) {
 			cfg.orbitTargetDistance = Math.max(100000, newTarget.radius || newTarget.equatorialRadius || 0);
 			for (let i = 0; i < cfg.orbitStarSystem.planets.length; ++i) {
 				let planet = cfg.orbitStarSystem.planets[i];
-		
+
 				//zoom out past orbit for planets
 				//TODO don't do this for stars orbiting the milky way
 				if (planet.sourceData !== undefined && planet.sourceData.semiMajorAxis !== undefined) {
@@ -1313,7 +1313,7 @@ cfg.setOrbitTarget = function(newTarget) {
 				if (planet.keplerianOrbitalElements !== undefined && planet.keplerianOrbitalElements.semiMajorAxis !== undefined) {
 					cfg.orbitTargetDistance = Math.max(cfg.orbitTargetDistance, planet.keplerianOrbitalElements.semiMajorAxis);
 				}
-				
+
 				refreshOrbitTargetDistanceText();
 			}
 		}
@@ -1331,7 +1331,7 @@ cfg.setOrbitTarget = function(newTarget) {
 		orbitDistance = cfg.orbitTargetDistance = cfg.orbitTarget.radius * 10;
 
 		//and re-orient the camera (because locking on surface had it flipped around / will flip it back around)
-		quat.copy(orbitGeodeticLocation.lastViewAngle, glutil.view.angle); 
+		quat.copy(orbitGeodeticLocation.lastViewAngle, glutil.view.angle);
 	}
 
 	//refresh info div
@@ -1471,14 +1471,14 @@ function initScene() {
 		},
 		zoom : function(zoomChange) {
 			let scale = Math.exp(-orbitZoomFactor * zoomChange);
-		
+
 			if (orbitGeodeticLocation !== undefined) {
 				glutil.view.fovY *= scale;
 				glutil.updateProjection();
 			} else {
 				cfg.orbitTargetDistance = Math.min(cfg.orbitTargetDistance * scale, 4000 * metersPerUnits.Mpc);
 			}
-			
+
 			refreshOrbitTargetDistanceText();
 		},
 		passiveMove : function() {
@@ -1503,13 +1503,13 @@ function update() {
 	*/
 	overlayTexts.updateBegin();
 	if (cfg.mouseOverTarget) overlayTexts.add(cfg.mouseOverTarget);
-	
+
 	//TODO instead of always showing the orbit target, show what it collapses into (moon -> earth -> solar system -> milky way)
 	// but this would mean unifying all the overlay text show/hide conditions ...
 	if (cfg.orbitTarget && cfg.orbitTarget.name && cfg.orbitTarget.pos) overlayTexts.add(cfg.orbitTarget);
-	
+
 	/* converage angle on target planet * /
-	
+
 	let delta = vec3.create();
 	vec3.scale(delta, glutil.view.pos, -1);
 	let fwd = vec3.create();
@@ -1529,7 +1529,7 @@ function update() {
 		quat.mul(glutil.view.angle, glutil.view.angle, q);
 	}
 	/**/
-	
+
 	// track ball orbit
 	//assumes z points away from the planet
 
@@ -1544,13 +1544,13 @@ function update() {
 	if (fixViewToSurface && orbitGeodeticLocation === undefined) {
 		let pos = [];
 		vec3.add(pos, cfg.orbitTarget.pos, glutil.view.pos);
-		
+
 		orbitGeodeticLocation = solarSystemBarycentricToPlanetGeodetic(cfg.orbitTarget, pos);
 		orbitGeodeticLocation.lastViewAngle = quat.create();
 		quat.copy(orbitGeodeticLocation.lastViewAngle, glutil.view.angle);
 
 		glutil.view.fovY = 120;
-		
+
 		//...and in one fell swoop, turn the camera around
 		//TODO spread this out over a few frames
 		let rot = [];
@@ -1566,7 +1566,7 @@ function update() {
 		//TODO spread this out over a few frames
 		let height = (cfg.orbitTarget.equatorialRadius || cfg.orbitTarget.radius || 1000) * .01;//= orbitGeodeticLocation.height;
 		orbitDistance = cfg.orbitTargetDistance = height;
-		
+
 		planetGeodeticToSolarSystemBarycentric(
 			glutil.view.pos,
 			cfg.orbitTarget,
@@ -1592,9 +1592,9 @@ function update() {
 		cfg.julianDate += cfg.integrateTimeStep;
 		cfg.refreshCurrentTimeText();
 	}
-		
+
 	if (cfg.julianDate !== cfg.lastJulianDate) {
-		
+
 		//recompute position by delta since init planets
 		cfg.orbitStarSystem.updatePlanetsPos();
 
@@ -1603,12 +1603,12 @@ function update() {
 			let planet = cfg.orbitStarSystem.planets[i];
 			if (planet.rotationPeriod) {
 				let angle = ((cfg.julianDate % planet.rotationPeriod) / planet.rotationPeriod) * 2 * Math.PI;
-			
+
 				//I really don't like this variable.  I don't think it should be used.
 				if (planet.rotationOffset !== undefined) {
 					angle += planet.rotationOffset;
 				}
-				
+
 				let zrot = [0,0,0,1];
 				quat.rotateZ(zrot, zrot, angle);
 				quat.multiply(planet.angle, planet.tiltAngle, zrot);
@@ -1622,15 +1622,15 @@ function update() {
 		if (cfg.orbitTargetDistance < cfg.orbitTarget.radius * 10) {
 			let orbitTargetAxis = [0,0,1];
 			quatZAxis(orbitTargetAxis, cfg.orbitTarget.angle);
-	
+
 			let deltaJulianDate = cfg.julianDate - cfg.lastJulianDate;
-			
+
 			let deltaAngle = quat.create();
 			quat.setAxisAngle(deltaAngle, orbitTargetAxis, deltaJulianDate * (cfg.orbitTarget.rotationPeriod || 0) * 2 * Math.PI);
-		
-			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle); 
+
+			quat.multiply(glutil.view.angle, deltaAngle, glutil.view.angle);
 			quat.normalize(glutil.view.angle, glutil.view.angle);
-			
+
 			//reset angle (to keep targets from offsetting when the ffwd/rewind buttons are pushed)
 			resetOrbitViewPos();
 		}
@@ -1645,9 +1645,9 @@ function update() {
 			vec3.normalize(viewFwd, viewFwd);
 
 			let destViewFwd = [];
-			vec3.sub(destViewFwd, cfg.mouseOverTarget.pos, glutil.view.pos); 
+			vec3.sub(destViewFwd, cfg.mouseOverTarget.pos, glutil.view.pos);
 			vec3.normalize(destViewFwd, destViewFwd);
-			
+
 			let axis = [];
 			vec3.cross(axis, viewFwd, destViewFwd);
 			let sinTheta = vec3.length(axis);
@@ -1673,7 +1673,7 @@ function update() {
 	glutil.clearAlpha();
 
 	requestAnimationFrame(update);
-	
+
 	overlayTexts.updateEnd();
 }
 
