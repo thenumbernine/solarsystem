@@ -10,7 +10,7 @@ const ratioOfOrbitDistanceToAllowSelection = 10000;
 
 class Galaxy {
 	constructor(args) {
-		for (k in args) {
+		for (let k in args) {
 			this[k] = args[k];
 		}
 	}
