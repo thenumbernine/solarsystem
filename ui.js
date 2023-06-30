@@ -1,16 +1,27 @@
 import {DOM, show, hide, toggleHidden, removeFromParent, animate} from '/js/util.js';
 import {GLUtil} from '/js/gl-util.js';
+import {makeGradient} from '/js/gl-util-Gradient.js';
 import {ids, cfg} from './globals.js';
 import {metricInfos} from './metric.js';
 import {starSystemsExtra} from './starsystems.js';
-import {makeGradient} from '/js/gl-util-Gradient.js';
+import {calcTides} from './calctides.js';
 
 let slideWidth = 300;
 let currentOpenSidePanelID = undefined;
-let allSidePanelIDs = [];
 let displayConstellations = [];
 let constellationIndexForName = {};
 let canvas, gl, glutil;
+
+const allSidePanelIDs = [
+	'mainSidePanel',
+	'displayOptionsSidePanel',
+	'overlaySidePanel',
+	'solarSystemSidePanel',
+	'smallBodiesSidePanel',
+	'constellationsSidePanel',
+	'starSystemsSidePanel',
+	'controlsSidePanel'
+];
 
 const displayMethods = [
 	'None',
@@ -91,7 +102,7 @@ function showSidePanel(sidePanelID) {
 	sidePanel.style.zIndex = 2;
 	show(sidePanel);
 	const startMenuLeft = ids.menu.offsetLeft;
-	const startSidePanelLeft = sidePanel.offetLeft;
+	const startSidePanelLeft = sidePanel.offsetLeft;
 	animate({
 		duration : cfg.slideDuration,
 		callback : frac => {
@@ -118,7 +129,7 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 			},
 		});
 	}
-	const startSidePanelLeft = sidePanel.offetLeft;
+	const startSidePanelLeft = sidePanel.offsetLeft;
 	animate({
 		duration : cfg.slideDuration,
 		callback : frac => {
@@ -133,17 +144,7 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 let ui = new function() {
 	this.init = function() {
 		this.showBodyInfo = false;
-		allSidePanelIDs = [
-			'mainSidePanel',
-			'displayOptionsSidePanel',
-			'overlaySidePanel',
-			'solarSystemSidePanel',
-			'smallBodiesSidePanel',
-			'constellationsSidePanel',
-			'starSystemsSidePanel',
-			'controlsSidePanel'
-		];
-
+		
 		//keep track of what menu is open
 		//if none are open, open the main menu
 		//if any are ... if it's not main
@@ -198,8 +199,8 @@ let ui = new function() {
 
 		canvas = DOM('canvas', {
 			css : {
-				left : 0,
-				top : 0,
+				left : '0px',
+				top : '0px',
 				position : 'absolute',
 				background : 'red',
 				userSelect : 'none',

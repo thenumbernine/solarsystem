@@ -1,6 +1,6 @@
 import {cfg} from './globals.js';
 import {ui} from './ui.js';
-import {starSystemsExtra} from './starsystems.js';
+import {starSystems, starSystemsExtra} from './starsystems.js';
 import {gravitationalConstant} from './units.js';
 
 //tried an experiment of doing surface calculations on the GPU
@@ -123,7 +123,7 @@ void main() {
 let x = [];
 				planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 
-				let t = calcMetricForce(x, planet);
+				let t = cfg.calcMetricForce(x, planet);
 
 				if (measureMin === undefined || t < measureMin) measureMin = t;
 				if (measureMax === undefined || t > measureMax) measureMax = t;
@@ -756,6 +756,7 @@ void main() {
 	}
 	
 	updateHeatMapAlpha(heatAlpha) {
+		const gl = ui.gl;
 		gl.useProgram(this.planetHeatMapTexShader.obj);
 		gl.uniform1f(this.planetHeatMapTexShader.uniforms.heatAlpha.loc, heatAlpha);
 		gl.useProgram(null);
@@ -763,6 +764,7 @@ void main() {
 
 	//new way -- update planet state buffer to reflect position & mass
 	updatePlanetSceneObj(planet) {
+		const gl = ui.gl;
 		planet.sceneObj.shader = this.planetHeatMapTexShader;
 		planet.sceneObj.texs.length = 3;
 		planet.sceneObj.texs[0] = planet.tex;

@@ -258,11 +258,10 @@ const metricInfos = [
 //cfg.metric = new NewtonApproximateMetric();
 cfg.metric = new SchwarzschildMetric();
 
-let calcMetricForce;
 {
 	let accel = [];
 	let norm = [];
-	calcMetricForce = function(x, planet) {
+	cfg.calcMetricForce = function(x, planet) {
 		accel[0] = accel[1] = accel[2] = 0;
 		switch (cfg.displayMethod) {
 		case 'Tangent Tidal':

@@ -94,6 +94,7 @@ let showFPS = false;
 
 	cfg.drawScene = function(picking) {
 		const glutil = ui.glutil;
+		const gl = ui.gl;
 
 		//should picking count towards fps? nah
 		if (!picking) {
@@ -118,7 +119,7 @@ let showFPS = false;
 			let x = glutil.view.pos[0] + cfg.orbitTarget.pos[0];
 			let y = glutil.view.pos[1] + cfg.orbitTarget.pos[1];
 			let z = glutil.view.pos[2] + cfg.orbitTarget.pos[2];
-			let t = calcMetricForce([x,y,z], cfg.orbitTarget);
+			let t = cfg.calcMetricForce([x,y,z], cfg.orbitTarget);
 			ids.measureMin.innerText = t === undefined ? '' : t.toExponential() + ' m/s^2';
 			ids.measureMax.innerText = t === undefined ? '' : t.toExponential() + ' m/s^2';
 		}
@@ -235,7 +236,6 @@ let showFPS = false;
 
 		//last is planets
 
-		const gl = ui.gl;
 		gl.clear(gl.DEPTH_BUFFER_BIT)
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
@@ -1051,7 +1051,7 @@ vec4 flatEarthXForm(vec4 pos) {
 
 			//go from bottom-aligned to top-algined
 			ids.infoPanel.style.bottom = 'auto';
-			ids.infoPanel.style.top = infoDivTop;
+			ids.infoPanel.style.top = infoDivTop+'px';
 			ids.infoPanel.style.overflow = 'scroll';
 			//interpolate up to the time controls ... or some fixed distance to it
 			if (currentAnimation) currentAnimation.stop();
