@@ -29,8 +29,8 @@ class PickObject {
 				s : gl.CLAMP_TO_EDGE,
 				t : gl.CLAMP_TO_EDGE
 			}
-		});	
-		
+		});
+
 		//do we need our own fbo?  this one needs depth info, so maybe
 		this.fbo = new glutil.Framebuffer({
 			width : this.fboTexWidth,
@@ -41,7 +41,7 @@ class PickObject {
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fboTex.obj, 0);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-		//this is the shader to use with point clouds 
+		//this is the shader to use with point clouds
 		//point sets pass 'vertexID' as a sequential list of numbers
 		this.pickPointShader = new ModifiedDepthShaderProgram({
 			vertexCode : `
@@ -58,25 +58,25 @@ uniform float pointSizeMin;
 uniform float pointSizeMax;
 uniform bool pointSizeScaleWithDist;
 
-out vec3 vertexIDv;	
+out vec3 vertexIDv;
 
 void main() {
 	vertexIDv = vec3(
 		mod(vertexIDCh0, 256.), //first 8 bits of ch0
 		mod(floor(vertexIDCh0 / 256.), 8.) + 8. * mod(vertexIDCh1, 32.),	//next 3 of ch0 + first 5 of ch1
 		floor(vertexIDCh1 / 32.));	//last 6 of ch1
-	
-	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vertex, 1.))); 
+
+	gl_Position = projMat * (mvMat * flatEarthXForm(vec4(vertex, 1.)));
 
 	gl_PointSize = pointSize;
 	if (pointSizeScaleWithDist) gl_PointSize /= gl_Position.w;
-	
+
 	//if a point is too small then discard it by throwing it offscreen
 	//if (gl_PointSize < .5) gl_Position = vec4(100., 100., 100., -2.);
-	
+
 	gl_PointSize = clamp(gl_PointSize, pointSizeMin, pointSizeMax);
 
-	gl_Position.z = depthfunction(gl_Position); 
+	gl_Position.z = depthfunction(gl_Position);
 }
 `,
 			fragmentCode : `
@@ -110,8 +110,8 @@ uniform vec4 angle;
 uniform float equatorialRadius;
 uniform float inverseFlattening;
 uniform float scaleExaggeration;
-` + cfg.geodeticPositionCode 
-+ cfg.quatRotateCode 
+` + cfg.geodeticPositionCode
++ cfg.quatRotateCode
 + `
 void main() {
 	vec3 modelVertex = geodeticPosition(vertex) * scaleExaggeration;
@@ -147,7 +147,7 @@ void main() {
 		}
 		this.vertexIDCh0Buffer = new glutil.ArrayBuffer({data : vertexIDCh0, dim : 1});
 		this.vertexIDCh1Buffer = new glutil.ArrayBuffer({data : vertexIDCh1, dim : 1});
-	
+
 		//because i'm lazy ...
 		//and it's more flexible to non-LInf metrics
 		this.pixelOrder = [];
@@ -164,20 +164,20 @@ void main() {
 
 		this.callbacks = [];
 	}
-	
+
 	pick(doChoose, skipProjection) {
 		const gl = ui.gl;
 		const canvas = ui.canvas;
 		let viewport = gl.getParameter(gl.VIEWPORT);
-		
+
 		//pick window size
 		let sizeX = this.fboTexWidth;
 		let sizeY = this.fboTexHeight;
 		let x = cfg.mouse.lastX;
 		let y = canvas.height - cfg.mouse.lastY - 1;
-		
+
 		//mesa3d gluPickMatrix code: https://www.opengl.org/discussion_boards/showthread.php/184308-gluPickMatrix-Implementation
-		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope .. 
+		//does glmatrix apply matrix operations lhs or rhs?  rhs I hope ..
 		mat4.identity(this.pickProjMat);
 if (!skipProjection) {
 		mat4.translate(this.pickProjMat, this.pickProjMat, [(canvas.width - 2 * x) / sizeX, (canvas.height - 2 * y) / sizeY, 0]);
@@ -188,15 +188,15 @@ if (!skipProjection) {
 		this.startPickID = 0xbf0000;
 		this.pickID = this.startPickID;
 		this.callbacks.length = 0;
-		
+
 		let foundIndex = 0;
 if (!skipProjection) {
 		gl.viewport(0, 0, sizeX, sizeY);
 }
 		let thiz = this;
 		let fboCallback = function() {
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);	
-			
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
 			// run the render loop
 			// set the scene to 'picking'
 			// change the projection matrix to be a pick-matrix
@@ -220,7 +220,7 @@ if (!skipProjection) {
 if (skipProjection) {
 	fboCallback();
 } else {
-	this.fbo.draw({callback : fboCallback});
+//	this.fbo.draw({callback : fboCallback});
 }
 
 		let body = undefined;
@@ -235,7 +235,7 @@ if (skipProjection) {
 				break;
 			}
 		}
-		
+
 		cfg.mouseOverTarget = undefined;
 		if (body !== undefined) {
 			cfg.mouseOverTarget = body;
@@ -274,7 +274,7 @@ if (skipProjection) {
 		} else if (vertexAttr.isa(glutil.ArrayBuffer)) {
 			vertexBuffer = vertexAttr;
 		}
-		
+
 		let count = vertexBuffer.count || (vertexBuffer.data.length / vertexBuffer.dim);
 		this.pickPointShader.use();
 		this.pickPointShader.setAttrs({

@@ -1,7 +1,7 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
 glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
 import {quatZAxis} from '/js/gl-util.js';
-import {DOM, show, hide} from '/js/util.js';
+import {DOM, show, hide, assert, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
 import {SmallBodies} from './smallbodies.js';
 import {Galaxies} from './galaxies.js';
@@ -244,6 +244,7 @@ let showFPS = false;
 		//flat earth
 		const solarSystem = starSystemsExtra.solarSystem;
 		const earth = solarSystem.planets[solarSystem.indexes.Earth];
+assert(earth);		
 		cfg.flatEarthRelativeEarthPos = [];
 		vec3.sub(cfg.flatEarthRelativeEarthPos, earth.pos, cfg.orbitTarget.pos);
 		cfg.flatEarthRelativeEarthNorthDir = [0,0,1];
@@ -1369,16 +1370,16 @@ function setOrbitTarget(newTarget) {
 			ids.infoDiv.appendChild(DOM('div', {text:'Eccentricity: '+cfg.orbitTarget.keplerianOrbitalElements.eccentricity}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Eccentric Anomaly: '+Math.deg(cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly)+'&deg;'}));
+			ids.infoDiv.appendChild(DOM('div', {html:'Eccentric Anomaly: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Longitude of Ascending Node: '+Math.deg(cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
+			ids.infoDiv.appendChild(DOM('div', {html:'Longitude of Ascending Node: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Argument of Pericenter: '+Math.deg(cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis)+'&deg;'}));
+			ids.infoDiv.appendChild(DOM('div', {html:'Argument of Pericenter: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.inclination) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Inclination: '+Math.deg(cfg.orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
+			ids.infoDiv.appendChild(DOM('div', {html:'Inclination: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing) {
 			ids.infoDiv.appendChild(DOM('div', {html:'Time of Periapsis Crossing: '+timeToStr(cfg.orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing)}));
@@ -1445,11 +1446,11 @@ function initScene() {
 	cfg.orbitStarSystem = solarSystem;
 
 	let trackPlanetName = 'Earth';
-	if (urlparams.get('target') !== undefined) {
+	if (urlparams.get('target') !== null) {
 		trackPlanetName = urlparams.get('target');
 	}
 
-	let trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
+	const trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
 	setOrbitTarget(trackPlanet);
 	cfg.orbitTargetDistance = 2. * cfg.orbitTarget.radius;
 	refreshOrbitTargetDistanceText();
