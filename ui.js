@@ -175,7 +175,7 @@ let ui = new function() {
 			cfg.integrationPaused = true;
 			cfg.integrateTimeStep = cfg.defaultIntegrateTimeStep;
 			cfg.julianDate = cfg.initJulianDate;
-			refreshCurrentTimeText();
+			cfg.refreshCurrentTimeText();
 		});
 		ids.play.addEventListener('click', e => {
 			cfg.integrationPaused = false;
@@ -451,7 +451,7 @@ let ui = new function() {
 					calcTides.invalidateForces();
 				},
 				clickTitle : function() {
-					setOrbitTarget(solarSystem.planets[solarSystem.indexes[planet.name]]);
+					cfg.setOrbitTarget(solarSystem.planets[solarSystem.indexes[planet.name]]);
 				},
 				planetIndex : planetIndex
 			});
@@ -590,7 +590,7 @@ let ui = new function() {
 					solarSystem.planets[this.args.planetIndex].hide = !this.checkbox.is(':checked');
 				},
 				clickTitle : function() {
-					setOrbitTarget(solarSystem.planets[solarSystem.indexes[planet.name]]);
+					cfg.setOrbitTarget(solarSystem.planets[solarSystem.indexes[planet.name]]);
 				},
 				planetIndex : planetIndex
 			});
@@ -696,7 +696,7 @@ console.log("small-bodies got a search request...");
 						text : name,
 						click : e => {
 							let targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
-							if (targetPlanet !== undefined) setOrbitTarget(targetPlanet);
+							if (targetPlanet !== undefined) cfg.setOrbitTarget(targetPlanet);
 						},
 						appendTo : rowDiv,
 					});

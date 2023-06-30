@@ -67,8 +67,8 @@ let apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 		overlayText.target = target;
 		overlayText.x = sx;
 		overlayText.y = sy;
-		overlayText.div.style.left = sx;
-		overlayText.div.style.top = sy;
+		overlayText.div.style.left = sx+'px';
+		overlayText.div.style.top = sy+'px';
 		document.body.appendChild(overlayText.div);
 		let sw = overlayText.div.clientWidth;
 		let sh = overlayText.div.clientHeight;
@@ -126,8 +126,8 @@ let apparentMagnitude = target.magnitude + 5 * (Math.log10(distInParsecs) - 1)
 		if (bumpedEver) {
 			overlayText.x = sx;
 			overlayText.y = sy;
-			overlayText.div.style.left = sx;
-			overlayText.div.style.top = sy;
+			overlayText.div.style.left = sx+'px';
+			overlayText.div.style.top = sy+'px';
 		}
 		
 		++this.index;

@@ -59,7 +59,7 @@ class SmallBody {
 		planet.type = this.row.bodyType;
 
 		//why doesn't this match up with the point location?  float error?
-		setOrbitTarget(planet);
+		cfg.setOrbitTarget(planet);
 
 		//hmm, this updates where the picking region goes
 		//but even when mousing over that region, the pick highlight still shows up at the old position

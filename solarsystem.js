@@ -69,7 +69,7 @@ class SolarSystem extends StarSystem {
 			radius : 1.73753e+6,
 			rotationPeriod : 27.321662,
 			orbitalPeriod : 27.321662,
-			rotationOffset : 0,//180 * Math.PI / 360,
+			rotationOffset : 270 * Math.PI / 360,
 			type : 'planet'
 		}));
 		this.planets.push(merge(new Planet(), {
@@ -339,7 +339,7 @@ class SolarSystem extends StarSystem {
 			solarSystem.planets[index].index = i;
 		}
 		if (cfg.orbitTarget === planet) {
-			setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
+			cfg.setOrbitTarget(solarSystem.planets[solarSystem.indexes.Sun]);
 		}
 		//TODO destruct WebGL geometry?  or is it gc'd automatically?
 		//now rebuild indexes

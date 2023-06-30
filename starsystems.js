@@ -1166,7 +1166,7 @@ void main() {
 					paddingLeft : '10px',
 				},
 				click : e => {
-					setOrbitTarget(starSystem);
+					cfg.setOrbitTarget(starSystem);
 				},
 				text : starSystem.name,
 				appendTo : ids.starSystemContents,

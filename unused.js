@@ -361,7 +361,7 @@ function initAstroPhysPlanetsByRecords() {
 			cfg.julianDate = data.date;
 			initPlanets = planets.clone();
 			initJulianDate = cfg.julianDate;
-			refreshCurrentTimeText();
+			cfg.refreshCurrentTimeText();
 			
 			//record.getStates is giving back the whole coefficients ... ?	
 			let positions = record.getPositions(cfg.julianDate);
@@ -424,7 +424,7 @@ function initAstroPhysPlanetsByStates() {
 				
 				initPlanets = planets.clone();
 				initJulianDate = cfg.julianDate;
-				refreshCurrentTimeText();
+				cfg.refreshCurrentTimeText();
 				
 				init2();
 			});
@@ -442,7 +442,7 @@ function initAstroPhysPlanetsByStates() {
 			
 			initPlanets = planets.clone();
 			initJulianDate = cfg.julianDate;
-			refreshCurrentTimeText();
+			cfg.refreshCurrentTimeText();
 			
 			init2();
 		});

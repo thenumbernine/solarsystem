@@ -139,7 +139,7 @@ let x = [];
 			planet.tideBuffer.updateData();
 			//if it updated...
 			if (planet == cfg.orbitTarget) {
-				refreshMeasureText();
+				cfg.refreshMeasureText();
 			}
 		}
 	}
@@ -899,7 +899,7 @@ void main() {
 			planet.measureMax = reduce(this.maxReduceShader, planet.tideTex);
 //console.log('measure min', planet.measureMin, 'max', planet.measureMax);
 			if (planet == cfg.orbitTarget) {
-				refreshMeasureText();
+				cfg.refreshMeasureText();
 			}
 
 			//planet.sceneObj.uniforms.forceMin = planet.measureMax;

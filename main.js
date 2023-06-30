@@ -1,7 +1,7 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
 glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix 
 import {quatZAxis} from '/js/gl-util.js';
-import {DOM, show, hide, assert, animate, mathDeg} from '/js/util.js';
+import {DOM, show, hide, assert, animate, mathClamp, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
 import {SmallBody, SmallBodies} from './smallbodies.js';
 import {Galaxy, Galaxies} from './galaxies.js';
@@ -69,7 +69,7 @@ function resetOrbitViewPos() {
 	vec3.add(glutil.view.pos, glutil.view.pos, orbitOffset);
 }
 
-function refreshMeasureText() {
+cfg.refreshMeasureText = function() {
 	ids.measureMin.innerText = cfg.orbitTarget.measureMin === undefined ? '' : (cfg.orbitTarget.measureMin.toExponential() + ' m/s^2');
 	ids.measureMax.innerText = cfg.orbitTarget.measureMax === undefined ? '' : (cfg.orbitTarget.measureMax.toExponential() + ' m/s^2');
 }
@@ -564,7 +564,7 @@ assert(earth);
 					let axisDotSun = vec3.dot(axis, sunDir);
 					let lookingAtLitSide = vec3.dot(viewfwd, axis) * axisDotSun;
 					lookingAtLitSide = (lookingAtLitSide < 0 ? -1 : 1) * Math.pow(Math.abs(lookingAtLitSide), 1/4);	//preserve sign, so raise to odd power
-					planet.ringObj.uniforms.lookingAtLitSide = Math.clamp(.5 + .5 * lookingAtLitSide, 0, 1);
+					planet.ringObj.uniforms.lookingAtLitSide = mathClamp(.5 + .5 * lookingAtLitSide, 0, 1);
 					let viewDotSun = vec3.dot(viewfwd, sunDir);
 					planet.ringObj.uniforms.backToFrontLitBlend = .5 - .5 * viewDotSun;	//clamp(sqrt(sqrt(dot( normalize(sun.pos - planet.pos), axis ) * dot( viewfwd, axis ))), 0., 1.) * -.5 + .5
 
@@ -866,7 +866,7 @@ function refreshOrbitTargetDistanceText() {
 	ids.orbitTargetDistance.innerText = distanceToStr(cfg.orbitTargetDistance);
 }
 
-function refreshCurrentTimeText() {
+cfg.refreshCurrentTimeText = function() {
 	const astro = undefined;
 	if (astro) {
 		ids.currentTimeText.innerText = astro.julianToCalendar(cfg.julianDate);
@@ -1002,7 +1002,7 @@ vec4 flatEarthXForm(vec4 pos) {
 	cfg.julianDate = calendarToJulian(new Date());
 
 	cfg.initJulianDate = cfg.julianDate;
-	refreshCurrentTimeText();
+	cfg.refreshCurrentTimeText();
 
 	const solarSystem = starSystemsExtra.solarSystem;
 	solarSystem.copyPlanets(solarSystem.initPlanets, solarSystem.planets);
@@ -1265,7 +1265,7 @@ void main() {
 	initScene();
 }
 
-function setOrbitTarget(newTarget) {
+cfg.setOrbitTarget = function(newTarget) {
 	let selectingNewSystem = false;
 	if (newTarget === undefined) {
 		newTarget = cfg.orbitStarSystem.stars[0];
@@ -1450,7 +1450,7 @@ function initScene() {
 	}
 
 	const trackPlanet = solarSystem.planets[solarSystem.indexes[trackPlanetName]];
-	setOrbitTarget(trackPlanet);
+	cfg.setOrbitTarget(trackPlanet);
 	cfg.orbitTargetDistance = 2. * cfg.orbitTarget.radius;
 	refreshOrbitTargetDistanceText();
 	orbitDistance = cfg.orbitTargetDistance;
@@ -1522,7 +1522,7 @@ function update() {
 	let theta = 0;
 	if (sinTheta > 1e-3) {
 		vec3.scale(axis, axis, 1/sinTheta);	//normalize axis
-		theta = Math.asin(Math.clamp(sinTheta, -1,1));
+		theta = Math.asin(mathClamp(sinTheta, -1,1));
 		let q = quat.create();
 		let convergeAngleCoeff = .5;
 		quat.setAxisAngle(q, axis, theta * convergeAngleCoeff);
@@ -1590,7 +1590,7 @@ function update() {
 
 	if (!cfg.integrationPaused) {
 		cfg.julianDate += cfg.integrateTimeStep;
-		refreshCurrentTimeText();
+		cfg.refreshCurrentTimeText();
 	}
 		
 	if (cfg.julianDate !== cfg.lastJulianDate) {
@@ -1652,7 +1652,7 @@ function update() {
 			vec3.cross(axis, viewFwd, destViewFwd);
 			let sinTheta = vec3.length(axis);
 			if (sinTheta > 1e-5) {
-				let theta = Math.asin(Math.clamp(sinTheta, -1, 1));
+				let theta = Math.asin(mathClamp(sinTheta, -1, 1));
 				let rot = [];
 				quat.setAxisAngle(rot, axis, theta);
 				quat.multiply(glutil.view.angle, rot, glutil.view.angle);

@@ -244,8 +244,8 @@ if (skipProjection) {
 		if (body !== undefined) {
 			cfg.mouseOverTarget = body;
 			if (body !== cfg.orbitTarget && doChoose) {
-				setOrbitTarget(body);
-				refreshMeasureText();
+				cfg.setOrbitTarget(body);
+				cfg.refreshMeasureText();
 			}
 		}
 
