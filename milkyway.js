@@ -1,3 +1,4 @@
+import {mathClamp} from '/js/util.js';
 import {cfg, floatToGLSL} from './globals.js';
 import {ui} from './ui.js';
 import {metersPerUnits} from './units.js';
@@ -94,9 +95,10 @@ void main() {
 		}
 	
 		//apply milky way local transforms to mpc mv mat
+		const gl = ui.gl;
 		gl.disable(gl.CULL_FACE);
 		gl.depthMask(false);
-		this.sceneObj.uniforms.fadeInAlpha = Math.clamp((distFromSolarSystemInLyr - this.fadeMinDistInLyr) / (this.fadeMaxDistInLyr - this.fadeMinDistInLyr), 0, 1);
+		this.sceneObj.uniforms.fadeInAlpha = mathClamp((distFromSolarSystemInLyr - this.fadeMinDistInLyr) / (this.fadeMaxDistInLyr - this.fadeMinDistInLyr), 0, 1);
 		this.sceneObj.draw();
 		gl.enable(gl.CULL_FACE);
 		gl.depthMask(true);

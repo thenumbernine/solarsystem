@@ -38,12 +38,13 @@ class PickObject {
 			height : this.fboTexHeight,
 			useDepth : true,
 		});
-		
+
+/* TODO * /
 		this.fbo.bind();
 		this.fbo.setColorAttachment(this.fboTex);
 		this.fbo.check();
 		this.fbo.unbind();
-
+/**/
 		//this is the shader to use with point clouds
 		//point sets pass 'vertexID' as a sequential list of numbers
 		this.pickPointShader = new ModifiedDepthShaderProgram({
@@ -223,7 +224,9 @@ if (!skipProjection) {
 if (skipProjection) {
 	fboCallback();
 } else {
+	/* TODO * /
 	this.fbo.draw({callback : fboCallback});
+	/**/
 }
 
 		let body = undefined;
