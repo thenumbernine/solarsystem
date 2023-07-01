@@ -14,7 +14,7 @@ let milkyWay = new function(){
 		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let thiz = this;
 		let img = new Image();
-		img.onload = function() {
+		img.addEventListener('load', e => {
 			thiz.sceneObj = new glutil.SceneObject({
 				mode : gl.TRIANGLE_STRIP,
 				attrs : {
@@ -70,10 +70,10 @@ void main() {
 				static : false
 			});
 			console.log("created milky way")
-		};
-		img.onerror = function() {
+		});
+		img.addEventListener('error', e => {
 			console.log('failed to find texture for milky way');
-		};
+		});
 		img.src = 'textures/milkyway.png';
 	};
 	

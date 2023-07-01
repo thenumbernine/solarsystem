@@ -155,7 +155,7 @@ let starfield = new function() {
 			//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
 			//though this will be helpful too: http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color.html
 			let tempImg = new Image();
-			tempImg.onload = function() {
+			tempImg.addEventListener('load', e => {
 				thiz.tempTex = new glutil.Texture2D({
 					data : tempImg,
 					magFilter : gl.LINEAR,
@@ -166,10 +166,10 @@ let starfield = new function() {
 					}
 				});
 				if (done) done();
-			};
-			tempImg.onerror = function() {
+			});
+			tempImg.addEventListener('error', e => {
 				console.log('failed to find color index texture');
-			};
+			});
 			tempImg.src = 'colorForTemp.png';
 		};	
 
@@ -311,11 +311,11 @@ void main() {
 			xhr.open('GET', 'hyg/stardata.f32', true);
 			xhr.responseType = 'arraybuffer';
 			/* if we want a progress bar ...
-			xhr.onprogress = function(e) {
+			xhr.addEventListener('progress', e => {
 				if (e.total) {
 					progress.attr('value', parseInt(e.loaded / e.total * 100));
 				}
-			};
+			});
 			*/
 			
 			//unnamed is index 0
@@ -324,8 +324,8 @@ void main() {
 //			}
 			
 			let numElem = 9;
-			xhr.onload = function(e) {
-				let arrayBuffer = this.response;
+			xhr.addEventListener('load', e => {
+				let arrayBuffer = xhr.response;
 				let data = new DataView(arrayBuffer);
 
 				//units are in parsecs
@@ -449,7 +449,7 @@ console.log('num stars within 1pc:', numClose);
 				//ugly ugly code
 				// see if the starsystems are already oloaded
 				thiz.addStarSystems();
-			};
+			});
 			xhr.send();
 		};
 	

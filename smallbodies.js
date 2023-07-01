@@ -115,7 +115,7 @@ void main() {
 		xhr.responseType = 'arraybuffer';
 		// if we want a progress bar ...
 		let lastProgress = 0;
-		xhr.onprogress = function(e) {
+		xhr.addEventListener('progress', e => {
 			if (e.total) {
 				let thisProgress = Math.floor(e.loaded / e.total * 10);
 				if (thisProgress != lastProgress) {
@@ -123,14 +123,14 @@ void main() {
 					console.log("smallbody loaded "+(thisProgress*10));
 				}
 			}
-		};
+		});
 	
 		this.mins = [Infinity, Infinity, Infinity];
 		this.maxs = [-Infinity, -Infinity, -Infinity];
 		this.added = 0;
 
-		xhr.onload = function(e) {
-			let data = new DataView(this.response);
+		xhr.addEventListener('load', e => {
+			let data = new DataView(xhr.response);
 			//let len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
 			let len = data.byteLength / Float32Array.BYTES_PER_ELEMENT;
 				
@@ -163,7 +163,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 */			
 			}
 			thiz.doneLoading(floatBuffer);
-		};
+		});
 		xhr.send();
 	}
 	

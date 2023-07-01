@@ -415,15 +415,15 @@ assert(earth);
 						if (planet.imgURL) {
 							planet.imgIsLoading = true;
 							planet.img = new Image();
-							planet.img.onload = function() {
+							planet.img.addEventListener('load', e => {
 								//console.log('finished loading tex for planet '+planet.name);
 								planet.imgIsLoading = undefined;
 								delete planet.imgIsLoading;
-							};
-							planet.img.onerror = function() {
+							});
+							planet.img.addEventListener('error', e => {
 								console.log('failed to find texture for planet '+planet.name);
 								planet.imgIsLoading = undefined;
-							};
+							});
 							//console.log('loading planet '+planet.name+' tex '+planet.imgURL);
 							planet.img.src = planet.imgURL;
 						}
