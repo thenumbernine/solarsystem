@@ -28,12 +28,14 @@ print('#common:', #commonList)
 print('common: '..commonList:concat', ')
 
 
+--[[
 -- remove SEMB-L (lagrangian points?)
 -- these are the id's of the SEMB-L* points
 common[31] = nil
 common[32] = nil
 common[34] = nil
 common[35] = nil
+--]]
 
 for i=#dynamic.coords,1,-1 do
 	if not common[dynamic.coords[i].id] then

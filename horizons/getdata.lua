@@ -51,8 +51,10 @@ local function getEphemerisData(data)
 	-- keep these as strings
 	-- no point in losing precision deserializing and reserializing data
 	local pos = {lines[i]:match'X =([^Y]+) Y =([^Z]+) Z =(.+)$'}
+--print('************ READING POS', table.concat(pos, ','), '************')
 	i = i + 1
 	local vel = {lines[i]:match'VX=([^V]+) VY=([^V]+) VZ=(.+)$'}
+--print('************ READING VEL', table.concat(vel, ','), '************')
 	-- next line is the light time, range, and range-rate
 	-- next line should be $$EOE
 	return {pos=pos, vel=vel}
@@ -156,7 +158,7 @@ local function run()
 				send('')		-- keep no cartesian output labels
 			end
 			ephemerisData = getEphemerisData(readUntil(', ? : '))		-- keep output table type to state vector (pos+vel) + extra stuff
-			local ephemerisData = table(ephemerisData, body)
+			local ephemerisData = table(body, ephemerisData)
 			setmetatable(ephemerisData, nil)
 			table.insert(entries, ephemerisData)
 			--file'horizons-results.json':write(json.encode(entries))
@@ -200,6 +202,10 @@ local oldDynamicVars = oldJsonData and json.decode(oldJsonData:sub(oldJsonData:f
 assert(newDynamicVars.julianDate and tonumber(newDynamicVars.julianDate), "new dynamic vars have bad julianDate")
 assert(newDynamicVars.coords and type(newDynamicVars.coords) == 'table', "new dynamic vars have bad coords")
 if oldDynamicVars then
+	--[[
+	trim-dynamic-vars reduces the # of bodies by a lot
+	so as long as its doing that, this condition will be hit
+	--]]
 	assert(#newDynamicVars.coords == #oldDynamicVars.coords, "new dynamic vars has "..#newDynamicVars.coords.." coords, different from old, which had "..#oldDynamicVars.coords.." coords")
 end
 local function assertIsVector(v, title)
