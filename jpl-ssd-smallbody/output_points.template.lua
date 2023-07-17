@@ -608,7 +608,7 @@ childDepth 	start	end	size
 			return assert(a.name) < assert(b.name)
 		end)
 		print('serializing and writing...')
-		local f = assert(file'node-dict.csv':open'w')
+		local f = assert(path'node-dict.csv':open'w')
 		f:write'#name,nodeID,index\n'
 		for i=1,#nodeDict do
 			local entry = nodeDict[i]
@@ -619,11 +619,11 @@ childDepth 	start	end	size
 		print'done with node dictionary!'
 	end
 
-	--local rowDesc = json.decode(file'row-desc.json':read():match('.-=(.*)'))
+	--local rowDesc = json.decode(path'row-desc.json':read():match('.-=(.*)'))
 	local rowDesc = assert(loadfile'row-desc.lua')()
 
 	if writeIndividualNodes then
-		file'nodes':mkdir()
+		path'nodes':mkdir()
 	end
 	print('writing out nodes')
 
@@ -637,7 +637,7 @@ childDepth 	start	end	size
 	local allNodesFile 
 	if writeOneBigFile then	
 		-- I can't json.encode all at once without luajit crapping out, so I will do it piecewise ...
-		--local allNodesFile = file'nodes.json':open'w'
+		--local allNodesFile = path'nodes.json':open'w'
 		--allNodesFile:write'{\n' 
 		-- make sure body_t is defined
 		ffi.sizeof'body_t'
@@ -693,7 +693,7 @@ typedef struct header_s {
 				return setmetatable(row, nil)
 			end), nil)
 			local nodeJSONData = json.encode(jsonBodies):gsub('%],%[','%],\n%[')
-			file('nodes/'..tostringnum(node.nodeID)..'.json'):write(nodeJSONData)
+			path('nodes/'..tostringnum(node.nodeID)..'.json'):write(nodeJSONData)
 		end
 		if writeOneBigFile then
 			--allNodesFile:write('\t"',tostring(node.nodeID),'" = ',nodeJSONData,',\n')
@@ -713,7 +713,7 @@ typedef struct header_s {
 
 	if writeIndividualNodes then
 		print('writing octree info')
-		file'octree.json':write(json.encode({
+		path'octree.json':write(json.encode({
 			mins = {mins:unpack()},
 			maxs = {maxs:unpack()},
 			nodes = allNodeIDs,

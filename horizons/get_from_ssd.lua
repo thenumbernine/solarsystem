@@ -8,7 +8,7 @@ htmlparser.xpath = require 'htmlparser.xpath'
 
 -- [[
 local planetsFilename = 'static-vars.json'
-local planetsData = file(planetsFilename):read()
+local planetsData = path(planetsFilename):read()
 -- strip off variable wrapper
 local planetsLines = planetsData:trim():split('\n')
 planetsLines[1] = assert(planetsLines[1]:match('horizonsStaticData = (.*)'))
@@ -46,7 +46,7 @@ end
 local vars = {}
 
 local cacheFileName = 'ssd_sat_phys_par.html'
-local page = file(cacheFileName):read()
+local page = path(cacheFileName):read()
 if not page then
 	local url = 'https://ssd.jpl.nasa.gov/?sat_phys_par'
 	local t = table()
@@ -57,7 +57,7 @@ if not page then
 		protocol = 'tlsv1',
 	})
 	page = t:concat()
-	file(cacheFileName):write(page)
+	path(cacheFileName):write(page)
 end
 page = page:gsub('\r\n', '\n')
 -- fix nasa's crappy html
@@ -163,7 +163,7 @@ end
 
 -- [[
 local cacheFileName = 'ssd_planet_phys_par.html'
-local page = file(cacheFileName):read()
+local page = path(cacheFileName):read()
 if not page then
 	local url = 'https://ssd.jpl.nasa.gov/?planet_phys_par'
 	local t = table()
@@ -174,7 +174,7 @@ if not page then
 		protocol = 'tlsv1',
 	})
 	page = t:concat()
-	file(cacheFileName):write(page)
+	path(cacheFileName):write(page)
 end
 page = page:gsub('\r\n', '\n')
 -- fix nasa's crappy html
@@ -261,5 +261,5 @@ end
 
 -- [[
 local planetsData = 'horizonsStaticData = '..json.encode(planets, {indent=true})..';'
-file(planetsFilename):write(planetsData)
+path(planetsFilename):write(planetsData)
 --]]

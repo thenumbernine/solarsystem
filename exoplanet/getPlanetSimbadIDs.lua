@@ -1,7 +1,7 @@
 require 'ext'
 local querySimbad = require 'query-simbad'
 local json = require 'dkjson'
-local catalogue = json.decode(file'openExoplanetCatalog.json':read())
+local catalogue = json.decode(path'openExoplanetCatalog.json':read())
 for i,system in ipairs(catalogue.systems) do
 	if not system.simbadID then
 		local names = system.name:split' / '
@@ -32,4 +32,4 @@ for i,system in ipairs(catalogue.systems) do
 		})
 	end
 end
-file'openExoplanetCatalog.json':write(json.encode(catalogue, {indent=true}))
+path'openExoplanetCatalog.json':write(json.encode(catalogue, {indent=true}))

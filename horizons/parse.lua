@@ -8,7 +8,7 @@ oh well, here I will attempt to split the data out of the one big file
 require 'ext'
 local json = require 'myjson'
 
-local data = file'horizons.txt':read():trim()
+local data = path'horizons.txt':read():trim()
 	:gsub('\r+\n', '\n')	-- ... why do you need more than one CR per line?
 	:gsub('\r', '\n')
 local lines = data:split('\n')
@@ -408,5 +408,5 @@ end
 
 
 print('parsed '..#planetInfos..' planets')
-file'static-vars.json':write('horizonsStaticData = '..json.encode(planetInfos, {indent=true})..';')
+path'static-vars.json':write('horizonsStaticData = '..json.encode(planetInfos, {indent=true})..';')
 

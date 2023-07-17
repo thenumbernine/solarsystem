@@ -42,7 +42,7 @@ end
 print('found '..#rows..' rows')
 
 --[[ maybe this is what 'findIndexForExoplanet' is now
-local exoplanets = fromlua(file'../exoplanet/openExoplanetCatalog.lua':read())
+local exoplanets = fromlua(path'../exoplanet/openExoplanetCatalog.lua':read())
 if namedStars then
 	local exoplanetSystemsMatched = 0
 	local starIndexForName = table.map(namedStars, function(name,index)

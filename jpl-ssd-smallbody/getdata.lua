@@ -4,7 +4,7 @@ local https = require 'ssl.https'
 local ltn12 = require 'ltn12'
 
 local function download(filename, url)
-	if file(filename):exists() then
+	if path(filename):exists() then
 		print('already have file '..filename..', so skipping the download and using the cached version')
 		return
 	end
@@ -17,7 +17,7 @@ local function download(filename, url)
 	})
 	data = data:concat()
 	print('writing file '..filename..' with this much data: '..#data)
-	file(filename):write(data)
+	path(filename):write(data)
 end
 
 --[[ "no protocols available ...
