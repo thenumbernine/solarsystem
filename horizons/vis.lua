@@ -1,6 +1,6 @@
 #!/usr/bin/env luajit
 -- quick point visualization of the dynamic vars
-local file = require 'ext.file'
+local path = require 'ext.path'
 local string = require 'ext.string'
 local vec3f = require 'vec-ffi.vec3f'
 local App = require 'imguiapp.withorbit'()
@@ -8,7 +8,7 @@ App.title = 'NASA Horizons Data Viewer'
 function App:initGL(gl, ...)
 	App.super.initGL(self, gl, ...)
 	self.gl = gl	-- should GLApp keep this itself?
-	self.bodies = require 'dkjson'.decode((file'dynamic-vars.json':read():match'.-=(.*)')).coords
+	self.bodies = require 'dkjson'.decode((path'dynamic-vars.json':read():match'.-=(.*)')).coords
 	for i,body in ipairs(self.bodies) do
 		for j=1,3 do
 			body.pos[j] = assert(tonumber(string.trim(body.pos[j]:lower()))) * 1e-7

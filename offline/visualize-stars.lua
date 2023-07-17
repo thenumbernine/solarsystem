@@ -5,7 +5,7 @@ local table = require 'ext.table'
 local range = require 'ext.range'
 local string = require 'ext.string'
 local math = require 'ext.math'
-local file = require 'ext.file'
+local path = require 'ext.path'
 local fromlua = require 'ext.fromlua'
 local ffi = require 'ffi'
 local template = require 'template'
@@ -73,13 +73,13 @@ end
 -- TODO now upon mouseover, determine star and show name by it
 local namedStars
 if namefile then
-	local namedata = file(namefile):read()
+	local namedata = path(namefile):read()
 	if namedata then
 		namedStars = fromlua(namedata)
 	end
 end
 
-local constellationNamesForAbbrevs = fromlua(file'../constellations/constellationNamesForAbbrevs.lua':read())
+local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
 local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
 	return abbrev, name
 end):setmetatable(nil)
@@ -102,9 +102,9 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 end):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = fromlua(file'../hyg/index-for-hip.lua':read())
+local indexForHip = fromlua(path'../hyg/index-for-hip.lua':read())
 
-local constellationSrcData = file'../constellations/constellation-lines.lua':read()
+local constellationSrcData = path'../constellations/constellation-lines.lua':read()
 if constellationSrcData then
 	constellationSrcData = fromlua(constellationSrcData)
 else
@@ -327,7 +327,7 @@ function App:initGL(...)
 
 --	self.view.angle = (quatd():fromAngleAxis(0, 0, 1, 90) * self.view.angle):normalize()
 
-	local data = file(pointfile):read()
+	local data = path(pointfile):read()
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
@@ -597,7 +597,7 @@ print'calculating stats on data...'
 		
 		-- plot it:
 		local plotdatafn = 'log10lum-dist-'..set..'.txt'
-		file(plotdatafn):write(log10lumbins:getTextData())
+		path(plotdatafn):write(log10lumbins:getTextData())
 		require 'gnuplot'{
 			output = 'log10lum-dist-'..set..'.png',
 			style = 'data linespoints',
