@@ -256,7 +256,7 @@ end
 
 local buildOctree = false
 		
-require 'ffi.c.stdio'
+local stdio = require 'ffi.req' 'c.stdio'
 
 function OutputToPoints:staticDone()
 	print('max radius:',self.maxR)
@@ -279,28 +279,28 @@ if not buildOctree then
 	print'writing pos/vel...'
 	-- write it all out to a giant float buffer
 		--[[ write pos/vel as doubles
-	local f = assert(ffi.C.fopen('posvel.f64', 'wb'))
+	local f = assert(stdio.fopen('posvel.f64', 'wb'))
 	for i,body in ipairs(self.bodies) do
-		ffi.C.fwrite(body._ptr[0].pos, ffi.sizeof'real' * 3, 1, f)
-		ffi.C.fwrite(body._ptr[0].vel, ffi.sizeof'real' * 3, 1, f)
+		stdio.fwrite(body._ptr[0].pos, ffi.sizeof'real' * 3, 1, f)
+		stdio.fwrite(body._ptr[0].vel, ffi.sizeof'real' * 3, 1, f)
 	end
 		--]]
 		-- [[ write pos only as float
-	local f = assert(ffi.C.fopen('pos.f32', 'wb'))
+	local f = assert(stdio.fopen('pos.f32', 'wb'))
 	for i,body in ipairs(self.bodies) do
-		ffi.C.fwrite(float(body._ptr[0].pos[0]), ffi.sizeof'float', 1, f)
-		ffi.C.fwrite(float(body._ptr[0].pos[1]), ffi.sizeof'float', 1, f)
-		ffi.C.fwrite(float(body._ptr[0].pos[2]), ffi.sizeof'float', 1, f)
+		stdio.fwrite(float(body._ptr[0].pos[0]), ffi.sizeof'float', 1, f)
+		stdio.fwrite(float(body._ptr[0].pos[1]), ffi.sizeof'float', 1, f)
+		stdio.fwrite(float(body._ptr[0].pos[2]), ffi.sizeof'float', 1, f)
 	end
 		--]]
-	ffi.C.fclose(f)
+	stdio.fclose(f)
 
 	print'writing raw struct...'
-	local f = assert(ffi.C.fopen('alldata.raw', 'wb'))
+	local f = assert(stdio.fopen('alldata.raw', 'wb'))
 	for i,body in ipairs(self.bodies) do
-		ffi.C.fwrite(body._ptr, ffi.sizeof'body_t', 1, f)
+		stdio.fwrite(body._ptr, ffi.sizeof'body_t', 1, f)
 	end
-	ffi.C.fclose(f)
+	stdio.fclose(f)
 
 	print'...done'
 
@@ -641,7 +641,7 @@ childDepth 	start	end	size
 		--allNodesFile:write'{\n' 
 		-- make sure body_t is defined
 		ffi.sizeof'body_t'
-		allNodesFile = assert(ffi.C.fopen('nodes.raw', 'wb'))
+		allNodesFile = assert(stdio.fopen('nodes.raw', 'wb'))
 
 		ffi.cdef[[
 typedef struct header_s {
@@ -657,10 +657,10 @@ typedef struct header_s {
 		end
 	
 		header[0].numNodes = #allNodeIDs
-		ffi.C.fwrite(header, ffi.sizeof'header_t', 1, allNodesFile)
+		stdio.fwrite(header, ffi.sizeof'header_t', 1, allNodesFile)
 		for _,nodeID in ipairs(allNodeIDs) do
 			longp[0] = nodeID
-			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+			stdio.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
 		end
 	end
 
@@ -698,18 +698,18 @@ typedef struct header_s {
 		if writeOneBigFile then
 			--allNodesFile:write('\t"',tostring(node.nodeID),'" = ',nodeJSONData,',\n')
 			longp[0] = node.nodeID
-			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+			stdio.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
 			longp[0] = #node.bodies
-			ffi.C.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
+			stdio.fwrite(longp, ffi.sizeof'long', 1, allNodesFile)
 			for i,body in ipairs(node.bodies) do
-				ffi.C.fwrite(body._ptr, ffi.sizeof'body_t', 1, allNodesFile)
+				stdio.fwrite(body._ptr, ffi.sizeof'body_t', 1, allNodesFile)
 			end
 		end
 		node.bodies = nil
 	end
 	--allNodesFile:write'}\n'
 	--allNodesFile:close()
-	ffi.C.fclose(allNodesFile)
+	stdio.fclose(allNodesFile)
 
 	if writeIndividualNodes then
 		print('writing octree info')
