@@ -611,7 +611,7 @@ print'calculating stats on data...'
 	gpuPointBuf = GLArrayBuffer{
 		size = numPts * ffi.sizeof(pt_t),
 		data = cpuPointBuf,
-	}
+	}:unbind()
 
 	local gpuPointBuf_attrs = {
 		pos = {
@@ -664,7 +664,7 @@ print'calculating stats on data...'
 		gpuVelLineBuf = GLArrayBuffer{
 			size = ffi.sizeof(pt_t) * 2 * numPts,
 			data = cpuVelLineBuf,
-		}
+		}:unbind()
 	
 		gpuVelLineBuf_attrs = {
 			pos = {
@@ -918,7 +918,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 		gpuNbhdLineBuf = GLArrayBuffer{
 			size = ffi.sizeof(cpuNbhdLineBuf.type) * #cpuNbhdLineBuf,
 			data = cpuNbhdLineBuf.v,
-		}
+		}:unbind()
 	
 		nbhd_t_attrs = {
 			pos = {
