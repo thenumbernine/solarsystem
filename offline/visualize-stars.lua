@@ -1526,7 +1526,7 @@ function App:drawWithAccum()
 		fbo = GLFBO{
 			width=self.width,
 			height=self.height,
-		}
+		}:unbind()
 		
 		fbotex = GLTex2D{
 			width = fbo.width,
@@ -1547,9 +1547,10 @@ function App:drawWithAccum()
 		end,
 	}
 
-	fbotex:bind()
-	gl.glGenerateMipmap(fbotex.target)
-	fbotex:unbind()
+	fbotex
+		:bind()
+		:generateMipmap()
+		:unbind()
 
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glViewport(0, 0, self.width, self.height)
