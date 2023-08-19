@@ -18,6 +18,8 @@ local GLFBO = require 'gl.fbo'
 local GLTex2D = require 'gl.tex2d'
 local GLHSVTex = require 'gl.hsvtex'
 local GLArrayBuffer = require 'gl.arraybuffer'
+local GLGeometry = require 'gl.geometry'
+local GLSceneObject = require 'gl.sceneobject'
 local vec3f = require 'vec-ffi.vec3f'
 local vec3d = require 'vec-ffi.vec3d'
 local quatd = require 'vec-ffi.quatd'
@@ -118,7 +120,7 @@ for name, lines in pairs(constellationSrcData) do
 	end)
 	assert(abbrev, "couldn't find abbrev for lines name "..name)
 	local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
-	
+
 	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
 	constellation.lines = lines
 	for _,line in ipairs(lines) do
@@ -136,7 +138,7 @@ end
 
 local App = require 'imguiapp.withorbit'()
 local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or after imgui?)
-	
+
 local _1_log_10 = 1 / math.log(10)
 
 App.title = 'pointcloud visualization tool'
@@ -165,7 +167,7 @@ typedef struct {
 typedef struct {
 	vec3f_t pos;		// in Pc
 	vec3f_t vel;
-	
+
 	/*
 	solar luminosity
 	https://en.wikipedia.org/wiki/Solar_luminosity
@@ -174,14 +176,14 @@ typedef struct {
 	L_sun = 4 pi k I_sun A^2
 		for L_sum solar luminosity (watts)
 		and I_sun solar irradiance (watts/meter^2)
-	
+
 	https://en.wikipedia.org/wiki/Luminosity
-	
+
 	flux = luminosity / area
 	area of sphere = 4 pi r^2
 	area normal with observer = 2 pi r
 	flux = luminosity / (2 pi r)
-	
+
 	absolute magnitude:
 	MBol = -2.5 * log10( LStar / L0 ) ~ -2.5 * log10 LStar + 71.1974
 	MBolStar - MBolSun = -2.5 * log10( LStar / LSun )
@@ -242,11 +244,13 @@ local cpuNbhdLineBuf
 local gpuNbhdLineBuf
 
 local env	-- I'm not using CL at the moment
-local drawIDShader
-local accumStarPointShader
-local accumStarLineShader
-local renderAccumShader
-local drawNbhdLineShader
+
+local drawIDSceneObj
+local accumStarPointSceneObj
+local accumStarLineSceneObj
+local renderAccumSceneObj
+local drawNbhdLineSceneObj
+
 
 local fbo
 local fbotex
@@ -331,9 +335,9 @@ function App:initGL(...)
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
-	
+
 	local src = ffi.cast(pt_t..'*', ffi.cast('char*', data))
-	
+
 	--[[ I would just cast, but luajit doesn't seem to refcount it, so as soon as 'data' goes out of scope, 'cpuPointBuf' deallocates, and when I use it outside this function I get a crash ....
 	cpuPointBuf = ffi.cast(pt_t..'*', s)
 	--]]
@@ -393,7 +397,7 @@ print'adding sun point...'
 			sun.lum = 1
 			sun.temp = 5772	-- well, the B-V is 0.63.  maybe I should just be storing that?
 			sun.radius = 1	-- in solar radii
-			
+
 			pts:insert{obj=sun, index=numPts}
 			numPts = numPts + 1	-- use a unique index.  don't matter about modifying numPts, we will recalculate numPts soon
 		end
@@ -434,7 +438,7 @@ print('filtering out only objects of distance '..cmdline.rmax..' or less...')
 			end)
 			print('rmin filtered down to '..#pts)
 		end
-	
+
 		if cmdline.addexo then
 print('adding exoplanets not done yet')
 			--[[
@@ -550,7 +554,7 @@ Seems with Gaia I am getting only a small subset of the luminosity range that I 
 	r avg = 0.0037223396472864
 	r stddev = 0.95579087454634
 	so 3 sigma is ... 3
-	
+
 	SagA* = 8178 Pc from us, so not in the HYG or Gaia data
 
 	Proxima Centauri is 1.3 Pc from us
@@ -580,7 +584,7 @@ print'calculating stats on data...'
 			s.log10lum.min + (s.log10lum.min - s.log10lum.max) * .5 / log10lumbincount,
 			s.log10lum.max + (s.log10lum.max - s.log10lum.min) * .5 / log10lumbincount,
 			log10lumbincount)
-		
+
 		for i=0,numPts-1 do
 			log10lumbins:accum(math.log(cpuPointBuf[i].lum) * _1_log_10)
 		end
@@ -594,7 +598,7 @@ print'calculating stats on data...'
 				log10lumbins[i] = log10lumbins[i] / total
 			end
 		end
-		
+
 		-- plot it:
 		local plotdatafn = 'log10lum-dist-'..set..'.txt'
 		path(plotdatafn):write(log10lumbins:getTextData())
@@ -660,12 +664,12 @@ print'calculating stats on data...'
 			cpuVelLineBuf[0+2*i] = ffi.new(pt_t, cpuPointBuf[i])
 			cpuVelLineBuf[1+2*i] = ffi.new(pt_t, cpuPointBuf[i])
 		end
-		
+
 		gpuVelLineBuf = GLArrayBuffer{
 			size = ffi.sizeof(pt_t) * 2 * numPts,
 			data = cpuVelLineBuf,
 		}:unbind()
-	
+
 		gpuVelLineBuf_attrs = {
 			pos = {
 				buffer = gpuVelLineBuf,
@@ -703,9 +707,6 @@ print'calculating stats on data...'
 				offset = ffi.offsetof(pt_t, 'radius'),
 			} or nil,
 		}
-
-
-
 	end
 
 	local nbhd_t_attrs
@@ -733,7 +734,7 @@ print('looking for max')
 		local nodemax = 10
 		local function addToTree(node, i)
 			local pos = cpuPointBuf[i].pos
-			
+
 			-- have we divided?  pay it forward.
 			if node.children then
 				local childIndex = bit.bor(
@@ -742,7 +743,7 @@ print('looking for max')
 					(pos.z > node.mid[3]) and 4 or 0)
 				return addToTree(node.children[childIndex], i)
 			end
-		
+
 			-- not divided yet?  push into leaf until it gets too big, then divide.
 			node.pts:insert(i)
 			if #node.pts >= nodemax then
@@ -791,7 +792,7 @@ print'pushing into bins'
 		end
 print('created '..nodeCount..' nodes')
 print'searching bins'
-	
+
 		-- when connecting each star to all closest stars:
 		-- nbhdThrehsold = 5 <=> 248422 lines
 		-- nbhdThrehsold = 7 <=> 689832 lines
@@ -825,7 +826,7 @@ print'searching bins'
 					--[[
 					what if dist threshold of connection varies with its lum?
 					like, dist threshold is how far away an apparent magnitude of X would be
-					
+
 					m = -5/2 log10(LStar/L0) - 5 + 5 log10(d)
 					m/5 + 1/2 log10(LStar/L0) + 1 = log10(d)
 					d = 10^(m/5 + 1) sqrt(LStar/L0)
@@ -919,7 +920,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 			size = ffi.sizeof(cpuNbhdLineBuf.type) * #cpuNbhdLineBuf,
 			data = cpuNbhdLineBuf.v,
 		}:unbind()
-	
+
 		nbhd_t_attrs = {
 			pos = {
 				buffer = gpuNbhdLineBuf,
@@ -947,7 +948,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 		image = Image(starTexSize, starTexSize, 3, 'unsigned char', function(i,j)
 			local u = ((i + .5) / starTexSize) * 2 - 1
 			local v = ((j + .5) / starTexSize) * 2 - 1
-			
+
 			--[[
 			local l = math.exp(-5 * (u*u + v*v))
 			--]]
@@ -955,7 +956,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 			local r = math.sqrt(u*u + v*v)
 			local l = math.exp(-50 * (r - .75)^2)
 			--]]
-			
+
 			l = math.floor(l * 255)
 			return l,l,l
 		end),
@@ -963,7 +964,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 		magFilter = gl.GL_LINEAR,
 		minFilter = gl.GL_LINEAR_MIPMAP_LINEAR,
 		generateMipmap = true,
-	}
+	}:unbind()
 
 	-- black body color table from http://www.vendian.org/mncharity/dir3/blackbody/UnstableURLs/bbr_color_D58.html
 	do
@@ -1013,7 +1014,7 @@ local clnumber = require 'cl.obj.number'
 	//how to calculate this in fragment space ...
 	// coordinates are in Pc
 	float distInPcSq = dot(vmv.xyz, vmv.xyz);
-	
+
 	//log(distInPc^2) = 2 log(distInPc)
 	//so log10(distInPc) = .5 log10(distInPc^2)
 	//so log10(distInPc) = .5 / log(10) * log(distInPc^2)
@@ -1032,7 +1033,7 @@ local clnumber = require 'cl.obj.number'
 	m = M - 5 + 5 * log10(d)
 	*/
 	float apparentMagnitude = absoluteMagnitude - 5. + 5. * log10DistInPc;
-	
+
 	/*
 	ok now on to the point size ...
 	and magnitude ...
@@ -1048,7 +1049,7 @@ local clnumber = require 'cl.obj.number'
 
 
 	-- since the point renderer varies its gl_PointSize with the magnitude, I gotta do that here as well
-	drawIDShader = GLProgram{
+	local drawIDShader = GLProgram{
 		vertexCode = template([[
 #version 460
 
@@ -1124,17 +1125,23 @@ void main() {
 	fragColor = vec4(color, 1.);
 }
 ]],
-		attrs = gpuPointBuf_attrs,
-	}
-	glreport'here'
-	
-	drawIDShader:useNone()
+	}:useNone()
 	glreport'here'
 
+	local pointGeom = GLGeometry{
+		mode = gl.GL_POINTS,
+		count = numPts,
+	}
+
+	drawIDSceneObj = GLSceneObject{
+		program = drawIDShader,
+		geometry = pointGeom,
+		attrs = gpuPointBuf_attrs,
+	}
 
 	-- i've neglected the postprocessing, and this has become the main shader
 	-- which does the fake-postproc just with a varying gl_PointSize
-	accumStarPointShader = GLProgram{
+	local accumStarPointShader = GLProgram{
 		vertexCode = template([[
 <?
 local clnumber = require 'cl.obj.number'
@@ -1164,7 +1171,7 @@ uniform vec3 orbit;
 
 void main() {
 	discardv = 0.;
-	
+
 	if (lum < sliceLumMin ||
 		lum > sliceLumMax)
 	{
@@ -1186,7 +1193,7 @@ void main() {
 		discardv = 1.;
 		return;
 	}
-	
+
 	lumv = 1.;
 
 	// if the point size is < .5 then just make the star dimmer instead
@@ -1240,14 +1247,16 @@ void main() {
 			tempTex = 0,
 			starTex = 1,
 		},
-		attrs = gpuPointBuf_attrs,
-	}
-	
-
-	accumStarPointShader:useNone()
+	}:useNone()
 	glreport'here'
 
-	accumStarLineShader = GLProgram{
+	accumStarPointSceneObj = GLSceneObject{
+		program = accumStarPointShader,
+		geometry = pointGeom,
+		attrs = gpuPointBuf_attrs,
+	}
+
+	local accumStarLineShader = GLProgram{
 		vertexCode = [[
 #version 460
 
@@ -1265,11 +1274,11 @@ void main() {
 
 	vec3 velv = vel;
 	if (normalizeVel) velv = normalize(velv);
-	
+
 	float end = float(gl_VertexID & 1);
 
 	vtx.xyz += velv * (end * lineVelScalar);
-	
+
 	gl_Position = projectionMatrix * (modelViewMatrix * vtx);
 }
 ]],
@@ -1284,20 +1293,29 @@ void main() {
 	fragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
 ]],
-		attrs = gpuVelLineBuf_attrs,
-	}
-	accumStarLineShader:useNone()
+	}:useNone()
 	glreport'here'
 
-	renderAccumShader = GLProgram{
+	local starLineGeom = GLGeometry{
+		mode = gl.GL_LINES,
+		count = 2 * numPts,
+	}
+
+	accumStarLineSceneObj = GLSceneObject{
+		program = accumStarLineShader,
+		geometry = starLineGeom,
+		attrs = gpuVelLineBuf_attrs,
+	}
+
+	local renderAccumShader = GLProgram{
 		vertexCode = [[
 #version 460
 
-in vec3 pos;
+in vec2 pos;
 out vec2 texcoord;
 
 void main() {
-	texcoord = pos.xy;
+	texcoord = pos;
 	gl_Position = vec4(pos.x * 2. - 1., pos.y * 2. - 1., 0., 1.);
 }
 ]],
@@ -1347,13 +1365,33 @@ end
 			hsvtex = 1,
 			showDensity = false,
 		},
-	}
-	glreport'here'
-	renderAccumShader:useNone()
+	}:useNone()
 	glreport'here'
 
+	local quadPts = ffi.new('float[8]', {
+		0,0,
+		1,0,
+		0,1,
+		1,1,
+	})
+	local quadBuf = GLArrayBuffer{
+		size = ffi.sizeof(quadPts),
+		data = quadPts,
+	}
+	local quadGeom = GLGeometry{
+		mode = gl.GL_TRIANGLE_STRIP,
+		count = 4,
+	}
+	renderAccumSceneObj = GLSceneObject{
+		geometry = quadGeom,
+		program = renderAccumShader,
+		attrs = {
+			pos = quadBuf,
+		},
+	}
+
 	if buildNeighborhood then
-		drawNbhdLineShader = GLProgram{
+		local drawNbhdLineShader = GLProgram{
 			vertexCode = [[
 #version 460
 
@@ -1388,11 +1426,19 @@ void main() {
 	fragColor = vec4(color, 1.);
 }
 ]],
+		}:useNone()
+		glreport'here'
+
+		local nbhdLineGeom = GLGeometry{
+			mode = gl.GL_LINES,
+			count = cpuNbhdLineBuf.size,
+		}
+
+		drawNbhdLineSceneObj = GLSceneObject{
+			geometry = nbhdLineGeom,
+			program = drawNbhdLineShader,
 			attrs = nbhd_t_attrs,
 		}
-		glreport'here'
-		drawNbhdLineShader:useNone()
-		glreport'here'
 	end
 end
 
@@ -1420,26 +1466,21 @@ function App:drawPickScene()
 	-- 2) pick matrix to zoom in on the specific mouse location
 
 	gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
-	
-	drawIDShader:use()
-	drawIDShader:setUniforms{
-		starPointSizeScale = starPointSizeScale,
-		starPointSizeBias = starPointSizeBias,
-		pickSizeBias = pickSizeBias,
-		sliceRMin = sliceRMin,
-		sliceRMax = sliceRMax,
-		sliceLumMin = sliceLumMin,
-		sliceLumMax = sliceLumMax,
-		orbit = {self.view.orbit:unpack()},	-- TODO
-		modelViewMatrix = modelViewMatrix.ptr,
-		projectionMatrix = projectionMatrix.ptr,
+
+	drawIDSceneObj:draw{
+		uniforms = {
+			starPointSizeScale = starPointSizeScale,
+			starPointSizeBias = starPointSizeBias,
+			pickSizeBias = pickSizeBias,
+			sliceRMin = sliceRMin,
+			sliceRMax = sliceRMax,
+			sliceLumMin = sliceLumMin,
+			sliceLumMax = sliceLumMax,
+			orbit = {self.view.orbit:unpack()},	-- TODO
+			modelViewMatrix = modelViewMatrix.ptr,
+			projectionMatrix = projectionMatrix.ptr,
+		}
 	}
-
-	drawIDShader.vao:use()
-	gl.glDrawArrays(gl.GL_POINTS, 0, numPts)
-	drawIDShader.vao:useNone()
-
-	drawIDShader:useNone()
 
 	gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
 
@@ -1463,55 +1504,42 @@ function App:drawScene()
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glEnable(gl.GL_BLEND)
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-	
+
 	if drawPoints then
 		gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
 		gl.glEnable(gl.GL_POINT_SPRITE)			-- i thought this was perma-on after 3.2?  guess not
-		
-		accumStarPointShader:use()
-		accumStarPointShader:setUniforms{
-			starPointAlpha = starPointAlpha,
-			starPointSizeScale = starPointSizeScale,
-			starPointSizeBias = starPointSizeBias,
-			sliceRMin = sliceRMin,
-			sliceRMax = sliceRMax,
-			sliceLumMin = sliceLumMin,
-			sliceLumMax = sliceLumMax,
-			modelViewMatrix = modelViewMatrix.ptr,
-			projectionMatrix = projectionMatrix.ptr,
-			--orbit = self.view.orbit.s,		-- TODO orbit is a vec3 is a glsl float type
-			orbit = {self.view.orbit:unpack()},	-- but view.orbit is double[3], so we can't pass it as a ptr of the type associated with the glsl type(float)
+
+		accumStarPointSceneObj.texs[1] = tempTex
+		accumStarPointSceneObj.texs[2] = starTex
+		accumStarPointSceneObj:draw{
+			uniforms = {
+				starPointAlpha = starPointAlpha,
+				starPointSizeScale = starPointSizeScale,
+				starPointSizeBias = starPointSizeBias,
+				sliceRMin = sliceRMin,
+				sliceRMax = sliceRMax,
+				sliceLumMin = sliceLumMin,
+				sliceLumMax = sliceLumMax,
+				modelViewMatrix = modelViewMatrix.ptr,
+				projectionMatrix = projectionMatrix.ptr,
+				--orbit = self.view.orbit.s,		-- TODO orbit is a vec3 is a glsl float type
+				orbit = {self.view.orbit:unpack()},	-- but view.orbit is double[3], so we can't pass it as a ptr of the type associated with the glsl type(float)
+			},
 		}
 
-		tempTex:bind(0)
-		starTex:bind(1)
-
-		accumStarPointShader.vao:use()
-		gl.glDrawArrays(gl.GL_POINTS, 0, numPts)
-		accumStarPointShader.vao:useNone()
-	
-		starTex:unbind(1)
-		tempTex:unbind(0)
-		
-		accumStarPointShader:useNone()
-		
 		gl.glDisable(gl.GL_POINT_SPRITE)
 		gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
 	end
 	if drawVelLines and buildVelocityBuffers then
-		accumStarLineShader:use()
-		accumStarLineShader:setUniforms{
-			lineVelAlpha = lineVelAlpha,
-			lineVelScalar = lineVelScalar,
-			normalizeVel = normalizeVel and 1 or 0,
-			modelViewMatrix = modelViewMatrix.ptr,
-			projectionMatrix = projectionMatrix.ptr,
+		accumStarLineSceneObj:draw{
+			uniforms = {
+				lineVelAlpha = lineVelAlpha,
+				lineVelScalar = lineVelScalar,
+				normalizeVel = normalizeVel and 1 or 0,
+				modelViewMatrix = modelViewMatrix.ptr,
+				projectionMatrix = projectionMatrix.ptr,
+			}
 		}
-
-		accumStarLineShader.vao:use()
-		gl.glDrawArrays(gl.GL_LINES, 0, 2 * numPts)
-		accumStarLineShader.vao:useNone()
-		accumStarLineShader:useNone()
 	end
 
 	gl.glDisable(gl.GL_BLEND)
@@ -1527,7 +1555,7 @@ function App:drawWithAccum()
 			width=self.width,
 			height=self.height,
 		}:unbind()
-		
+
 		fbotex = GLTex2D{
 			width = fbo.width,
 			height = fbo.height,
@@ -1538,7 +1566,7 @@ function App:drawWithAccum()
 			magFilter = gl.GL_LINEAR,
 		}
 	end
-	
+
 	fbo:draw{
 		viewport = {0,0,fbo.width,fbo.height},
 		dest = fbotex,
@@ -1554,7 +1582,7 @@ function App:drawWithAccum()
 
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glViewport(0, 0, self.width, self.height)
-	
+
 	gl.glMatrixMode(gl.GL_PROJECTION)
 	gl.glPushMatrix()
 	gl.glLoadIdentity()
@@ -1563,27 +1591,19 @@ function App:drawWithAccum()
 	gl.glPushMatrix()
 	gl.glLoadIdentity()
 
-	renderAccumShader:use()
-	renderAccumShader:setUniforms{
-		hdrScale = hdrScale,
-		hdrGamma = hdrGamma,
-		hsvRange = hsvRange,
-		bloomLevels = bloomLevels,
-		showDensity = showDensity and 1 or 0,
+	renderAccumSceneObj:draw{
+		texs = {
+			fbotex,
+			hsvtex,
+		},
+		uniforms = {
+			hdrScale = hdrScale,
+			hdrGamma = hdrGamma,
+			hsvRange = hsvRange,
+			bloomLevels = bloomLevels,
+			showDensity = showDensity and 1 or 0,
+		},
 	}
-	fbotex:bind(0)
-	hsvtex:bind(1)
-
-	gl.glBegin(gl.GL_QUADS)
-	gl.glVertex2f(0,0)
-	gl.glVertex2f(0,1)
-	gl.glVertex2f(1,1)
-	gl.glVertex2f(1,0)
-	gl.glEnd()
-
-	hsvtex:unbind(1)
-	fbotex:unbind(0)
-	renderAccumShader:useNone()
 
 	gl.glMatrixMode(gl.GL_PROJECTION)
 	gl.glPopMatrix()
@@ -1607,7 +1627,7 @@ end
 function App:update()
 	gl.glGetFloatv(gl.GL_MODELVIEW_MATRIX, modelViewMatrix.ptr)
 	gl.glGetFloatv(gl.GL_PROJECTION_MATRIX, projectionMatrix.ptr)
-	
+
 	self:drawPickScene()
 
 	if not showPickScene then
@@ -1623,17 +1643,15 @@ function App:update()
 	-- TODO inv square reduce this.... by inv square of one another, and by inv square from view
 	if buildNeighborhood and showNeighbors then
 		gl.glEnable(gl.GL_BLEND)
-		drawNbhdLineShader:use()
-		drawNbhdLineShader:setUniforms{
-			nbhdLineAlpha = nbhdLineAlpha,
-			modelViewMatrix = modelViewMatrix.ptr,
-			projectionMatrix = projectionMatrix.ptr,
+
+		drawNbhdLineSceneObj:draw{
+			uniforms = {
+				nbhdLineAlpha = nbhdLineAlpha,
+				modelViewMatrix = modelViewMatrix.ptr,
+				projectionMatrix = projectionMatrix.ptr,
+			},
 		}
 
-		drawNbhdLineShader.vao:use()
-		gl.glDrawArrays(gl.GL_LINES, 0, cpuNbhdLineBuf.size)
-		drawNbhdLineShader.vao:useNone()
-		drawNbhdLineShader:useNone()
 		gl.glDisable(gl.GL_BLEND)
 	end
 
@@ -1710,7 +1728,7 @@ function App:update()
 			local costh, sinth = math.cos(theta), math.sin(theta)
 			local cosphi, sinphi = math.cos(phi), math.sin(phi)
 			gl.glTexCoord2d(v, u)
-			
+
 			local x = earthSize * sinth * cosphi
 			local y = earthSize * sinth * sinphi
 			local z = earthSize * costh
@@ -1775,7 +1793,7 @@ local function guiShowStars(self)
 	-- and showAllNamedStarsAtOnce
 	then
 		ig.igPushID_Str('star names')
-	
+
 		-- global / persist: nameWithAppMagLastPos
 		if not nameWithAppMagLastPos
 		or (nameWithAppMagLastPos - self.view.pos):lenSq() > .01	-- greater than some epsilon of how far to move, squared.  make the dist less than the closest stars in the dataset
@@ -1802,7 +1820,7 @@ local function guiShowStars(self)
 				return a.appmag < b.appmag
 			end)
 		end
-		
+
 
 		local windowCount = 0
 		local function addWindowForStar(x, y, name)
@@ -1828,7 +1846,7 @@ local function guiShowStars(self)
 --						ig.ImGuiWindowFlags_NoSavedSettings,
 --						ig.ImGuiWindowFlags_NoNav,
 --						ig.ImGuiWindowFlags_NoInputs,	-- crashes?
-				
+
 				ig.ImGuiWindowFlags_NoDecoration,
 --						ig.ImGuiWindowFlags_NoResize,
 --						ig.ImGuiWindowFlags_NoScrollbar,
@@ -1922,7 +1940,7 @@ local function guiShowStars(self)
 				end
 			end
 		end
-		
+
 		--[[ insert and sort later
 		visibleNamedStars:sort(function(a,b)
 			return a.appmag > b.appmag
@@ -1936,7 +1954,7 @@ local function guiShowStars(self)
 			end
 		end
 		--]]
-		
+
 		ig.igPopID()
 	end
 end
@@ -1961,21 +1979,21 @@ function App:updateGUI()
 	ig.luatableSliderFloat('hsv range', _G, 'hsvRange', 0, 1000, '%.7f', 10)
 	ig.luatableSliderFloat('bloom levels', _G, 'bloomLevels', 0, 8)
 --]]
-	
+
 	ig.luatableInputFloat('slice r min', _G, 'sliceRMin')
 	ig.luatableInputFloat('slice r max', _G, 'sliceRMax')
-	
+
 	ig.luatableInputFloat('slice lum min', _G, 'sliceLumMin')
 	ig.luatableInputFloat('slice lum max', _G, 'sliceLumMax')
 
-	
+
 	ig.luatableCheckbox('show pick scene', _G, 'showPickScene')
 	ig.luatableCheckbox('show grid', _G, 'drawGrid')
-	
+
 	-- TODO how about sliders for solar <-> planet plane , and for axial precession 0<->360 of planet plane
 	ig.luatableCheckbox('tilt to polaris', _G, 'tiltGridToPolaris')
 	ig.luatableCheckbox('tilt to vega', _G, 'tiltGridToVega')
-	
+
 	ig.luatableInputFloat('grid radius', _G, 'gridRadius')
 
 	-- draw nhbd lines stuff which looks dumb right now
@@ -2012,7 +2030,7 @@ function App:updateGUI()
 				if v == search.lookat then
 					local orbitDist = (self.view.pos - self.view.orbit):length()
 					local fwd = -self.view.angle:zAxis()
-					
+
 					assert(i >= 0 and i < numPts, "oob index in name table "..i)
 					local pt = cpuPointBuf[i]
 					local to = (pt.pos - self.view.pos):normalize()
@@ -2022,7 +2040,7 @@ function App:updateGUI()
 
 					local rot = quatd():fromAngleAxis(axis.x, axis.y, axis.z, math.deg(angle))
 					quatd.mul(rot, self.view.angle, self.view.angle)
-					
+
 					self.view.pos = self.view.orbit + self.view.angle:zAxis() * orbitDist
 				end
 			end
@@ -2041,7 +2059,7 @@ function App:updateGUI()
 	-- gui stuff
 	ig.luatableCheckbox('show mouseover info', _G, 'showInformation')
 	ig.luatableCheckbox('show star names', _G, 'showStarNames')
-	
+
 	ig.luatableCheckbox('show earth', _G, 'showEarth')
 	ig.luatableInputFloat('earth size', _G, 'earthSize')
 	ig.luatableSliderFloat('earth angle phi', _G, 'earthAnglePhi', -180, 180)
@@ -2090,7 +2108,7 @@ function App:updateGUI()
 		end
 		local pt = cpuPointBuf[selectedIndex]
 		local dist = (pt.pos - self.view.orbit):length()
-			
+
 		local LStarOverLSun = pt.lum
 		local absmag = (-2.5 / math.log(10)) * math.log(LStarOverLSun * LSunOverL0)
 		local appmag = absmag - 5 + (5 / math.log(10)) * math.log(dist)
