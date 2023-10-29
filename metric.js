@@ -1,5 +1,5 @@
 import {cfg} from './globals.js';
-import {kilogramsPerMeter, gravitationalConstant} from './units.js';
+import {metersPerUnits, kilogramsPerMeter, gravitationalConstant} from './units.js';
 
 class Metric {}
 
