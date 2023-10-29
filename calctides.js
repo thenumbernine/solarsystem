@@ -94,6 +94,7 @@ void main() {
 		for (let i = 0; i < starSystemsExtra.planetSceneObj.attrs.vertex.buffer.count; ++i) tideArray.push(0);
 	
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
+		planet.tideAttr = new glutil.Attribute(planet.tideBuffer);
 	}
 
 	updateHeatMapAlpha(heatAlpha) {
@@ -145,7 +146,7 @@ let x = [];
 	}
 
 	drawPlanet(planet) {
-		planet.sceneObj.attrs.tide = planet.tideBuffer;
+		planet.sceneObj.attrs.tide = planet.tideAttr;
 	}
 }
 
