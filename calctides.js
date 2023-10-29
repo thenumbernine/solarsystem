@@ -16,7 +16,49 @@ const tideTexHeight = 128;
 class CalcTides {
 	initGL() {
 		const glutil = ui.glutil;
-		this.hsvTex = new glutil.Gradient.HSVTexture(256);
+		//failing:
+		//this.hsvTex = new glutil.Gradient.HSVTexture(256);
+		const width = 256;
+		const height = 1;
+		const nch = 3;
+		const data = new Uint8Array(width * nch);
+		const colors = [
+			[1,0,0],
+			[1,1,0],
+			[0,1,0],
+			[0,1,1],
+			[0,0,1],
+			[1,0,1]
+		];
+		const dontRepeat = false;
+		for (let i = 0; i < width; i++) {
+			let f = (i+.5)/width;
+			if (dontRepeat) {
+				f *= colors.length - 1;
+			} else {
+				f *= colors.length;
+			}
+			const ip = parseInt(f);
+			f -= ip;
+			const iq = (ip + 1) % colors.length;
+			const g = 1. - f;	
+			for (let k = 0; k < 3; k++) {
+				data[k+3*i] = 255*(colors[ip][k] * g + colors[iq][k] * f);
+			}
+		}	
+		const gl = ui.gl;
+		this.hsvTex = new glutil.Texture2D({
+			width : width,
+			height : height,
+			format : gl.RGB,
+			internalFormat : gl.RGB,
+			data : data,
+			minFilter : gl.LINEAR_MIPMAP_LINEAR,
+			magFilter : gl.LINEAR,
+			generateMipmap : true,
+			//wrap : {s : gl.CLAMP_TO_EDGE, t : gl.CLAMP_TO_EDGE},
+		});
+
 	}
 
 	invalidateForces() {
@@ -75,7 +117,6 @@ uniform float heatAlpha;
 out vec4 fragColor;
 void main() {
 	vec4 hsvColor = texture(hsvTex, vec2(tidev, .5));
-hsvColor = vec4(tidev, .5, 1. - tidev, 1.);
 	vec4 planetColor = texture(tex, texCoordv);
 	fragColor = mix(planetColor, hsvColor, heatAlpha);
 }

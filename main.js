@@ -437,7 +437,7 @@ assert(earth);
 							data : planet.img,
 							minFilter : gl.LINEAR_MIPMAP_LINEAR,
 							magFilter : gl.LINEAR,
-							generateMipmap : true
+							generateMipmap : true,
 						});
 					}
 				} else {
