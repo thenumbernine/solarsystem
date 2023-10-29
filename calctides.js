@@ -75,13 +75,14 @@ uniform float heatAlpha;
 out vec4 fragColor;
 void main() {
 	vec4 hsvColor = texture(hsvTex, vec2(tidev, .5));
+hsvColor = vec4(tidev, .5, 1. - tidev, 1.);
 	vec4 planetColor = texture(tex, texCoordv);
 	fragColor = mix(planetColor, hsvColor, heatAlpha);
 }
 `,
 			uniforms : {
 				tex : 0,
-				hsvTex : 1
+				hsvTex : 1,
 			}
 		});
 	}
@@ -137,6 +138,7 @@ let x = [];
 					(255/256 - (planet.tideBuffer.data[i] - measureMin)
 						/ (measureMax - measureMin) * 254/256) * colorBarHSVRange;
 			}
+console.log("updated to", planet.tideBuffer.data);			
 			planet.tideBuffer.updateData();
 			//if it updated...
 			if (planet == cfg.orbitTarget) {
