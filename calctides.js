@@ -2,6 +2,7 @@ import {cfg} from './globals.js';
 import {ui} from './ui.js';
 import {starSystems, starSystemsExtra} from './starsystems.js';
 import {gravitationalConstant} from './units.js';
+import {planetGeodeticToSolarSystemBarycentric} from './vec.js';
 
 //tried an experiment of doing surface calculations on the GPU
 //it ran a lot faster than doing them in CPU for JS ... but the floating point accuracy was too low to get any good results back, even with double precision functions
@@ -89,8 +90,8 @@ void main() {
 		const gl = ui.gl;
 		//old way, per-vertex storage, updated by CPU
 		
-		let tideArray = [];
-		for (let i = 0; i < starSystemsExtra.planetSceneObj.attrs.vertex.count; ++i) tideArray.push(0);
+		const tideArray = [];
+		for (let i = 0; i < starSystemsExtra.planetSceneObj.attrs.vertex.buffer.count; ++i) tideArray.push(0);
 	
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
 	}
@@ -113,13 +114,12 @@ void main() {
 		//and update calculated variable if it is out of date ...
 		if (planet.lastMeasureCalcDate !== cfg.julianDate) {
 			planet.lastMeasureCalcDate = cfg.julianDate;
-
 			let measureMin = undefined;
 			let measureMax = undefined;
 			let vertexIndex = 0;
 			for (let tideIndex = 0; tideIndex < planet.tideBuffer.data.length; ++tideIndex) {
-				let lat = planet.sceneObj.attrs.vertex.data[vertexIndex++];
-				let lon = planet.sceneObj.attrs.vertex.data[vertexIndex++];
+				let lat = planet.sceneObj.attrs.vertex.buffer.data[vertexIndex++];
+				let lon = planet.sceneObj.attrs.vertex.buffer.data[vertexIndex++];
 let x = [];
 				planetGeodeticToSolarSystemBarycentric(x, planet, lat, lon, 0);
 

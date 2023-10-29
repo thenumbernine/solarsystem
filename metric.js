@@ -290,6 +290,7 @@ cfg.metric = new SchwarzschildMetric();
 		norm[1] /= normLen;
 		norm[2] /= normLen;
 
+		//const solarSystem = starSystemsExtra.solarSystem;
 		//let toTheMoon = (solarSystem.planets[solarSystem.indexes.Moon].pos - x):normalize()
 		//let normCrossMoon = norm:cross(toTheMoon)	//points upwards, tangent, right angle to norm and moon
 		//let tangentTowardsMoon = normCrossMoon:cross(norm)

@@ -638,11 +638,11 @@ assert(earth);
 					pointObj.attrs.velocity.buffer.data[0] = planet.vel[0];
 					pointObj.attrs.velocity.buffer.data[1] = planet.vel[1];
 					pointObj.attrs.velocity.buffer.data[2] = planet.vel[2];
-					pointObj.attrs.velocity.updateData();
+					pointObj.attrs.velocity.buffer.updateData();
 					pointObj.attrs.luminosity.buffer.data[0] = planet.luminosity || 10;
-					pointObj.attrs.luminosity.updateData();
+					pointObj.attrs.luminosity.buffer.updateData();
 					pointObj.attrs.temperature.buffer.data[0] = planet.temperature || 20000;
-					pointObj.attrs.temperature.updateData();
+					pointObj.attrs.temperature.buffer.updateData();
 					pointObj.draw({
 						shader : starfield.colorIndexShader,
 						//disable depth test too?

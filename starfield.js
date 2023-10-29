@@ -644,6 +644,7 @@ glutil.updateProjection();
 
 				// draw constellations
 
+//				const solarSystem = starSystemsExtra.solarSystem;
 //				for (let k = 0; k < constellations.length; ++k) {
 //					if (displayConstellations[k]) {
 //						this.sceneObj.geometry.indexes = indexesForConstellations[k];
@@ -676,14 +677,14 @@ glutil.updateProjection();
 //
 //								dist1 *= metersPerUnits.pc / this.renderScale;
 //								dist2 *= metersPerUnits.pc / this.renderScale;
-//								lineObj.attrs.vertex.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
-//								lineObj.attrs.vertex.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
-//								lineObj.attrs.vertex.data[2] = dist1 * Math.sin(dec1)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
-//								lineObj.attrs.vertex.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
-//								lineObj.attrs.vertex.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
-//								lineObj.attrs.vertex.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[0] = dist1 * Math.cos(ra1) * Math.cos(dec1) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[1] = dist1 * Math.sin(ra1) * Math.cos(dec1) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[2] = dist1 * Math.sin(dec1)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
+//								lineObj.attrs.vertex.buffer.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
 //					
-//								lineObj.attrs.vertex.updateData();
+//								lineObj.attrs.vertex.buffer.updateData();
 //								lineObj.draw({uniforms : { color : [1,1,1,1] }});
 //							}
 //						}
@@ -729,10 +730,10 @@ glutil.updateProjection();
 							if (starSystem.constellationIndex === undefined ||
 								displayConstellations[starSystem.constellationIndex]
 							) {
-								pointObj.attrs.vertex.data[0] = (starSystem.pos[0] - cfg.orbitTarget.pos[0]) / thiz.renderScale;
-								pointObj.attrs.vertex.data[1] = (starSystem.pos[1] - cfg.orbitTarget.pos[1]) / thiz.renderScale;
-								pointObj.attrs.vertex.data[2] = (starSystem.pos[2] - cfg.orbitTarget.pos[2]) / thiz.renderScale;
-								pointObj.attrs.vertex.updateData();
+								pointObj.attrs.vertex.buffer.data[0] = (starSystem.pos[0] - cfg.orbitTarget.pos[0]) / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.data[1] = (starSystem.pos[1] - cfg.orbitTarget.pos[1]) / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.data[2] = (starSystem.pos[2] - cfg.orbitTarget.pos[2]) / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.updateData();
 								cfg.pickObject.drawPoints({
 									sceneObj : pointObj,
 									targetCallback : function() { return starSystem; },
@@ -752,10 +753,10 @@ glutil.updateProjection();
 								let x = thiz.buffer.data[0 + thiz.buffer.dim * i];
 								let y = thiz.buffer.data[1 + thiz.buffer.dim * i];
 								let z = thiz.buffer.data[2 + thiz.buffer.dim * i];
-								pointObj.attrs.vertex.data[0] = x - cfg.orbitTarget.pos[0] / thiz.renderScale;
-								pointObj.attrs.vertex.data[1] = y - cfg.orbitTarget.pos[1] / thiz.renderScale;
-								pointObj.attrs.vertex.data[2] = z - cfg.orbitTarget.pos[2] / thiz.renderScale;
-								pointObj.attrs.vertex.updateData();
+								pointObj.attrs.vertex.buffer.data[0] = x - cfg.orbitTarget.pos[0] / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.data[1] = y - cfg.orbitTarget.pos[1] / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.data[2] = z - cfg.orbitTarget.pos[2] / thiz.renderScale;
+								pointObj.attrs.vertex.buffer.updateData();
 								cfg.pickObject.drawPoints({
 									sceneObj : pointObj,
 									targetCallback : function() { return starSystem; },

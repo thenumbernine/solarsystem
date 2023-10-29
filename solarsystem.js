@@ -2,6 +2,7 @@ import {assert, merge} from '/js/util.js';
 import {cfg} from './globals.js';
 import {StarSystem} from './starsystem.js';
 import {Planet} from './planet.js';
+import {starSystemsExtra} from './starsystems.js';
 
 //our solar system
 class SolarSystem extends StarSystem {
@@ -326,6 +327,8 @@ class SolarSystem extends StarSystem {
 
 	removeSmallBody(row) {
 		let name = row.name;
+		
+		const solarSystem = starSystemsExtra.solarSystem;
 
 		//only add if it's already there
 		if (solarSystem.indexes[name] === undefined) return;
@@ -351,6 +354,8 @@ class SolarSystem extends StarSystem {
 
 	addSmallBody(row) {
 		let name = row.name;
+		
+		const solarSystem = starSystemsExtra.solarSystem;
 
 		//only add if it's not there
 		if (solarSystem.indexes[name] !== undefined) {
