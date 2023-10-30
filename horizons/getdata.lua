@@ -117,8 +117,21 @@ local function run()
 		readUntil(' :')
 		send(first and '@0' or '')		-- centered at object 0 (solar barycentric coordinate center) 
 		readUntil(' :')
+		--[[
+		ecliptic is proly bad.
+		"eclip" = Coordinate systm: Ecliptic and Mean Equinox of Reference Epoch
+		"frame" = Coordinate systm: Earth Mean Equator and Equinox of Reference Epoch
+		and this page https://github.com/brandon-rhodes/python-jplephem/issues/22
+		 says that "frame" gives them good data while "eclip" gives them bad data.
+		--]]
+		--[[ 
 		send('eclip')	-- ecliptical coordinates 
 		readUntil(' :')
+		--]]
+		-- [[
+		send('frame')
+		readUntil(' :')
+		--]]
 		send(startDate)	-- starting date (probably GMT)
 		local result = readUntil(' :')
 		if result:match'No ephemeris for target' then
