@@ -149,8 +149,8 @@ void main() {
 	}
 	let calcOrbitPathEndTime = Date.now();
 
-	let setPlanetTiltAngleToMoonOrbitPlane = function(planet, moonName) {
-		let moon = solarSystem.planets[solarSystem.indexes[moonName]];
+	const setPlanetTiltAngleToMoonOrbitPlane = (planet, moonName) => {
+		const moon = solarSystem.planets[solarSystem.indexes[moonName]];
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.longitudeOfAscendingNode);
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, moon.keplerianOrbitalElements.inclination);
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
@@ -158,17 +158,20 @@ void main() {
 
 	//accepts degrees
 	//TODO start at orbit axis plane rather than earth's (ie J2000) orbit axis plane
-	let setPlanetTiltAngleToFixedValue = function(planet, inclination, tiltDirection) {
+	const setPlanetTiltAngleToFixedValue = (planet, inclination, tiltDirection) => {
 		if (tiltDirection === undefined) tiltDirection = 0;
 		quat.rotateZ(planet.tiltAngle, planet.tiltAngle, mathRad(tiltDirection));
 		quat.rotateX(planet.tiltAngle, planet.tiltAngle, mathRad(inclination));
 		quat.copy(solarSystem.initPlanets[planet.index].tiltAngle, planet.tiltAngle);
 	};
 
-	let setBy = {
+	const setBy = {
 		Mercury:{inclination:2.11/60},//TODO tilt from mercury orbit plane.  until then it's off
 		Venus:{inclination:177.3},//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
-		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},
+		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},	//, tiltDirection:180}, // this was always 180 until after Horizons changed, then I adjusted, now I'm working things out 
+		// tiltDirection = 0 <=> orbit axis == rotation axis
+		// tiltDirection = 90 <=> winter
+		// tiltDirection = 180 <=> winter
 		Mars:{toMoon:'Phobos'},//ours: 25.79, exact: 25.19
 		Jupiter:{toMoon:'Metis'},//ours: 3.12, exact: 3.13
 		Saturn:{toMoon:'Atlas'},//ours: 26.75, exact: 26.73
@@ -178,10 +181,10 @@ void main() {
 	};
 
 	//now set all moon tilt angles to the orbit axis 
-	let Sun = solarSystem.planets[0];
+	const Sun = solarSystem.planets[0];
 	for (let i = 0; i < solarSystem.planets.length; ++i) {
-		let planet = solarSystem.planets[i];
-		let sb = setBy[planet.name];
+		const planet = solarSystem.planets[i];
+		const sb = setBy[planet.name];
 		if (sb && sb.inclination !== undefined) {
 			setPlanetTiltAngleToFixedValue(planet, sb.inclination, sb.tiltDirection);
 		} else if (sb && sb.toMoon) {
@@ -198,9 +201,9 @@ void main() {
 
 	//looks like low grav wells run into fp accuracy issues
 	//how about extracting the depth and storing normalized values?
-	let calcGravWellStartTime = Date.now();
+	const calcGravWellStartTime = Date.now();
 	for (let planetIndex = 0; planetIndex < solarSystem.planets.length; ++planetIndex) {
-		let planet = solarSystem.planets[planetIndex];
+		const planet = solarSystem.planets[planetIndex];
 
 		/*
 		gravity wells
@@ -210,30 +213,30 @@ void main() {
 		 inside the planet  (r <= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R (r/R)^2 ))
 		 outside the planet (r >= R): z(r) = R sqrt(R/Rs) (1 - sqrt(1 - Rs/R)) + sqrt(4Rs(r - Rs)) - sqrt(4Rs(R - Rs))
 		*/
-		let R = planet.radius;
-		let Rs = planet.schwarzschildRadius;
-		let R_Rs = R / Rs;
-		let Rs_R = Rs / R;
-		let R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
+		const R = planet.radius;
+		const Rs = planet.schwarzschildRadius;
+		const R_Rs = R / Rs;
+		const Rs_R = Rs / R;
+		const R_sqrt_R_Rs = R * Math.sqrt(R_Rs);
 
 		//extract the normalized scalar to post-multiply after transformation (so small fields will not lose accuracy)
 		planet.gravityWellScalar = Math.sqrt(R / Rs) - Math.sqrt(R / Rs - 1);
 
 		//populate first vertex
-		let gravWellVtxs = [0,0,0,1];
+		const gravWellVtxs = [0,0,0,1];
 
-		let gravWellIndexes = [];
+		const gravWellIndexes = [];
 
-		let rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
-		let thimax = 60;
+		const rimax = 60;		//was 200 r and 60 th, but I added a lot of planets.  need to occlude these based on distance/angle ...
+		const thimax = 60;
 
 		for (let ri = 1; ri < rimax; ++ri) {
-			let r = R * Math.pow(100, ri / rimax * (cfg.gravityWellRadialMaxLog100 - cfg.gravityWellRadialMinLog100) + cfg.gravityWellRadialMinLog100);
+			const r = R * Math.pow(100, ri / rimax * (cfg.gravityWellRadialMaxLog100 - cfg.gravityWellRadialMinLog100) + cfg.gravityWellRadialMinLog100);
 			//max radial dist is R * Math.pow(100, cfg.gravityWellRadialMaxLog100)
 
 			let z;
 			if (r <= R) {
-				let r_R = r / R;
+				const r_R = r / R;
 				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R * r_R * r_R));
 			} else {
 				z = R_sqrt_R_Rs * (1 - Math.sqrt(1 - Rs_R))
@@ -243,10 +246,10 @@ void main() {
 			z /= planet.gravityWellScalar;
 
 			for (let thi = 0; thi < thimax; ++thi) {
-				let th = 2 * Math.PI * thi / thimax;
+				const th = 2 * Math.PI * thi / thimax;
 
-				let x = r * Math.cos(th);
-				let y = r * Math.sin(th);
+				const x = r * Math.cos(th);
+				const y = r * Math.sin(th);
 
 				//it would be great to include influences of other planets' gravity wells ...
 				// but that would require us performing our calculation at some point in 3D space -- for the sake of the radial coordinate
@@ -260,7 +263,7 @@ void main() {
 				gravWellVtxs.push(x * planet.orbitBasis[0][0] + y * planet.orbitBasis[1][0] + z * planet.orbitBasis[2][0]);
 				gravWellVtxs.push(x * planet.orbitBasis[0][1] + y * planet.orbitBasis[1][1] + z * planet.orbitBasis[2][1]);
 				gravWellVtxs.push(x * planet.orbitBasis[0][2] + y * planet.orbitBasis[1][2] + z * planet.orbitBasis[2][2]);
-				let tau = ri/(rimax-1);
+				const tau = ri/(rimax-1);
 				gravWellVtxs.push(1 - tau * tau * tau * tau * tau * tau * tau * tau);
 
 				if (ri == 1) {
