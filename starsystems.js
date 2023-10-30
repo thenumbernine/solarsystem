@@ -168,10 +168,7 @@ void main() {
 	const setBy = {
 		Mercury:{inclination:2.11/60},//TODO tilt from mercury orbit plane.  until then it's off
 		Venus:{inclination:177.3},//TODO tilt from venus orbit plane.  until then, this measures 175 degrees.
-		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},	//, tiltDirection:180}, // this was always 180 until after Horizons changed, then I adjusted, now I'm working things out 
-		// tiltDirection = 0 <=> orbit axis == rotation axis
-		// tiltDirection = 90 <=> winter
-		// tiltDirection = 180 <=> winter
+		Earth:{inclination:23 + 1/60*(26 + 1/60*(21.4119)), tiltDirection:180},
 		Mars:{toMoon:'Phobos'},//ours: 25.79, exact: 25.19
 		Jupiter:{toMoon:'Metis'},//ours: 3.12, exact: 3.13
 		Saturn:{toMoon:'Atlas'},//ours: 26.75, exact: 26.73
