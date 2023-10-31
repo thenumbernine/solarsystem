@@ -890,14 +890,12 @@ print'searching bins'
 								local distSq = (pi.pos - pj.pos):lenSq()
 								if distSq < nbhdThreshold * nbhdThreshold then
 									local dist = math.sqrt(distSq)
-									local na = ffi.new'nbhd_t'
+									local na = cpuNbhdLineBuf:emplace_back()
 									na.pos:set(pi.pos:unpack())
 									na.dist = dist
-									cpuNbhdLineBuf:push_back(na)
-									local nb = ffi.new'nbhd_t'
+									local nb = cpuNbhdLineBuf:emplace_back()
 									nb.pos:set(pj.pos:unpack())
 									nb.dist = dist
-									cpuNbhdLineBuf:push_back(nb)
 								end
 							end
 						end
@@ -1637,129 +1635,128 @@ function App:update()
 		--[[
 		self:drawWithAccum()
 		--]]
-	end
 
+		-- TODO inv square reduce this.... by inv square of one another, and by inv square from view
+		if buildNeighborhood and showNeighbors then
+			gl.glEnable(gl.GL_BLEND)
 
-	-- TODO inv square reduce this.... by inv square of one another, and by inv square from view
-	if buildNeighborhood and showNeighbors then
-		gl.glEnable(gl.GL_BLEND)
-
-		drawNbhdLineSceneObj:draw{
-			uniforms = {
-				nbhdLineAlpha = nbhdLineAlpha,
-				modelViewMatrix = modelViewMatrix.ptr,
-				projectionMatrix = projectionMatrix.ptr,
-			},
-		}
-
-		gl.glDisable(gl.GL_BLEND)
-	end
-
-
-	-- TODO draw around origin?  or draw around view orbit?
-	if drawGrid then
-		if tiltGridToPolaris then
-			gl.glPushMatrix()
-			gl.glRotatef(23.4365472133, -1, 0, 0)
-		elseif tiltGridToVega then
-			gl.glPushMatrix()
-			gl.glRotatef(-23.4365472133, -1, 0, 0)
-		end
-		gl.glEnable(gl.GL_BLEND)
-		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-		gl.glColor3f(.25, .25, .25)
-		gl.glBegin(gl.GL_LINES)
-		local idiv = 24
-		local dphi = 2 * math.pi / idiv
-		local jdiv = 12
-		local dtheta = math.pi / jdiv
-		for i=0,idiv-1 do
-			local phi = 2 * math.pi * i / idiv
-			for j=0,jdiv-1 do
-				local theta = math.pi * j / jdiv
-				gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-				gl.glVertex3f((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
-				if j > 0 then
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
-				end
-			end
-		end
-		gl.glEnd()
-		gl.glDisable(gl.GL_BLEND)
-		if tiltGridToPolaris or tiltGridToVega then
-			gl.glPopMatrix()
-		end
-	end
-
-	if showConstellations then
-		gl.glColor3f(1,1,0)
-		for _,constellation in ipairs(constellations) do
-			if constellation.enabled then
-				for _,line in ipairs(constellation.lines) do
-					gl.glBegin(gl.GL_LINE_STRIP)
-					for _,i in ipairs(line) do
-						gl.glVertex3f(cpuPointBuf[i].pos:unpack())
-					end
-					gl.glEnd()
-				end
-			end
-		end
-	end
-
-	if showEarth then
-		if not self.earthTex then
-			self.earthTex = GLTex2D{
-				filename = '../textures/hires/earth.png',
-				minFilter = gl.GL_LINEAR,
-				magFilter = gl.GL_LINEAR,
-				generateMipmaps = true,
+			drawNbhdLineSceneObj:draw{
+				uniforms = {
+					nbhdLineAlpha = nbhdLineAlpha,
+					modelViewMatrix = modelViewMatrix.ptr,
+					projectionMatrix = projectionMatrix.ptr,
+				},
 			}
+
+			gl.glDisable(gl.GL_BLEND)
 		end
 
-		local idivs = 50
-		local jdivs = 50
 
-		local function vertex(i,j)
-			local u = i/idivs
-			local v = j/jdivs
-			local theta = u*math.pi
-			local phi = v*math.pi*2
-			local costh, sinth = math.cos(theta), math.sin(theta)
-			local cosphi, sinphi = math.cos(phi), math.sin(phi)
-			gl.glTexCoord2d(v, u)
-
-			local x = earthSize * sinth * cosphi
-			local y = earthSize * sinth * sinphi
-			local z = earthSize * costh
-			gl.glVertex3d(x,y,z)
-		end
-
-		gl.glPushMatrix()
-		if tiltGridToVega then
-			gl.glRotatef(-23.4365472133, -1, 0, 0)
-		else
-			gl.glRotatef(23.4365472133, -1, 0, 0)
-		end
-		gl.glRotatef(earthAnglePsi, 0, 1, 0)
-		gl.glRotatef(earthAngleTheta, 1, 0, 0)
-		gl.glRotatef(earthAnglePhi, 0, 0, 1)
-		gl.glEnable(gl.GL_DEPTH_TEST)
-		self.earthTex:enable()
-		self.earthTex:bind()
-		for i=0,idivs-1 do
-			gl.glColor3f(1,1,1)
-			gl.glBegin(gl.GL_TRIANGLE_STRIP)
-			for j=0,jdivs do
-				vertex(i+1,j)
-				vertex(i,j)
+		-- TODO draw around origin?  or draw around view orbit?
+		if drawGrid then
+			if tiltGridToPolaris then
+				gl.glPushMatrix()
+				gl.glRotatef(23.4365472133, -1, 0, 0)
+			elseif tiltGridToVega then
+				gl.glPushMatrix()
+				gl.glRotatef(-23.4365472133, -1, 0, 0)
+			end
+			gl.glEnable(gl.GL_BLEND)
+			gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
+			gl.glColor3f(.25, .25, .25)
+			gl.glBegin(gl.GL_LINES)
+			local idiv = 24
+			local dphi = 2 * math.pi / idiv
+			local jdiv = 12
+			local dtheta = math.pi / jdiv
+			for i=0,idiv-1 do
+				local phi = 2 * math.pi * i / idiv
+				for j=0,jdiv-1 do
+					local theta = math.pi * j / jdiv
+					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+					gl.glVertex3f((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
+					if j > 0 then
+						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
+					end
+				end
 			end
 			gl.glEnd()
+			gl.glDisable(gl.GL_BLEND)
+			if tiltGridToPolaris or tiltGridToVega then
+				gl.glPopMatrix()
+			end
 		end
-		self.earthTex:unbind()
-		self.earthTex:disable()
-		gl.glDisable(gl.GL_DEPTH_TEST)
-		gl.glPopMatrix()
+
+		if showConstellations then
+			gl.glColor3f(1,1,0)
+			for _,constellation in ipairs(constellations) do
+				if constellation.enabled then
+					for _,line in ipairs(constellation.lines) do
+						gl.glBegin(gl.GL_LINE_STRIP)
+						for _,i in ipairs(line) do
+							gl.glVertex3f(cpuPointBuf[i].pos:unpack())
+						end
+						gl.glEnd()
+					end
+				end
+			end
+		end
+
+		if showEarth then
+			if not self.earthTex then
+				self.earthTex = GLTex2D{
+					filename = '../textures/hires/earth.png',
+					minFilter = gl.GL_LINEAR,
+					magFilter = gl.GL_LINEAR,
+					generateMipmaps = true,
+				}
+			end
+
+			local idivs = 50
+			local jdivs = 50
+
+			local function vertex(i,j)
+				local u = i/idivs
+				local v = j/jdivs
+				local theta = u*math.pi
+				local phi = v*math.pi*2
+				local costh, sinth = math.cos(theta), math.sin(theta)
+				local cosphi, sinphi = math.cos(phi), math.sin(phi)
+				gl.glTexCoord2d(v, u)
+
+				local x = earthSize * sinth * cosphi
+				local y = earthSize * sinth * sinphi
+				local z = earthSize * costh
+				gl.glVertex3d(x,y,z)
+			end
+
+			gl.glPushMatrix()
+			if tiltGridToVega then
+				gl.glRotatef(-23.4365472133, -1, 0, 0)
+			else
+				gl.glRotatef(23.4365472133, -1, 0, 0)
+			end
+			gl.glRotatef(earthAnglePsi, 0, 1, 0)
+			gl.glRotatef(earthAngleTheta, 1, 0, 0)
+			gl.glRotatef(earthAnglePhi, 0, 0, 1)
+			gl.glEnable(gl.GL_DEPTH_TEST)
+			self.earthTex:enable()
+			self.earthTex:bind()
+			for i=0,idivs-1 do
+				gl.glColor3f(1,1,1)
+				gl.glBegin(gl.GL_TRIANGLE_STRIP)
+				for j=0,jdivs do
+					vertex(i+1,j)
+					vertex(i,j)
+				end
+				gl.glEnd()
+			end
+			self.earthTex:unbind()
+			self.earthTex:disable()
+			gl.glDisable(gl.GL_DEPTH_TEST)
+			gl.glPopMatrix()
+		end
 	end
 
 	glreport'here'
