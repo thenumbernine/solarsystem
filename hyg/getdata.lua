@@ -8,8 +8,13 @@ local ffi = require 'ffi'
 local Stat = require 'stat'
 local StatSet = require 'stat.set'
 
+local hygfn = 'hyg_v37.csv'
+if not path(hygfn):exists() then
+	assert(os.execute'wget https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v37.csv')
+end
+
 -- [[ using csv.  2x slower to parse but 2x smaller file.
-local hyg = require 'csv'.file'hyg_v37.csv'
+local hyg = require 'csv'.file(hygfn)
 hyg:setColumnNames(hyg.rows:remove(1))
 local rows = hyg.rows
 --]]
