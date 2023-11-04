@@ -9,7 +9,7 @@ local Stat = require 'stat'
 local StatSet = require 'stat.set'
 
 -- [[ using csv.  2x slower to parse but 2x smaller file.
-local hyg = require 'csv'.file'hygdata_v3.csv'
+local hyg = require 'csv'.file'hyg_v37.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 local rows = hyg.rows
 --]]
