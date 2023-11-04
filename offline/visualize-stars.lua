@@ -107,7 +107,20 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 end):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = fromlua(path'../hyg/index-for-hip.lua':read() or 'nil')
+local indexForHip = (function()
+	local fn = '../hyg/index-for-hip.lua'
+	local s, err = path(fn):read()
+	if not s then
+		print("couldn't read Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
+		return
+	end
+	local d, err = fromlua(s)
+	if not d then
+		print("couldn't load Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
+		return
+	end
+	return d
+end)()
 
 local constellationSrcData = path'../constellations/constellation-lines.lua':read()
 if constellationSrcData then
@@ -117,7 +130,7 @@ else
 	constellationSrcData = {}
 end
 
-if not indexFromHip then
+if not indexForHip then
 	print("couldn't find hyg/index-for-hip.lua -- won't see constellations")
 else
 	for name, lines in pairs(constellationSrcData) do
