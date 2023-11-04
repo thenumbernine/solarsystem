@@ -80,6 +80,9 @@ if namefile then
 		namedStars = fromlua(namedata)
 	end
 end
+if not namedStars then
+	printf("couldn't find star name file "..tostring(namefile).." -- searching will be disabled")
+end
 
 local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
 local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
@@ -104,7 +107,7 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 end):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = fromlua(path'../hyg/index-for-hip.lua':read())
+local indexForHip = fromlua(path'../hyg/index-for-hip.lua':read() or 'nil')
 
 local constellationSrcData = path'../constellations/constellation-lines.lua':read()
 if constellationSrcData then
@@ -114,22 +117,26 @@ else
 	constellationSrcData = {}
 end
 
-for name, lines in pairs(constellationSrcData) do
-	local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
-		return name2:gsub(' ', '') == name
-	end)
-	assert(abbrev, "couldn't find abbrev for lines name "..name)
-	local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
+if not indexFromHip then
+	print("couldn't find hyg/index-for-hip.lua -- won't see constellations")
+else
+	for name, lines in pairs(constellationSrcData) do
+		local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
+			return name2:gsub(' ', '') == name
+		end)
+		assert(abbrev, "couldn't find abbrev for lines name "..name)
+		local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
 
-	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
-	constellation.lines = lines
-	for _,line in ipairs(lines) do
-		for j=#line,1,-1 do
-			local index = indexForHip[line[j]]
-			if not index then
-				table.remove(line, j)
-			else
-				line[j] = index
+		-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
+		constellation.lines = lines
+		for _,line in ipairs(lines) do
+			for j=#line,1,-1 do
+				local index = indexForHip[line[j]]
+				if not index then
+					table.remove(line, j)
+				else
+					line[j] = index
+				end
 			end
 		end
 	end
@@ -324,6 +331,9 @@ local gpuPointBuf, cpuPointBuf
 function App:initGL(...)
 	App.super.initGL(self, ...)
 
+	-- TODO detect and pick the largest
+	local glslVersion = '460'
+
 	gl.glDisable(gl.GL_DEPTH_TEST)
 
 	self.view.znear = 1e-3
@@ -331,7 +341,7 @@ function App:initGL(...)
 
 --	self.view.angle = (quatd():fromAngleAxis(0, 0, 1, 90) * self.view.angle):normalize()
 
-	local data = path(pointfile):read()
+	local data = assert(path(pointfile):read(), "failed to find point file "..tostring(pointfile))
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
@@ -1049,7 +1059,7 @@ local clnumber = require 'cl.obj.number'
 	-- since the point renderer varies its gl_PointSize with the magnitude, I gotta do that here as well
 	local drawIDShader = GLProgram{
 		vertexCode = template([[
-#version 460
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float lum;
@@ -1107,9 +1117,13 @@ void main() {
 	i = (i - color.b) / 256.;
 	color.b *= 1. / 255.;
 }
-]], {calcPointSize = calcPointSize}),
-		fragmentCode = template[[
-#version 460
+]], 		{
+				calcPointSize = calcPointSize,
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
+#version <?=glslVersion?>
 
 in vec3 color;
 in float discardv;
@@ -1122,7 +1136,9 @@ void main() {
 
 	fragColor = vec4(color, 1.);
 }
-]],
+]],		{
+			glslVersion = glslVersion,
+		}),
 	}:useNone()
 	glreport'here'
 
@@ -1144,7 +1160,7 @@ void main() {
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version 460
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float lum;
@@ -1209,9 +1225,10 @@ void main() {
 			calcPointSize = calcPointSize,
 			colorTempMin = colorTempMin,
 			colorTempMax = colorTempMax,
+			glslVersion = glslVersion,
 		}),
 		fragmentCode = template([[
-#version 460
+#version <?=glslVersion?>
 
 in float lumv;
 in vec3 tempcolor;
@@ -1240,7 +1257,10 @@ void main() {
 		* texture(starTex, gl_PointCoord)
 	;
 }
-]]),
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 		uniforms = {
 			tempTex = 0,
 			starTex = 1,
@@ -1255,8 +1275,8 @@ void main() {
 	}
 
 	local accumStarLineShader = GLProgram{
-		vertexCode = [[
-#version 460
+		vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec3 pos;
 in vec3 vel;
@@ -1279,9 +1299,12 @@ void main() {
 
 	gl_Position = projectionMatrix * (modelViewMatrix * vtx);
 }
-]],
-		fragmentCode = [[
-#version 460
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
+#version <?=glslVersion?>
 
 uniform float lineVelAlpha;
 
@@ -1290,7 +1313,10 @@ out vec4 fragColor;
 void main() {
 	fragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
-]],
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 	}:useNone()
 	glreport'here'
 
@@ -1306,8 +1332,8 @@ void main() {
 	}
 
 	local renderAccumShader = GLProgram{
-		vertexCode = [[
-#version 460
+		vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec2 pos;
 out vec2 texcoord;
@@ -1316,12 +1342,15 @@ void main() {
 	texcoord = pos;
 	gl_Position = vec4(pos.x * 2. - 1., pos.y * 2. - 1., 0., 1.);
 }
-]],
-		fragmentCode = template[[
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version 460
+#version <?=glslVersion?>
 
 in vec2 texcoord;
 
@@ -1357,7 +1386,10 @@ end
 
 	fragColor.a = 1.;
 }
-]],
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 		uniforms = {
 			fbotex = 0,
 			hsvtex = 1,
@@ -1390,8 +1422,8 @@ end
 
 	if buildNeighborhood then
 		local drawNbhdLineShader = GLProgram{
-			vertexCode = [[
-#version 460
+			vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float dist;
@@ -1411,9 +1443,12 @@ void main() {
 		* (viewDist + 1.)
 );
 }
-]],
-			fragmentCode = [[
-#version 460
+]],				{
+					glslVersion = glslVersion,
+				}
+			),
+			fragmentCode = template([[
+#version <?=glslVersion?>
 
 in float lumv;
 out vec4 fragColor;
@@ -1423,7 +1458,10 @@ void main() {
 	vec3 color = vec3(.1, 1., .1) * lumf;
 	fragColor = vec4(color, 1.);
 }
-]],
+]],				{
+					glslVersion = glslVersion,
+				}
+			)
 		}:useNone()
 		glreport'here'
 
@@ -1691,7 +1729,9 @@ function App:update()
 		if showConstellations then
 			gl.glColor3f(1,1,0)
 			for _,constellation in ipairs(constellations) do
-				if constellation.enabled then
+				if constellation.enabled
+				and constellation.lines
+				then
 					for _,line in ipairs(constellation.lines) do
 						gl.glBegin(gl.GL_LINE_STRIP)
 						for _,i in ipairs(line) do
