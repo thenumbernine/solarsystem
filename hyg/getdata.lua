@@ -20,10 +20,10 @@ local rows = hyg.rows
 --]]
 --[[ using lua.  2x faster to parse, but about 2x larger
 --[=[ too big for load()
-local hyg = fromlua(path'hygdata_v3.lua':read())
+local hyg = fromlua(path'hyg_v37.lua':read())
 --]=]
 -- [=[ assuming one row per line
-local hygrows = path'hygdata_v3.lua':read():split'\n'
+local hygrows = path'hyg_v37.lua':read():split'\n'
 local function asserteq(a,b) if a~=b then error("expected "..tolua(a).." to equal "..tolua(b)) end end
 asserteq(hygrows:remove(1), '{')
 if hygrows:last() == '' then hygrows:remove() end

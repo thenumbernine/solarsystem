@@ -4,7 +4,7 @@ not sure if i should put this in universe/offline/ or in solarsystem/hyg/
 
 from https://gea.esac.esa.int/archive/ ADQL query
 select * from gaiadr2.hipparcos2_best_neighbour order by original_ext_source_id asc;
-then compare 'original_ext_source_id' field to the hygdata_v3.csv 'hip' field
+then compare 'original_ext_source_id' field to the hyg_v37.csv 'hip' field
 
 summary of results:
 
@@ -31,7 +31,7 @@ local CSV = require 'csv'
 -- and compare stats 
 
 print'reading hyg'
-local hyg = CSV.file'../hyg/hygdata_v3.csv'
+local hyg = CSV.file'../hyg/hyg_v37.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 
 print'building hyg lookup for hip'
