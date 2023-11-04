@@ -13,7 +13,7 @@ local lpts = table()
 
 local stats = require 'stat.set'('temp', 'log10lum')
 print'loading hyg'
-local hyg = require 'csv'.file'../hyg/hygdata_v3.csv'
+local hyg = require 'csv'.file'../hyg/hyg_v37.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 print'reading hyg'
 for _,row in ipairs(hyg.rows) do
