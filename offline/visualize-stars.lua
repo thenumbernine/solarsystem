@@ -332,7 +332,7 @@ function App:initGL(...)
 	App.super.initGL(self, ...)
 
 	-- TODO detect and pick the largest
-	local glslVersion = '460'
+	local glslVersion = cmdline.glsl or '460'
 
 	gl.glDisable(gl.GL_DEPTH_TEST)
 
