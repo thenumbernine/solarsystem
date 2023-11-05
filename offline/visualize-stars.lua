@@ -50,6 +50,10 @@ addexo = add exoplanets.  this requires testing by the hyg id, which is the hyg 
 nounnamed = remove stars that don't have entries in the namefile
 buildnbhds = build neighbhoods
 buildvels = build velocity field lines
+buildgravmap = for each star, find what point in space it is most drawn to.
+	then we can find if stars orbit other stars, or if any two stars share the same orbit ...
+	( TODO you might want to use rmax with this)
+	( TODO TODO I'll need mass too ... hmm ... and mass isn't in HYG ...)
 
 showStarNames = whether to show star names
 --]]
@@ -81,7 +85,7 @@ if namefile then
 	end
 end
 if not namedStars then
-	printf("couldn't find star name file "..tostring(namefile).." -- searching will be disabled")
+	print("couldn't find star name file "..tostring(namefile).." -- searching will be disabled")
 end
 
 local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
