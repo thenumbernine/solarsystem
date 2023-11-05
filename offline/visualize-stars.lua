@@ -165,7 +165,7 @@ local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or 
 
 local _1_log_10 = 1 / math.log(10)
 
-App.title = 'pointcloud visualization tool'
+App.title = 'stellar neighborhood'
 App.viewDist = 5e-4
 
 --[[
