@@ -10,12 +10,12 @@ especially one orbit vs another ...
 for example, take the moons of jupiter or saturn etc
 how do we ensure they are orbitting their parent planet and not orbiting one another?
 https://en.wikipedia.org/wiki/Standard_gravitational_parameter#Small_body_orbiting_a_central_body
-Kepler's 1-2-3 law 
+Kepler's 1-2-3 law
 	... for circular and elliptic:
 	μ = (2 π / T)^2 a^3
 	... for circular orbits:
 	μ = r v^2
-	μ = r^3 ω^2 
+	μ = r^3 ω^2
 	v ≈ r / ω
 	ω = 2 π / T
 	r ≈ a
@@ -60,6 +60,11 @@ assert(#bodies == #dynamicVars.coords)
 local pluto = assert(select(2, bodies:find(nil, function(body) return body.name == '134340 Pluto' end)))
 pluto.name = 'Pluto'	-- fix for barycenters
 
+-- add mass=0 to all bodies without mass
+for _,body in ipairs(bodies) do
+	body.mass = body.mass or 0
+	body.radius = body.radius or 0
+end
 
 for i,dynObj in ipairs(dynamicVars.coords) do
 	local body = bodies[i]
@@ -71,7 +76,7 @@ for i,dynObj in ipairs(dynamicVars.coords) do
 		-- so I'll just use the static var name
 		if body[k] then
 			if k ~= 'name'
-			and body[k] ~= v 
+			and body[k] ~= v
 			then
 				error("don't match "..tolua{
 					id = body.id,
@@ -110,6 +115,7 @@ for i,dynObj in ipairs(dynamicVars.coords) do
 	end
 end
 
+-- TODO accumulate mass into parents for barycenters ...
 
 -- rename the barycenters of planets without moons?
 -- or just remove them?
@@ -129,10 +135,6 @@ bodies:remove(
 	), "couldn't find Venus Barycenter to remove it")
 )
 
-
-
-
-
 do -- no unique names?
 	local namesUsed = {}
 	for _,body in ipairs(bodies) do
@@ -143,13 +145,8 @@ do -- no unique names?
 	end
 end
 
-local bodiesWithMass = bodies:mapi(function(body,i,t)
-	if not body.mass then
---print("body "..body.name.." with parent "..body.parent.." has no mass -- removing")
-	else
-		return body, #t+1
-	end
-end):sort(function(a,b)
+
+local bodiesWithMass = table(bodies):sort(function(a,b)
 	return a.mass > b.mass	-- largest mass first
 end)
 
@@ -158,16 +155,20 @@ local function gravForceMag(a, b)
 	return b.mass / (a.pos - b.pos):lenSq()
 end
 
+local G = 6.67408e-11	-- m^3 / (kg s^2)
+
 --[[
 for all pairs of bodies, look at COM
 look at the if the COM is within either body
-if it's within one body then that should be the parent binary 
+if it's within one body then that should be the parent binary
 but what if the small body has a more massive and closer?
 	cuz we can get false positives: mercury can seem to be the parent of jupiters moons if we ignore jupiter.
 we could sort them from smallest to biggest mass
 and for grav attraction we need to consider inv sq dist?
 --]]
 --print(o.name, so.parent, so.mass, jsonstrtovec3(o.pos))
+local Image = require 'image'
+local img = Image(#bodiesWithMass, #bodiesWithMass, 1, 'double')
 for ia=#bodiesWithMass,1,-1 do
 	local a = bodiesWithMass[ia]
 	local ibs = range(#bodiesWithMass)
@@ -175,27 +176,40 @@ for ia=#bodiesWithMass,1,-1 do
 	ibs:sort(function(i,j)
 		return gravForceMag(a, bodiesWithMass[i]) > gravForceMag(a, bodiesWithMass[j])
 	end)
-	-- so from here we have all other planets sorted by their gravitational force
-	-- any two could be binary orbits
-	-- how do we know when the force of two pairs is comparable such that it needs to be modeled as a 3-body problem? 
-	-- ex. the Sun exerts a force on 2003J12 of 3821175.3127415 m/day
-	-- while Jupiter exerts a force on 2003J12 of 2806107.5098147 m/s
-	-- the sun is stronger
-	-- however Jupiter is the parent planet of the moon
-	-- does that mean this moon is realy orbiting the Sun and not Jupiter?
-	-- technically I think the answer is 'no' because the barycenter will lie well within Jupiter (so the pair is not a binary)
+	--[[
+	so from here we have all other planets sorted by their gravitational force
+	any two could be binary orbits
+	how do we know when the force of two pairs is comparable such that it needs to be modeled as a 3-body problem?
+	ex. the Sun exerts a force on 2003J12 of 3821175.3127415 m/day
+	while Jupiter exerts a force on 2003J12 of 2806107.5098147 m/s
+	the sun is stronger
+	however Jupiter is the parent planet of the moon
+	does that mean this moon is realy orbiting the Sun and not Jupiter?
+	technically I think the answer is 'no' because the barycenter will lie well within Jupiter (so the pair is not a binary)
+
+	so now I think I have to look at gravitational potential isobars ...
+	and this is only convenient when I'm in a plane and it is isobars and not isosurfaces ...
+	but for a generic N-body problem (like the stellar neighborhood) it's going to be isosurfaces ...
+	hmm and at this point, we're talking about the isobars of the function of gravitation from *all* bodies, so that's a big sum at every single point in space...
+	--]]
+	--[=[
 	if bodiesWithMass[ibs[1]].name ~= a.parent then
 		print(a.name..' has parent '..tostring(a.parent)..' but most significant gravitation force from '..bodiesWithMass[ibs[1]].name)
 	end
-	--[[
-	for _,ib in ipairs(ibs:sub(1,10)) do
+	--]=]
+	-- [[
+	local Gpot = 0
+	--for _,ib in ipairs(ibs:sub(1,10)) do
+	for _,ib in ipairs(ibs) do
 		local b = bodiesWithMass[ib]
-		
-		local d = (a.pos - b.pos):length()
-		
-		-- calc grav pull
-		local F = b.mass / (d * d)
 
+		local dsq = (a.pos - b.pos):lenSq()
+
+		-- calc grav pull
+		local F = b.mass / dsq
+
+		-- [=[
+		local d = math.sqrt(dsq)
 		-- calc COM / grav param between a & b
 		local com = (a.pos * a.mass + b.pos * b.mass) / (a.mass + b.mass)
 		local da = (a.pos - com):length()
@@ -209,8 +223,28 @@ for ia=#bodiesWithMass,1,-1 do
 				or ''
 			)
 		)
+		--]=]
+		img.buffer[(ia-1) + #bodiesWithMass * (ib-1)] = F
+
+		-- negative potential
+		Gpot = Gpot + (G * b.mass) / d
 	end
 	--]]
+	a.Gpot = Gpot
+end
+img:map(function(x) return math.log(x+1) end)
+:normalize()
+:save'gravbetweenbodies.png'
+--]]
+print()
+
+print('gravitational potential')
+-- TODO I could do this for all bodies, even those without masses, since Gpot doesn't consider its own body
+for _,body in ipairs(table(bodiesWithMass):sort(function(a,b)
+	--return a.Gpot > b.Gpot
+	return a.mass / a.Gpot > b.mass / b.Gpot
+end)) do
+	print(body.Gpot, body.mass, body.mass / body.Gpot,
+		body.name)
 end
 
---]]
