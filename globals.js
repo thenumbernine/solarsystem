@@ -85,6 +85,17 @@ const cfg = {
 
 	slideDuration : 500,
 };
+
+// TODO override any var?
+// until then ...
+{
+	const targetFlatEarthCoeff = urlparams.get('targetFlatEarthCoeff');
+	if (targetFlatEarthCoeff !== null) {
+		cfg.targetFlatEarthCoeff = parseFloat(targetFlatEarthCoeff);
+	}
+}
+
+
 cfg.integrateTimeStep = cfg.defaultIntegrateTimeStep;
 cfg.planetInfluences = [];
 
