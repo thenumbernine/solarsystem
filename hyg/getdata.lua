@@ -8,17 +8,22 @@ local ffi = require 'ffi'
 local Stat = require 'stat'
 local StatSet = require 'stat.set'
 
+local hygfn = 'hyg_v37.csv'
+if not path(hygfn):exists() then
+	assert(os.execute'wget https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v37.csv')
+end
+
 -- [[ using csv.  2x slower to parse but 2x smaller file.
-local hyg = require 'csv'.file'hygdata_v3.csv'
+local hyg = require 'csv'.file(hygfn)
 hyg:setColumnNames(hyg.rows:remove(1))
 local rows = hyg.rows
 --]]
 --[[ using lua.  2x faster to parse, but about 2x larger
 --[=[ too big for load()
-local hyg = fromlua(path'hygdata_v3.lua':read())
+local hyg = fromlua(path'hyg_v37.lua':read())
 --]=]
 -- [=[ assuming one row per line
-local hygrows = path'hygdata_v3.lua':read():split'\n'
+local hygrows = path'hyg_v37.lua':read():split'\n'
 local function asserteq(a,b) if a~=b then error("expected "..tolua(a).." to equal "..tolua(b)) end end
 asserteq(hygrows:remove(1), '{')
 if hygrows:last() == '' then hygrows:remove() end

@@ -26,9 +26,9 @@ local function processToFile(args)
 	local outputObj = assert(args.outputObj)
 
 	local lastTime = os.time()
-	
+
 	local data = path(inputFilename):read()
-	
+
 	local lines = assert(data, "failed to read file "..inputFilename):split('\n')
 	local cols = Columns(lines)
 
@@ -37,17 +37,17 @@ print(tolua(cols.columns))
 	for i=3,#lines do	-- skip headers and ---- line
 		local line = lines[i]
 		if #line:trim() > 0 then
-			xpcall(function()
+			assert(xpcall(function()
 				outputObj:processBody(assert(processRow(cols(line))))
 			end, function(err)
-				io.stderr:write('failed on file '..inputFilename..' line '..i..'\n')
-				io.stderr:write(err..'\n'..debug.traceback()..'\n')
-				os.exit(1)
-			end)
+				return 'failed on file '..inputFilename..' line '..i..'\n'
+					err..'\n'
+					..debug.traceback()
+			end))
 		end
 		local thisTime = os.time()
 		if thisTime ~= lastTime then
-			print(inputFilename..' '..math.floor(100*(i-2)/(#lines-2))..'% complete...') 
+			print(inputFilename..' '..math.floor(100*(i-2)/(#lines-2))..'% complete...')
 			lastTime = thisTime
 		end
 	end
@@ -56,7 +56,7 @@ end
 OutputPoints:staticInit()
 
 -- these match the fields in coldesc.lua and probably row-desc.json
-local numberFields = table{ 
+local numberFields = table{
 	'epoch',
 	'perihelionDistance',		--comets
 	'semiMajorAxis',		--asteroids
@@ -138,14 +138,14 @@ typedef struct {
 end
 
 local function newBody()
-	if not useffi then 
+	if not useffi then
 		return setmetatable({}, {
 			__index = {
 				getPos = function(self)
 					return unpack(self.pos)
 				end,
 			},
-		}) 
+		})
 	end
 	local body = setmetatable({
 		_ptr = ffi.new'body_t[1]', --gcmem.new('body_t',1),
@@ -188,7 +188,7 @@ processToFile{
 		body.inclination = math.rad(assert(tonumber(row.i:trim())))	-- wrt J2000 ecliptic plane
 		body.argumentOfPeriapsis = math.rad(assert(tonumber(row.w:trim())))
 		body.longitudeOfAscendingNode = math.rad(assert(tonumber(row.Node:trim())))
-	
+
 		-- time of perihelion passage
 		do
 			local str = row.Tp
@@ -198,14 +198,14 @@ processToFile{
 			-- TODO calendarToJulian() function.  this is a rough rough guess.
 			body.timeOfPerihelionPassage = julian.fromCalendar{year=year, month=month, day=day}
 		end
-	
+
 		body.orbitSolutionReference = row.Ref:trim()
 		return body
 	end,
 }
 --]]
 
--- [[ process numbered bodies 
+-- [[ process numbered bodies
 processToFile{
 	inputFilename = 'ELEMENTS.NUMBR',
 	outputObj = OutputPoints{
@@ -232,7 +232,7 @@ processToFile{
 }
 --]]
 
--- [[ process unnumbered bodies 
+-- [[ process unnumbered bodies
 processToFile{
 	inputFilename = 'ELEMENTS.UNNUM',
 	outputObj = OutputPoints{

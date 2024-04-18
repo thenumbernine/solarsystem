@@ -50,6 +50,10 @@ addexo = add exoplanets.  this requires testing by the hyg id, which is the hyg 
 nounnamed = remove stars that don't have entries in the namefile
 buildnbhds = build neighbhoods
 buildvels = build velocity field lines
+buildgravmap = for each star, find what point in space it is most drawn to.
+	then we can find if stars orbit other stars, or if any two stars share the same orbit ...
+	( TODO you might want to use rmax with this)
+	( TODO TODO I'll need mass too ... hmm ... and mass isn't in HYG ...)
 
 showStarNames = whether to show star names
 --]]
@@ -80,6 +84,9 @@ if namefile then
 		namedStars = fromlua(namedata)
 	end
 end
+if not namedStars then
+	print("couldn't find star name file "..tostring(namefile).." -- searching will be disabled")
+end
 
 local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
 local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
@@ -104,7 +111,20 @@ local constellationForAbbrev = table.mapi(constellations, function(cons)
 end):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = fromlua(path'../hyg/index-for-hip.lua':read())
+local indexForHip = (function()
+	local fn = '../hyg/index-for-hip.lua'
+	local s, err = path(fn):read()
+	if not s then
+		print("couldn't read Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
+		return
+	end
+	local d, err = fromlua(s)
+	if not d then
+		print("couldn't load Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
+		return
+	end
+	return d
+end)()
 
 local constellationSrcData = path'../constellations/constellation-lines.lua':read()
 if constellationSrcData then
@@ -114,22 +134,26 @@ else
 	constellationSrcData = {}
 end
 
-for name, lines in pairs(constellationSrcData) do
-	local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
-		return name2:gsub(' ', '') == name
-	end)
-	assert(abbrev, "couldn't find abbrev for lines name "..name)
-	local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
+if not indexForHip then
+	print("couldn't find hyg/index-for-hip.lua -- won't see constellations")
+else
+	for name, lines in pairs(constellationSrcData) do
+		local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
+			return name2:gsub(' ', '') == name
+		end)
+		assert(abbrev, "couldn't find abbrev for lines name "..name)
+		local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
 
-	-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
-	constellation.lines = lines
-	for _,line in ipairs(lines) do
-		for j=#line,1,-1 do
-			local index = indexForHip[line[j]]
-			if not index then
-				table.remove(line, j)
-			else
-				line[j] = index
+		-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
+		constellation.lines = lines
+		for _,line in ipairs(lines) do
+			for j=#line,1,-1 do
+				local index = indexForHip[line[j]]
+				if not index then
+					table.remove(line, j)
+				else
+					line[j] = index
+				end
 			end
 		end
 	end
@@ -141,7 +165,7 @@ local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or 
 
 local _1_log_10 = 1 / math.log(10)
 
-App.title = 'pointcloud visualization tool'
+App.title = 'stellar neighborhood'
 App.viewDist = 5e-4
 
 --[[
@@ -324,6 +348,9 @@ local gpuPointBuf, cpuPointBuf
 function App:initGL(...)
 	App.super.initGL(self, ...)
 
+	-- TODO detect and pick the largest
+	local glslVersion = cmdline.glsl or '460'
+
 	gl.glDisable(gl.GL_DEPTH_TEST)
 
 	self.view.znear = 1e-3
@@ -331,7 +358,7 @@ function App:initGL(...)
 
 --	self.view.angle = (quatd():fromAngleAxis(0, 0, 1, 90) * self.view.angle):normalize()
 
-	local data = path(pointfile):read()
+	local data = assert(path(pointfile):read(), "failed to find point file "..tostring(pointfile))
 	numPts = #data / ffi.sizeof(pt_t)
 print('loaded '..numPts..' stars...')
 --numPts = math.min(numPts, 100000)
@@ -890,14 +917,12 @@ print'searching bins'
 								local distSq = (pi.pos - pj.pos):lenSq()
 								if distSq < nbhdThreshold * nbhdThreshold then
 									local dist = math.sqrt(distSq)
-									local na = ffi.new'nbhd_t'
+									local na = cpuNbhdLineBuf:emplace_back()
 									na.pos:set(pi.pos:unpack())
 									na.dist = dist
-									cpuNbhdLineBuf:push_back(na)
-									local nb = ffi.new'nbhd_t'
+									local nb = cpuNbhdLineBuf:emplace_back()
 									nb.pos:set(pj.pos:unpack())
 									nb.dist = dist
-									cpuNbhdLineBuf:push_back(nb)
 								end
 							end
 						end
@@ -1051,7 +1076,7 @@ local clnumber = require 'cl.obj.number'
 	-- since the point renderer varies its gl_PointSize with the magnitude, I gotta do that here as well
 	local drawIDShader = GLProgram{
 		vertexCode = template([[
-#version 460
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float lum;
@@ -1109,9 +1134,13 @@ void main() {
 	i = (i - color.b) / 256.;
 	color.b *= 1. / 255.;
 }
-]], {calcPointSize = calcPointSize}),
-		fragmentCode = template[[
-#version 460
+]], 		{
+				calcPointSize = calcPointSize,
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
+#version <?=glslVersion?>
 
 in vec3 color;
 in float discardv;
@@ -1124,7 +1153,9 @@ void main() {
 
 	fragColor = vec4(color, 1.);
 }
-]],
+]],		{
+			glslVersion = glslVersion,
+		}),
 	}:useNone()
 	glreport'here'
 
@@ -1146,7 +1177,7 @@ void main() {
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version 460
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float lum;
@@ -1211,9 +1242,10 @@ void main() {
 			calcPointSize = calcPointSize,
 			colorTempMin = colorTempMin,
 			colorTempMax = colorTempMax,
+			glslVersion = glslVersion,
 		}),
 		fragmentCode = template([[
-#version 460
+#version <?=glslVersion?>
 
 in float lumv;
 in vec3 tempcolor;
@@ -1242,7 +1274,10 @@ void main() {
 		* texture(starTex, gl_PointCoord)
 	;
 }
-]]),
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 		uniforms = {
 			tempTex = 0,
 			starTex = 1,
@@ -1257,8 +1292,8 @@ void main() {
 	}
 
 	local accumStarLineShader = GLProgram{
-		vertexCode = [[
-#version 460
+		vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec3 pos;
 in vec3 vel;
@@ -1281,9 +1316,12 @@ void main() {
 
 	gl_Position = projectionMatrix * (modelViewMatrix * vtx);
 }
-]],
-		fragmentCode = [[
-#version 460
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
+#version <?=glslVersion?>
 
 uniform float lineVelAlpha;
 
@@ -1292,7 +1330,10 @@ out vec4 fragColor;
 void main() {
 	fragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
-]],
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 	}:useNone()
 	glreport'here'
 
@@ -1308,8 +1349,8 @@ void main() {
 	}
 
 	local renderAccumShader = GLProgram{
-		vertexCode = [[
-#version 460
+		vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec2 pos;
 out vec2 texcoord;
@@ -1318,12 +1359,15 @@ void main() {
 	texcoord = pos;
 	gl_Position = vec4(pos.x * 2. - 1., pos.y * 2. - 1., 0., 1.);
 }
-]],
-		fragmentCode = template[[
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
+		fragmentCode = template([[
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version 460
+#version <?=glslVersion?>
 
 in vec2 texcoord;
 
@@ -1359,7 +1403,10 @@ end
 
 	fragColor.a = 1.;
 }
-]],
+]],			{
+				glslVersion = glslVersion,
+			}
+		),
 		uniforms = {
 			fbotex = 0,
 			hsvtex = 1,
@@ -1392,8 +1439,8 @@ end
 
 	if buildNeighborhood then
 		local drawNbhdLineShader = GLProgram{
-			vertexCode = [[
-#version 460
+			vertexCode = template([[
+#version <?=glslVersion?>
 
 in vec3 pos;
 in float dist;
@@ -1413,9 +1460,12 @@ void main() {
 		* (viewDist + 1.)
 );
 }
-]],
-			fragmentCode = [[
-#version 460
+]],				{
+					glslVersion = glslVersion,
+				}
+			),
+			fragmentCode = template([[
+#version <?=glslVersion?>
 
 in float lumv;
 out vec4 fragColor;
@@ -1425,7 +1475,10 @@ void main() {
 	vec3 color = vec3(.1, 1., .1) * lumf;
 	fragColor = vec4(color, 1.);
 }
-]],
+]],				{
+					glslVersion = glslVersion,
+				}
+			)
 		}:useNone()
 		glreport'here'
 
@@ -1637,129 +1690,130 @@ function App:update()
 		--[[
 		self:drawWithAccum()
 		--]]
-	end
 
+		-- TODO inv square reduce this.... by inv square of one another, and by inv square from view
+		if buildNeighborhood and showNeighbors then
+			gl.glEnable(gl.GL_BLEND)
 
-	-- TODO inv square reduce this.... by inv square of one another, and by inv square from view
-	if buildNeighborhood and showNeighbors then
-		gl.glEnable(gl.GL_BLEND)
-
-		drawNbhdLineSceneObj:draw{
-			uniforms = {
-				nbhdLineAlpha = nbhdLineAlpha,
-				modelViewMatrix = modelViewMatrix.ptr,
-				projectionMatrix = projectionMatrix.ptr,
-			},
-		}
-
-		gl.glDisable(gl.GL_BLEND)
-	end
-
-
-	-- TODO draw around origin?  or draw around view orbit?
-	if drawGrid then
-		if tiltGridToPolaris then
-			gl.glPushMatrix()
-			gl.glRotatef(23.4365472133, -1, 0, 0)
-		elseif tiltGridToVega then
-			gl.glPushMatrix()
-			gl.glRotatef(-23.4365472133, -1, 0, 0)
-		end
-		gl.glEnable(gl.GL_BLEND)
-		gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-		gl.glColor3f(.25, .25, .25)
-		gl.glBegin(gl.GL_LINES)
-		local idiv = 24
-		local dphi = 2 * math.pi / idiv
-		local jdiv = 12
-		local dtheta = math.pi / jdiv
-		for i=0,idiv-1 do
-			local phi = 2 * math.pi * i / idiv
-			for j=0,jdiv-1 do
-				local theta = math.pi * j / jdiv
-				gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-				gl.glVertex3f((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
-				if j > 0 then
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
-				end
-			end
-		end
-		gl.glEnd()
-		gl.glDisable(gl.GL_BLEND)
-		if tiltGridToPolaris or tiltGridToVega then
-			gl.glPopMatrix()
-		end
-	end
-
-	if showConstellations then
-		gl.glColor3f(1,1,0)
-		for _,constellation in ipairs(constellations) do
-			if constellation.enabled then
-				for _,line in ipairs(constellation.lines) do
-					gl.glBegin(gl.GL_LINE_STRIP)
-					for _,i in ipairs(line) do
-						gl.glVertex3f(cpuPointBuf[i].pos:unpack())
-					end
-					gl.glEnd()
-				end
-			end
-		end
-	end
-
-	if showEarth then
-		if not self.earthTex then
-			self.earthTex = GLTex2D{
-				filename = '../textures/hires/earth.png',
-				minFilter = gl.GL_LINEAR,
-				magFilter = gl.GL_LINEAR,
-				generateMipmaps = true,
+			drawNbhdLineSceneObj:draw{
+				uniforms = {
+					nbhdLineAlpha = nbhdLineAlpha,
+					modelViewMatrix = modelViewMatrix.ptr,
+					projectionMatrix = projectionMatrix.ptr,
+				},
 			}
+
+			gl.glDisable(gl.GL_BLEND)
 		end
 
-		local idivs = 50
-		local jdivs = 50
 
-		local function vertex(i,j)
-			local u = i/idivs
-			local v = j/jdivs
-			local theta = u*math.pi
-			local phi = v*math.pi*2
-			local costh, sinth = math.cos(theta), math.sin(theta)
-			local cosphi, sinphi = math.cos(phi), math.sin(phi)
-			gl.glTexCoord2d(v, u)
-
-			local x = earthSize * sinth * cosphi
-			local y = earthSize * sinth * sinphi
-			local z = earthSize * costh
-			gl.glVertex3d(x,y,z)
-		end
-
-		gl.glPushMatrix()
-		if tiltGridToVega then
-			gl.glRotatef(-23.4365472133, -1, 0, 0)
-		else
-			gl.glRotatef(23.4365472133, -1, 0, 0)
-		end
-		gl.glRotatef(earthAnglePsi, 0, 1, 0)
-		gl.glRotatef(earthAngleTheta, 1, 0, 0)
-		gl.glRotatef(earthAnglePhi, 0, 0, 1)
-		gl.glEnable(gl.GL_DEPTH_TEST)
-		self.earthTex:enable()
-		self.earthTex:bind()
-		for i=0,idivs-1 do
-			gl.glColor3f(1,1,1)
-			gl.glBegin(gl.GL_TRIANGLE_STRIP)
-			for j=0,jdivs do
-				vertex(i+1,j)
-				vertex(i,j)
+		-- TODO draw around origin?  or draw around view orbit?
+		if drawGrid then
+			if tiltGridToPolaris then
+				gl.glPushMatrix()
+				gl.glRotatef(23.4365472133, -1, 0, 0)
+			elseif tiltGridToVega then
+				gl.glPushMatrix()
+				gl.glRotatef(-23.4365472133, -1, 0, 0)
+			end
+			gl.glEnable(gl.GL_BLEND)
+			gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
+			gl.glColor3f(.25, .25, .25)
+			gl.glBegin(gl.GL_LINES)
+			local idiv = 24
+			local dphi = 2 * math.pi / idiv
+			local jdiv = 12
+			local dtheta = math.pi / jdiv
+			for i=0,idiv-1 do
+				local phi = 2 * math.pi * i / idiv
+				for j=0,jdiv-1 do
+					local theta = math.pi * j / jdiv
+					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+					gl.glVertex3f((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
+					if j > 0 then
+						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
+					end
+				end
 			end
 			gl.glEnd()
+			gl.glDisable(gl.GL_BLEND)
+			if tiltGridToPolaris or tiltGridToVega then
+				gl.glPopMatrix()
+			end
 		end
-		self.earthTex:unbind()
-		self.earthTex:disable()
-		gl.glDisable(gl.GL_DEPTH_TEST)
-		gl.glPopMatrix()
+
+		if showConstellations then
+			gl.glColor3f(1,1,0)
+			for _,constellation in ipairs(constellations) do
+				if constellation.enabled
+				and constellation.lines
+				then
+					for _,line in ipairs(constellation.lines) do
+						gl.glBegin(gl.GL_LINE_STRIP)
+						for _,i in ipairs(line) do
+							gl.glVertex3f(cpuPointBuf[i].pos:unpack())
+						end
+						gl.glEnd()
+					end
+				end
+			end
+		end
+
+		if showEarth then
+			if not self.earthTex then
+				self.earthTex = GLTex2D{
+					filename = '../textures/hires/earth.png',
+					minFilter = gl.GL_LINEAR,
+					magFilter = gl.GL_LINEAR,
+					generateMipmaps = true,
+				}
+			end
+
+			local idivs = 50
+			local jdivs = 50
+
+			local function vertex(i,j)
+				local u = i/idivs
+				local v = j/jdivs
+				local theta = u*math.pi
+				local phi = v*math.pi*2
+				local costh, sinth = math.cos(theta), math.sin(theta)
+				local cosphi, sinphi = math.cos(phi), math.sin(phi)
+				gl.glTexCoord2d(v, u)
+
+				local x = earthSize * sinth * cosphi
+				local y = earthSize * sinth * sinphi
+				local z = earthSize * costh
+				gl.glVertex3d(x,y,z)
+			end
+
+			gl.glPushMatrix()
+			if tiltGridToVega then
+				gl.glRotatef(-23.4365472133, -1, 0, 0)
+			else
+				gl.glRotatef(23.4365472133, -1, 0, 0)
+			end
+			gl.glRotatef(earthAnglePsi, 0, 1, 0)
+			gl.glRotatef(earthAngleTheta, 1, 0, 0)
+			gl.glRotatef(earthAnglePhi, 0, 0, 1)
+			gl.glEnable(gl.GL_DEPTH_TEST)
+			self.earthTex:enable()
+			self.earthTex:bind()
+			for i=0,idivs-1 do
+				gl.glColor3f(1,1,1)
+				gl.glBegin(gl.GL_TRIANGLE_STRIP)
+				for j=0,jdivs do
+					vertex(i+1,j)
+					vertex(i,j)
+				end
+				gl.glEnd()
+			end
+			self.earthTex:unbind()
+			self.earthTex:disable()
+			gl.glDisable(gl.GL_DEPTH_TEST)
+			gl.glPopMatrix()
+		end
 	end
 
 	glreport'here'

@@ -2,7 +2,7 @@ require 'ext'
 
 local CSV = require 'csv'
 print'reading hyg'
-local hyg = CSV.file'../hyg/hygdata_v3.csv'
+local hyg = CSV.file'../hyg/hyg_v37.csv'
 print'done reading hyg'
 hyg:setColumnNames(hyg.rows:remove(1))
 
