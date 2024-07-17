@@ -59,7 +59,7 @@ class SolarSystem extends StarSystem {
 			inverseFlattening : 298.257223563,
 			rotationPeriod : (23 + (56 + 4.09053083288 / 60) / 60) / 24,	//sidereal day
 			orbitalPeriod : 27.321662,	//(tidally locked) moon's rotation period = orbit around barycenter
-			rotationOffset : 3/24 * 2*Math.PI,
+			rotationOffset : 14/24 * 2*Math.PI,
 			type : 'planet'
 		}));
 		this.planets.push(merge(new Planet(), {
