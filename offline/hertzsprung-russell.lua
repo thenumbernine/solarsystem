@@ -13,7 +13,7 @@ local lpts = table()
 
 local stats = require 'stat.set'('temp', 'log10lum')
 print'loading hyg'
-local hyg = require 'csv'.file'../hyg/hyg_v37.csv'
+local hyg = require 'csv'.file'../hyg/hygdata_v3.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 print'reading hyg'
 for _,row in ipairs(hyg.rows) do
@@ -31,7 +31,7 @@ for _,row in ipairs(hyg.rows) do
 	end
 end
 local n = #lpts
-print('read '..n)
+print('read '..n..' points')
 
 local pts = ffi.new('vec3f_t[?]', n)
 for i,pt in ipairs(lpts) do
@@ -39,7 +39,11 @@ for i,pt in ipairs(lpts) do
 end
 
 local App = require 'imguiapp.withorbit'()
-
+App.viewUseGLMatrixMode = true
+function App:initGL()
+	App.super.initGL(self)
+	self.view.ortho = true
+end
 function App:update()
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glEnable(gl.GL_BLEND)

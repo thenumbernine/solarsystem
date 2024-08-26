@@ -165,6 +165,7 @@ local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or 
 
 local _1_log_10 = 1 / math.log(10)
 
+App.viewUseGLMatrixMode = true
 App.title = 'stellar neighborhood'
 App.viewDist = 5e-4
 
