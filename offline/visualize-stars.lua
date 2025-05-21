@@ -1949,16 +1949,11 @@ local guiShowStars = [:] do
 --]]
 			assert(index >= 0 and index < numPts)
 			local pt = cpuPointBuf[index]
--- TODO NOTICE WARNING does the matrix_ffi __mul respect the same col/row major order as the 4x4 mat commands?
-			local vpt = self.view.mvMat * require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}
---print('pt.pos', pt.pos)
---print('pt.pos.x', pt.pos.x)
---print('pt.pos.y', pt.pos.y)
---print('pt.pos.z', pt.pos.z)
---print("require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}", require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1})
---print('mvMat ', mvMat)
---print('vpt', vpt)
---print('vpt', require 'ext.tolua'(vpt))
+			local vpt = self.view.mvMat * matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1}
+--DEBUG:print('pt.pos', pt.pos)
+--DEBUG:print("matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1}", matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1})
+--DEBUG:print('mvMat ', self.view.mvMat)
+--DEBUG:print('vpt', vpt)
 			local mz = vpt[3]
 			if -mz > self.view.znear
 			and -mz < self.view.zfar
