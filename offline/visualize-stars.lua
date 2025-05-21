@@ -1,13 +1,6 @@
-#!/usr/bin/env luajit
+#!/usr/bin/env rua
 -- simple pointcloud visualizer
 -- TODO move this to solarsystem project, so i can keep building off of it, and comparing it to the solarsystem renderer, and eventually add in things like the exoplanets
-local table = require 'ext.table'
-local range = require 'ext.range'
-local string = require 'ext.string'
-local math = require 'ext.math'
-local path = require 'ext.path'
-local fromlua = require 'ext.fromlua'
-local ffi = require 'ffi'
 local template = require 'template'
 local Image = require 'image'
 local gl = require 'gl'
@@ -57,8 +50,6 @@ buildgravmap = for each star, find what point in space it is most drawn to.
 
 showStarNames = whether to show star names
 --]]
-local cmdline = require 'ext.cmdline'(...)
-
 --local set = cmdline.set or 'gaia'
 local set = cmdline.set or 'hyg'
 
@@ -89,36 +80,42 @@ if not namedStars then
 end
 
 local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
-local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, function(name, abbrev)
-	return abbrev, name
-end):setmetatable(nil)
+local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, [name, abbrev](abbrev, name)):setmetatable(nil)
 
-local constellations = table.map(constellationNamesForAbbrevs, function(name, abbrev, t)
-	return {
+local constellations = table.map(constellationNamesForAbbrevs, [name, abbrev, t]
+	({
 		name = name,
 		abbrev = abbrev,
 		enabled = false,
-	}, #t+1
-end)
+	}, #t+1))
 
 -- TODO make sure nothing is indexing constellations (like the HYG-generated star data was)
-constellations = constellations:sort(function(a,b)
-	return a.name:lower() < b.name:lower()
-end)
+constellations = constellations:sort([a,b] a.name:lower() < b.name:lower())
 
-local constellationForAbbrev = table.mapi(constellations, function(cons)
-	return cons, (cons.abbrev or 'unnamed')
-end):setmetatable(nil)
+local constellationForAbbrev = table.mapi(constellations, [cons](cons, (cons.abbrev or 'unnamed'))):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = (function()
+local indexForHip = ([] do
 	local fn = '../hyg/index-for-hip.lua'
 	local s, err = path(fn):read()
 	if not s then
 		print("couldn't read Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
 		return
 	end
-	local d, err = fromlua(s)
+	local d, err = select(2, timer('fromlua', [] do
+		-- under the langfix parser this goes really really slow ...
+		-- 109401 entry table loaded in 62.577183961868s
+		-- in comparison luajit loads this in 0.01323390007019s
+		--[[ langfix's fromlua is slow
+		return fromlua(s)
+		--]]
+		-- [[ ... instead use the old loader
+		local pushload = _G.load
+		_G.load = require 'langfix.env'()!.loadstate!.oldload
+		local result = fromlua(s)
+		_G.load = pushload
+		--]]
+	end))
 	if not d then
 		print("couldn't load Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
 		return
@@ -138,9 +135,7 @@ if not indexForHip then
 	print("couldn't find hyg/index-for-hip.lua -- won't see constellations")
 else
 	for name, lines in pairs(constellationSrcData) do
-		local abbrev = table.find(constellationNamesForAbbrevs, nil, function(name2)
-			return name2:gsub(' ', '') == name
-		end)
+		local abbrev = table.find(constellationNamesForAbbrevs, nil, [name2] name2:gsub(' ', '') == name)
 		assert(abbrev, "couldn't find abbrev for lines name "..name)
 		local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
 
@@ -165,7 +160,6 @@ local App = require 'imgui.appwithorbit'()
 
 local _1_log_10 = 1 / math.log(10)
 
-App.viewUseGLMatrixMode = true
 App.title = 'stellar neighborhood'
 App.viewDist = 5e-4
 
@@ -346,11 +340,12 @@ local starTex
 local numPts	-- number of points
 local gpuPointBuf, cpuPointBuf
 
-function App:initGL(...)
+local matrix_ffi = require 'matrix.ffi'
+
+App.initGL = [:, ...] do
 	App.super.initGL(self, ...)
 
-	-- TODO detect and pick the largest
-	local glslVersion = cmdline.glsl or '460'
+	self.accumProjMat = matrix_ffi({4,4}, 'float'):zeros():setOrtho(0, 1, 0, 1, -1, 1)
 
 	gl.glDisable(gl.GL_DEPTH_TEST)
 
@@ -409,9 +404,7 @@ print'filtering out unnamed...'
 
 		if cmdline.nolumnans then
 print'filtering out luminosity nans...'
-			pts = pts:filter(function(pt)
-				return math.isfinite(pt.obj.lum)
-			end)
+			pts = pts:filter([pt] math.isfinite(pt.obj.lum))
 			print('nolumnans filtered down to '..#pts)
 		end
 
@@ -427,43 +420,35 @@ print'adding sun point...'
 			sun.radius = 1	-- in solar radii
 
 			pts:insert{obj=sun, index=numPts}
-			numPts = numPts + 1	-- use a unique index.  don't matter about modifying numPts, we will recalculate numPts soon
+			numPts += 1	-- use a unique index.  don't matter about modifying numPts, we will recalculate numPts soon
 		end
 
 		if cmdline.lummin then
 print('filtering out luminosity min '..cmdline.lummin)
-			pts = pts:filter(function(pt)
-				return pt.obj.lum >= cmdline.lummin
-			end)
+			pts = pts:filter([pt] pt.obj.lum >= cmdline.lummin)
 			print('lummin filtered down to '..#pts)
 		end
 		if cmdline.lumhicount then
 print('filtering out only the highest '..cmdline.lumhicount..' luminous objects...')
-			pts = pts:sort(function(a,b)
-				return a.obj.lum > b.obj.lum
-			end):sub(1, cmdline.lumhicount)
+			pts = pts:sort([a,b] a.obj.lum > b.obj.lum):sub(1, cmdline.lumhicount)
 			print('lumhicount filtered down to '..#pts)
 		end
 		if cmdline.appmaghicount then
 print('filtering out only the highest '..cmdline.appmaghicount..' apparent magnitude objects...')
-			pts = pts:sort(function(a,b)
-				return  a.obj.lum / a.obj.pos:lenSq()
-						> b.obj.lum / b.obj.pos:lenSq()
-			end):sub(1, cmdline.appmaghicount)
+			pts = pts:sort([a,b]
+				a.obj.lum / a.obj.pos:lenSq()
+				> b.obj.lum / b.obj.pos:lenSq()
+			):sub(1, cmdline.appmaghicount)
 			print('appmaghicount filtered down to '..#pts)
 		end
 		if cmdline.rlowcount then
 print('filtering out only the closest '..cmdline.rlowcount..' objects...')
-			pts = pts:sort(function(a,b)
-				return  a.obj.pos:lenSq() < b.obj.pos:lenSq()
-			end):sub(1, cmdline.rlowcount)
+			pts = pts:sort([a,b] a.obj.pos:lenSq() < b.obj.pos:lenSq()):sub(1, cmdline.rlowcount)
 			print('rlowcount filtered down to '..#pts)
 		end
 		if cmdline.rmax then
 print('filtering out only objects of distance '..cmdline.rmax..' or less...')
-			pts = pts:filter(function(pt)
-				return pt.obj.pos:length() <= cmdline.rmax
-			end)
+			pts = pts:filter([pt] pt.obj.pos:length() <= cmdline.rmax)
 			print('rmin filtered down to '..#pts)
 		end
 
@@ -620,7 +605,7 @@ print'calculating stats on data...'
 			local total = 0
 			local dx = log10lumbins:getDx()
 			for i,x in ipairs(log10lumbins) do	-- I'd use table.sum but it sums non-natural keys
-				total = total + x * dx
+				total += x * dx
 			end
 			for i=1,#log10lumbins do	-- I'd use table.sum but it sums non-natural keys
 				log10lumbins[i] = log10lumbins[i] / total
@@ -758,17 +743,18 @@ print('looking for max')
 			pts = table(),
 		}
 		root.mid = (root.box.min + root.box.max) * .5
-		nodeCount = nodeCount + 1
+		nodeCount += 1
 		local nodemax = 10
-		local function addToTree(node, i)
+		local addToTree
+		addToTree = [node, i] do
 			local pos = cpuPointBuf[i].pos
 
 			-- have we divided?  pay it forward.
 			if node.children then
-				local childIndex = bit.bor(
-					(pos.x > node.mid[1]) and 1 or 0,
-					(pos.y > node.mid[2]) and 2 or 0,
-					(pos.z > node.mid[3]) and 4 or 0)
+				local childIndex =
+					((pos.x > node.mid[1]) and 1 or 0)
+					| ((pos.y > node.mid[2]) and 2 or 0)
+					| ((pos.z > node.mid[3]) and 4 or 0)
 				return addToTree(node.children[childIndex], i)
 			end
 
@@ -778,9 +764,9 @@ print('looking for max')
 				-- make children
 				node.children = {}
 				for childIndex=0,7 do
-					local xL = bit.band(childIndex,1) == 0
-					local yL = bit.band(childIndex,2) == 0
-					local zL = bit.band(childIndex,4) == 0
+					local xL = (childIndex & 1) == 0
+					local yL = (childIndex & 2) == 0
+					local zL = (childIndex & 4) == 0
 					local child = {
 						index = nodeCount,
 						box = box3{
@@ -800,15 +786,15 @@ print('looking for max')
 					child.mid = (child.box.min + child.box.max) * .5
 					child.parent = node
 					node.children[childIndex] = child
-					nodeCount = nodeCount + 1
+					nodeCount += 1
 				end
 				-- split the nodes up into the children
 				for _,i in ipairs(node.pts) do
 					local pos = cpuPointBuf[i].pos
-					local childIndex = bit.bor(
-						(pos.x > node.mid[1]) and 1 or 0,
-						(pos.y > node.mid[2]) and 2 or 0,
-						(pos.z > node.mid[3]) and 4 or 0)
+					local childIndex =
+						((pos.x > node.mid[1]) and 1 or 0)
+						| ((pos.y > node.mid[2]) and 2 or 0)
+						| ((pos.z > node.mid[3]) and 4 or 0)
 					addToTree(node.children[childIndex], i)
 				end
 				node.pts = nil
@@ -833,7 +819,8 @@ print'searching bins'
 
 		local ai = 1
 		local lastTime = os.time()
-		local function searchTree(node)
+		local searchTree
+		searchTree = [node] do
 			if node.children then
 				assert(not node.pts)
 				for childIndex=0,7 do
@@ -887,7 +874,8 @@ print'searching bins'
 					}
 
 					local touchingNodes = table()
-					local function search2(node2)
+					local search2
+					search2 = [node2] do
 						-- if we don't contain the node, or if we don't touch the node, then bail
 						if not node2.box:touches(touchbnd) then return end
 						if node2.children then
@@ -971,7 +959,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 
 	local starTexSize = 256
 	starTex = GLTex2D{
-		image = Image(starTexSize, starTexSize, 3, 'unsigned char', function(i,j)
+		image = Image(starTexSize, starTexSize, 3, 'unsigned char', [i,j] do
 			local u = ((i + .5) / starTexSize) * 2 - 1
 			local v = ((j + .5) / starTexSize) * 2 - 1
 
@@ -1012,9 +1000,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 				end
 			end
 		end
-		local tempImg = Image(#rgbs, 1, 3, 'unsigned char', function(i,j)
-			return table.unpack(rgbs[i+1])
-		end)
+		local tempImg = Image(#rgbs, 1, 3, 'unsigned char', [i,j] table.unpack(rgbs[i+1]))
 		tempImg:save'../colorForTemp.png'
 --]]
 -- [[ or just reading it:
@@ -1076,9 +1062,9 @@ local clnumber = require 'cl.obj.number'
 
 	-- since the point renderer varies its gl_PointSize with the magnitude, I gotta do that here as well
 	local drawIDShader = GLProgram{
+		version = cmdline.glsl or 'latest',
+		precision = 'best',
 		vertexCode = template([[
-#version <?=glslVersion?>
-
 in vec3 pos;
 in float lum;
 
@@ -1095,8 +1081,8 @@ uniform float sliceLumMin, sliceLumMax;
 
 uniform vec3 orbit;
 
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
+uniform mat4 mvMat;
+uniform mat4 projMat;
 
 void main() {
 	if (lum < sliceLumMin ||
@@ -1107,8 +1093,8 @@ void main() {
 	}
 
 	vec4 vtx = vec4(pos.xyz, 1.);
-	vec4 vmv = modelViewMatrix * vtx;
-	gl_Position = projectionMatrix * vmv;
+	vec4 vmv = mvMat * vtx;
+	gl_Position = projMat * vmv;
 
 	<?=calcPointSize?>
 	gl_PointSize = max(0., gl_PointSize);
@@ -1137,12 +1123,9 @@ void main() {
 }
 ]], 		{
 				calcPointSize = calcPointSize,
-				glslVersion = glslVersion,
 			}
 		),
-		fragmentCode = template([[
-#version <?=glslVersion?>
-
+		fragmentCode = [[
 in vec3 color;
 in float discardv;
 out vec4 fragColor;
@@ -1154,9 +1137,7 @@ void main() {
 
 	fragColor = vec4(color, 1.);
 }
-]],		{
-			glslVersion = glslVersion,
-		}),
+]],
 	}:useNone()
 	glreport'here'
 
@@ -1174,12 +1155,12 @@ void main() {
 	-- i've neglected the postprocessing, and this has become the main shader
 	-- which does the fake-postproc just with a varying gl_PointSize
 	local accumStarPointShader = GLProgram{
+		version = cmdline.glsl or 'latest',
+		precision = 'best',
 		vertexCode = template([[
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version <?=glslVersion?>
-
 in vec3 pos;
 in float lum;
 in float temp;
@@ -1188,8 +1169,8 @@ out float lumv;
 out vec3 tempcolor;
 out float discardv;
 
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
+uniform mat4 mvMat;
+uniform mat4 projMat;
 uniform float starPointSizeScale;
 uniform float starPointSizeBias;
 uniform sampler2D tempTex;
@@ -1212,8 +1193,8 @@ void main() {
 	}
 
 	vec4 vtx = vec4(pos.xyz, 1.);
-	vec4 vmv = modelViewMatrix * vtx;
-	gl_Position = projectionMatrix * vmv;
+	vec4 vmv = mvMat * vtx;
+	gl_Position = projMat * vmv;
 
 	<?=calcPointSize?>
 
@@ -1243,11 +1224,8 @@ void main() {
 			calcPointSize = calcPointSize,
 			colorTempMin = colorTempMin,
 			colorTempMax = colorTempMax,
-			glslVersion = glslVersion,
 		}),
-		fragmentCode = template([[
-#version <?=glslVersion?>
-
+		fragmentCode = [[
 in float lumv;
 in vec3 tempcolor;
 in float discardv;
@@ -1275,10 +1253,7 @@ void main() {
 		* texture(starTex, gl_PointCoord)
 	;
 }
-]],			{
-				glslVersion = glslVersion,
-			}
-		),
+]],
 		uniforms = {
 			tempTex = 0,
 			starTex = 1,
@@ -1293,17 +1268,17 @@ void main() {
 	}
 
 	local accumStarLineShader = GLProgram{
-		vertexCode = template([[
-#version <?=glslVersion?>
-
+		version = cmdline.glsl or 'latest',
+		precision = 'best',
+		vertexCode = [[
 in vec3 pos;
 in vec3 vel;
 
 uniform float lineVelScalar;
 uniform bool normalizeVel;
 
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
+uniform mat4 mvMat;
+uniform mat4 projMat;
 
 void main() {
 	vec4 vtx = vec4(pos.xyz, 1.);
@@ -1315,26 +1290,18 @@ void main() {
 
 	vtx.xyz += velv * (end * lineVelScalar);
 
-	gl_Position = projectionMatrix * (modelViewMatrix * vtx);
+	gl_Position = projMat * (mvMat * vtx);
 }
-]],			{
-				glslVersion = glslVersion,
-			}
-		),
-		fragmentCode = template([[
-#version <?=glslVersion?>
+]],
+		fragmentCode = [[
+out vec4 fragColor;
 
 uniform float lineVelAlpha;
-
-out vec4 fragColor;
 
 void main() {
 	fragColor = vec4(.1, 1., .1, lineVelAlpha);
 }
-]],			{
-				glslVersion = glslVersion,
-			}
-		),
+]],
 	}:useNone()
 	glreport'here'
 
@@ -1350,9 +1317,9 @@ void main() {
 	}
 
 	local renderAccumShader = GLProgram{
-		vertexCode = template([[
-#version <?=glslVersion?>
-
+		version = cmdline.glsl or 'latest',
+		precision = 'best',
+		vertexCode = [[
 in vec2 pos;
 out vec2 texcoord;
 
@@ -1360,16 +1327,11 @@ void main() {
 	texcoord = pos;
 	gl_Position = vec4(pos.x * 2. - 1., pos.y * 2. - 1., 0., 1.);
 }
-]],			{
-				glslVersion = glslVersion,
-			}
-		),
+]],
 		fragmentCode = template([[
 <?
 local clnumber = require 'cl.obj.number'
 ?>
-#version <?=glslVersion?>
-
 in vec2 texcoord;
 
 uniform sampler2D fbotex;
@@ -1404,10 +1366,7 @@ end
 
 	fragColor.a = 1.;
 }
-]],			{
-				glslVersion = glslVersion,
-			}
-		),
+]]),
 		uniforms = {
 			fbotex = 0,
 			hsvtex = 1,
@@ -1440,34 +1399,29 @@ end
 
 	if buildNeighborhood then
 		local drawNbhdLineShader = GLProgram{
-			vertexCode = template([[
-#version <?=glslVersion?>
-
+			version = cmdline.glsl or 'latest',
+			precision = 'best',
+			vertexCode = [[
 in vec3 pos;
 in float dist;
 
 out float lumv;
 
 uniform float nbhdLineAlpha;
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
+uniform mat4 mvMat;
+uniform mat4 projMat;
 
 void main() {
 	vec4 vtx = vec4(pos, 1.);
-	vec4 vmv = modelViewMatrix * vtx;
-	gl_Position = projectionMatrix * vmv;
+	vec4 vmv = mvMat * vtx;
+	gl_Position = projMat * vmv;
 	float viewDist = length(vmv.xyz);
 	lumv = nbhdLineAlpha / (dist * dist
 		* (viewDist + 1.)
 );
 }
-]],				{
-					glslVersion = glslVersion,
-				}
-			),
-			fragmentCode = template([[
-#version <?=glslVersion?>
-
+]],
+			fragmentCode = [[
 in float lumv;
 out vec4 fragColor;
 
@@ -1476,10 +1430,7 @@ void main() {
 	vec3 color = vec3(.1, 1., .1) * lumf;
 	fragColor = vec4(color, 1.);
 }
-]],				{
-					glslVersion = glslVersion,
-				}
-			)
+]]
 		}:useNone()
 		glreport'here'
 
@@ -1494,6 +1445,85 @@ void main() {
 			attrs = nbhd_t_attrs,
 		}
 	end
+
+	-- I just did this in hertzsprung-russel.lua ...
+	-- TODO put it in one place
+	solidColorVtx3Obj = GLSceneObject{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+in vec3 vertex;
+uniform mat4 mvProjMat;
+void main() {
+	gl_Position = mvProjMat * vec4(vertex, 1.);
+}
+]],
+			fragmentCode = [[
+out vec4 fragColor;
+uniform vec4 color;
+void main() {
+	fragColor = color;
+}
+]],
+		},
+		uniforms = {
+			color = {1,1,1,1},
+			mvProjMat = self.view.mvProjMat.ptr,
+		},
+		geometry = {
+			mode = gl.GL_TRIANGLES,
+		},
+		vertexes = {
+			dim = 3,
+			useVec = true,
+		},
+	}
+
+	vec3Tc2Obj = GLSceneObject{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+layout(location=0) in vec3 vertex;
+layout(location=1) in vec2 tc;
+out vec2 tcv;
+uniform mat4 mvProjMat;
+void main() {
+	tcv = tc;
+	gl_Position = mvProjMat * vec4(vertex, 1.);
+}
+]],
+			fragmentCode = [[
+in vec2 tcv;
+out vec4 fragColor;
+uniform sampler2D tex;
+void main() {
+	fragColor = texture(tex, tcv);
+}
+]],
+		},
+		uniforms = {
+			tex = 0,
+			mvProjMat = self.view.mvProjMat.ptr,
+		},
+		geometry = {
+			mode = gl.GL_TRIANGLES,
+		},
+		vertexes = {
+			dim = 3,
+			useVec = true,
+		},
+		attrs = {
+			tc = {
+				buffer = {
+					dim = 2,	-- vertexes outside attrs needs dim because it's outside attrs ... but why can't this one infer dim from the attr?
+					useVec = true,
+				},
+			},
+		},
+	}
+
 end
 
 ffi.cdef[[
@@ -1507,20 +1537,20 @@ local pixel = ffi.new'pixel4_t'
 
 local selectedIndex
 
-local modelViewMatrix = matrix_ffi.zeros{4,4}
-local projectionMatrix = matrix_ffi.zeros{4,4}
+local hasPointSprite = op.safeindex(gl, 'GL_POINT_SPRITE')
 
-function App:drawPickScene()
+App.drawPickScene = [:] do
 	gl.glClearColor(1,1,1,1)
-	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
+	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 	gl.glEnable(gl.GL_DEPTH_TEST)
 
 	-- TODO
 	-- 1) smaller viewpoint of 3x3 pixels
 	-- 2) pick matrix to zoom in on the specific mouse location
 
-	gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
-
+	if hasPointSprite then
+		gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
+	end
 	drawIDSceneObj:draw{
 		uniforms = {
 			starPointSizeScale = starPointSizeScale,
@@ -1531,12 +1561,13 @@ function App:drawPickScene()
 			sliceLumMin = sliceLumMin,
 			sliceLumMax = sliceLumMax,
 			orbit = {self.view.orbit:unpack()},	-- TODO
-			modelViewMatrix = modelViewMatrix.ptr,
-			projectionMatrix = projectionMatrix.ptr,
+			mvMat = self.view.mvMat.ptr,
+			projMat = self.view.projMat.ptr,
 		}
 	}
-
-	gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
+	if hasPointSprite then
+		gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
+	end
 
 	gl.glFlush()
 
@@ -1553,15 +1584,17 @@ function App:drawPickScene()
 	gl.glDisable(gl.GL_DEPTH_TEST)
 end
 
-function App:drawScene()
+App.drawScene = [:] do
 	gl.glClearColor(0,0,0,0)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glEnable(gl.GL_BLEND)
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
 
 	if drawPoints then
-		gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
-		gl.glEnable(gl.GL_POINT_SPRITE)			-- i thought this was perma-on after 3.2?  guess not
+		if hasPointSprite then
+			gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
+			gl.glEnable(gl.GL_POINT_SPRITE)			-- i thought this was perma-on after 3.2?  guess not
+		end
 
 		accumStarPointSceneObj.texs[1] = tempTex
 		accumStarPointSceneObj.texs[2] = starTex
@@ -1574,15 +1607,16 @@ function App:drawScene()
 				sliceRMax = sliceRMax,
 				sliceLumMin = sliceLumMin,
 				sliceLumMax = sliceLumMax,
-				modelViewMatrix = modelViewMatrix.ptr,
-				projectionMatrix = projectionMatrix.ptr,
+				mvMat = self.view.mvMat.ptr,
+				projMat = self.view.projMat.ptr,
 				--orbit = self.view.orbit.s,		-- TODO orbit is a vec3 is a glsl float type
 				orbit = {self.view.orbit:unpack()},	-- but view.orbit is double[3], so we can't pass it as a ptr of the type associated with the glsl type(float)
 			},
 		}
-
-		gl.glDisable(gl.GL_POINT_SPRITE)
-		gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
+		if hasPointSprite then
+			gl.glDisable(gl.GL_POINT_SPRITE)
+			gl.glDisable(gl.GL_PROGRAM_POINT_SIZE)
+		end
 	end
 	if drawVelLines and buildVelocityBuffers then
 		accumStarLineSceneObj:draw{
@@ -1590,8 +1624,8 @@ function App:drawScene()
 				lineVelAlpha = lineVelAlpha,
 				lineVelScalar = lineVelScalar,
 				normalizeVel = normalizeVel and 1 or 0,
-				modelViewMatrix = modelViewMatrix.ptr,
-				projectionMatrix = projectionMatrix.ptr,
+				mvMat = self.view.mvMat.ptr,
+				projMat = self.view.projMat.ptr,
 			}
 		}
 	end
@@ -1600,7 +1634,7 @@ function App:drawScene()
 end
 
 local lastWidth, lastHeight
-function App:drawWithAccum()
+App.drawWithAccum = [:] do
 	if self.width ~= lastWidth or self.height ~= lastHeight then
 		lastWidth = self.width
 		lastHeight = self.height
@@ -1624,9 +1658,7 @@ function App:drawWithAccum()
 	fbo:draw{
 		viewport = {0,0,fbo.width,fbo.height},
 		dest = fbotex,
-		callback = function()
-			self:drawScene()
-		end,
+		callback = [] self:drawScene(),
 	}
 
 	fbotex
@@ -1636,14 +1668,6 @@ function App:drawWithAccum()
 
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glViewport(0, 0, self.width, self.height)
-
-	gl.glMatrixMode(gl.GL_PROJECTION)
-	gl.glPushMatrix()
-	gl.glLoadIdentity()
-	gl.glOrtho(0,1,0,1,-1,1)
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-	gl.glPushMatrix()
-	gl.glLoadIdentity()
 
 	renderAccumSceneObj:draw{
 		texs = {
@@ -1656,17 +1680,12 @@ function App:drawWithAccum()
 			hsvRange = hsvRange,
 			bloomLevels = bloomLevels,
 			showDensity = showDensity and 1 or 0,
+			mvProjMat = self.accumProjMat.ptr,
 		},
 	}
-
-	gl.glMatrixMode(gl.GL_PROJECTION)
-	gl.glPopMatrix()
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-	gl.glPopMatrix()
-
 end
 
-local function sphericalToCartesian(r,theta,phi)
+local sphericalToCartesian = [r,theta,phi] do
 	local ct = math.cos(theta)
 	local st = math.sin(theta)
 	local cp = math.cos(phi)
@@ -1678,10 +1697,7 @@ local function sphericalToCartesian(r,theta,phi)
 	)
 end
 
-function App:update()
-	gl.glGetFloatv(gl.GL_MODELVIEW_MATRIX, modelViewMatrix.ptr)
-	gl.glGetFloatv(gl.GL_PROJECTION_MATRIX, projectionMatrix.ptr)
-
+App.update = [:] do
 	self:drawPickScene()
 
 	if not showPickScene then
@@ -1699,8 +1715,8 @@ function App:update()
 			drawNbhdLineSceneObj:draw{
 				uniforms = {
 					nbhdLineAlpha = nbhdLineAlpha,
-					modelViewMatrix = modelViewMatrix.ptr,
-					projectionMatrix = projectionMatrix.ptr,
+					mvMat = self.view.mvMat.ptr,
+					projMat = self.view.projMat.ptr,
 				},
 			}
 
@@ -1710,17 +1726,21 @@ function App:update()
 
 		-- TODO draw around origin?  or draw around view orbit?
 		if drawGrid then
+			local mvMatPush = ffi.new'float[16]'
+			ffi.copy(mvMatPush, self.view.mvMat.ptr, ffi.sizeof(mvMatPush))
 			if tiltGridToPolaris then
-				gl.glPushMatrix()
-				gl.glRotatef(23.4365472133, -1, 0, 0)
+				self.view.mvMat:applyRotate(math.rad(23.4365472133), -1, 0, 0)
 			elseif tiltGridToVega then
-				gl.glPushMatrix()
-				gl.glRotatef(-23.4365472133, -1, 0, 0)
+				self.view.mvMat:applyRotate(math.rad(-23.4365472133), -1, 0, 0)
 			end
+			self.view.mvProjMat:mul4x4(self.view.projMat, self.view.mvMat)
+
 			gl.glEnable(gl.GL_BLEND)
 			gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-			gl.glColor3f(.25, .25, .25)
-			gl.glBegin(gl.GL_LINES)
+
+			solidColorVtx3Obj.uniforms.mvProjMat = self.view.mvProjMat.ptr
+
+			local vtxs = solidColorVtx3Obj:beginUpdate()
 			local idiv = 24
 			local dphi = 2 * math.pi / idiv
 			local jdiv = 12
@@ -1729,33 +1749,46 @@ function App:update()
 				local phi = 2 * math.pi * i / idiv
 				for j=0,jdiv-1 do
 					local theta = math.pi * j / jdiv
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-					gl.glVertex3f((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
+					vtxs:emplace_back():set((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+					vtxs:emplace_back():set((sphericalToCartesian(gridRadius, theta + dtheta, phi) + self.view.orbit):unpack())
 					if j > 0 then
-						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
-						gl.glVertex3f((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
+						vtxs:emplace_back():set((sphericalToCartesian(gridRadius, theta, phi) + self.view.orbit):unpack())
+						vtxs:emplace_back():set((sphericalToCartesian(gridRadius, theta, phi + dphi) + self.view.orbit):unpack())
 					end
 				end
 			end
-			gl.glEnd()
+			solidColorVtx3Obj.uniforms.color = {.25, .25, .25, 1}
+			solidColorVtx3Obj:endUpdate{
+				geometry = GLGeometry{
+					mode = gl.GL_LINES,
+					vertexes = solidColorVtx3Obj.vertexes,
+				}
+			}
+
 			gl.glDisable(gl.GL_BLEND)
+
 			if tiltGridToPolaris or tiltGridToVega then
-				gl.glPopMatrix()
+				ffi.copy(self.view.mvMat.ptr, mvMatPush, ffi.sizeof(mvMatPush))
 			end
 		end
 
 		if showConstellations then
-			gl.glColor3f(1,1,0)
+			solidColorVtx3Obj.uniforms.color = {1,1,0,1}
 			for _,constellation in ipairs(constellations) do
 				if constellation.enabled
 				and constellation.lines
 				then
 					for _,line in ipairs(constellation.lines) do
-						gl.glBegin(gl.GL_LINE_STRIP)
+						local vtxs = solidColorVtx3Obj:beginUpdate()
 						for _,i in ipairs(line) do
-							gl.glVertex3f(cpuPointBuf[i].pos:unpack())
+							vtxs:emplace_back():set(cpuPointBuf[i].pos:unpack())
 						end
-						gl.glEnd()
+						solidColorVtx3Obj:endUpdate{
+							geometry = GLGeometry{
+								mode = gl.GL_LINE_STRIP,
+								vertexes = solidColorVtx3Obj.vertexes,
+							},
+						}
 					end
 				end
 			end
@@ -1774,46 +1807,52 @@ function App:update()
 			local idivs = 50
 			local jdivs = 50
 
-			local function vertex(i,j)
+			local vertex = [vtxs, tcs, i,j] do
 				local u = i/idivs
 				local v = j/jdivs
 				local theta = u*math.pi
 				local phi = v*math.pi*2
 				local costh, sinth = math.cos(theta), math.sin(theta)
 				local cosphi, sinphi = math.cos(phi), math.sin(phi)
-				gl.glTexCoord2d(v, u)
+				tcs:emplace_back():set(v, u)
 
 				local x = earthSize * sinth * cosphi
 				local y = earthSize * sinth * sinphi
 				local z = earthSize * costh
-				gl.glVertex3d(x,y,z)
+				vtxs:emplace_back():set(x,y,z)
 			end
 
-			gl.glPushMatrix()
+			local mvMatPush = ffi.new'float[16]'
+			ffi.copy(mvMatPush, self.view.mvMat.ptr, ffi.sizeof(mvMatPush))
 			if tiltGridToVega then
-				gl.glRotatef(-23.4365472133, -1, 0, 0)
+				self.view.mvMat:applyRotate(math.rad(23.4365472133), -1, 0, 0)
 			else
-				gl.glRotatef(23.4365472133, -1, 0, 0)
+				self.view.mvMat:applyRotate(math.rad(-23.4365472133), -1, 0, 0)
 			end
-			gl.glRotatef(earthAnglePsi, 0, 1, 0)
-			gl.glRotatef(earthAngleTheta, 1, 0, 0)
-			gl.glRotatef(earthAnglePhi, 0, 0, 1)
+			self.view.mvMat:applyRotate(math.rad(earthAnglePsi), 0, 1, 0)
+			self.view.mvMat:applyRotate(math.rad(earthAngleTheta), 1, 0, 0)
+			self.view.mvMat:applyRotate(math.rad(earthAnglePhi), 0, 0, 1)
+			self.view.mvProjMat:mul4x4(self.view.projMat, self.view.mvMat)
+
 			gl.glEnable(gl.GL_DEPTH_TEST)
-			self.earthTex:enable()
 			self.earthTex:bind()
 			for i=0,idivs-1 do
-				gl.glColor3f(1,1,1)
-				gl.glBegin(gl.GL_TRIANGLE_STRIP)
+				local vtxs, tcs = vec3Tc2Obj:beginUpdate()
 				for j=0,jdivs do
-					vertex(i+1,j)
-					vertex(i,j)
+					vertex(vtxs, tcs, i+1,j)
+					vertex(vtxs, tcs, i,j)
 				end
-				gl.glEnd()
+				vec3Tc2Obj:endUpdate{
+					geometry = GLGeometry{
+						mode = gl.GL_TRIANGLE_STRIP,
+						vertexes = vec3Tc2Obj.vertexes,
+					},
+				}
 			end
 			self.earthTex:unbind()
-			self.earthTex:disable()
 			gl.glDisable(gl.GL_DEPTH_TEST)
-			gl.glPopMatrix()
+
+			ffi.copy(self.view.mvMat.ptr, mvMatPush, ffi.sizeof(mvMatPush))
 		end
 	end
 
@@ -1825,21 +1864,9 @@ function App:update()
 end
 
 
-local function checkboxTooltipTable(title, ...)
-	ig.igPushID_Str(title)
-	local result = ig.luatableCheckbox('', ...)
-	if ig.igIsItemHovered(ig.ImGuiHoveredFlags_None) then
-		ig.igBeginTooltip()
-		ig.igText(title)
-		ig.igEndTooltip()
-	end
-	ig.igPopID()
-	return result
-end
-
 local nameWithAppMagLastPos
 local namesWithAppMag
-local function guiShowStars(self)
+local guiShowStars = [:] do
 	-- do this before any other tooltip, so it will be on bottom
 	-- there's usually just 5000 or so of these
 	-- and if we filter by apparent magnitude then there can't be many visible at once
@@ -1853,11 +1880,11 @@ local function guiShowStars(self)
 		if not nameWithAppMagLastPos
 		or (nameWithAppMagLastPos - self.view.pos):lenSq() > .01	-- greater than some epsilon of how far to move, squared.  make the dist less than the closest stars in the dataset
 		then
-			nameWithAppMagLastPos = nameWithAppMagLastPos or vec3d()
+			nameWithAppMagLastPos ??= vec3d()
 			nameWithAppMagLastPos:set(self.view.pos:unpack())
 			-- now sort all named indexes basedon their apparent magnitude
 			-- global / persist: namesWithAppMag
-			namesWithAppMag = table.map(namedStars, function(name, index, t)
+			namesWithAppMag = table.map(namedStars, [name, index, t] do
 				local pt = cpuPointBuf[index]
 				local distSq = (pt.pos - self.view.pos):lenSq()
 				local log10DistInPc = .5 * _1_log_10 * math.log(distSq)
@@ -1871,14 +1898,12 @@ local function guiShowStars(self)
 					appmag = appmag,
 				}, #t+1
 			end)
-			namesWithAppMag:sort(function(a,b)
-				return a.appmag < b.appmag
-			end)
+			namesWithAppMag:sort([a,b] a.appmag < b.appmag)
 		end
 
 
 		local windowCount = 0
-		local function addWindowForStar(x, y, name)
+		local addWindowForStar = [x, y, name] do
 			ig.igPushID_Str(name)
 			ig.igSetNextWindowPos(
 				ig.ImVec2(x,y), 	-- ImVec2 pos
@@ -1891,28 +1916,26 @@ local function guiShowStars(self)
 			-- even if they have all the 'no input' and 'no nav' flags possible set
 			--ig.igOpenPopup('star name', 0)
 			-- igBeginPopup vs igBeginPopupEx, the only difference is normal takes str for title, Ex takes ImGuiID which is an int ... ?
---					if ig.igBeginPopup('star name',
---						bit.bor(
---							ig.ImGuiWindowFlags_NoFocusOnAppearing,
---							ig.ImGuiWindowFlags_NoBringToFrontOnFocus,
---						)
---					) then
-				ig.igBegin(name, nil, bit.bor(
---						ig.ImGuiWindowFlags_NoSavedSettings,
---						ig.ImGuiWindowFlags_NoNav,
---						ig.ImGuiWindowFlags_NoInputs,	-- crashes?
+--				if ig.igBeginPopup('star name',
+--					ig.ImGuiWindowFlags_NoFocusOnAppearing
+--					| ig.ImGuiWindowFlags_NoBringToFrontOnFocus
+--				) then
+			ig.igBegin(name, nil, 0
+--				| ig.ImGuiWindowFlags_NoSavedSettings
+--				| ig.ImGuiWindowFlags_NoNav
+--				| ig.ImGuiWindowFlags_NoInputs	-- crashes?
 
-				ig.ImGuiWindowFlags_NoDecoration,
---						ig.ImGuiWindowFlags_NoResize,
---						ig.ImGuiWindowFlags_NoScrollbar,
---						ig.ImGuiWindowFlags_NoCollapse
+				| ig.ImGuiWindowFlags_NoDecoration
+--				| ig.ImGuiWindowFlags_NoResize
+--				| ig.ImGuiWindowFlags_NoScrollbar
+--				| ig.ImGuiWindowFlags_NoCollapse
 
-				ig.ImGuiWindowFlags_Tooltip
-			))
+				| ig.ImGuiWindowFlags_Tooltip
+			)
 			ig.igText(name)
 			ig.igEnd()
 			ig.igPopID()
-			windowCount = windowCount + 1
+			windowCount += 1
 			return windowCount > 10
 		end
 
@@ -1926,13 +1949,14 @@ local function guiShowStars(self)
 --]]
 			assert(index >= 0 and index < numPts)
 			local pt = cpuPointBuf[index]
-			local vpt = modelViewMatrix * require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}
+-- TODO NOTICE WARNING does the matrix_ffi __mul respect the same col/row major order as the 4x4 mat commands?
+			local vpt = self.view.mvMat * require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}
 --print('pt.pos', pt.pos)
 --print('pt.pos.x', pt.pos.x)
 --print('pt.pos.y', pt.pos.y)
 --print('pt.pos.z', pt.pos.z)
 --print("require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1}", require 'matrix'{pt.pos.x, pt.pos.y, pt.pos.z, 1})
---print('modelViewMatrix ', modelViewMatrix)
+--print('mvMat ', mvMat)
 --print('vpt', vpt)
 --print('vpt', require 'ext.tolua'(vpt))
 			local mz = vpt[3]
@@ -1940,8 +1964,8 @@ local function guiShowStars(self)
 			and -mz < self.view.zfar
 			then
 				-- find the point in screen coords
-				local spt = projectionMatrix * vpt
-				spt = spt / spt[4]
+				local spt = self.view.projMat * vpt
+				spt /= spt[4]
 
 				-- only in bounds in the projection
 				local x = spt[1]
@@ -1997,9 +2021,7 @@ local function guiShowStars(self)
 		end
 
 		--[[ insert and sort later
-		visibleNamedStars:sort(function(a,b)
-			return a.appmag > b.appmag
-		end)
+		visibleNamedStars:sort([a,b] a.appmag > b.appmag)
 		--]]
 
 		--[[ don't handle immediately
@@ -2019,7 +2041,7 @@ local search = {
 	orbit = '',
 	lookat = '',
 }
-function App:updateGUI()
+App.updateGUI = [:] do
 
 	ig.luatableCheckbox('draw points', _G, 'drawPoints')
 	ig.luatableSliderFloat('point size scale', _G, 'starPointSizeScale', -10, 10)
@@ -2122,7 +2144,7 @@ function App:updateGUI()
 	ig.luatableSliderFloat('earth angle psi', _G, 'earthAnglePsi', -180, 180)
 	ig.luatableCheckbox('show constellations', _G, 'showConstellations')
 	if showConstellations then
-		if checkboxTooltipTable('All', _G, 'showAllConstellations') then	-- TODO infer
+		if ig.luatableTooltipCheckbox('All', _G, 'showAllConstellations') then	-- TODO infer
 			for _,constellation in ipairs(constellations) do
 				constellation.enabled = showAllConstellations
 			end
@@ -2137,8 +2159,8 @@ function App:updateGUI()
 				then
 					ig.igSameLine()
 				end
-				checkboxTooltipTable(constellation.name, constellation, 'enabled')
-				count = count + 1
+				ig.luatableTooltipCheckbox(constellation.name, constellation, 'enabled')
+				count += 1
 			end
 		end
 	end
