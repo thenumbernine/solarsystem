@@ -1,4 +1,4 @@
-hyg_v37.csv = CSV data from https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v37.csv
+hyg_v38.csv = CSV data from https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v38.csv.gz
 
 getdata.lua = LuaJIT script that extracts the xyz contents and store them as a binary buffer
 	produces:

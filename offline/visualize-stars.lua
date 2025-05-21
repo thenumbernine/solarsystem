@@ -160,8 +160,8 @@ else
 end
 
 
-local App = require 'imguiapp.withorbit'()
-local ig = require 'imgui'		-- windows bug, gotta include ig after imguiapp (or after imgui?)
+local ig = require 'imgui'
+local App = require 'imgui.appwithorbit'()
 
 local _1_log_10 = 1 / math.log(10)
 

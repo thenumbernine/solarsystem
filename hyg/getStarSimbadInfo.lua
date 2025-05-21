@@ -4,7 +4,7 @@ local querySimbad = require 'query-simbad'
 
 local csv = require'csv'
 print('reading csv file...')
-local stars = csv.file'hyg_v37.csv'
+local stars = csv.file'hyg_v38.csv'
 print('...done reading csv file')
 stars:setColumnNames(stars.rows:remove(1))
 

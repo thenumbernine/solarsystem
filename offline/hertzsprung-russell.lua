@@ -2,6 +2,7 @@
 local ffi = require 'ffi'
 local gl = require 'gl'
 local glreport = require 'gl.report'
+local vec2f = require 'vec-ffi.vec2f'
 local vec3f = require 'vec-ffi.vec3f'
 local vector = require 'ffi.cpp.vector'
 local math = require 'ext.math'
@@ -13,7 +14,7 @@ local lpts = table()
 
 local stats = require 'stat.set'('temp', 'log10lum')
 print'loading hyg'
-local hyg = require 'csv'.file'../hyg/hygdata_v3.csv'
+local hyg = require 'csv'.file'../hyg/hyg_v38.csv'
 hyg:setColumnNames(hyg.rows:remove(1))
 print'reading hyg'
 for _,row in ipairs(hyg.rows) do
@@ -38,28 +39,62 @@ for i,pt in ipairs(lpts) do
 	pts[i-1] = lpts[i]
 end
 
-local App = require 'imguiapp.withorbit'()
-App.viewUseGLMatrixMode = true
+local App = require 'imgui.appwithorbit'()
 function App:initGL()
 	App.super.initGL(self)
 	self.view.ortho = true
+
+	local vtxdata = ffi.new('vec2f_t[?]', n)
+	for i=0,n-1 do
+		local temp, log10lum = pts[i]:unpack()
+		vtxdata[i]:set(
+			(temp - stats.temp.min) / (stats.temp.max - stats.temp.min) * 2 - 1,
+			(log10lum - stats.log10lum.min) / (stats.log10lum.max - stats.log10lum.min) * 2 - 1
+		)
+	end
+	drawPoints = require 'gl.sceneobject'{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+in vec2 vertex;
+uniform mat4 mvProjMat;
+void main() {
+	gl_Position = mvProjMat * vec4(vertex, 0., 1.);
+}
+]],
+			fragmentCode = [[
+out vec4 fragColor;
+uniform vec4 color;
+void main() {
+	fragColor = color;
+}
+]],
+		},
+		uniforms = {
+			color = {1,1,1,.1},
+			mvProjMat = self.view.mvProjMat.ptr,
+		},
+		geometry = {
+			mode = gl.GL_POINTS,
+		},
+		vertexes = {
+			dim = 2,
+			size = ffi.sizeof'vec2f_t' * n,
+			count = n,
+			data = vtxdata,
+		},
+	}
 end
 function App:update()
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glEnable(gl.GL_BLEND)
 	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
-	gl.glColor4f(1,1,1,.1)
-	gl.glPointSize(2)
-	gl.glBegin(gl.GL_POINTS)
-	for i=0,n-1 do
-		local temp, log10lum = pts[i]:unpack()
-		gl.glVertex3f(
-			(temp - stats.temp.min) / (stats.temp.max - stats.temp.min) * 2 - 1,
-			(log10lum - stats.log10lum.min) / (stats.log10lum.max - stats.log10lum.min) * 2 - 1,
-			0)
-	end
-	gl.glEnd()
 	
+	gl.glPointSize(2)
+	
+	drawPoints:draw()
+
 	glreport'here'
 	App.super.update(self)
 end

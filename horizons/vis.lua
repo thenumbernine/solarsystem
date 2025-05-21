@@ -4,7 +4,7 @@ local path = require 'ext.path'
 local string = require 'ext.string'
 local vec3f = require 'vec-ffi.vec3f'
 local gl = require 'gl'
-local App = require 'imguiapp.withorbit'()
+local App = require 'imgui.appwithorbit'()
 App.viewUseGLMatrixMode = true
 App.title = 'NASA Horizons Data Viewer'
 function App:initGL(...)

@@ -1,16 +1,15 @@
-#! /usr/bin/env luajit
+#! /usr/bin/env rua
 
 -- should i move the data processing stuff to universe/offline?
 -- should I put the whole universe/offline folder in a repo of its own for point processing?
 
-require 'ext'
-local ffi = require 'ffi'
 local Stat = require 'stat'
 local StatSet = require 'stat.set'
 
-local hygfn = 'hyg_v37.csv'
+local hygfn = 'hyg_v38.csv'
 if not path(hygfn):exists() then
-	assert(os.execute'wget https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v37.csv')
+	assert(os.exec'wget https://github.com/astronexus/HYG-Database/raw/main/hyg/v3/hyg_v38.csv.gz')
+	assert(os.exec'gunzip hyg_v38.csv.gz')
 end
 
 -- [[ using csv.  2x slower to parse but 2x smaller file.
@@ -20,15 +19,14 @@ local rows = hyg.rows
 --]]
 --[[ using lua.  2x faster to parse, but about 2x larger
 --[=[ too big for load()
-local hyg = fromlua(path'hyg_v37.lua':read())
+local hyg = fromlua(path'hyg_v38.lua':read())
 --]=]
 -- [=[ assuming one row per line
-local hygrows = path'hyg_v37.lua':read():split'\n'
-local function asserteq(a,b) if a~=b then error("expected "..tolua(a).." to equal "..tolua(b)) end end
-asserteq(hygrows:remove(1), '{')
+local hygrows = path'hyg_v38.lua':read():split'\n'
+assert.eq(hygrows:remove(1), '{')
 if hygrows:last() == '' then hygrows:remove() end
-asserteq(hygrows:remove(), '}')
-local rows = hygrows:mapi(function(row,i)
+assert.eq(hygrows:remove(), '}')
+local rows = hygrows:mapi([row,i] do
 	if row:sub(-1) == ',' then row = row:sub(1,-2) end
 	return fromlua(row)
 end):setmetatable(nil)
@@ -102,7 +100,7 @@ for i,row in ipairs(rows) do
 	if tonumber(row.dist) == 100000 then
 		-- this is the magic number for 'idk'
 		-- so skip these entries.  they're not even outside the milky way.  they just aren't filled in.
-		numInvalidRows = numInvalidRows + 1
+		numInvalidRows += 1
 	else
 		-- in parsecs
 		local x = assert(tonumber(row.x))
@@ -111,7 +109,7 @@ for i,row in ipairs(rows) do
 		
 		-- in hour-angles
 		local ra = assert(tonumber(row.ra))
-		ra = ra * (2 * math.pi / 24)
+		ra *= 2 * math.pi / 24
 		
 		-- in degrees
 		local dec = assert(tonumber(row.dec))
@@ -137,12 +135,12 @@ for i,row in ipairs(rows) do
 		)
 
 		if offsetFromSun then
-			x = x - sunPos.x
-			y = y - sunPos.y
-			z = z - sunPos.z
-			rx = rx - sunPos.x
-			ry = ry - sunPos.y
-			rz = rz - sunPos.z
+			x -= sunPos.x
+			y -= sunPos.y
+			z -= sunPos.z
+			rx -= sunPos.x
+			ry -= sunPos.y
+			rz -= sunPos.z
 		end
 
 
@@ -254,7 +252,7 @@ for i,row in ipairs(rows) do
 		local con = row.con and #row.con > 0 and row.con or nil
 		local conInfo, constellationIndex
 		if con and #con > 0 then
-			constellationIndex, conInfo = constellations:find(nil, function(c) return c.name == con end)
+			constellationIndex, conInfo = constellations:find(nil, [c] c.name == con)
 		else
 			constellationIndex = 1
 			conInfo = constellations[constellationIndex]
@@ -313,12 +311,12 @@ for i,row in ipairs(rows) do
 
 		if row.hip ~= '' then
 			local hip = tonumber(row.hip)
-			assert(tostring(hip) == row.hip)
+			assert.eq(tostring(hip), row.hip)
 			indexForHip[hip] = numValidRows
 		end
 
 
-		numValidRows = numValidRows + 1
+		numValidRows += 1
 	end
 end
 
@@ -326,19 +324,19 @@ path'index-for-hip.lua':write(tolua(indexForHip))
 
 -- now sort the constellation stars by their luminosity
 for _,con in ipairs(constellations) do
-	table.sort(con.indexes, function(a,b)
+	table.sort(con.indexes, [a,b]
 		-- sort by buffer abs mag / luminosity
-		return buffer[6 + numElem * a] < buffer[6 + numElem * b]
+		buffer[6 + numElem * a] < buffer[6 + numElem * b]
 		-- sort by original row magnitude
 		--return tonumber(rows[a[1]].absmag) < tonumber(rows[b[1]].absmag)
-	end)
+	)
 	--[=[ if you want to see those values:
-	con.magnitudes = table.mapi(con.indexes, function(i)
+	con.magnitudes = table.mapi(con.indexes, [i]
 		-- buffer magnitude
-		return buffer[6 + numElem * i]
+		buffer[6 + numElem * i]
 		-- original row magnitude
-		--return tonumber(rows[i[1]].absmag)
-	end)
+		--tonumber(rows[i[1]].absmag)
+	)
 	--]=]
 end
 
@@ -369,7 +367,7 @@ end
 
 -- make name of sun consistent with NASA data
 -- TODO call it Sol in the NASA data?
-assert(namedStars[1].name == 'Sol')
+assert.eq(namedStars[1].name, 'Sol')
 namedStars[1].name = 'Sun'
 
 -- write 
@@ -381,11 +379,9 @@ path'namedStars.json':write('namedStars = ' .. json.encode(namedStars, {indent=t
 path'constellations.json':write('constellations = '..json.encode(constellations, {indent=true}) .. ';')
 --]]
 -- [[ in lua
-path'namedStars.lua':write(tolua(table.mapi(namedStars, function(row)
-	return row.name, row.index
-end):setmetatable(nil)))
+path'namedStars.lua':write(tolua(table.mapi(namedStars, [row](row.name, row.index)):setmetatable(nil)))
 path'constellations.lua':write(tolua(
-	constellations:mapi(function(con) 
+	constellations:mapi([con] do
 		local o = {
 			name = con.name,
 			indexes = table(con.indexes):setmetatable(nil),
