@@ -2,13 +2,13 @@
 -- script to convert text files to another format
 
 require 'ext'
+local template = require 'template'
 --local gcmem = require 'ext.gcmem'
-local result, ffi = pcall(require, 'ffi')
-local useffi = true
+local ffi = require 'ffi'
 
 local OutputPoints = require 'output_points'
 
-local julian = assert(loadfile('../horizons/julian.lua'))()
+local Julian = require 'solarsystem.julian'
 local mjdOffset = 2400000.5
 local auInM = 149597870700	-- 1AU in meters
 
@@ -29,7 +29,7 @@ local function processToFile(args)
 
 	local data = path(inputFilename):read()
 
-	local lines = assert(data, "failed to read file "..inputFilename):split('\n')
+	local lines = assert(data, "failed to read file "..inputFilename):split'\n'
 	local cols = Columns(lines)
 
 print(tolua(cols.columns))
@@ -41,7 +41,7 @@ print(tolua(cols.columns))
 				outputObj:processBody(assert(processRow(cols(line))))
 			end, function(err)
 				return 'failed on file '..inputFilename..' line '..i..'\n'
-					err..'\n'
+					..err..'\n'
 					..debug.traceback()
 			end))
 		end
@@ -71,9 +71,8 @@ local numberFields = table{
 }
 
 local real
-if useffi then
+do
 	real = 'double'
-	local template = require 'template'
 	local code = template([[
 typedef <?=real?> real;
 
@@ -125,6 +124,7 @@ typedef struct {
 	f:write'return {\n'
 	f:write('\tname = '..('%q'):format'body_t'..',\n')
 	f:write('\tsize = '..ffi.sizeof'body_t'..',\n')
+	f:write('\tjulianDay = '..OutputPoints.julianDay..',\n')
 	f:write'\tfields = {\n'
 	for _,field in ipairs(allFields) do
 		f:write('\t\t'..field.name..' = {'
@@ -138,15 +138,6 @@ typedef struct {
 end
 
 local function newBody()
-	if not useffi then
-		return setmetatable({}, {
-			__index = {
-				getPos = function(self)
-					return unpack(self.pos)
-				end,
-			},
-		})
-	end
 	local body = setmetatable({
 		_ptr = ffi.new'body_t[1]', --gcmem.new('body_t',1),
 		getPos = function(self)
@@ -196,7 +187,7 @@ processToFile{
 			local month = assert(tonumber(str:sub(5,6)))
 			local day = assert(tonumber(str:sub(7)))
 			-- TODO calendarToJulian() function.  this is a rough rough guess.
-			body.timeOfPerihelionPassage = julian.fromCalendar{year=year, month=month, day=day}
+			body.timeOfPerihelionPassage = Julian.fromCalendar{year=year, month=month, day=day}
 		end
 
 		body.orbitSolutionReference = row.Ref:trim()

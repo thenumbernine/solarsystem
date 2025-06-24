@@ -1,5 +1,4 @@
-#!/usr/bin/env lua
-require 'ext'
+#!/usr/bin/env rua
 local https = require 'ssl.https'
 local ltn12 = require 'ltn12'
 
@@ -9,18 +8,12 @@ local function download(filename, url)
 		return
 	end
 	print('downloading url '..url..' ...')
-	local data = table()
-	assert(https.request{
-		url = url,
-		sink = ltn12.sink.table(data),
-		protocol = 'tlsv1',
-	})
-	data = data:concat()
+	local data = assert(https.request(url))
 	print('writing file '..filename..' with this much data: '..#data)
 	path(filename):write(data)
 end
 
---[[ "no protocols available ...
+--[[
 download('ELEMENTS.NUMBR', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.NUMBR')
 download('ELEMENTS.UNNUM', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.UNNUM')
 download('ELEMENTS.COMET', 'https://ssd.jpl.nasa.gov/dat/ELEMENTS.COMET')

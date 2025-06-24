@@ -1,5 +1,7 @@
 local julian = {}
 
+-- TODO just require 'solarsystem.julian'
+
 -- testing according to http://aa.usno.navy.mil/cgi-bin/aa_jdconv.pl
 
 function julian.toCalendar(julian)

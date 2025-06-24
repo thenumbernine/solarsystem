@@ -1,6 +1,7 @@
 return {
 	name = "body_t",
 	size = 304,
+	julianDay = 2460847.7867477,
 	fields = {
 		epoch = {type="double", offset=0, size=8, },
 		perihelionDistance = {type="double", offset=8, size=8, },
