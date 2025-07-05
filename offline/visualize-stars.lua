@@ -79,10 +79,10 @@ if not namedStars then
 	print("couldn't find star name file "..tostring(namefile).." -- searching will be disabled")
 end
 
-local constellationNamesForAbbrevs = fromlua(path'../constellations/constellationNamesForAbbrevs.lua':read())
-local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, [name, abbrev](abbrev, name)):setmetatable(nil)
+local constellationNamesForAbbrevs = fromlua((assert(path'../constellations/constellationNamesForAbbrevs.lua':read())))
+local constellationAbbrevsForNames = table.map(constellationNamesForAbbrevs, |name, abbrev|(abbrev, name)):setmetatable(nil)
 
-local constellations = table.map(constellationNamesForAbbrevs, [name, abbrev, t]
+local constellations = table.map(constellationNamesForAbbrevs, |name, abbrev, t|
 	({
 		name = name,
 		abbrev = abbrev,
@@ -90,19 +90,19 @@ local constellations = table.map(constellationNamesForAbbrevs, [name, abbrev, t]
 	}, #t+1))
 
 -- TODO make sure nothing is indexing constellations (like the HYG-generated star data was)
-constellations = constellations:sort([a,b] a.name:lower() < b.name:lower())
+constellations = constellations:sort(|a,b| a.name:lower() < b.name:lower())
 
-local constellationForAbbrev = table.mapi(constellations, [cons](cons, (cons.abbrev or 'unnamed'))):setmetatable(nil)
+local constellationForAbbrev = table.mapi(constellations, |cons|(cons, (cons.abbrev or 'unnamed'))):setmetatable(nil)
 
 -- constellation lines are in hip, so use this to convert them to hyg
-local indexForHip = ([] do
+local indexForHip = (||do
 	local fn = '../hyg/index-for-hip.lua'
 	local s, err = path(fn):read()
 	if not s then
 		print("couldn't read Hyppocarus star index file "..tostring(fn)..": "..tostring(err))
 		return
 	end
-	local d, err = select(2, timer('fromlua', [] do
+	local d, err = select(2, timer('fromlua', ||do
 		-- under the langfix parser this goes really really slow ...
 		-- 109401 entry table loaded in 62.577183961868s
 		-- in comparison luajit loads this in 0.01323390007019s
@@ -135,9 +135,9 @@ if not indexForHip then
 	print("couldn't find hyg/index-for-hip.lua -- won't see constellations")
 else
 	for name, lines in pairs(constellationSrcData) do
-		local abbrev = table.find(constellationNamesForAbbrevs, nil, [name2] name2:gsub(' ', '') == name)
+		local abbrev = table.find(constellationNamesForAbbrevs, nil, |name2| name2:gsub(' ', '') == name)
 		assert(abbrev, "couldn't find abbrev for lines name "..name)
-		local constellation = assert(constellationForAbbrev[abbrev], "failed to find constellation for abbrev "..abbrev)
+		local constellation = constellationForAbbrev![abbrev]
 
 		-- remap lines from hipparcos index to stardata.f32 index using index-for-hip.lua
 		constellation.lines = lines
@@ -342,7 +342,7 @@ local gpuPointBuf, cpuPointBuf
 
 local matrix_ffi = require 'matrix.ffi'
 
-App.initGL = [:, ...] do
+App.initGL = |:, ...| do
 	App.super.initGL(self, ...)
 
 	self.accumProjMat = matrix_ffi({4,4}, 'float'):zeros():setOrtho(0, 1, 0, 1, -1, 1)
@@ -404,7 +404,7 @@ print'filtering out unnamed...'
 
 		if cmdline.nolumnans then
 print'filtering out luminosity nans...'
-			pts = pts:filter([pt] math.isfinite(pt.obj.lum))
+			pts = pts:filter(|pt| math.isfinite(pt.obj.lum))
 			print('nolumnans filtered down to '..#pts)
 		end
 
@@ -425,17 +425,17 @@ print'adding sun point...'
 
 		if cmdline.lummin then
 print('filtering out luminosity min '..cmdline.lummin)
-			pts = pts:filter([pt] pt.obj.lum >= cmdline.lummin)
+			pts = pts:filter(|pt| pt.obj.lum >= cmdline.lummin)
 			print('lummin filtered down to '..#pts)
 		end
 		if cmdline.lumhicount then
 print('filtering out only the highest '..cmdline.lumhicount..' luminous objects...')
-			pts = pts:sort([a,b] a.obj.lum > b.obj.lum):sub(1, cmdline.lumhicount)
+			pts = pts:sort(|a,b| a.obj.lum > b.obj.lum):sub(1, cmdline.lumhicount)
 			print('lumhicount filtered down to '..#pts)
 		end
 		if cmdline.appmaghicount then
 print('filtering out only the highest '..cmdline.appmaghicount..' apparent magnitude objects...')
-			pts = pts:sort([a,b]
+			pts = pts:sort(|a,b|
 				a.obj.lum / a.obj.pos:lenSq()
 				> b.obj.lum / b.obj.pos:lenSq()
 			):sub(1, cmdline.appmaghicount)
@@ -443,12 +443,12 @@ print('filtering out only the highest '..cmdline.appmaghicount..' apparent magni
 		end
 		if cmdline.rlowcount then
 print('filtering out only the closest '..cmdline.rlowcount..' objects...')
-			pts = pts:sort([a,b] a.obj.pos:lenSq() < b.obj.pos:lenSq()):sub(1, cmdline.rlowcount)
+			pts = pts:sort(|a,b| a.obj.pos:lenSq() < b.obj.pos:lenSq()):sub(1, cmdline.rlowcount)
 			print('rlowcount filtered down to '..#pts)
 		end
 		if cmdline.rmax then
 print('filtering out only objects of distance '..cmdline.rmax..' or less...')
-			pts = pts:filter([pt] pt.obj.pos:length() <= cmdline.rmax)
+			pts = pts:filter(|pt| pt.obj.pos:length() <= cmdline.rmax)
 			print('rmin filtered down to '..#pts)
 		end
 
@@ -608,7 +608,7 @@ print'calculating stats on data...'
 				total += x * dx
 			end
 			for i=1,#log10lumbins do	-- I'd use table.sum but it sums non-natural keys
-				log10lumbins[i] = log10lumbins[i] / total
+				log10lumbins[i] /= total
 			end
 		end
 
@@ -746,7 +746,7 @@ print('looking for max')
 		nodeCount += 1
 		local nodemax = 10
 		local addToTree
-		addToTree = [node, i] do
+		addToTree = |node, i| do
 			local pos = cpuPointBuf[i].pos
 
 			-- have we divided?  pay it forward.
@@ -820,7 +820,7 @@ print'searching bins'
 		local ai = 1
 		local lastTime = os.time()
 		local searchTree
-		searchTree = [node] do
+		searchTree = |node| do
 			if node.children then
 				assert(not node.pts)
 				for childIndex=0,7 do
@@ -875,7 +875,7 @@ print'searching bins'
 
 					local touchingNodes = table()
 					local search2
-					search2 = [node2] do
+					search2 = |node2| do
 						-- if we don't contain the node, or if we don't touch the node, then bail
 						if not node2.box:touches(touchbnd) then return end
 						if node2.children then
@@ -959,7 +959,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 
 	local starTexSize = 256
 	starTex = GLTex2D{
-		image = Image(starTexSize, starTexSize, 3, 'unsigned char', [i,j] do
+		image = Image(starTexSize, starTexSize, 3, 'unsigned char', |i,j| do
 			local u = ((i + .5) / starTexSize) * 2 - 1
 			local v = ((j + .5) / starTexSize) * 2 - 1
 
@@ -1000,7 +1000,7 @@ print('created '..#cpuNbhdLineBuf..' nbhd lines')
 				end
 			end
 		end
-		local tempImg = Image(#rgbs, 1, 3, 'unsigned char', [i,j] table.unpack(rgbs[i+1]))
+		local tempImg = Image(#rgbs, 1, 3, 'unsigned char', |i,j| table.unpack(rgbs[i+1]))
 		tempImg:save'../colorForTemp.png'
 --]]
 -- [[ or just reading it:
@@ -1539,7 +1539,7 @@ local selectedIndex
 
 local hasPointSprite = op.safeindex(gl, 'GL_POINT_SPRITE')
 
-App.drawPickScene = [:] do
+App.drawPickScene = |:| do
 	gl.glClearColor(1,1,1,1)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 	gl.glEnable(gl.GL_DEPTH_TEST)
@@ -1584,7 +1584,7 @@ App.drawPickScene = [:] do
 	gl.glDisable(gl.GL_DEPTH_TEST)
 end
 
-App.drawScene = [:] do
+App.drawScene = |:| do
 	gl.glClearColor(0,0,0,0)
 	gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 	gl.glEnable(gl.GL_BLEND)
@@ -1634,7 +1634,7 @@ App.drawScene = [:] do
 end
 
 local lastWidth, lastHeight
-App.drawWithAccum = [:] do
+App.drawWithAccum = |:| do
 	if self.width ~= lastWidth or self.height ~= lastHeight then
 		lastWidth = self.width
 		lastHeight = self.height
@@ -1658,7 +1658,7 @@ App.drawWithAccum = [:] do
 	fbo:draw{
 		viewport = {0,0,fbo.width,fbo.height},
 		dest = fbotex,
-		callback = [] self:drawScene(),
+		callback = || self:drawScene(),
 	}
 
 	fbotex
@@ -1685,7 +1685,7 @@ App.drawWithAccum = [:] do
 	}
 end
 
-local sphericalToCartesian = [r,theta,phi] do
+local sphericalToCartesian = |r,theta,phi| do
 	local ct = math.cos(theta)
 	local st = math.sin(theta)
 	local cp = math.cos(phi)
@@ -1697,7 +1697,7 @@ local sphericalToCartesian = [r,theta,phi] do
 	)
 end
 
-App.update = [:] do
+App.update = |:| do
 	self:drawPickScene()
 
 	if not showPickScene then
@@ -1807,7 +1807,7 @@ App.update = [:] do
 			local idivs = 50
 			local jdivs = 50
 
-			local vertex = [vtxs, tcs, i,j] do
+			local vertex = |vtxs, tcs, i, j| do
 				local u = i/idivs
 				local v = j/jdivs
 				local theta = u*math.pi
@@ -1866,7 +1866,7 @@ end
 
 local nameWithAppMagLastPos
 local namesWithAppMag
-local guiShowStars = [:] do
+local guiShowStars = |:| do
 	-- do this before any other tooltip, so it will be on bottom
 	-- there's usually just 5000 or so of these
 	-- and if we filter by apparent magnitude then there can't be many visible at once
@@ -1884,7 +1884,7 @@ local guiShowStars = [:] do
 			nameWithAppMagLastPos:set(self.view.pos:unpack())
 			-- now sort all named indexes basedon their apparent magnitude
 			-- global / persist: namesWithAppMag
-			namesWithAppMag = table.map(namedStars, [name, index, t] do
+			namesWithAppMag = table.map(namedStars, |name, index, t| do
 				local pt = cpuPointBuf[index]
 				local distSq = (pt.pos - self.view.pos):lenSq()
 				local log10DistInPc = .5 * _1_log_10 * math.log(distSq)
@@ -1898,12 +1898,12 @@ local guiShowStars = [:] do
 					appmag = appmag,
 				}, #t+1
 			end)
-			namesWithAppMag:sort([a,b] a.appmag < b.appmag)
+			namesWithAppMag:sort(|a,b| a.appmag < b.appmag)
 		end
 
 
 		local windowCount = 0
-		local addWindowForStar = [x, y, name] do
+		local addWindowForStar = |x, y, name| do
 			ig.igPushID_Str(name)
 			ig.igSetNextWindowPos(
 				ig.ImVec2(x,y), 	-- ImVec2 pos
@@ -2016,7 +2016,7 @@ local guiShowStars = [:] do
 		end
 
 		--[[ insert and sort later
-		visibleNamedStars:sort([a,b] a.appmag > b.appmag)
+		visibleNamedStars:sort(|a,b| a.appmag > b.appmag)
 		--]]
 
 		--[[ don't handle immediately
@@ -2036,7 +2036,7 @@ local search = {
 	orbit = '',
 	lookat = '',
 }
-App.updateGUI = [:] do
+App.updateGUI = |:| do
 
 	ig.luatableCheckbox('draw points', _G, 'drawPoints')
 	ig.luatableSliderFloat('point size scale', _G, 'starPointSizeScale', -10, 10)
@@ -2161,7 +2161,7 @@ App.updateGUI = [:] do
 	end
 
 	ig.igImage(
-		ffi.cast('void*', ffi.cast('intptr_t', tempTex.id)),
+		ffi.cast('ImTextureID', tempTex.id),
 		ig.ImVec2(128, 24),
 		ig.ImVec2(0,0),
 		ig.ImVec2(1,1))
