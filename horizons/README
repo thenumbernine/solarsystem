@@ -1,6 +1,7 @@
 instructions:
 1) getdata.lua				-- gets the pos and vel of all major bodies (planets and moons).  also records extra data of bodies to be parsed later.  
-							- writes <DATE>-dynamic-vars.json.  From here you should manually go over the new file, make sure it's good, and then rename it to 'dynamic-vars.json'
+							- writes <DATE>-dynamic-vars.json.
+1.5)	Next, manually go over the new file, make sure it's good, and then rename it to 'dynamic-vars.json'
 2) parse.lua				-- parses mass, radius, etc variables from the recorded telnet session.  writes static-vars.json
 3) get_from_ssd.lua			-- fills in the blanks that parse didn't using more reliable websites.  modifies static-vars.json
 4) trim-dynamic-vars.lua	-- gets rid of entries in one set but not the other (typically in dynamic but not static)
