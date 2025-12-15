@@ -1,5 +1,8 @@
 #!/usr/bin/env rua
 -- quick point visualization of the dynamic vars
+-- well, it used to be
+-- now I've hijacked it to plot inclination vs distance of each gravitational system
+
 local vec3d = require 'vec-ffi.vec3d'
 local gl = require 'gl'
 local glreport = require 'gl.report'
@@ -15,7 +18,6 @@ App.title = 'NASA Horizons Data Viewer'
 App.viewDist = 1e+11
 App.initGL = |:, ...| do
 	App.super.initGL(self, ...)
-glreport'here'
 
 	self.view.znear = 1e+3
 	self.view.zfar = 1e+23
@@ -34,11 +36,11 @@ uniform mat4 mvProjMat;
 void main() {
 	gl_Position = mvProjMat * vec4(vertex, 1.);
 	colorv = color;
-	idv = id;//gl_VertexID;
+	idv = id;
 }
 ]],
 			fragmentCode = [[
-in vec3 colorv;	//TODO NOTICE with this typo'd as "color" I was getting segfaults.
+in vec3 colorv;	//TODO NOTICE with this typo'd as "color" I was getting segfaults. big FIXME in gl/program.lua
 in flat int idv;
 layout(location=0) out vec4 fragColor;
 layout(location=1) out int fragID;
@@ -71,7 +73,6 @@ void main() {
 			},
 		},
 	}
-glreport'here'
 
 	self.lineObj = GLSceneObject{
 		program = {
@@ -119,7 +120,6 @@ void main() {
 			},
 		},
 	}
-glreport'here'
 
 	self.lineLoopObj = GLSceneObject{
 		program = {
@@ -157,7 +157,6 @@ void main() {
 			},
 		},
 	}
-glreport'here'
 
 	self.blitObj = GLSceneObject{
 		program = {
@@ -192,10 +191,8 @@ void main() {
 		},
 	}
 
-glreport'here'
 
 	self:buildFBO()
-glreport'here'
 
 
 	local lineVtxs = self.lineLoopObj.attrs.vertex.buffer:beginUpdate()
@@ -295,7 +292,7 @@ inclinationVsDistancePerBody[body.parentIndex]:insert{
 				local geomVtxOffset = #lineVtxs
 				local n = 100
 				for i=0,n-1 do
-					local t = (i/n - .5) * koe.orbitalPeriod
+					local t = i/n * koe.orbitalPeriod
 
 					local pushMeanAnomaly = koe.meanAnomaly
 					local pushEccentricAnomaly = koe.eccentricAnomaly
@@ -321,7 +318,8 @@ inclinationVsDistancePerBody[body.parentIndex]:insert{
 	end
 
 	self.pointObj:endUpdate()
-	self.lineLoopObj:endUpdate()
+	self.lineLoopObj.attrs.color.buffer:endUpdate()
+	self.lineLoopObj.attrs.vertex.buffer:endUpdate()
 
 -- I want to normalize all distances-vs-inclinations across all planets
 -- kepler's 1-2-3 rule:
@@ -390,7 +388,7 @@ neptune rings:	4.19e+7 - 6.29e+7 m
 			table.mapi(info, |dist| dist / (G * body.mass)), 
 			table{0}:rep(#info),
 		}
-		allusings:insert{using=(#alldata-1)..':'..(#alldata), title=name}
+		allusings:insert{using=(#alldata-1)..':'..(#alldata), title=name..' Rings'}
 	end
 --]]
 	gnuplot(table(allusings, {
@@ -404,10 +402,9 @@ neptune rings:	4.19e+7 - 6.29e+7 m
 		savedata = p'all.txt'.path,
 	}))
 
-	os.exit()
+	--os.exit()
 --]=]
 
-glreport'here'
 
 	--print(require'gl.global':get'GL_READ_BUFFER')	-- GL_BACK is default
 end
@@ -422,13 +419,9 @@ App.buildFBO = |:|do
 	local height = self.height
 
 	self.fb?:delete()
-glreport'here'
 	self.fbColorTex?:delete()
-glreport'here'
 	self.fbIDTex?:delete()
-glreport'here'
 	self.fbDepthTex?:delete()
-glreport'here'
 
 
 	self.fbColorTex = GLTex2D{
@@ -442,7 +435,6 @@ glreport'here'
 			t = gl.GL_CLAMP_TO_EDGE,
 		},
 	}
-glreport'here'
 
 	self.fbIDTex = GLTex2D{
 		width = width,
@@ -455,7 +447,6 @@ glreport'here'
 			t = gl.GL_CLAMP_TO_EDGE,
 		},
 	}
-glreport'here'
 
 	self.fbDepthTex = GLTex2D{
 		width = self.width,
@@ -468,51 +459,18 @@ glreport'here'
 			t = gl.GL_CLAMP_TO_EDGE,
 		},
 	}
-glreport'here'
 
 
 	-- set up FBO
 
-	self.fb = GLFBO{
-		width = width,
-		height = height,
-	}
-glreport'here'
-
-	self.fbColorTex:bind()
-glreport'here'
-	self.fb:setColorAttachmentTex2D(self.fbColorTex.id, 0, self.fbColorTex.target)
-	--gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.fbColorTex.id, 0)
-glreport'here'
-	self.fbColorTex:unbind()
-glreport'here'
-
-
-	-- why would this get an error?  what's the harm in binding an already-bound framebuffer?
-	--self.fb:bind()
-	--glreport'here'
-	self.fbIDTex:bind()
-glreport'here'
-	self.fb:setColorAttachmentTex2D(self.fbIDTex.id, 1, self.fbIDTex.target)
-	--gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT1, gl.GL_TEXTURE_2D, self.fbIDTex.id, 0)
-glreport'here'
-	self.fbIDTex:unbind()
-glreport'here'
-
-	self.fbDepthTex:bind()
-glreport'here'
-	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, self.fbDepthTex.target, self.fbDepthTex.id, 0)
-glreport'here'
-	self.fbDepthTex:unbind()
-glreport'here'
-
-	self.fb:setDrawBuffers(
-		gl.GL_COLOR_ATTACHMENT0,	-- fragColor
-		gl.GL_COLOR_ATTACHMENT1)	-- fragID
-glreport'here'
-
-	self.fb:unbind()
-glreport'here'
+	self.fb = GLFBO()
+		:attachTex2D(gl.GL_COLOR_ATTACHMENT0, self.fbColorTex)
+		:attachTex2D(gl.GL_COLOR_ATTACHMENT1, self.fbIDTex)
+		:attachTex2D(gl.GL_DEPTH_ATTACHMENT, self.fbDepthTex)
+		:setDrawBuffers(
+			gl.GL_COLOR_ATTACHMENT0,	-- fragColor
+			gl.GL_COLOR_ATTACHMENT1)	-- fragID
+		:unbind()
 
 	-- done setting up FBO
 
@@ -520,36 +478,26 @@ glreport'here'
 end
 
 
-local clearColor = ffi.new('float[4]', 0,0,0,0)
+local clearColor = ffi.new('float[4]', 0, 0, 0, 0)
 local clearID = ffi.new('int32_t[1]', -1)
 local readID = ffi.new('int32_t[1]', -1)
 
 App.update = |:, ...| do
-glreport'here'
 	self.fb:bind()
-glreport'here'
 	GLFBO.check()
-glreport'here'
 
 	gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
-glreport'here'
 	gl.glClearBufferfv(gl.GL_COLOR, 0, clearColor)
-glreport'here'
 	gl.glClearBufferiv(gl.GL_COLOR, 1, clearID)
-glreport'here'
 
 	gl.glPointSize(5)
-glreport'here'
 	self.pointObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
 	self.pointObj:draw()
-glreport'here'
 	gl.glPointSize(1)
-glreport'here'
 
 	-- now while we're here, read the mouse coord of fbIDTex
 	readID[0] = -1
 	gl.glReadBuffer(gl.GL_COLOR_ATTACHMENT1)	-- set this once? reset after? nah?
-glreport'here'
 	gl.glReadPixels(
 		self.mouse.ipos.x,
 		self.height - 1 - self.mouse.ipos.y,
@@ -558,25 +506,20 @@ glreport'here'
 		self.fbIDTex.format,
 		self.fbIDTex.type,
 		readID)
-glreport'here'
 	--gl.glReadBuffer(gl.GL_BACK) -- restore default ... causes GL error
---glreport'here'
+	--glreport'here'
 	self.mouseOverID = readID[0]
 
 	-- shader outputs color attachment #0 only, not #1 == ID ...
 	self.lineObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
 	self.lineObj:draw()
-glreport'here'
 	
 	self.lineLoopObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
 	self.lineLoopObj:draw()
-glreport'here'
 
 	self.fb:unbind()
-glreport'here'
 
 	self.blitObj:draw()
-glreport'here'
 
 	App.super.update(self, ...)
 glreport'here'
