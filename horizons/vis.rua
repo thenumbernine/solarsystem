@@ -342,6 +342,10 @@ inclinationVsDistancePerBody[body.parentIndex]:insert{
 	local G = KOE.gravitationalConstant
 	local alldata = table()
 	local allusings = table()
+	
+	--local remapDist = |dist, body| dist / (G * body.mass)
+	local remapDist = |dist, body| dist^3 / (G * body.mass)	-- a^3/μ should = (T/2π)^2 = 1/ω^2
+
 	for _,id in ipairs(inclinationVsDistancePerBody:keys():sort()) do
 		local body = self.bodies[id]
 		local data = matrix(
@@ -350,7 +354,7 @@ inclinationVsDistancePerBody[body.parentIndex]:insert{
 				-- [[ trying to normalize all planets distance data to the same scale
 				-- parent body.mass == total mass of the barycenter system (kg)
 				-- G * body.mass = mu = gravitational parameter (m^3/s^2)
-				:mapi(|x| {x[1] / (G * body.mass), x[2]})
+				:mapi(|x| {remapDist(x[1], body), x[2]})
 				--]]
 		):T()
 		alldata:append(data)
@@ -359,7 +363,7 @@ inclinationVsDistancePerBody[body.parentIndex]:insert{
 			terminal = 'svg size 1024,768',
 			output = p(body.name..'.svg').path,
 			key = {'left'},
-			xlabel = 'dist (m) / gravitational parameter (m^3 / s^2)',
+			xlabel = 'dist (m^3) / gravitational parameter (m^3 / s^2)',
 			ylabel = 'orbital inclination angle (deg)',
 			log = 'xy',
 			data = data,
@@ -385,7 +389,7 @@ neptune rings:	4.19e+7 - 6.29e+7 m
 		local name = table.remove(info, 1)
 		local body = self.bodyForName![name]
 		alldata:append{
-			table.mapi(info, |dist| dist / (G * body.mass)), 
+			table.mapi(info, |dist| remapDist(dist, body)), 
 			table{0}:rep(#info),
 		}
 		allusings:insert{using=(#alldata-1)..':'..(#alldata), title=name..' Rings'}
@@ -395,7 +399,7 @@ neptune rings:	4.19e+7 - 6.29e+7 m
 		terminal = 'svg size 1024,768',
 		output = p'all.svg'.path,
 		key = {'left'},
-		xlabel = 'dist (m) / gravitational parameter (m^3 / s^2)',
+		xlabel = 'dist (m^3) / gravitational parameter (m^3 / s^2)',
 		ylabel = 'orbital plane inclination angle (deg)',
 		log = 'x',
 		data = alldata,
@@ -423,41 +427,31 @@ App.buildFBO = |:|do
 	self.fbIDTex?:delete()
 	self.fbDepthTex?:delete()
 
+	local Tex2D = |args| GLTex2D(table({
+		minFilter = gl.GL_NEAREST,
+		magFilter = gl.GL_NEAREST,
+		wrap = {
+			s = gl.GL_CLAMP_TO_EDGE,
+			t = gl.GL_CLAMP_TO_EDGE,
+		},
+	}, args):setmetatable(nil))
 
-	self.fbColorTex = GLTex2D{
+	self.fbColorTex = Tex2D{
 		width = width,
 		height = height,
 		internalFormat = gl.GL_RGB,
-		minFilter = gl.GL_NEAREST,
-		magFilter = gl.GL_NEAREST,
-		wrap = {
-			s = gl.GL_CLAMP_TO_EDGE,
-			t = gl.GL_CLAMP_TO_EDGE,
-		},
 	}
 
-	self.fbIDTex = GLTex2D{
+	self.fbIDTex = Tex2D{
 		width = width,
 		height = height,
 		internalFormat = gl.GL_R32I,
-		minFilter = gl.GL_NEAREST,
-		magFilter = gl.GL_NEAREST,
-		wrap = {
-			s = gl.GL_CLAMP_TO_EDGE,
-			t = gl.GL_CLAMP_TO_EDGE,
-		},
 	}
 
-	self.fbDepthTex = GLTex2D{
-		width = self.width,
-		height = self.height,
+	self.fbDepthTex = Tex2D{
+		width = width,
+		height = height,
 		internalFormat = gl.GL_DEPTH_COMPONENT,
-		minFilter = gl.GL_NEAREST,
-		magFilter = gl.GL_NEAREST,
-		wrap = {
-			s = gl.GL_CLAMP_TO_EDGE,
-			t = gl.GL_CLAMP_TO_EDGE,
-		},
 	}
 
 
