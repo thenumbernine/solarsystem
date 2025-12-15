@@ -229,17 +229,33 @@ glreport'here'
 	-- now that all parents are found, recursively sum their childrens masses
 	for index=#self.bodies,1,-1 do
 		local body = self.bodies[index]
-		if body.parentBody then
-			body.parentBody.mass += body.mass
+		local parentBody = body.parentBody
+		if parentBody then
+			parentBody.mass += body.mass
 		end
 	end
 
+	local inclinationVsDistancePerBody = table()
 	for _,body in ipairs(self.bodies) do
 		local parentBody = body.parentBody
 		if parentBody then
 			if body.pos ~= parentBody.pos then
 				local koe = KOE.calcKOEFromPosVel(body, self.bodies, initJulianDate)
 				body.koe = koe
+			
+				-- TODO instead of first do weighted-by-inverse-distance?
+				if not parentBody.firstOrbitBasis then
+					parentBody.firstOrbitBasis = body.koe.orbitBasis
+				end
+
+inclinationVsDistancePerBody[body.parentIndex] ??= table()
+inclinationVsDistancePerBody[body.parentIndex]:insert{
+	koe.distanceToParent,
+	--koe.inclination,	-- inclination parameter is relative to coordinate system
+	math.deg(math.asin(math.abs(
+	parentBody.firstOrbitBasis[3]:dot((body.pos - parentBody.pos):normalize())
+	)))
+}
 				-- now add KOE ellipses
 				local n = 100
 				local lastv
@@ -271,6 +287,91 @@ glreport'here'
 	self.pointObj:endUpdate()
 	self.lineObj:endUpdate()
 
+
+-- I want to normalize all distances-vs-inclinations across all planets
+-- kepler's 1-2-3 rule:
+-- μ * (T/2π)^2 = a^3
+-- where μ = G (M + m) = gravitational parameter
+-- T = orbital period
+-- a = semi-major axis
+-- ω = 2π/T = orbital angular velocity
+-- μ = ω^2 a^3
+-- so
+-- a = (μ / ω^2)^(1/3)
+--
+-- maybe inclination is inverse-proportional to rotation speed, which is inverse-proportional to distance?
+-- [=[
+	local p = path'dist-vs-incl'
+	p:mkdir()
+	local gnuplot = require 'gnuplot'
+	local matrix = require 'matrix'
+	--KOE.gravitationalConstant = 6.6738480e-11	-- m^3 / (kg * s^2)
+	local G = KOE.gravitationalConstant
+	local alldata = table()
+	local allusings = table()
+	for _,id in ipairs(inclinationVsDistancePerBody:keys():sort()) do
+		local body = self.bodies[id]
+		local data = matrix(
+			inclinationVsDistancePerBody[id]
+				:sort(|a,b| a[1] < b[1])
+				-- [[ trying to normalize all planets distance data to the same scale
+				-- parent body.mass == total mass of the barycenter system (kg)
+				-- G * body.mass = mu = gravitational parameter (m^3/s^2)
+				:mapi(|x| {x[1] / (G * body.mass), x[2]})
+				--]]
+		):T()
+		alldata:append(data)
+		allusings:insert{using=(#alldata-1)..':'..(#alldata), title=body.name}
+		gnuplot{
+			terminal = 'svg size 1024,768',
+			output = p(body.name..'.svg').path,
+			key = {'left'},
+			xlabel = 'dist (m) / gravitational parameter (m^3 / s^2)',
+			ylabel = 'orbital inclination angle (deg)',
+			log = 'xy',
+			data = data,
+			savedata = p(body.name..'.txt').path,
+			title = body.name,
+			{using='1:2', notitle=true},
+		}
+	end
+--[[ add rings
+solar system - asteroid belt:	average distance: 9.656e+8 m
+jupiter rings:	9.2e+7 - 2.26e+8 m
+saturn rings:	6.69e+7 - 4.8e+8 m
+uranus rings:	3.8e+7 - 9.8e+7 m
+neptune rings:	4.19e+7 - 6.29e+7 m
+--]]
+	for _,info in ipairs{
+		{'Solar System Barycenter', 9.969e+8}, 
+		{'Jupiter Barycenter', 9.2e+7, 2.26e+8}, 
+		{'Saturn Barycenter', 6.69e+7, 4.8e+8}, 
+		{'Uranus Barycenter', 3.8e+7, 9.8e+7}, 
+		{'Neptune Barycenter', 4.19e+7, 6.29e+7}, 
+	} do
+		local name = table.remove(info, 1)
+		local body = self.bodyForName![name]
+		alldata:append{
+			table.mapi(info, |dist| dist / (G * body.mass)), 
+			table{0}:rep(#info),
+		}
+		allusings:insert{using=(#alldata-1)..':'..(#alldata), title=name}
+	end
+--]]
+	gnuplot(table(allusings, {
+		terminal = 'svg size 1024,768',
+		output = p'all.svg'.path,
+		key = {'left'},
+		xlabel = 'dist (m) / gravitational parameter (m^3 / s^2)',
+		ylabel = 'orbital plane inclination angle (deg)',
+		log = 'x',
+		data = alldata,
+		savedata = p'all.txt'.path,
+	}))
+
+	os.exit()
+--]=]
+
 glreport'here'
 
 	--print(require'gl.global':get'GL_READ_BUFFER')	-- GL_BACK is default
@@ -299,8 +400,6 @@ glreport'here'
 		width = width,
 		height = height,
 		internalFormat = gl.GL_RGB,
-		--format = gl.GL_RGBA,
-		--type = gl.GL_UNSIGNED_BYTE,
 		minFilter = gl.GL_NEAREST,
 		magFilter = gl.GL_NEAREST,
 		wrap = {
@@ -314,8 +413,6 @@ glreport'here'
 		width = width,
 		height = height,
 		internalFormat = gl.GL_R32I,
-		format = gl.GL_RED_INTEGER,
-		type = gl.GL_INT,
 		minFilter = gl.GL_NEAREST,
 		magFilter = gl.GL_NEAREST,
 		wrap = {
@@ -329,8 +426,6 @@ glreport'here'
 		width = self.width,
 		height = self.height,
 		internalFormat = gl.GL_DEPTH_COMPONENT,
-		format = gl.GL_DEPTH_COMPONENT,
-		type = gl.GL_FLOAT,
 		minFilter = gl.GL_NEAREST,
 		magFilter = gl.GL_NEAREST,
 		wrap = {
@@ -408,7 +503,7 @@ glreport'here'
 	gl.glClearBufferiv(gl.GL_COLOR, 1, clearID)
 glreport'here'
 
-	gl.glPointSize(3)
+	gl.glPointSize(5)
 glreport'here'
 	self.pointObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
 	self.pointObj:draw()
