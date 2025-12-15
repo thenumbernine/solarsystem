@@ -1,0 +1,377 @@
+#!/usr/bin/env rua
+-- quick point visualization of the dynamic vars
+local vec3f = require 'vec-ffi.vec3f'
+local gl = require 'gl'
+local glreport = require 'gl.report'
+local GLSceneObject = require 'gl.sceneobject'
+local GLTex2D = require 'gl.tex2d'
+local GLFBO = require 'gl.fbo'
+local ig = require 'imgui'
+
+local App = require 'imgui.appwithorbit'()
+
+App.title = 'NASA Horizons Data Viewer'
+
+App.initGL = |:, ...| do
+	App.super.initGL(self, ...)
+glreport'here'
+
+	self.view.znear = .1
+	self.view.zfar = 10000
+
+	self.drawObj = GLSceneObject{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+layout(location=0) in vec3 vertex;
+layout(location=1) in vec3 color;
+layout(location=2) in int id;
+out vec3 colorv;
+out flat int idv;
+uniform mat4 mvProjMat;
+void main() {
+	gl_Position = mvProjMat * vec4(vertex, 1.);
+	colorv = color;
+	idv = id;//gl_VertexID;
+}
+]],
+			fragmentCode = [[
+in vec3 colorv;	//TODO NOTICE with this typo'd as "color" I was getting segfaults.
+in flat int idv;
+layout(location=0) out vec4 fragColor;
+layout(location=1) out int fragID; 
+void main() {
+	fragColor = vec4(colorv, 1.);
+	fragID = idv;
+}
+]],
+		},
+		geometry = {
+			mode = gl.GL_POINTS,
+		},
+		vertexes = {
+			useVec = true,
+			dim = 3,
+		},
+		attrs = {
+			color = {
+				buffer = {
+					useVec = true,
+					dim = 3,
+				},
+			},
+			id = {
+				buffer = {
+					useVec = true,
+					dim = 1,
+					ctype = 'int32_t',
+				},
+			},
+		},
+	}
+glreport'here'
+
+	self.lineObj = GLSceneObject{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+layout(location=0) in vec3 vertex;
+layout(location=1) in vec3 color;
+out vec3 colorv;
+uniform mat4 mvProjMat;
+void main() {
+	gl_Position = mvProjMat * vec4(vertex, 1.);
+	colorv = color;
+}
+]],
+			fragmentCode = [[
+in vec3 colorv;
+out vec4 fragColor;
+void main() {
+	fragColor = vec4(colorv, 1.);
+}
+]],
+		},
+		geometry = {
+			mode = gl.GL_LINES,
+		},
+		vertexes = {
+			data = {
+				0,0,0, 1,0,0,
+				0,0,0, 0,1,0,
+				0,0,0, 0,0,1,
+			},
+			dim = 3,
+		},
+		attrs = {
+			color = {
+				buffer = {
+					data = {
+						1,0,0, 1,0,0,
+						0,1,0, 0,1,0,
+						0,0,1, 0,0,1,
+					},
+					dim = 3,
+				},
+			},
+		},
+	}
+glreport'here'
+
+	self.blitObj = GLSceneObject{
+		program = {
+			version = 'latest',
+			precision = 'best',
+			vertexCode = [[
+in vec2 vertex;
+out vec2 tc;
+void main() {
+	tc = vertex;
+	gl_Position = vec4(vertex * 2. - 1., 0., 1.);
+}
+]],
+			fragmentCode = [[
+in vec2 tc;
+out vec4 fragColor;
+uniform sampler2D tex;
+void main() {
+	fragColor = texture(tex, tc);
+}
+]],
+			uniforms = {
+				tex = 0,
+			},
+		},
+		geometry = {
+			mode = gl.GL_TRIANGLE_STRIP,
+		},
+		vertexes = {
+			data = {0,0, 1,0, 0,1, 1,1},
+			dim = 2,
+		},
+	}
+
+glreport'here'
+
+	self:buildFBO()
+glreport'here'
+
+	local vertexGPU = self.drawObj.attrs.vertex.buffer
+	local colorGPU = self.drawObj.attrs.color.buffer
+	local idGPU = self.drawObj.attrs.id.buffer
+	local vertexCPU = vertexGPU:beginUpdate()
+	local colorCPU = colorGPU:beginUpdate()
+	local idCPU = idGPU:beginUpdate()
+
+	self.bodies = require 'dkjson'.decode((path'dynamic-vars.json':read():match'.-=(.*)')).coords
+	self.bodyForID = {}
+	for i,body in ipairs(self.bodies) do
+		for j=1,3 do
+			body.pos[j] = assert(tonumber(body.pos[j]:lower():trim())) * 1e-7
+			body.vel[j] = assert(tonumber(body.vel[j]:lower():trim())) * 1e-7
+		end
+		body.color = vec3f():map(function() return math.random() end):normalize()
+
+		body.id = assert(tonumber(body.id))
+		assert.eq(self.bodyForID[body.id], nil)
+		self.bodyForID[body.id] = body
+
+		vertexCPU:emplace_back():set(table.unpack(body.pos))
+		colorCPU:emplace_back():set(body.color:unpack())
+		idCPU:emplace_back()[0] = body.id
+	end
+
+	vertexGPU:endUpdate()
+	colorGPU:endUpdate()
+	idGPU:endUpdate()
+
+glreport'here'
+	
+	--print(require'gl.global':get'GL_READ_BUFFER')	-- GL_BACK is default
+end
+
+App.resize = |:, ...| do
+	App.super.resize(self, ...)
+	self:buildFBO()
+end
+
+App.buildFBO = |:|do
+	local width = self.width
+	local height = self.height
+
+	self.fb?:delete()
+glreport'here'
+	self.fbColorTex?:delete()
+glreport'here'
+	self.fbIDTex?:delete()
+glreport'here'
+	self.fbDepthTex?:delete()
+glreport'here'
+
+
+	self.fbColorTex = GLTex2D{
+		width = width,
+		height = height,
+		internalFormat = gl.GL_RGB,
+		--format = gl.GL_RGBA,
+		--type = gl.GL_UNSIGNED_BYTE,
+		minFilter = gl.GL_NEAREST,
+		magFilter = gl.GL_NEAREST,
+		wrap = {
+			s = gl.GL_CLAMP_TO_EDGE,
+			t = gl.GL_CLAMP_TO_EDGE,
+		},
+	}
+glreport'here'
+	
+	self.fbIDTex = GLTex2D{
+		width = width,
+		height = height,
+		internalFormat = gl.GL_R16I,
+		format = gl.GL_RED_INTEGER,
+		type = gl.GL_SHORT,
+		minFilter = gl.GL_NEAREST,
+		magFilter = gl.GL_NEAREST,
+		wrap = {
+			s = gl.GL_CLAMP_TO_EDGE,
+			t = gl.GL_CLAMP_TO_EDGE,
+		},
+	}
+glreport'here'
+
+	self.fbDepthTex = GLTex2D{
+		width = self.width,
+		height = self.height,
+		internalFormat = gl.GL_DEPTH_COMPONENT,
+		format = gl.GL_DEPTH_COMPONENT,
+		type = gl.GL_FLOAT,
+		minFilter = gl.GL_NEAREST,
+		magFilter = gl.GL_NEAREST,
+		wrap = {
+			s = gl.GL_CLAMP_TO_EDGE,
+			t = gl.GL_CLAMP_TO_EDGE,
+		},
+	}
+glreport'here'
+
+
+	-- set up FBO
+
+	self.fb = GLFBO{
+		width = width,
+		height = height,
+	}
+glreport'here'
+
+	self.fbColorTex:bind()
+glreport'here'
+	--self.fb:setColorAttachmentTex2D(self.fbColorTex.id, 0, self.fbColorTex.target)
+	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.fbColorTex.id, 0)
+glreport'here'
+	self.fbColorTex:unbind()
+glreport'here'
+
+
+	-- why would this get an error?  what's the harm in binding an already-bound framebuffer?
+	--self.fb:bind()
+	--glreport'here'
+	self.fbIDTex:bind()
+glreport'here'
+	--self.fb:setColorAttachmentTex2D(self.fbIDTex.id, 1, self.fbIDTex.target)
+	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT1, gl.GL_TEXTURE_2D, self.fbIDTex.id, 0)
+glreport'here'
+	self.fbIDTex:unbind()
+glreport'here'
+
+	self.fbDepthTex:bind()
+glreport'here'
+	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, self.fbDepthTex.target, self.fbDepthTex.id, 0)
+glreport'here'
+	self.fbDepthTex:unbind()
+glreport'here'
+
+	self.fb:setDrawBuffers(
+		gl.GL_COLOR_ATTACHMENT0,	-- fragColor
+		gl.GL_COLOR_ATTACHMENT1)	-- fragID
+glreport'here'
+
+	self.fb:unbind()
+glreport'here'
+
+	-- done setting up FBO
+
+	self.blitObj.texs[1] = self.fbColorTex
+end
+
+
+local clearColor = ffi.new('float[4]', 0,0,0,0)
+local clearID = ffi.new('int32_t[1]', -1)
+local readID = ffi.new('int16_t[1]', -1)
+
+App.update = |:, ...| do
+glreport'here'
+	self.fb:bind()
+glreport'here'
+	GLFBO.check()
+glreport'here'
+
+	--gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+	gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
+glreport'here'
+	gl.glClearBufferfv(gl.GL_COLOR, 0, clearColor)
+glreport'here'
+	gl.glClearBufferiv(gl.GL_COLOR, 1, clearID)
+glreport'here'
+
+	gl.glPointSize(3)
+glreport'here'
+	self.drawObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
+	self.drawObj:draw()
+glreport'here'
+	gl.glPointSize(1)
+glreport'here'
+
+	-- now while we're here, read the mouse coord of fbIDTex
+	readID[0] = -1
+	gl.glReadBuffer(gl.GL_COLOR_ATTACHMENT1)	-- set this once? reset after? nah?
+glreport'here'
+	gl.glReadPixels(
+		self.mouse.ipos.x,
+		self.height - 1 - self.mouse.ipos.y,
+		1,
+		1,
+		gl.GL_RED_INTEGER,
+		gl.GL_SHORT,
+		readID)
+glreport'here'
+	--gl.glReadBuffer(gl.GL_BACK) -- restore default 
+--glreport'here'
+	self.mouseOverID = readID[0]
+
+	-- shader outputs color attachment #0 only, not #1 == ID ...
+	self.lineObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
+	self.lineObj:draw()
+glreport'here'
+
+	self.fb:unbind()
+glreport'here'
+
+	self.blitObj:draw()
+glreport'here'
+
+	App.super.update(self, ...)
+glreport'here'
+end
+
+App.updateGUI = |:| do
+	if self.mouseOverID and self.mouseOverID ~= -1 then
+		local body = self.bodyForID[self.mouseOverID]
+		ig.igBeginTooltip()
+		ig.igText(self.mouseOverID..(body and ': '..tostring(body.name) or ''))
+		ig.igEndTooltip()
+	end
+end
+
+return App():run()
