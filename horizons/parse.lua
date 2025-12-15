@@ -84,7 +84,9 @@ xpcall(function()
 				vars = vars,
 			}
 
-			if name:match('^L%d ') then
+			if name:match'^L%d '
+			or name:match'^SEMB%-L%d'
+			then
 				-- L-n lagrangian points don't have any data
 			else
 				canbe('^ Description: ... %d%d, %d%d%d%d')	-- Hegemone / (Jupiter) and Kore (Jupiter) have an extra description line 

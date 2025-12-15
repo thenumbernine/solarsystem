@@ -1,6 +1,6 @@
 #!/usr/bin/env rua
 -- quick point visualization of the dynamic vars
-local vec3f = require 'vec-ffi.vec3f'
+local vec3d = require 'vec-ffi.vec3d'
 local gl = require 'gl'
 local glreport = require 'gl.report'
 local GLSceneObject = require 'gl.sceneobject'
@@ -11,15 +11,15 @@ local ig = require 'imgui'
 local App = require 'imgui.appwithorbit'()
 
 App.title = 'NASA Horizons Data Viewer'
-
+App.viewDist = 1e+11
 App.initGL = |:, ...| do
 	App.super.initGL(self, ...)
 glreport'here'
 
-	self.view.znear = .1
-	self.view.zfar = 10000
+	self.view.znear = 1e+3
+	self.view.zfar = 1e+23
 
-	self.drawObj = GLSceneObject{
+	self.pointObj = GLSceneObject{
 		program = {
 			version = 'latest',
 			precision = 'best',
@@ -40,7 +40,7 @@ void main() {
 in vec3 colorv;	//TODO NOTICE with this typo'd as "color" I was getting segfaults.
 in flat int idv;
 layout(location=0) out vec4 fragColor;
-layout(location=1) out int fragID; 
+layout(location=1) out int fragID;
 void main() {
 	fragColor = vec4(colorv, 1.);
 	fragID = idv;
@@ -98,27 +98,20 @@ void main() {
 			mode = gl.GL_LINES,
 		},
 		vertexes = {
-			data = {
-				0,0,0, 1,0,0,
-				0,0,0, 0,1,0,
-				0,0,0, 0,0,1,
-			},
+			useVec = true,
 			dim = 3,
 		},
 		attrs = {
 			color = {
 				buffer = {
-					data = {
-						1,0,0, 1,0,0,
-						0,1,0, 0,1,0,
-						0,0,1, 0,0,1,
-					},
+					useVec = true,
 					dim = 3,
 				},
 			},
 		},
 	}
 glreport'here'
+
 
 	self.blitObj = GLSceneObject{
 		program = {
@@ -158,37 +151,128 @@ glreport'here'
 	self:buildFBO()
 glreport'here'
 
-	local vertexGPU = self.drawObj.attrs.vertex.buffer
-	local colorGPU = self.drawObj.attrs.color.buffer
-	local idGPU = self.drawObj.attrs.id.buffer
-	local vertexCPU = vertexGPU:beginUpdate()
-	local colorCPU = colorGPU:beginUpdate()
-	local idCPU = idGPU:beginUpdate()
+	local lineVtxs = self.lineObj.attrs.vertex.buffer:beginUpdate()
+	local lineColors = self.lineObj.attrs.color.buffer:beginUpdate()
 
-	self.bodies = require 'dkjson'.decode((path'dynamic-vars.json':read():match'.-=(.*)')).coords
+	-- make axis in center
+	for i=0,2 do
+		lineVtxs:emplace_back()
+		local v = lineVtxs:emplace_back()
+		v.s[i] = 1e+3
+
+		local v = lineColors:emplace_back()
+		v.s[i] = 1
+		local v = lineColors:emplace_back()
+		v.s[i] = 1
+	end
+
+	local pointVtxs = self.pointObj.attrs.vertex.buffer:beginUpdate()
+	local pointColors = self.pointObj.attrs.color.buffer:beginUpdate()
+	local pointIDs = self.pointObj.attrs.id.buffer:beginUpdate()
+
+	local json = require 'dkjson'
+
+	self.bodies = json.decode((path'dynamic-vars.json':read():match'.-=(.*)')).coords
 	self.bodyForID = {}
 	for i,body in ipairs(self.bodies) do
 		for j=1,3 do
-			body.pos[j] = assert(tonumber(body.pos[j]:lower():trim())) * 1e-7
-			body.vel[j] = assert(tonumber(body.vel[j]:lower():trim())) * 1e-7
+			body.pos[j] = assert(tonumber(body.pos[j]:lower():trim())) * 1e+3 -- convert km to m
+			body.vel[j] = assert(tonumber(body.vel[j]:lower():trim())) * 1e+3
 		end
-		body.color = vec3f():map(function() return math.random() end):normalize()
+		body.pos = vec3d(table.unpack(body.pos))
+		body.vel = vec3d(table.unpack(body.vel))
+		body.color = vec3d():map(|| math.random()):normalize()
 
 		body.id = assert(tonumber(body.id))
 		assert.eq(self.bodyForID[body.id], nil)
 		self.bodyForID[body.id] = body
 
-		vertexCPU:emplace_back():set(table.unpack(body.pos))
-		colorCPU:emplace_back():set(body.color:unpack())
-		idCPU:emplace_back()[0] = body.id
+		pointVtxs:emplace_back():set(body.pos:unpack())
+		pointColors:emplace_back():set(body.color:unpack())
+		pointIDs:emplace_back()[0] = body.id
 	end
 
-	vertexGPU:endUpdate()
-	colorGPU:endUpdate()
-	idGPU:endUpdate()
+	self.bodyForName = {}
+	for _,bodyStaticVars in ipairs(
+		json.decode((
+			path'static-vars.json':read():match'^horizonsStaticData = (.*)'
+		))
+	) do
+		local body = self.bodyForID![bodyStaticVars.id]
+		body.name = bodyStaticVars.name
+
+		for k,v in pairs(bodyStaticVars) do
+			if not body[k] then
+				body[k] = v
+			end
+		end
+
+		if self.bodyForName[body.name] then
+			error("have duplicate entries for name "..tostring(body.name))
+		end
+		self.bodyForName[body.name] = body
+	end
+
+	local Julian = require 'solarsystem.julian'
+	local KOE = require 'solarsystem.koe'
+	local initJulianDate = Julian.fromCalendar(os.date'!*t')
+	for index,body in ipairs(self.bodies) do
+		if body.parent then
+			local parentBody = self.bodyForName![body.parent]
+			body.parentBody = parentBody
+			body.parentIndex = table.find(self.bodies, parentBody)
+			assert.lt(body.parentIndex, index)
+		end
+		body.mass ??= 0
+	end
+
+	-- now that all parents are found, recursively sum their childrens masses
+	for index=#self.bodies,1,-1 do
+		local body = self.bodies[index]
+		if body.parentBody then
+			body.parentBody.mass += body.mass
+		end
+	end
+
+	for _,body in ipairs(self.bodies) do
+		local parentBody = body.parentBody
+		if parentBody then
+			if body.pos ~= parentBody.pos then
+				local koe = KOE.calcKOEFromPosVel(body, self.bodies, initJulianDate)
+				body.koe = koe
+				-- now add KOE ellipses
+				local n = 100
+				local lastv
+				for i=0,n do
+					local t = (i/n - .5) * koe.orbitalPeriod
+
+					local pushMeanAnomaly = koe.meanAnomaly
+					local pushEccentricAnomaly = koe.eccentricAnomaly
+					local pushFractionOffset = koe.fractionOffset
+					local out = {}
+					KOE.updatePosVel(out, koe, initJulianDate + t, initJulianDate)
+					koe.meanAnomaly = pushMeanAnomaly
+					koe.eccentricAnomaly = pushEccentricAnomaly
+					koe.fractionOffset = pushFractionOffset
+
+					local v = parentBody.pos + out.pos_koe --body.koe.A * math.cos(t) + body.koe.B * math.sin(t)
+					if lastv then
+						lineVtxs:emplace_back():set(lastv:unpack())
+						lineVtxs:emplace_back():set(v:unpack())
+						lineColors:emplace_back():set(body.color:unpack())
+						lineColors:emplace_back():set(body.color:unpack())
+					end
+					lastv = v
+				end
+			end
+		end
+	end
+
+	self.pointObj:endUpdate()
+	self.lineObj:endUpdate()
 
 glreport'here'
-	
+
 	--print(require'gl.global':get'GL_READ_BUFFER')	-- GL_BACK is default
 end
 
@@ -225,13 +309,13 @@ glreport'here'
 		},
 	}
 glreport'here'
-	
+
 	self.fbIDTex = GLTex2D{
 		width = width,
 		height = height,
-		internalFormat = gl.GL_R16I,
+		internalFormat = gl.GL_R32I,
 		format = gl.GL_RED_INTEGER,
-		type = gl.GL_SHORT,
+		type = gl.GL_INT,
 		minFilter = gl.GL_NEAREST,
 		magFilter = gl.GL_NEAREST,
 		wrap = {
@@ -267,8 +351,8 @@ glreport'here'
 
 	self.fbColorTex:bind()
 glreport'here'
-	--self.fb:setColorAttachmentTex2D(self.fbColorTex.id, 0, self.fbColorTex.target)
-	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.fbColorTex.id, 0)
+	self.fb:setColorAttachmentTex2D(self.fbColorTex.id, 0, self.fbColorTex.target)
+	--gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, self.fbColorTex.id, 0)
 glreport'here'
 	self.fbColorTex:unbind()
 glreport'here'
@@ -279,8 +363,8 @@ glreport'here'
 	--glreport'here'
 	self.fbIDTex:bind()
 glreport'here'
-	--self.fb:setColorAttachmentTex2D(self.fbIDTex.id, 1, self.fbIDTex.target)
-	gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT1, gl.GL_TEXTURE_2D, self.fbIDTex.id, 0)
+	self.fb:setColorAttachmentTex2D(self.fbIDTex.id, 1, self.fbIDTex.target)
+	--gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT1, gl.GL_TEXTURE_2D, self.fbIDTex.id, 0)
 glreport'here'
 	self.fbIDTex:unbind()
 glreport'here'
@@ -308,7 +392,7 @@ end
 
 local clearColor = ffi.new('float[4]', 0,0,0,0)
 local clearID = ffi.new('int32_t[1]', -1)
-local readID = ffi.new('int16_t[1]', -1)
+local readID = ffi.new('int32_t[1]', -1)
 
 App.update = |:, ...| do
 glreport'here'
@@ -317,7 +401,6 @@ glreport'here'
 	GLFBO.check()
 glreport'here'
 
-	--gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 	gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
 glreport'here'
 	gl.glClearBufferfv(gl.GL_COLOR, 0, clearColor)
@@ -327,8 +410,8 @@ glreport'here'
 
 	gl.glPointSize(3)
 glreport'here'
-	self.drawObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
-	self.drawObj:draw()
+	self.pointObj.uniforms.mvProjMat = self.view.mvProjMat.ptr
+	self.pointObj:draw()
 glreport'here'
 	gl.glPointSize(1)
 glreport'here'
@@ -342,11 +425,11 @@ glreport'here'
 		self.height - 1 - self.mouse.ipos.y,
 		1,
 		1,
-		gl.GL_RED_INTEGER,
-		gl.GL_SHORT,
+		self.fbIDTex.format,
+		self.fbIDTex.type,
 		readID)
 glreport'here'
-	--gl.glReadBuffer(gl.GL_BACK) -- restore default 
+	--gl.glReadBuffer(gl.GL_BACK) -- restore default ... causes GL error
 --glreport'here'
 	self.mouseOverID = readID[0]
 
@@ -371,6 +454,10 @@ App.updateGUI = |:| do
 		ig.igBeginTooltip()
 		ig.igText(self.mouseOverID..(body and ': '..tostring(body.name) or ''))
 		ig.igEndTooltip()
+		if body and self.mouse.leftPress then	-- look at
+			self.view.pos += body.pos - self.view.orbit
+			self.view.orbit = body.pos:clone()
+		end
 	end
 end
 
