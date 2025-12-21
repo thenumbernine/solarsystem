@@ -9,7 +9,7 @@ local glreport = require 'gl.report'
 local GLSceneObject = require 'gl.sceneobject'
 local GLGeometry = require 'gl.geometry'
 local GLTex2D = require 'gl.tex2d'
-local GLFBO = require 'gl.fbo'
+local GLFramebuffer = require 'gl.framebuffer'
 local ig = require 'imgui'
 
 local App = require 'imgui.appwithorbit'()
@@ -457,7 +457,7 @@ App.buildFBO = |:|do
 
 	-- set up FBO
 
-	self.fb = GLFBO()
+	self.fb = GLFramebuffer()
 		:attachTex2D(gl.GL_COLOR_ATTACHMENT0, self.fbColorTex)
 		:attachTex2D(gl.GL_COLOR_ATTACHMENT1, self.fbIDTex)
 		:attachTex2D(gl.GL_DEPTH_ATTACHMENT, self.fbDepthTex)
@@ -478,7 +478,7 @@ local readID = ffi.new('int32_t[1]', -1)
 
 App.update = |:, ...| do
 	self.fb:bind()
-	GLFBO.check()
+	GLFramebuffer.check()
 
 	gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
 	gl.glClearBufferfv(gl.GL_COLOR, 0, clearColor)

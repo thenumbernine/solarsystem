@@ -7,7 +7,7 @@ local gl = require 'gl'
 local glreport = require 'gl.report'
 local GLElementArrayBuffer = require 'gl.elementarraybuffer'
 local GLProgram = require 'gl.program'
-local GLFBO = require 'gl.fbo'
+local GLFramebuffer = require 'gl.framebuffer'
 local GLTex2D = require 'gl.tex2d'
 local GLHSVTex = require 'gl.hsvtex'
 local GLArrayBuffer = require 'gl.arraybuffer'
@@ -1639,7 +1639,7 @@ App.drawWithAccum = |:| do
 		lastWidth = self.width
 		lastHeight = self.height
 
-		fbo = GLFBO{
+		fbo = GLFramebuffer{
 			width=self.width,
 			height=self.height,
 		}:unbind()
