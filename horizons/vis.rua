@@ -461,7 +461,7 @@ App.buildFBO = |:|do
 		:attachTex2D(gl.GL_COLOR_ATTACHMENT0, self.fbColorTex)
 		:attachTex2D(gl.GL_COLOR_ATTACHMENT1, self.fbIDTex)
 		:attachTex2D(gl.GL_DEPTH_ATTACHMENT, self.fbDepthTex)
-		:setDrawBuffers(
+		:drawBuffers(
 			gl.GL_COLOR_ATTACHMENT0,	-- fragColor
 			gl.GL_COLOR_ATTACHMENT1)	-- fragID
 		:unbind()
