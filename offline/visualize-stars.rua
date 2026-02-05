@@ -17,8 +17,6 @@ local vec3f = require 'vec-ffi.vec3f'
 local vec3d = require 'vec-ffi.vec3d'
 local quatd = require 'vec-ffi.quatd'
 local vector = require 'ffi.cpp.vector'
-local matrix_ffi = require 'matrix.ffi'
-matrix_ffi.real = 'float'	-- default matrix_ffi type
 
 --[[
 set = directory to use if you don't specify individual files:
@@ -180,12 +178,12 @@ my hyg data:
 --]]
 ffi.cdef[[
 typedef struct {
-	vec3f_t pos;
+	vec3f pos;
 } pt_3col_t;
 
 typedef struct {
-	vec3f_t pos;		// in Pc
-	vec3f_t vel;
+	vec3f pos;		// in Pc
+	vec3f vel;
 
 	/*
 	solar luminosity
@@ -254,7 +252,7 @@ local cpuVelLineBuf
 
 ffi.cdef[[
 typedef struct {
-	vec3f_t pos;	//pos of each endpoint of the line
+	vec3f pos;	//pos of each endpoint of the line
 	float dist;		//distance between.  will be doubled up in pairs of vertexes for each line
 } nbhd_t;
 ]]
@@ -340,12 +338,11 @@ local starTex
 local numPts	-- number of points
 local gpuPointBuf, cpuPointBuf
 
-local matrix_ffi = require 'matrix.ffi'
 
 App.initGL = |:, ...| do
 	App.super.initGL(self, ...)
 
-	self.accumProjMat = matrix_ffi({4,4}, 'float'):zeros():setOrtho(0, 1, 0, 1, -1, 1)
+	self.accumProjMat = vec4x4f():setOrtho(0, 1, 0, 1, -1, 1)
 
 	gl.glDisable(gl.GL_DEPTH_TEST)
 
@@ -1726,8 +1723,7 @@ App.update = |:| do
 
 		-- TODO draw around origin?  or draw around view orbit?
 		if drawGrid then
-			local mvMatPush = ffi.new'float[16]'
-			ffi.copy(mvMatPush, self.view.mvMat.ptr, ffi.sizeof(mvMatPush))
+			local mvMatPush = self.view.mvMat:clone()
 			if tiltGridToPolaris then
 				self.view.mvMat:applyRotate(math.rad(23.4365472133), -1, 0, 0)
 			elseif tiltGridToVega then
@@ -1768,7 +1764,7 @@ App.update = |:| do
 			gl.glDisable(gl.GL_BLEND)
 
 			if tiltGridToPolaris or tiltGridToVega then
-				ffi.copy(self.view.mvMat.ptr, mvMatPush, ffi.sizeof(mvMatPush))
+				self.view.mvMat:copy(mvMatPush)
 			end
 		end
 
@@ -1822,8 +1818,7 @@ App.update = |:| do
 				vtxs:emplace_back():set(x,y,z)
 			end
 
-			local mvMatPush = ffi.new'float[16]'
-			ffi.copy(mvMatPush, self.view.mvMat.ptr, ffi.sizeof(mvMatPush))
+			local mvMatPush = self.view.mvMat:clone()
 			if tiltGridToVega then
 				self.view.mvMat:applyRotate(math.rad(23.4365472133), -1, 0, 0)
 			else
@@ -1852,7 +1847,7 @@ App.update = |:| do
 			self.earthTex:unbind()
 			gl.glDisable(gl.GL_DEPTH_TEST)
 
-			ffi.copy(self.view.mvMat.ptr, mvMatPush, ffi.sizeof(mvMatPush))
+			self.view.mvMat:copy(mvMatPush)
 		end
 	end
 
@@ -1949,12 +1944,12 @@ local guiShowStars = |:| do
 --]]
 			assert(index >= 0 and index < numPts)
 			local pt = cpuPointBuf[index]
-			local vpt = self.view.mvMat * matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1}
+			local vpt = self.view.mvMat * vec4f(pt.pos.x, pt.pos.y, pt.pos.z, 1)
 --DEBUG:print('pt.pos', pt.pos)
---DEBUG:print("matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1}", matrix_ffi{pt.pos.x, pt.pos.y, pt.pos.z, 1})
+--DEBUG:print("vec4f(pt.pos.x, pt.pos.y, pt.pos.z, 1)", vec4f(pt.pos.x, pt.pos.y, pt.pos.z, 1))
 --DEBUG:print('mvMat ', self.view.mvMat)
 --DEBUG:print('vpt', vpt)
-			local mz = vpt[3]
+			local mz = vpt.z
 			if -mz > self.view.znear
 			and -mz < self.view.zfar
 			then
@@ -1971,8 +1966,8 @@ local guiShowStars = |:| do
 					x = (1 + x) * .5 * self.width
 					y = (1 - y) * .5 * self.height
 
-					local mx = vpt[1]
-					local my = vpt[2]
+					local mx = vpt.x
+					local my = vpt.y
 
 					-- [[ handle immediately
 					if addWindowForStar(x, y, name) then break end
