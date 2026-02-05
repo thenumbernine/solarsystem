@@ -34,7 +34,7 @@ end
 local n = #lpts
 print('read '..n..' points')
 
-local pts = ffi.new('vec3f_t[?]', n)
+local pts = ffi.new('vec3f[?]', n)
 for i,pt in ipairs(lpts) do
 	pts[i-1] = lpts[i]
 end
@@ -44,7 +44,7 @@ function App:initGL()
 	App.super.initGL(self)
 	self.view.ortho = true
 
-	local vtxdata = ffi.new('vec2f_t[?]', n)
+	local vtxdata = ffi.new('vec2f[?]', n)
 	for i=0,n-1 do
 		local temp, log10lum = pts[i]:unpack()
 		vtxdata[i]:set(
@@ -80,7 +80,7 @@ void main() {
 		},
 		vertexes = {
 			dim = 2,
-			size = ffi.sizeof'vec2f_t' * n,
+			size = ffi.sizeof'vec2f' * n,
 			count = n,
 			data = vtxdata,
 		},
