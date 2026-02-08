@@ -16,7 +16,7 @@ let skyCube = new function() {
 
 		//looks like doing these in realtime will mean toning the detail down a bit ...
 		//if the image is too big, how do we downsample the skymap without lagging the whole browser?  1) browsers start using LuaJIT (not going to happen, stupid JS) 2) provide pre-computed sampled down versions.
-		
+
 		let glMaxCubeMapTextureSize = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
 
 		this.texURLPrefixes = [
@@ -48,7 +48,7 @@ let skyCube = new function() {
 			}
 		});
 	};
-	
+
 	this.texLoaded = function(skyTex) {
 		const glutil = ui.glutil;
 		const gl = ui.gl;
@@ -93,8 +93,8 @@ void main() {
 			cubeVtxArray[1+3*i] = glutil.view.zNear*10*(2*((i>>1)&1)-1);
 			cubeVtxArray[2+3*i] = glutil.view.zNear*10*(2*((i>>2)&1)-1);
 		}
-	
-		
+
+
 		let cubeIndexBuf = new glutil.ElementArrayBuffer({
 			data : [
 				5,7,3,3,1,5,		// <- each value has the x,y,z in the 0,1,2 bits (off = 0, on = 1)
@@ -105,7 +105,7 @@ void main() {
 				0,1,3,3,2,0
 			]
 		});
-		
+
 		//my galaxy texture is centered at x+ and lies in the xy plane
 		skyCubeObj = new glutil.SceneObject({
 			mode : gl.TRIANGLES,
@@ -123,7 +123,7 @@ void main() {
 			parent : null
 		});
 	};
-	
+
 	this.draw = function(
 		picking,
 		distFromSolarSystemInLyr
@@ -131,10 +131,10 @@ void main() {
 		if (!skyCubeObj) return;
 		if (picking) return;
 		if (distFromSolarSystemInLyr >= skyCubeFadeOutEndDistInLyr) return;
-		
+
 		const gl = ui.gl;
 		const brightness = skyCubeMaxBrightness * (1 - mathClamp((distFromSolarSystemInLyr - skyCubeFadeOutStartDistInLyr) / (skyCubeFadeOutEndDistInLyr - skyCubeFadeOutStartDistInLyr), 0, 1));
-		
+
 		gl.disable(gl.DEPTH_TEST);
 		skyCubeObj.uniforms.brightness = brightness;
 		skyCubeObj.draw();

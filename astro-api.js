@@ -10,7 +10,7 @@ var astro = (function(astro) {
 		dataType: "jsonp",
 		url: astro.URL + type + '?callback=?',
 		data: args,
-		success: callback 
+		success: callback
 	});
   }
   astro.apiCall = apiCall;
@@ -157,7 +157,7 @@ taue2:0.006941785584052303,drotex:2.44E-4,drotey:-0.001193,gmast1:6.466825433842
       callback(data.results, data.date);
     });
   }
-  
+
   astro.getCoeffSet = function(body, date, callback) {
     astro.getCoeffSets([body], date, function(results, date) {
       callback(results[body], date);
@@ -235,7 +235,7 @@ taue2:0.006941785584052303,drotex:2.44E-4,drotey:-0.001193,gmast1:6.466825433842
       callback(new Record(results, start, end), data.date);
     });
   }
-  
+
   astro.now = function() {
     var date = new Date();
     var year = date.getFullYear();
@@ -246,7 +246,7 @@ taue2:0.006941785584052303,drotex:2.44E-4,drotey:-0.001193,gmast1:6.466825433842
     var sec = date.getSeconds();
     return year + '-' + month + '-' + day + ' ' + hour + ':' + min + ':' + sec;
   };
-  
+
 
   return astro;
 }(astro || {}));

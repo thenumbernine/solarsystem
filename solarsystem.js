@@ -280,8 +280,8 @@ class SolarSystem extends StarSystem {
 			});
 		}
 
-		// get texture name 
-		for (let i = 0; i < this.planets.length; ++i) { 
+		// get texture name
+		for (let i = 0; i < this.planets.length; ++i) {
 			let planet = this.planets[i];
 			if (planet.name in {
 				Sun:1,
@@ -313,7 +313,7 @@ class SolarSystem extends StarSystem {
 			}) {
 				planet.imgURL = 'textures/'+planet.name.toLowerCase()+'.png';
 			}
-	
+
 		}
 
 		//once we're done making planets, make a copy of the init
@@ -327,12 +327,12 @@ class SolarSystem extends StarSystem {
 
 	removeSmallBody(row) {
 		let name = row.name;
-		
+
 		const solarSystem = starSystemsExtra.solarSystem;
 
 		//only add if it's already there
 		if (solarSystem.indexes[name] === undefined) return;
-			
+
 		let index = solarSystem.indexes[name];
 		let planet = solarSystem.planets[index];
 		solarSystem.initPlanets.splice(index, 1);
@@ -354,7 +354,7 @@ class SolarSystem extends StarSystem {
 
 	addSmallBody(row) {
 		let name = row.name;
-		
+
 		const solarSystem = starSystemsExtra.solarSystem;
 
 		//only add if it's not there
@@ -384,7 +384,7 @@ class SolarSystem extends StarSystem {
 
 		planet.initColorSchRadiusAngle();
 		planet.initSceneLatLonLineObjs();
-		
+
 		// if we pass the row info
 		planet.getKOEFromSourceData();
 		// if we just pass pos and vel

@@ -62,7 +62,7 @@ function transformMat3Tr(out, v, a) {
 	out[1] = y;
 }
 
-//TODO can I use glmatrix.js or does it still have math bugs? 
+//TODO can I use glmatrix.js or does it still have math bugs?
 function vec3TransformQuat(dest, src, q) {
 	const vx = src[0];
 	const vy = src[1];

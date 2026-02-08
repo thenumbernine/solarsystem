@@ -20,7 +20,7 @@ class Galaxies {
 	constructor() {
 		this.closestDistInM = undefined;	//for occlusion of all selection stuff
 		this.cache = {};
-	
+
 		let thiz = this;
 		let xhr = new XMLHttpRequest();
 		xhr.open('GET', 'simbad/galaxies.f32', true);
@@ -54,7 +54,7 @@ class Galaxies {
 				if (this.closestDistInM === undefined) {
 					this.closestDistInM = len;
 				} else {
-					this.closestDistInM = Math.min(len, this.closestDistInM); 
+					this.closestDistInM = Math.min(len, this.closestDistInM);
 				}
 			}
 			floatBuffer[j] = x / cfg.interGalacticRenderScale;
@@ -102,9 +102,9 @@ void main() {
 			parent : null,
 			static : false
 		});
-		
+
 		console.log("loaded galaxies");
-		
+
 		this.loadNames();
 	}
 
@@ -138,9 +138,9 @@ void main() {
 		if (!milkyWay.sceneObj) return;
 		if (!cfg.showGalaxies) return;
 		if (!this.sceneObj) return;
-			
-		this.sceneObj.texs[0] = milkyWay.sceneObj.texs[0];	
-	
+
+		this.sceneObj.texs[0] = milkyWay.sceneObj.texs[0];
+
 		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
 			this.sceneObj.pos[0] = -cfg.orbitTarget.pos[0] / cfg.interGalacticRenderScale;
 			this.sceneObj.pos[1] = -cfg.orbitTarget.pos[1] / cfg.interGalacticRenderScale;

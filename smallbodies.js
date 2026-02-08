@@ -10,7 +10,7 @@ A few options on how to handle small bodies:
 
 3) downloads pos only, queries name and KOE.  11MB.
 
-4) download visible nodes in an octree.  
+4) download visible nodes in an octree.
 	?MB.  Hopefully less than above to just view a few small bodies.  But to view all it will be more than the flatfile of 250MB.
 	Seems most octree nodes were visible, so this was just downloading more data than above.
 	Also we have to issue multiple draw commands per octree node, so it will draw slower as well.
@@ -40,7 +40,7 @@ pathEccentricAnomaly <= eccentricAnomaly + meanMotion * (extern) timeAdvanced
 
 
 TODO don't even download this until requested
-and another TODO - organize the external datasets and have them all downloaded on request 
+and another TODO - organize the external datasets and have them all downloaded on request
  kinda like the universe visualization does
 */
 import {vec3, mat4} from '/js/gl-matrix-3.4.1/index.js';
@@ -48,13 +48,13 @@ import {ui} from './ui.js';
 import {cfg} from './globals.js';
 
 //used with isa in the cfg.orbitTarget detection
-//instanciated when the user selects a node in the tree 
+//instanciated when the user selects a node in the tree
 class SmallBody {
 	//callback from setOrbitTarget
 	onSelect() {
 		//add/removeSmallBody works with the UI controls to add/remove rows
 		let planet = solarSystem.addSmallBody(this.row);
-		
+
 		//for the orbit-target popup menu on the right
 		planet.type = this.row.bodyType;
 
@@ -107,8 +107,8 @@ void main() {
 
 
 		let thiz = this;
-		
-		
+
+
 		let xhr = new XMLHttpRequest();
 		//xhr.open('GET', 'jpl-ssd-smallbody/posvel.f64', true);
 		xhr.open('GET', 'jpl-ssd-smallbody/pos.f32', true);
@@ -124,7 +124,7 @@ void main() {
 				}
 			}
 		});
-	
+
 		this.mins = [Infinity, Infinity, Infinity];
 		this.maxs = [-Infinity, -Infinity, -Infinity];
 		this.added = 0;
@@ -133,14 +133,14 @@ void main() {
 			let data = new DataView(xhr.response);
 			//let len = data.byteLength / Float64Array.BYTES_PER_ELEMENT;
 			let len = data.byteLength / Float32Array.BYTES_PER_ELEMENT;
-				
+
 			//units are in parsecs
 			//don't forget velocity is not being rescaled (i'm not using it at the moment)
 			let floatBuffer = new Float32Array(len);
 			for (let j = 0; j < len; ++j) {
 				//floatBuffer[j] = data.getFloat64(j * Float64Array.BYTES_PER_ELEMENT, true);
 				floatBuffer[j] = data.getFloat32(j * Float32Array.BYTES_PER_ELEMENT, true);
-/*				
+/*
 				if (j % 6 == 5) {
 let n = floatBuffer.length;
 let x = floatBuffer[n-5];
@@ -160,13 +160,13 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 //	floatBuffer.splice(n-5, 6);
 }
 				}
-*/			
+*/
 			}
 			thiz.doneLoading(floatBuffer);
 		});
 		xhr.send();
 	}
-	
+
 	doneLoading(float32data) {
 		const gl = ui.gl;
 		this.vertexArray = float32data;
@@ -180,7 +180,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			attrs : {
 				vertex : new glutil.Attribute({
 					buffer : this.vertexBuffer,
-					size : 3, 
+					size : 3,
 					stride : this.numElem * Float32Array.BYTES_PER_ELEMENT,
 					offset : 0
 				}),
@@ -196,7 +196,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 			static : false
 		});
 	}
-	
+
 	draw(
 		tanFovY,
 		picking,
@@ -216,34 +216,34 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 	doDraw(distInM, tanFovY, picking, viewPosInv, invRotMat) {
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
-		
+
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-	
+
 		const canvas = ui.canvas;
-		let pointSize = 
-			this.pointSize 
-			* canvas.width 
-			* Math.sqrt(distInM) 
+		let pointSize =
+			this.pointSize
+			* canvas.width
+			* Math.sqrt(distInM)
 			/ tanFovY;
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
 		this.sceneObj.uniforms.julianDate = cfg.julianDate;
-			
+
 		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
 			this.sceneObj.pos[0] = -cfg.orbitTarget.pos[0];
 			this.sceneObj.pos[1] = -cfg.orbitTarget.pos[1];
 			this.sceneObj.pos[2] = -cfg.orbitTarget.pos[2];
 		}
-		
+
 		this.sceneObj.uniforms.flatEarthCoeff = cfg.flatEarthCoeff;
 		this.sceneObj.uniforms.earthPos = cfg.flatEarthRelativeEarthPos;
 		this.sceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
-		
+
 		if (picking) {
 /*
 			//extra tough too-small threshold for picking
-			if (this.visRatio < this.visRatioPickThreshold) return;	
+			if (this.visRatio < this.visRatioPickThreshold) return;
 			let thiz = this;
 			cfg.pickObject.drawPoints({
 				sceneObj : this.sceneObj,
@@ -290,7 +290,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		//called from PointOctree.onPick when it is creating a new object
 		// either for mouse-over or for click selection
 		// and stored in the cache
-	
+
 		//TODO a remote request to get the name
 
 		let smallBody = mergeInto(new SmallBody(), {
@@ -319,7 +319,7 @@ if (isFinite(x) && isFinite(y) && isFinite(z)
 		smallBody.row = {
 			name : smallBody.name
 		};
-	
+
 		return smallBody;
 	}
 }

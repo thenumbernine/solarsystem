@@ -97,9 +97,9 @@ class Planet {
 			lon : mathDeg(lambda),
 			height : r - equatorialRadius
 		}
-		//} else it is a nonlinear problem and I will think about it later 
+		//} else it is a nonlinear problem and I will think about it later
 	}
-	
+
 	//no longer used for mesh construction -- that all goes on in the shader
 	//this is only used for getting positions for updating the tidal array calculations
 	// and for (geosynchronously) orbiting geodetic locations (which is currently disabled)
@@ -280,7 +280,7 @@ class Planet {
 	}
 
 	calcKOEFromPosVel() {
-//console.log("this.mass", this.mass);		
+//console.log("this.mass", this.mass);
 		// based on this position and velocity, find plane of orbit
 		let parentBody = this.parent;
 		if (parentBody === undefined) {
@@ -288,7 +288,7 @@ class Planet {
 			this.calcOrbitBasis();
 			return;
 		}
-//console.log("parentBody.mass", parentBody.mass);		
+//console.log("parentBody.mass", parentBody.mass);
 
 		//consider position relative to orbiting parent
 		// should I be doing the same thing with the velocity?  probably...
@@ -308,7 +308,7 @@ class Planet {
 		const angularMomentumZ = posX * velY - posY * velX;
 		const angularMomentumMagSq = angularMomentumX * angularMomentumX + angularMomentumY * angularMomentumY + angularMomentumZ * angularMomentumZ;		//m^4/s^2
 		const angularMomentumMag = Math.sqrt(angularMomentumMagSq);
-		
+
 		//now decompose the relative position in the coordinates of the orbit basis
 		//i've eliminated all but one of the rotation degrees of freedom ...
 
@@ -331,7 +331,7 @@ class Planet {
 //		if (Math.abs(eccentricity - 1) < parabolicEccentricityEpsilon) {
 //console.log("danger! got a parabolic orbit for ",this," based on eccentricity epsilon",Math.abs(eccentricity-1));
 //			orbitType = 'parabolic';
-//		} else 
+//		} else
 		if (eccentricity > 1) {
 			orbitType = 'hyperbolic';
 		} else {
@@ -358,7 +358,7 @@ class Planet {
 		let orbitalPeriod;
 		if (orbitType == 'elliptic') {
 			orbitalPeriod = 2 * Math.PI * Math.sqrt(semiMajorAxisCubed  / gravitationalParameter) / (60*60*24);	//julian day
-//override for known planets?  don't forget to factor in the barycenter 
+//override for known planets?  don't forget to factor in the barycenter
 if (this.orbitalPeriod !== undefined) {
 	console.log('for planet',this.name,'orbitalPeriod calculated',orbitalPeriod,'provided',this.orbitalPeriod);
 	orbitalPeriod = this.orbitalPeriod;
@@ -366,7 +366,7 @@ if (this.orbitalPeriod !== undefined) {
 		}
 
 		const longitudeOfPeriapsis = longitudeOfAscendingNode + argumentOfPeriapsis;	//omega-bar
-		
+
 		let meanAnomaly;
 		if (orbitType == 'parabolic') {
 			meanAnomaly = eccentricAnomaly + eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
@@ -377,7 +377,7 @@ if (this.orbitalPeriod !== undefined) {
 		}
 
 		const meanLongitude = meanAnomaly + longitudeOfPeriapsis;
-		
+
 		//can I do this?
 		const epoch = cfg.initJulianDate;
 		const meanAnomalyAtEpoch = meanAnomaly;
@@ -398,18 +398,18 @@ if (this.orbitalPeriod !== undefined) {
 		pos[i] = A[i] * (cosEccentricAnomaly - eccentricity) + B[i] * sinEccentricAnomaly
 		rDot[i] = (-A[i] * sinEccentricAnomaly + B[i] * cosEccentricAnomaly) * Math.sqrt(gravitationalParameter / semiMajorAxisCubed) / (1 - eccentricity * cosEccentricAnomaly)
 		*/
-//console.log("pos", posX, posY, posZ);   
+//console.log("pos", posX, posY, posZ);
 		const checkPosX = A[0] * (cosEccentricAnomaly - eccentricity) + B[0] * sinEccentricAnomaly;
 		const checkPosY = A[1] * (cosEccentricAnomaly - eccentricity) + B[1] * sinEccentricAnomaly;
 		const checkPosZ = A[2] * (cosEccentricAnomaly - eccentricity) + B[2] * sinEccentricAnomaly;
-//console.log("checkPos", checkPosX, checkPosY, checkPosZ);   
+//console.log("checkPos", checkPosX, checkPosY, checkPosZ);
 		//used by planets to offset reconstructed orbit coordinates to exact position of this
 		const checkPosToPosX = checkPosX - posX;
 		const checkPosToPosY = checkPosY - posY;
 		const checkPosToPosZ = checkPosZ - posZ;
-//console.log("checkPosToPos", checkPosToPosX, checkPosToPosY, checkPosToPosZ);   
+//console.log("checkPosToPos", checkPosToPosX, checkPosToPosY, checkPosToPosZ);
 		const checkPosToPosDist = Math.sqrt(checkPosToPosX * checkPosToPosX + checkPosToPosY * checkPosToPosY + checkPosToPosZ * checkPosToPosZ);
-//console.log("checkPosToPosDist", checkPosToPosDist);  	
+//console.log("checkPosToPosDist", checkPosToPosDist);
 		const checkPosError = checkPosToPosDist / distanceToParent;
 		if (checkPosError === checkPosError) {
 			if (checkPosError > 1e-5) {	//only report significant error
@@ -451,7 +451,7 @@ if (this.orbitalPeriod !== undefined) {
 			this.calcOrbitBasis();
 			return;
 		}
-		
+
 		//for elliptic orbits,
 		// we can accumulate & store the largest semi major axis of all children
 		//but for parabolic/hyperbolic ...
@@ -515,7 +515,7 @@ if (this.orbitalPeriod !== undefined) {
 
 		const gravitationalParameter = gravitationalConstant * parentBody.mass;	//assuming the comet mass is negligible, since the comet mass is not provided
 		const semiMajorAxisCubed = semiMajorAxis * semiMajorAxis * semiMajorAxis;
-		
+
 		//orbital period is only defined for circular and elliptical orbits (not parabolic or hyperbolic)
 		let orbitalPeriod = undefined;
 		if (orbitType === 'elliptic') {
@@ -535,7 +535,7 @@ if (this.orbitalPeriod !== undefined) {
 		const sinInclination = Math.sin(inclination);
 
 		const oneMinusEccentricitySquared = 1 - eccentricity * eccentricity;
-		//magnitude of A is a 
+		//magnitude of A is a
 		const A = [
 			semiMajorAxis * (cosAscending * cosPericenter - sinAscending * sinPericenter * cosInclination),
 			 semiMajorAxis * (sinAscending * cosPericenter + cosAscending * sinPericenter * cosInclination),
@@ -562,7 +562,7 @@ if (this.orbitalPeriod !== undefined) {
 				eccentricAnomaly = Math.tan(argumentOfPeriapsis / 2);
 			}
 			if (meanAnomaly === undefined || meanAnomaly === null) {
-				meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3; 
+				meanAnomaly = eccentricAnomaly - eccentricAnomaly * eccentricAnomaly * eccentricAnomaly / 3;
 			}
 		} else if (orbitType === 'hyperbolic') {
 			assert(timeOfPeriapsisCrossing !== undefined);	//only comets are hyperbolic, and all comets have timeOfPeriapsisCrossing defined
@@ -570,7 +570,7 @@ if (this.orbitalPeriod !== undefined) {
 				meanAnomaly = Math.sqrt(-gravitationalParameter / semiMajorAxisCubed) * timeOfPeriapsisCrossing * 60*60*24;	//in seconds
 			}
 		} else if (orbitType === 'elliptic') {
-			//in theory I can say 
+			//in theory I can say
 			//eccentricAnomaly = Math.acos((eccentricity + Math.cos(argumentOfPeriapsis)) / (1 + eccentricity * Math.cos(argumentOfPeriapsis)));
 			// ... but Math.acos has a limited range ...
 
@@ -626,7 +626,7 @@ if (this.orbitalPeriod !== undefined) {
 
 		const sinEccentricAnomaly = Math.sin(eccentricAnomaly);
 		const cosEccentricAnomaly = Math.cos(eccentricAnomaly);
-		
+
 		//parabolas and hyperbolas don't define orbitalPeriod
 		// so no need to recalculate it
 		if (orbitalPeriod !== undefined && meanAnomaly !== undefined) {
@@ -666,7 +666,7 @@ a/r = (1 + e cos(nu)) / (1 - e^2)
 2 a/r - r/r = e (e + cos(nu)) / (1 - e^2)
 (2 a - r)/(r a) = [e (e + cos(nu))] / [a (1 - e^2)]
 v^2 = mu (2/r - 1/a) = mu (e^2 + e cos(nu)) / (a (1 - e^2))
-the first of these is true: v^2 = mu (2/r - 1/a) according to both bogan.ca and wikipedia 
+the first of these is true: v^2 = mu (2/r - 1/a) according to both bogan.ca and wikipedia
 
 the second: v^2 = mu e (e + cos(nu)) / (a (1 - e^2)) should match v^2 = mu / (a (1 - e^2)) (1 - 2 cos(nu) + e^2)
 is true only for e^2 + e cos(nu) = 1 - 2 cos(nu) + e^2
@@ -675,8 +675,8 @@ is true only for e^2 + e cos(nu) = 1 - 2 cos(nu) + e^2
 	... cos(nu) = 1/(e + 2)	...which doesn't look true ... so maybe that bogan.ca second velocity equation v^2 = (mu/p)(1 - 2 cos(nu) + e^2) is wrong?
 
 === for hyperbolic orbits ... e > 1 <=> e^2 > 1 <=> 1 - e^2 < 0
-r^2 = a^2 (cos(E) 
-	... we should get to 
+r^2 = a^2 (cos(E)
+	... we should get to
 
 */
 		let dt_dE;
@@ -693,7 +693,7 @@ r^2 = a^2 (cos(E)
 		let coeffDerivA, coeffDerivB;
 		if (orbitType == 'parabolic') {
 			//...?
-		} else if (orbitType == 'elliptic') { 
+		} else if (orbitType == 'elliptic') {
 			coeffA = Math.cos(eccentricAnomaly) - eccentricity;
 			coeffB = Math.sin(eccentricAnomaly);
 			coeffDerivA = -Math.sin(eccentricAnomaly) * dE_dt;
@@ -704,13 +704,13 @@ r^2 = a^2 (cos(E)
 			coeffDerivA = -Math.sinh(eccentricAnomaly) * dE_dt;
 			coeffDerivB = Math.cosh(eccentricAnomaly) * dE_dt;
 		}
-		
+
 		const posX = A[0] * coeffA + B[0] * coeffB;
 		const posY = A[1] * coeffA + B[1] * coeffB;
 		const posZ = A[2] * coeffA + B[2] * coeffB;
 		//v^2 = (a^2 sin^2(E) + a^2 |1 - e^2| cos^2(E)) * mu/a^3 / (1 - e cos(E))
 		//v^2 = (sin^2(E) + |1 - e^2| cos^2(E)) * mu/(a (1 - e cos(E)))
-		
+
 		//v^2 should be = mu/(a(1-e^2)) * (1 + e^2 - 2 cos(nu))	<- for nu = true anomaly
 		//v^2 should also be = mu (2/r - 1/a) = mu (2a - r) / (r a)
 		//... then (2 a - r) / (r a) should = (1 - 2 cos(nu) + e^2) / (a (1 - e^2))
@@ -749,7 +749,7 @@ r^2 = a^2 (cos(E)
 			A : A,
 			B : B
 		};
-		
+
 		//for elliptic orbits,
 		// we can accumulate & store the largest semi major axis of all children
 		//but for parabolic/hyperbolic ...
@@ -782,7 +782,7 @@ r^2 = a^2 (cos(E)
 			meanAnomaly = ke.meanAnomaly;
 			meanMotion = ke.meanAnomaly / (cfg.julianDate - ke.timeOfPeriapsisCrossing);
 		} else if (orbitType == 'parabolic') {
-console.log('parabolic orbit for planet',this);			
+console.log('parabolic orbit for planet',this);
 			throw 'got a parabolic orbit';
 		} else {
 			throw 'here';
@@ -822,7 +822,7 @@ console.log('parabolic orbit for planet',this);
 		}
 
 		//TODO don't use meanMotion for hyperbolic orbits
-		const fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI); 
+		const fractionOffset = timeAdvanced * meanMotion / (2 * Math.PI);
 		// TODO where did I get this from?  I think it's more like 'theta == eccentricAnomaly' cuz I'm doubling the value by adding this ...
 		//const theta = timeAdvanced * meanMotion;
 		const pathEccentricAnomaly = eccentricAnomaly;	// + theta;
@@ -844,7 +844,7 @@ console.log('parabolic orbit for planet',this);
 		let coeffDerivA, coeffDerivB;
 		if (orbitType == 'parabolic') {
 			//...?
-		} else if (orbitType == 'elliptic') { 
+		} else if (orbitType == 'elliptic') {
 			coeffA = Math.cos(pathEccentricAnomaly) - ke.eccentricity;
 			coeffB = Math.sin(pathEccentricAnomaly);
 			coeffDerivA = -Math.sin(pathEccentricAnomaly) * dE_dt;
@@ -861,7 +861,7 @@ console.log('parabolic orbit for planet',this);
 		const velX = A[0] * coeffDerivA + B[0] * coeffDerivB;	//m/day
 		const velY = A[1] * coeffDerivA + B[1] * coeffDerivB;
 		const velZ = A[2] * coeffDerivA + B[2] * coeffDerivB;
-		
+
 		this.pos[0] = posX + this.parent.pos[0];
 		this.pos[1] = posY + this.parent.pos[1];
 		this.pos[2] = posZ + this.parent.pos[2];

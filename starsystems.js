@@ -100,9 +100,9 @@ void main() {
 		coeffA = eccentricity - cosh(pathEccentricAnomaly);
 		coeffB = sinh(pathEccentricAnomaly);
 	}
-	vec3 pos = A * coeffA + B * coeffB;	
-	
-	alpha = frac; 
+	vec3 pos = A * coeffA + B * coeffB;
+
+	alpha = frac;
 
 	//I have to separate the modelTransform and viewTransform for any object that has a non-identity modelTransform that wants to use the flatEarthXForm
 	gl_Position = projMat * (viewMatInv * flatEarthXForm(localMat * vec4(pos, 1.)));
@@ -128,7 +128,7 @@ void main() {
 	for (let i = 0; i < cfg.orbitPathResolution; ++i) {
 		vertexes.push(i / (cfg.orbitPathResolution - 1));
 	}
-	
+
 	starSystemsExtra.orbitPathSceneObj = new glutil.SceneObject({
 		mode : gl.LINE_STRIP,
 		shader : orbitPathShader,
@@ -181,7 +181,7 @@ void main() {
 		Pluto:{toMoon:'Charon'},//ours: 119, exact: 119
 	};
 
-	//now set all moon tilt angles to the orbit axis 
+	//now set all moon tilt angles to the orbit axis
 	const Sun = solarSystem.planets[0];
 	for (let i = 0; i < solarSystem.planets.length; ++i) {
 		const planet = solarSystem.planets[i];
@@ -322,7 +322,7 @@ class StarSystems {
 	constructor() {
 		this.planetShadersForNumStars = {};
 	}
-	
+
 	// alot of this is intented to be singleton
 	// and that means it needs to be straightened out ...
 	// remove solarSystem from starSystemsExtra
@@ -409,16 +409,16 @@ class StarSystems {
 			pos : [0,0,0],
 			angle : [0,0,0,1],
 			parent : null
-		});	
-		
-		for (let i = 0; i < solarSystem.planets.length; ++i) { 
+		});
+
+		for (let i = 0; i < solarSystem.planets.length; ++i) {
 			let planet = solarSystem.planets[i];
 			planet.initColorSchRadiusAngle();
 			planet.initSceneLatLonLineObjs();
 		}
-	
+
 		initOrbitPaths();
-	
+
 		//ring texture for Jupiter
 		//http://www.celestiamotherlode.net/catalog/jupiter.php
 		(function(){
@@ -454,7 +454,7 @@ void main() {
 	//rotate the planet-local-frame vector into modelview space
 	vec4 eyePos = mvMat * flatEarthXForm(modelPos);
 	worldPosv = quatRotate(angle, modelPos.xyz) + pos;
-	
+
 	gl_Position = projMat * eyePos;
 	gl_Position.z = depthfunction(gl_Position);
 }
@@ -573,7 +573,7 @@ void main() {
 		//Saturn's rings
 		(function(){
 			let saturnRingShader = new ModifiedDepthShaderProgram({
-				vertexCode : 
+				vertexCode :
 cfg.quatRotateCode
 + `
 #define M_PI 3.1415926535897931
@@ -786,8 +786,8 @@ out vec3 lightDir[NUM_STARS];		//light position
 out vec3 normal;		//surface normal
 
 `
-+ cfg.geodeticPositionCode 
-+ cfg.quatRotateCode 
++ cfg.geodeticPositionCode
++ cfg.quatRotateCode
 + `
 
 void main() {
@@ -844,8 +844,8 @@ out vec3 lightDir[NUM_STARS];
 out vec3 normal;
 
 `
-+ cfg.geodeticPositionCode 
-+ cfg.quatRotateCode 
++ cfg.geodeticPositionCode
++ cfg.quatRotateCode
 + `
 
 void main() {
@@ -903,8 +903,8 @@ out vec2 texCoordv;
 out vec3 lightDir[NUM_STARS];
 
 `
-+ cfg.geodeticPositionCode 
-+ cfg.quatRotateCode 
++ cfg.geodeticPositionCode
++ cfg.quatRotateCode
 + `
 
 void main() {
@@ -1094,7 +1094,7 @@ void main() {
 
 				starSystem.planets.push(body);
 				if (body.type == 'star') starSystem.stars.push(body);
-				
+
 				if (bodyInfo.visualMagnitude !== undefined) {
 					//absolute magnitude based on visual magnitude
 					body.magnitude = bodyInfo.visualMagnitude - 5 * (Math.log10(distance / metersPerUnits.pc) - 1);

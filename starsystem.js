@@ -30,15 +30,15 @@ class StarSystem {
 			B
 			eccentricity
 			eccentricAnomaly
-	
-		for now just do position and mass 
+
+		for now just do position and mass
 		-- and manually update them
 		-- and use them for the planetSurfaceCalcuationShader
-	
+
 	TODO what to do about comets ...
 	for now just don't add them.
 	they don't get any tidal/gravitational force calculations anywyas.
-		
+
 	eventually set up a mask tex to hold what planets the user flags on/off
 	*/
 	createPlanetsFBOTex() {

@@ -1,6 +1,6 @@
 /*
 all stars of the milky way
-TODO OOP this, and make one per galaxy (which we have observed stars within) 
+TODO OOP this, and make one per galaxy (which we have observed stars within)
 */
 
 import {vec3, mat4} from '/js/gl-matrix-3.4.1/index.js';
@@ -26,7 +26,7 @@ const LSunOverL0 = LSun / L0;
 //maps from constellation index to list of vertex indexes in the point cloud
 //let indexesForConstellations = [];
 
-//maps from point cloud index to constellation index 
+//maps from point cloud index to constellation index
 let constellationForIndex = [];
 
 let starfield = new function() {
@@ -41,12 +41,12 @@ let starfield = new function() {
 	//this.renderScale = 1e+16;	//doesn't draw
 	//this.renderScale = 1e+17;	// gives us Pc/scale ~ 3.24 (on the order of 1) ... but it doesn't show. why not?  znear zfar?  but we have a custom depth function?
 	this.renderScale = metersPerUnits.pc;	//1:1 Pc/scale
-	
+
 	this.init = function() {
 		const gl = ui.gl;
 		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
 		let thiz = this;
-		
+
 		let bubbleTexWidth = 64;
 		let bubbleTexData = new Uint8Array(bubbleTexWidth * bubbleTexWidth * 3);
 		for (let j = 0; j < bubbleTexWidth; ++j) {
@@ -74,7 +74,7 @@ let starfield = new function() {
 			//alignment : 1,
 			generateMipmap : true
 		});
-		
+
 		console.log('init star tex...');
 		let starTexSize = 64;
 		let starTexData = new Uint8Array(starTexSize * starTexSize * 3);
@@ -82,7 +82,7 @@ let starfield = new function() {
 			for (let i = 0; i < starTexSize; ++i) {
 				let u = ((i+.5) / starTexSize) * 2 - 1;
 				let v = ((j+.5) / starTexSize) * 2 - 1;
-				/* some kind of 4-point star tex * /				
+				/* some kind of 4-point star tex * /
 				u *= .5;
 				v *= .5;
 				let av = Math.abs(v);
@@ -94,12 +94,12 @@ let starfield = new function() {
 				let rs = r / sigma;
 				let l = Math.exp(-rs*rs);
 				/**/
-				
+
 				/* ring tex */
 				let r = Math.sqrt(u*u + v*v)
 				let l = Math.exp(-50 * Math.pow(r - .75, 2))
 				/**/
-				
+
 				l = Math.floor(255 * mathClamp(l, 0, 1));
 				starTexData[0+3*(i+j*starTexSize)] = l;
 				starTexData[1+3*(i+j*starTexSize)] = l;
@@ -148,8 +148,8 @@ let starfield = new function() {
 				lastStarTexData = starTexData;
 			}
 		}
-		*/	
-		
+		*/
+
 		let loadColorTempTex = function(done) {
 			console.log('init color index tex...');
 			//going by http://stackoverflow.com/questions/21977786/star-b-v-color-index-to-apparent-rgb-color
@@ -171,7 +171,7 @@ let starfield = new function() {
 				console.log('failed to find color index texture');
 			});
 			tempImg.src = 'colorForTemp.png';
-		};	
+		};
 
 		let initColorIndexShader = function(done) {
 			console.log('init color index shader...');
@@ -216,16 +216,16 @@ void main() {
 //	}
 
 	vec4 vtx4 = vec4(vertex, 1.);
-	
+
 	// needs to be non-flat-earth for proper dist calcs and point size
-	vec4 vmv = mvMat * vtx4;	
-	
+	vec4 vmv = mvMat * vtx4;
+
 	vtx4 = localMat * vtx4;
 
 	//special hack for starfields, since they are in a different scale than planets ...
 	// TODO determine some good rescaling, but maybe I should fix the theta=pi/2 star problem in flatEarthXForm first...
 	if (flatEarthCoeff != 0.) {
-		vtx4 *= 2. * earthRadius;	// place out beyond the renormalization 
+		vtx4 *= 2. * earthRadius;	// place out beyond the renormalization
 		vtx4 = flatEarthXForm(vtx4);
 		vtx4 /= (2. * earthRadius * renderScale);
 	}
@@ -239,18 +239,18 @@ void main() {
 	//this is only in Pc if our scale is 1:1 with Pc
 	//I'm just keeping the names the same with the offline/visualize-stars.lua in the hopes that things will break the least when porting over
 	float distInPcSq = dot(vmv.xyz, vmv.xyz);
-	
+
 	//log(distInPc^2) = 2 log(distInPc)
 	//so log10(distInPc) = .5 log10(distInPc^2)
 	//so log10(distInPc) = .5 / log(10) * log(distInPc^2)
-	float log10DistInPc = (.5 * M_1_LOG_10) * log(distInPcSq) 
+	float log10DistInPc = (.5 * M_1_LOG_10) * log(distInPcSq)
 //		+ M_1_LOG_10 * log10UnitRatio
 	;
 
 	float LStarOverLSun = luminosity;
 	float LStarOverL0 = LSunOverL0 * LStarOverLSun;
 	float absoluteMagnitude = (-2.5 * M_1_LOG_10) * log(LStarOverL0);	// abs magn
-	
+
 	//apparent magnitude:
 	//M = absolute magnitude
 	//m = apparent magnitude
@@ -260,12 +260,12 @@ void main() {
 
 	//ok now on to the point size ...
 	//and magnitude ...
-	//hmm ... 
+	//hmm ...
 	//HDR will have to factor into here somehow ...
 	gl_PointSize = (6.5 - apparentMagnitude) * starPointSizeScale + starPointSizeBias;
 
 	lumv = 1.;
-	
+
 	// if the point size is < .5 then just make the star dimmer instead
 	const float pointSizeMin = .5;
 	float dimmer = gl_PointSize - pointSizeMin;
@@ -273,7 +273,7 @@ void main() {
 		gl_PointSize = pointSizeMin;
 		lumv *= pow(2., dimmer);
 	}
-	
+
 	//pointSizeMax TODO param
 	if (gl_PointSize > 50.) gl_PointSize = 50.;
 
@@ -297,12 +297,12 @@ void main() {
 
 	float lumf = lumv;
 
-	fragColor = vec4(tempcolor * lumf * starPointAlpha, 1.) 
+	fragColor = vec4(tempcolor * lumf * starPointAlpha, 1.)
 		* texture(starTex, gl_PointCoord);
 }
 `
 			});
-		
+
 			if (done) done();
 		};
 
@@ -317,12 +317,12 @@ void main() {
 				}
 			});
 			*/
-			
+
 			//unnamed is index 0
 //			for (let k = 0; k < constellations.length; ++k) {
-//				indexesForConstellations[k] = []; 
+//				indexesForConstellations[k] = [];
 //			}
-			
+
 			let numElem = 9;
 			xhr.addEventListener('load', e => {
 				let arrayBuffer = xhr.response;
@@ -332,7 +332,7 @@ void main() {
 				//don't forget velocity is not being rescaled (i'm not using it at the moment)
 				let floatBuffer = new Float32Array(data.byteLength / Float32Array.BYTES_PER_ELEMENT);
 				let len = floatBuffer.length;
-let numClose = 0;			
+let numClose = 0;
 
 				//stats on the data to verify
 				let xMin = Infinity;
@@ -360,7 +360,7 @@ console.log("rescaling data by "+(metersPerUnits.pc / thiz.renderScale));
 						x *= metersPerUnits.pc / thiz.renderScale;
 					}
 					floatBuffer[j] = x;
-				
+
 					//process every row:
 					if (j % numElem == numElem - 1) {
 						let x = floatBuffer[j - numElem + 1];
@@ -408,7 +408,7 @@ console.log('star lum range', lumMin, lumMax);
 console.log('star temp range', tempMin, tempMax);
 console.log('num stars total:', floatBuffer.length / numElem);
 console.log('num stars within 1pc:', numClose);
-				
+
 				//now that we have the float buffer ...
 				thiz.buffer = new glutil.ArrayBuffer({data : floatBuffer, dim : numElem});
 				thiz.sceneObj = new glutil.SceneObject({
@@ -416,7 +416,7 @@ console.log('num stars within 1pc:', numClose);
 					shader : thiz.colorIndexShader,
 					attrs : {
 						vertex : new glutil.Attribute({buffer : thiz.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 0}),	//xyz in Parsecs
-						velocity : new glutil.Attribute({buffer : thiz.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 3 * Float32Array.BYTES_PER_ELEMENT}),	//velocity 
+						velocity : new glutil.Attribute({buffer : thiz.buffer, size : 3, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 3 * Float32Array.BYTES_PER_ELEMENT}),	//velocity
 						luminosity : new glutil.Attribute({buffer : thiz.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 6 * Float32Array.BYTES_PER_ELEMENT}),	//luminosity in LSun units
 						temperature : new glutil.Attribute({buffer : thiz.buffer, size : 1, stride : numElem * Float32Array.BYTES_PER_ELEMENT, offset : 7 * Float32Array.BYTES_PER_ELEMENT})	//temperature in K
 					},
@@ -425,7 +425,7 @@ console.log('num stars within 1pc:', numClose);
 						starTex : 1,
 						starPointSizeBias : cfg.starPointSizeBias,
 						starPointSizeScale : cfg.starPointSizeScale,
-						starPointAlpha : cfg.starPointAlpha 
+						starPointAlpha : cfg.starPointAlpha
 					},
 					texs : [
 						assert(thiz.tempTex),
@@ -444,7 +444,7 @@ console.log('num stars within 1pc:', numClose);
 				if (starSystems.length > 1) thiz.addStarSystems();
 
 				if (done) done();
-			
+
 
 				//ugly ugly code
 				// see if the starsystems are already oloaded
@@ -452,7 +452,7 @@ console.log('num stars within 1pc:', numClose);
 			});
 			xhr.send();
 		};
-	
+
 
 		loadColorTempTex(function() {
 			initColorIndexShader(function() {
@@ -469,7 +469,7 @@ console.log('num stars within 1pc:', numClose);
 
 /* add stars from open exoplanet data */
 		{
-			console.log('adding star systems to star fields and vice versa');	
+			console.log('adding star systems to star fields and vice versa');
 			assert(starSystems.length > 1);
 
 			//add buffer points
@@ -506,7 +506,7 @@ console.log('num stars within 1pc:', numClose);
 				"Kapteyn's Star":1,
 				"Fomalhaut":1,
 			})[args.name]) continue;	//hmm... there are some double-ups ...
-			
+
 			let starSystem = new StarSystem();
 
 			starSystem.name = args.name;
@@ -543,12 +543,12 @@ console.log('num stars within 1pc:', numClose);
 			body.initColorSchRadiusAngle();
 			body.initSceneLatLonLineObjs();
 			body.getKOEFromSourceData();
-			
+
 			starSystem.planets.push(body);
 			starSystem.stars.push(body);
-			
+
 			starSystem.doneBuildingPlanets();
-		
+
 			starSystem.initPlanets = starSystem.clonePlanets();
 			starSystemForNames[starSystem.name] = starSystem;
 			starSystem.index = starSystems.length;
@@ -574,21 +574,21 @@ console.log('num stars within 1pc:', numClose);
 		const thiz = this;
 
 		if (!cfg.showStars) return;
-			
+
 		gl.clear(gl.DEPTH_BUFFER_BIT)
 		vec3.scale(viewPosInv, glutil.view.pos, -1/this.renderScale);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 
 		if (distFromSolarSystemInLyr < this.maxDistInLyr &&
-			this.sceneObj !== undefined && 
+			this.sceneObj !== undefined &&
 			cfg.orbitTarget !== undefined &&
 			cfg.orbitTarget.pos !== undefined)
 		{
-			let pointSize = 
-				canvas.width 
+			let pointSize =
+				canvas.width
 				/ 100
-				* metersPerUnits.pc 
-				/ this.renderScale 
+				* metersPerUnits.pc
+				/ this.renderScale
 				/ tanFovY;
 
 			this.sceneObj.uniforms.starPointSizeBias = cfg.starPointSizeBias;
@@ -603,7 +603,7 @@ console.log('num stars within 1pc:', numClose);
 			this.sceneObj.uniforms.earthNorthDir = cfg.flatEarthRelativeEarthNorthDir;
 
 			if (!picking) {
-				
+
 				gl.disable(gl.DEPTH_TEST);
 
 let pushZNear = glutil.view.zNear;
@@ -624,18 +624,18 @@ glutil.updateProjection();
 					//let colorScale = starfield.colorScale || .5;//(distFromSolarSystemInLyr - cfg.bubbleStartFadeDistInLyr) / (cfg.bubbleStopFadeDistInLyr - cfg.bubbleStartFadeDistInLyr);
 					//colorScale = mathClamp(colorScale, 0, 1);
 
-					let pointSize = 
-						canvas.width 
+					let pointSize =
+						canvas.width
 						/ 10
-						* metersPerUnits.pc 
-						/ this.renderScale 
+						* metersPerUnits.pc
+						/ this.renderScale
 						/ tanFovY;
-					
+
 					this.sceneObj.draw({
 						uniforms : {
 							starPointSizeBias : cfg.starPointSizeBias,
 							starPointSizeScale : cfg.starPointSizeScale,
-							starPointAlpha : cfg.starPointAlpha  
+							starPointAlpha : cfg.starPointAlpha
 						},
 						texs : [this.tempTex, this.bubbleTex]
 					});
@@ -656,7 +656,7 @@ glutil.updateProjection();
 //							},
 //							texs : [this.tempTex, this.bubbleTex]
 //						});
-//					
+//
 ///**/
 //						//and draw some bboxes around it
 //						let minmax = ['min', 'max'];
@@ -683,12 +683,12 @@ glutil.updateProjection();
 //								lineObj.attrs.vertex.buffer.data[3] = dist2 * Math.cos(ra2) * Math.cos(dec2) + (sunPos[0] - cfg.orbitTarget.pos[0]) / this.renderScale;
 //								lineObj.attrs.vertex.buffer.data[4] = dist2 * Math.sin(ra2) * Math.cos(dec2) + (sunPos[1] - cfg.orbitTarget.pos[1]) / this.renderScale;
 //								lineObj.attrs.vertex.buffer.data[5] = dist2 * Math.sin(dec2)                 + (sunPos[2] - cfg.orbitTarget.pos[2]) / this.renderScale;
-//					
+//
 //								lineObj.attrs.vertex.buffer.updateData();
 //								lineObj.draw({uniforms : { color : [1,1,1,1] }});
 //							}
 //						}
-///**/					
+///**/
 //					}
 //				}
 				this.sceneObj.geometry.indexes = undefined;
@@ -696,13 +696,13 @@ glutil.updateProjection();
 
 
 				gl.enable(gl.DEPTH_TEST);
-			
+
 			} else {
 				//I've got to call 'draw' to have the SceneObject matrixes calculated correctly
 				//that means I've got to push/pop glutil.scene.projMat and load it with the pick projMat
 				//but I really can't use attrs or uniforms because GLUtil right now merges *only* and I need it to replace ...
 				if (cfg.allowSelectStars) {
-				
+
 					/* TODO render via buffer? * /
 					//also TODO:
 					//if (list === this && target == cfg.orbitStarSystem) continue;
@@ -744,7 +744,7 @@ glutil.updateProjection();
 						}
 					});
 					/**/
-					/* only visible constellations ... 
+					/* only visible constellations ...
 					but TODO we need a starSytsem object * /
 					for (let k = 0; k < constellations.length; ++k) {
 						if (displayConstellations[k]) {
@@ -777,7 +777,7 @@ glutil.updateProjection();
 		if (!picking) {
 			for (let starSystemIndex = 0; starSystemIndex < starSystems.length; ++starSystemIndex) {
 				let starSystem = starSystems[starSystemIndex];
-				
+
 				let withinSolarSystem = false;
 				for (let planetIndex = 0; planetIndex < starSystem.planets.length; ++planetIndex) {
 					if (starSystem.planets[planetIndex].orbitVisRatio > 1) {
@@ -786,7 +786,7 @@ glutil.updateProjection();
 					}
 				}
 				if (withinSolarSystem) continue;
-				
+
 				//if the star system is close enough
 				//TODO use luminance
 				let deltaX = starSystem.pos[0] - cfg.orbitTarget.pos[0];

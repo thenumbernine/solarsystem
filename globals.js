@@ -77,9 +77,9 @@ const cfg = {
 	orbitStarSystem : undefined,	//only do surface calculations for what star system we are in
 	orbitTarget : undefined,
 	orbitTargetDistance : undefined,
-	
+
 	displayMethod : 'None',
-	
+
 	//ugly ugly singletons
 	starSystemsHasGotResults : false,
 
@@ -146,7 +146,7 @@ vec3 quatRotate(vec4 q, vec3 v){
 
 //used by milkyway and skycube
 //which really both do the same thing: display the milky way in the foreground or background
-cfg.coordinateSystemCode = 
+cfg.coordinateSystemCode =
 `
 const mat3 eclipticalToGalactic = `+mat3ToGLSL(eclipticalToGalacticTransform)+`;
 const mat3 equatorialToEcliptical = `+mat3ToGLSL(equatorialToEclipticalTransform)+`;

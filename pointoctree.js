@@ -11,7 +11,7 @@ class PointOctreeNode {
 		this.center = [];
 	}
 	loadData() {
-		if (this.sceneObj) return;		
+		if (this.sceneObj) return;
 		if (this.loadingData) return;
 		this.unloaded = false;
 		this.loadingData = true;
@@ -67,8 +67,8 @@ class PointOctreeNode {
 				}
 			}
 		}
-		
-		// TODO put all the other attr arrays in *another* geometry object, or texture, 
+
+		// TODO put all the other attr arrays in *another* geometry object, or texture,
 		// and GPU render-to-buffer to update the positions
 		this.sceneObj = new glutil.SceneObject({
 			mode : gl.POINTS,
@@ -105,21 +105,21 @@ class PointOctreeNode {
 			this.maxs[0] - this.mins[0],
 			this.maxs[1] - this.mins[1],
 			this.maxs[2] - this.mins[2]);
-		//from center 
+		//from center
 		let dx = this.center[0] - glutil.view.pos[0] - cfg.orbitTarget.pos[0];
 		let dy = this.center[1] - glutil.view.pos[1] - cfg.orbitTarget.pos[1];
 		let dz = this.center[2] - glutil.view.pos[2] - cfg.orbitTarget.pos[2];
 		let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-		
+
 		//TODO test occlusion
-		
+
 		this.visRatio = radius / (dist * tanFovY);
-		if (this.visRatio < this.tree.visRatioThreshold 
-|| this.unloaded		
+		if (this.visRatio < this.tree.visRatioThreshold
+|| this.unloaded
 		) {//too-small threshold
 			//TODO remove any cached geometry
 			this.unloadData();
-			return;	
+			return;
 		}
 
 		//TODO for all-at-once downloading, just look things up in the big binary structure
@@ -151,19 +151,19 @@ class PointOctreeNode {
 	draw(distInM, tanFovY, picking) {
 		//no geometry and no buffer if the points buffer is size zero
 		if (!this.sceneObj) return;
-		
-		let pointSize = 
-			this.pointSize 
-			* canvas.width 
-			* Math.sqrt(distInM) 
+
+		let pointSize =
+			this.pointSize
+			* canvas.width
+			* Math.sqrt(distInM)
 			/ tanFovY;
 		this.sceneObj.uniforms.pointSize = pointSize;
 		this.sceneObj.uniforms.alpha = this.pointAlpha;
 		this.sceneObj.uniforms.julianDate = cfg.julianDate;
-		
+
 		if (picking) {
 			//extra tough too-small threshold for picking
-			if (this.visRatio < this.tree.visRatioPickThreshold) return;	
+			if (this.visRatio < this.tree.visRatioPickThreshold) return;
 			let thiz = this;
 			cfg.pickObject.drawPoints({
 				sceneObj : this.sceneObj,
@@ -212,13 +212,13 @@ class PointOctree {
 		assertEquals(this.rows[0].type, 'vec3');
 		assertEquals(this.rows[1].name, 'index');
 		assertEquals(this.rows[1].type, 'int');
-		
-		
+
+
 		this.allNodes = [];
 		this.drawProcessing = [];
 		this.drawnThisFrame = [];
 		this.cache = {};
-		
+
 		this.shader = new ModifiedDepthShaderProgram({
 			vertexCode : `
 in vec3 vertex;
@@ -294,7 +294,7 @@ void main() {
 				}
 			});
 		} //this.showWithDensity
-		
+
 		this.load();
 	},
 	load : function() {
@@ -314,7 +314,7 @@ void main() {
 			}, 5000);
 		});
 	}
-	
+
 	/*
 	data holds
 		mins
@@ -338,12 +338,12 @@ void main() {
 			this.root.maxs[j] = data.maxs[j];
 			this.root.center[j] = .5 * (data.mins[j] + data.maxs[j]);
 		}
-		
+
 		this.allNodes.push(this.root);
 
 		this.processNode(this.root);
 	}
-	
+
 	processNode(node) {
 		//node.nodeID includes offsets into each level
 
@@ -357,7 +357,7 @@ void main() {
 					let childLevelStart = ((1 << (3*childDepth)) - 1) / 7;
 					let childLevelID = node.levelID | (childIndex << 3*node.depth);
 					let childNodeID = childLevelStart + childLevelID;
-					//if we find it in the master list 
+					//if we find it in the master list
 					// then create the node
 					if (!this.nodeIDSet[childNodeID]) continue;
 					if (!node.children) node.children = [];
@@ -366,7 +366,7 @@ void main() {
 					child.nodeID = childNodeID;
 					child.depth = childDepth;
 					child.levelID = childLevelID;
-					
+
 					node.children[childIndex] = child;
 					child.parent = node;
 					this.allNodes.push(child);
@@ -375,7 +375,7 @@ void main() {
 						child.maxs[j] = is[j] ? node.maxs[j] : node.center[j];
 						child.center[j] = .5 * (child.mins[j] + child.maxs[j]);
 					}
-					
+
 					this.processNode(child);
 				}
 			}
@@ -394,7 +394,7 @@ void main() {
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		vec3.sub(viewPosInv, viewPosInv, cfg.orbitTarget.pos);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
-	
+
 		if (!this.showWithDensity) {
 			//TODO adjust based on LOD node depth
 			if (this.root) {
@@ -447,7 +447,7 @@ void main() {
 				gl.enable(gl.DEPTH_TEST);
 			}
 		} //this.showWithDensity
-		
+
 		vec3.scale(viewPosInv, glutil.view.pos, -1);
 		mat4.translate(glutil.scene.mvMat, invRotMat, viewPosInv);
 	}
@@ -469,7 +469,7 @@ void main() {
 		if (this.cache[index]) {
 			return this.cache[index];
 		}
-	
+
 		return this.createOrbitTarget(node,nodeLocalIndex,x,y,z,index);
 	}
 }

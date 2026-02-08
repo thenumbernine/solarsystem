@@ -52,7 +52,7 @@ out float tidev;
 out vec2 texCoordv;
 
 `
-+ cfg.geodeticPositionCode 
++ cfg.geodeticPositionCode
 + cfg.quatRotateCode + `
 
 void main() {
@@ -89,10 +89,10 @@ void main() {
 	initPlanetSceneObj(planet) {
 		const gl = ui.gl;
 		//old way, per-vertex storage, updated by CPU
-		
+
 		const tideArray = [];
 		for (let i = 0; i < starSystemsExtra.planetSceneObj.attrs.vertex.buffer.count; ++i) tideArray.push(0);
-	
+
 		planet.tideBuffer = new glutil.ArrayBuffer({dim : 1, data : tideArray, usage : gl.DYNAMIC_DRAW});
 		planet.tideAttr = new glutil.Attribute(planet.tideBuffer);
 	}
@@ -104,14 +104,14 @@ void main() {
 		gl.useProgram(null);
 	}
 
-	// old way -- calculate on CPU, upload to vertex buffer 
+	// old way -- calculate on CPU, upload to vertex buffer
 	updatePlanetSceneObj(planet) {
 		//TODO what if planet.tex === undefined?
 		planet.sceneObj.shader = this.planetHeatMapAttrShader;
 		planet.sceneObj.texs.length = 2;
 		planet.sceneObj.texs[0] = planet.tex;
 		planet.sceneObj.texs[1] = this.hsvTex;
-			
+
 		//and update calculated variable if it is out of date ...
 		if (planet.lastMeasureCalcDate !== cfg.julianDate) {
 			planet.lastMeasureCalcDate = cfg.julianDate;
@@ -155,12 +155,12 @@ class CalcTidesGPU extends CalcTides {
 		super.initGL(...args);
 		const gl = ui.gl;
 		const ModifiedDepthShaderProgram = ui.ModifiedDepthShaderProgram;
-		
+
 		this.fbo = new glutil.Framebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo.obj);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		
-		//renders a heat map from the float values of the 'tide' texture 
+
+		//renders a heat map from the float values of the 'tide' texture
 		this.planetHeatMapTexShader = new ModifiedDepthShaderProgram({
 			vertexCode : `
 uniform mat4 mvMat;
@@ -175,7 +175,7 @@ out vec2 texCoordv;
 
 `
 + cfg.geodeticPositionCode
-+ cfg.quatRotateCode 
++ cfg.quatRotateCode
 + `
 
 void main() {
@@ -248,11 +248,11 @@ uniform sampler2D planetStateTex;	//texture of planet states.  currently [x y z 
 // y = normal tidal
 // z = tangent gravitational
 // w = normal gravitational
-uniform bvec4 flags; 
+uniform bvec4 flags;
 
 ` + `const float gravitationalConstant = `+(cfg.gravitationalConstant*1e+11)+`;	// m^3 / (kg * s^2)
-` + cfg.geodeticPositionCode 
-+ cfg.quatRotateCode 
+` + cfg.geodeticPositionCode
++ cfg.quatRotateCode
 + `
 
 //while the double precision hack works great for fractions, it doesn't add too much to the extent of the range of the number
@@ -487,7 +487,7 @@ double3 calcGravityAccel(
 				double1_mul(								//g+m
 					double1_set(-gravitationalConstant * gravityPrecisionBias), //g
 					planetMass								 //m
-				), 
+				),
 				r3											//3d
 			)
 		);
@@ -513,10 +513,10 @@ double3 calcTidalAccel(
 						double1_mul(			//d
 							double1_set(3.), 	//0
 							xDotN				//d
-						), 
+						),
 						r2						//2d
 					)
-				), 
+				),
 				solarSystemNormal				//0
 			),
 			double1_mul(							//g+m-2d
@@ -544,7 +544,7 @@ float calcForceValue(vec3 solarSystemVertex_s, vec3 solarSystemNormal_s) {
 
 	double3 tideAccel = double3_zero();
 	double3 gravAccel = double3_zero();
-	
+
 	float delta_i = 1. / float(planetStateTexHeight);
 	//only works with constant upper bounds ...
 	const int NEEDLESSUPPERBOUND = 1024;
@@ -587,7 +587,7 @@ void main() {
 	vec2 latLonCoord = ((texCoordv - vec2(.5, .5)) * vec2(360., 180.)).yx;
 	vec3 planetVertex = geodeticPosition(latLonCoord) * scaleExaggeration;	//planet's local frame
 	vec3 solarSystemRotatedVertex = quatRotate(angle, planetVertex);	//...rotated into the solar system (but still centered at earth origin)
-	vec3 solarSystemVertex = solarSystemRotatedVertex + pos;	///...translated to be relative to the SSB 
+	vec3 solarSystemVertex = solarSystemRotatedVertex + pos;	///...translated to be relative to the SSB
 	vec3 solarSystemNormal = normalize(solarSystemRotatedVertex);	//normalize() doesn't correctly handle ellipses.  you're supposed to scale the normal by [1/sx, 1/sy, 1/sz] or something to correct for the flattening distortion of the normals.
 	float forceValue = calcForceValue(solarSystemVertex, solarSystemNormal);
 	fragColor = vec4(forceValue);
@@ -597,7 +597,7 @@ void main() {
 				planetStateTex : 0
 			}
 		});
-	
+
 		//tex used for performing min/max across tide tex
 		console.log('init tide reduce texs...');
 		this.tideReduceTexs = [];
@@ -618,7 +618,7 @@ void main() {
 				//data : initialDataF32	//why is this needed?
 			}));
 		});
-	
+
 		console.log('init encode temp tex...');
 		this.encodeTempTex = new glutil.Texture2D({
 			internalFormat : gl.RGBA,
@@ -716,11 +716,11 @@ vec4 encode_float(float val) {
 	float exponent = floor(log2(val));
 	float biased_exponent = exponent + 127.0;
 	float fraction = ((val / exp2(exponent)) - 1.0) * 8388608.0;
-	
+
 	float t = biased_exponent / 2.0;
 	float last_bit_of_biased_exponent = fract(t) * 2.0;
 	float remaining_bits_of_biased_exponent = floor(t);
-	
+
 	float byte4 = extract_bits(fraction, 0.0, 8.0) / 255.0;
 	float byte3 = extract_bits(fraction, 8.0, 16.0) / 255.0;
 	float byte2 = (last_bit_of_biased_exponent * 128.0 + extract_bits(fraction, 16.0, 23.0)) / 255.0;
@@ -736,9 +736,9 @@ void main() {
 `.replace(/\$channel/g, channel),
 				texs : ['tex']
 			});
-		}	
+		}
 	}
-	
+
 	initPlanetSceneObj(planet) {
 		//new way, per-texel storage, updated by GPU FBO kernel
 		//TODO pull these by request rather than allocating them per-planet (since we only ever see one or two or maybe 10 or 20 at a time .. never all 180+ local and even more)
@@ -756,7 +756,7 @@ void main() {
 			}
 		});
 	}
-	
+
 	updateHeatMapAlpha(heatAlpha) {
 		const gl = ui.gl;
 		gl.useProgram(this.planetHeatMapTexShader.obj);
@@ -772,7 +772,7 @@ void main() {
 		planet.sceneObj.texs[0] = planet.tex;
 		planet.sceneObj.texs[1] = planet.tideTex;
 		planet.sceneObj.texs[2] = this.hsvTex;
-		
+
 		//and update calculated variable if it is out of date ...
 		if (planet.lastMeasureCalcDate !== cfg.julianDate) {
 			planet.lastMeasureCalcDate = cfg.julianDate;
@@ -782,8 +782,8 @@ void main() {
 			// (could compute this on the fly, but then there's no easy way to find the min/max ... )
 			// (could store as texture, and just keep the texture small ... around the size that the tideBuffer already is ... 36x72 )
 
-			//fbo render to the tide tex to calcuate the float values 
-	
+			//fbo render to the tide tex to calcuate the float values
+
 			//look in the shader's code for which does what
 			let flags;
 			switch (displayMethod) {
@@ -816,7 +816,7 @@ void main() {
 				flags = [true, true, true, true];
 				break;
 			}
-	
+
 			let viewport = gl.getParameter(gl.VIEWPORT);
 
 			this.fbo.setColorAttachmentTex2D(0, planet.tideTex);
@@ -851,15 +851,15 @@ void main() {
 			let reduce = function(kernelShader, src) {
 				let width = tideTexWidth;
 				let height = tideTexHeight;
-				let dstIndex = 0; 
+				let dstIndex = 0;
 				let current = src;
 
 				while (width > 1 && height > 1) {
 					width >>= 1;
 					height >>= 1;
-					if (!width || !height) throw 'got a non-square size... TODO add support for this'; 
+					if (!width || !height) throw 'got a non-square size... TODO add support for this';
 					gl.viewport(0, 0, width, height);
-					
+
 					thiz.fbo.bind();
 					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, thiz.tideReduceTexs[dstIndex].obj, 0);
 					thiz.fbo.check();
@@ -867,7 +867,7 @@ void main() {
 					quadObj.draw({
 						shader : kernelShader,
 						uniforms : {
-							texsize : [tideTexWidth, tideTexHeight], 
+							texsize : [tideTexWidth, tideTexHeight],
 							viewsize : [width, height]
 						},
 						texs : [current]
@@ -877,7 +877,7 @@ void main() {
 					current = thiz.tideReduceTexs[dstIndex];
 					dstIndex = (dstIndex + 1) & 1;
 				}
-		
+
 				//'current' has our texture
 
 				//now that the viewport is 1x1, run the encode shader on it
@@ -893,7 +893,7 @@ void main() {
 				let cflUint8Result = new Uint8Array(4);
 				gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, cflUint8Result);
 				thiz.fbo.unbind();
-				
+
 				let cflFloat32Result = new Float32Array(cflUint8Result.buffer);
 				let result = cflFloat32Result[0];
 				return result;
@@ -914,12 +914,12 @@ planet.forceMax = (planet.measureMin - planet.measureMax) / colorBarHSVRange + p
 			gl.viewport.apply(gl, viewport);
 			gl.enable(gl.DEPTH_TEST);
 			gl.enable(gl.CULL_FACE);
-			
+
 			//...then use the float buffer, min, and max, to do the hsv overlay rendering
 
 		}
 	}
-	
+
 	drawPlanet(planet) {}
 }
 

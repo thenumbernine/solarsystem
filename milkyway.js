@@ -7,7 +7,7 @@ import {galaxyCenterInEquatorialCoordsInMpc} from './vec.js';
 let milkyWay = new function(){
 	this.fadeMinDistInLyr = 50;
 	this.fadeMaxDistInLyr = 1000;
-	
+
 	this.init = function(
 	) {
 		const gl = ui.gl;
@@ -76,7 +76,7 @@ void main() {
 		});
 		img.src = 'textures/milkyway.png';
 	};
-	
+
 	this.draw = function(
 		tanFovY,
 		picking,
@@ -87,13 +87,13 @@ void main() {
 		if (picking) return;
 		//draw milky way if we're far enough out
 		if (distFromSolarSystemInLyr <= this.fadeMinDistInLyr) return;
-			
+
 		if (cfg.orbitTarget !== undefined && cfg.orbitTarget.pos !== undefined) {
 			this.sceneObj.pos[0] = galaxyCenterInEquatorialCoordsInMpc[0] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[0] / cfg.interGalacticRenderScale;
 			this.sceneObj.pos[1] = galaxyCenterInEquatorialCoordsInMpc[1] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[1] / cfg.interGalacticRenderScale;
 			this.sceneObj.pos[2] = galaxyCenterInEquatorialCoordsInMpc[2] * (metersPerUnits.Mpc / cfg.interGalacticRenderScale) - cfg.orbitTarget.pos[2] / cfg.interGalacticRenderScale;
 		}
-	
+
 		//apply milky way local transforms to mpc mv mat
 		const gl = ui.gl;
 		gl.disable(gl.CULL_FACE);

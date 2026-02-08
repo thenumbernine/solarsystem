@@ -19,13 +19,13 @@ GLUtil.prototype.oninit.push(function() {
 			const varyingVar = args.varying !== undefined ? args.varying : 'pos';
 			const varyingCodePrefix = 'varying vec2 '+varyingVar+';\n';
 throw "TODO use unitQuad, so varyingVar = vertex.xy; gl_Position = vec4(vertex.xy * 2. - 1.), and pos varies [0,1]";
-			const vertexCode = 
+			const vertexCode =
 varyingCodePrefix.replace(/varying/g, 'out')
 + `
 in vec2 vertex;
 in vec2 texCoord;
 void main() {
-	` + varyingVar + ` = texCoord; 
+	` + varyingVar + ` = texCoord;
 	gl_Position = vec4(vertex, 0., 1.);
 }
 `;
@@ -61,9 +61,9 @@ void main() {
 				vertexPrecision : args.precision,
 				vertexCode : args.vertexCode !== undefined ? args.vertexCode : vertexCode,
 				fragmentPrecision : args.precision,
-				fragmentCode : 
-					varyingCodePrefix.replace(/varying/g, 'in') 
-					+ fragmentCodePrefix 
+				fragmentCode :
+					varyingCodePrefix.replace(/varying/g, 'in')
+					+ fragmentCodePrefix
 					+ (args.code !== undefined ? args.code : ''),
 				uniforms : uniforms,
 			});
