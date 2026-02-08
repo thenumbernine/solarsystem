@@ -247,7 +247,7 @@ void main() {
 			this.fboTexWidth = 2048;
 			this.fboTexHeight = 2048;
 			this.fboTex = new glutil.Texture2D({
-				internalFormat : gl.RGBA,
+				internalFormat : gl.RGBA32F,
 				format : gl.RGBA,
 				type : gl.FLOAT,
 				width : this.fboTexWidth,

@@ -44,7 +44,7 @@ class StarSystem {
 	createPlanetsFBOTex() {
 		const gl = ui.gl;
 		this.planetStateTex = new glutil.Texture2D({
-			internalFormat : gl.RGBA,		//xyz = pos, w = mass.  double this up if you need more precision
+			internalFormat : gl.RGBA32F,		//xyz = pos, w = mass.  double this up if you need more precision
 			type : gl.FLOAT,
 			width : 1,	//might double this if we need more accuracy
 			height : this.planets.length,	//npo2 ...

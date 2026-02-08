@@ -606,7 +606,7 @@ void main() {
 			thiz.tideReduceTexs.push(new glutil.Texture2D({
 				width : tideTexWidth,
 				height : tideTexHeight,
-				internalFormat : gl.RGBA,
+				internalFormat : gl.RGBA32F,
 				format : gl.RGBA,
 				type : gl.FLOAT,
 				minFilter : gl.NEAREST,
@@ -743,7 +743,8 @@ void main() {
 		//new way, per-texel storage, updated by GPU FBO kernel
 		//TODO pull these by request rather than allocating them per-planet (since we only ever see one or two or maybe 10 or 20 at a time .. never all 180+ local and even more)
 		planet.tideTex = new glutil.Texture2D({
-			internalFormat : gl.RGBA,
+			internalFormat : gl.RGBA32F,
+			format : gl.RGBA,
 			type : gl.FLOAT,
 			width : tideTexWidth,
 			height : tideTexHeight,
