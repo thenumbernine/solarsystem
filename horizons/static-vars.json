@@ -1,0 +1,4322 @@
+horizonsStaticData = [{
+    "id":0,
+	"name":"Solar System Barycenter"
+  },{
+    "density":5427.0,
+    "equatorialRadius":2440530.0,
+    "id":1,
+    "magnitude":30.972125660478,
+    "mass":3.30104e+23,
+    "name":"Mercury Barycenter",
+    "parent":"Solar System Barycenter",
+    "radius":2439700.0,
+    "vars":{
+      "1":"                                 Perihelio",
+      "2":"n  Aphelion    Mean",
+      "3":"  Solar Constant (W/m^2)         14462    ",
+      "4":"   6278        9126",
+      "5":"  Maximum Planetary IR (W/m^2)   12700    ",
+      "6":"   5500        8000",
+      "7":"  Minimum Planetary IR (W/m^2)   6        ",
+      "8":"   6           6",
+      "Atmos. pressure (bar)":"< 5x10^-15",
+      "Core radius (km)":"~1600",
+      "Density (g cm^-3)":"5.427",
+      "Equ. gravity  m/s^2":"3.701",
+      "Equatorial radius, Re":"2440.53 km",
+      "Escape vel. km/s":"4.435",
+      "GM (km^3/s^2)":"22031.86855",
+      "GM 1-sigma (km^3/s^2)":"",
+      "Geometric Albedo":"0.106",
+      "Hill's sphere rad. Rp":"94.4",
+      "Mass ratio (Sun/plnt)":"6023682",
+      "Mass x10^23 (kg)":"3.302",
+      "Max. angular diam.":"11.0\"",
+      "Mean Orbit vel.  km/s":"47.362",
+      "Mean Temperature (K)":"440",
+      "Mean solar day":"175.9421 d",
+      "Mom. of Inertia":"0.33",
+      "Obliquity to orbit[1]":"2.11' +/- 0.1'",
+      "Sid. rot. rate (rad/s)":"0.00000124001",
+      "Sidereal orb. per.":"87.969257  d",
+      "Sidereal rot. period":"58.6463 d",
+      "Surface emissivity":"0.77+-0.06",
+      "Visual mag. V(1,0)":"-0.42",
+      "Vol. Mean Radius (km)":"2439.4+-0.1",
+      "Volume (x10^10 km^3)":"6.085"
+    }
+  },{
+    "density":5243.0,
+    "equatorialRadius":6051893.0,
+    "id":2,
+    "magnitude":27.102125660478,
+    "mass":4.86732e+24,
+    "name":"Venus Barycenter",
+    "parent":"Solar System Barycenter",
+    "radius":6051800.0,
+    "vars":{
+      "1":"                                 Periheli",
+      "2":"on  Aphelion    Mean",
+      "3":"  Solar Constant (W/m^2)         2759    ",
+      "4":"     2614       2650",
+      "5":"  Maximum Planetary IR (W/m^2)    153    ",
+      "6":"     153         153",
+      "7":"  Minimum Planetary IR (W/m^2)    153    ",
+      "8":"     153         153",
+      "Atmos. pressure (bar)":"90",
+      "Core radius (km)":"~3200",
+      "Density (g/cm^3)":"5.204",
+      "Equ. gravity  m/s^2":"8.870",
+      "Equatorial Radius, Re":"6051.893 km",
+      "Escape speed, km/s":"10.361",
+      "GM (km^3/s^2)":"324858.592",
+      "GM 1-sigma (km^3/s^2)":"+-0.006",
+      "Geometric Albedo":"0.65",
+      "Hill's sphere rad.,Rp":"167.1",
+      "Mass ratio (Sun/Venus)":"408523.72",
+      "Mass x10^23 (kg)":"48.685",
+      "Max. angular diam.":"60.2\"",
+      "Mean Temperature (K)":"735",
+      "Mean solar day":"116.7490 d",
+      "Mom. of Inertia":"0.33",
+      "Obliquity to orbit":"177.3 deg",
+      "Orbit speed, km/s":"35.021",
+      "Potential Love # k2":"~0.25",
+      "Sid. Rot. Rate (rad/s)":"-0.00000029924",
+      "Sidereal orb. per., d":"224.70079922",
+      "Sidereal orb. per., y":"0.61519726",
+      "Sidereal rot. period":"243.018484 d",
+      "Visual mag. V(1,0)":"-4.40",
+      "Vol. Mean Radius (km)":"6051.84+-0.01",
+      "Volume (x10^10 km^3)":"92.843"
+    }
+  },{
+    "id":3,
+    "name":"Earth Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":4,
+    "name":"Mars Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":5,
+    "name":"Jupiter Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":6,
+    "name":"Saturn Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":7,
+    "name":"Uranus Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":8,
+    "name":"Neptune Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":9,
+    "name":"Pluto Barycenter",
+    "parent":"Solar System Barycenter",
+    "vars":[]
+  },{
+    "id":10,
+    "mass":1.9891e+30,
+    "name":"Sun",
+    "parent":"Solar System Barycenter",
+	"radius":695508000,
+    "vars":{
+      ".":"271 deg.; DEC.= +30 deg.",
+      "1":"                                    speed: 19.",
+      "2":"4 km/s (0.0112 au/day)",
+      "264.7 +- 0.8; b":"48.2 +- 0.5 deg.",
+      "3":"                                    speed: 369",
+      "4":" +-11 km/s",
+      "Adopted sid. rot. per.":"25.38 d",
+      "Angular diam at 1 AU":"1919.3\"",
+      "Chromospheric depth":"~2500 km",
+      "Cycle 24 sunspot min.":"2008 A.D.",
+      "Effective temp, K":"5772",
+      "Escape speed, km/s":"617.7",
+      "Flatness, f":"0.00005",
+      "GM, km^3/s^2":"132712440041.93938",
+      "Luminosity, 10^24 J/s":"382.8",
+      "Mass, 10^24 kg":"~1988410",
+      "Mass-energy conv rate":"4.260 x 10^9 kg/s",
+      "Mean density, g/cm^3":"1.408",
+      "Motion relative to 2.73K BB/CBR":"apex : l=",
+      "Motion relative to nearby stars":"apex : R.A",
+      "Obliquity to ecliptic":"7.25 deg.",
+      "Photosphere temp., K":"4400(top)",
+      "Photospheric depth":"~500 km",
+      "Pole (RA,DEC), deg.":"(286.13, 63.87)",
+      "Radius (photosphere)":"696500 km",
+      "Solar constant (1 AU)":"1367.6 W/m^2",
+      "Solar radius (IAU2015)":"695700 km",
+      "Sunspot cycle":"11.4 yr",
+      "Surface gravity":"274.0 m/s^2",
+      "Vol. mean radius, km":"695700",
+      "Volume, 10^12 km^3":"1412000"
+    }
+  },{
+    "density":5427.0,
+    "equatorialRadius":2440530.0,
+    "id":199,
+    "magnitude":30.972125660478,
+    "mass":3.30104e+23,
+    "name":"Mercury",
+    "parent":"Mercury Barycenter",
+    "radius":2439700.0,
+    "vars":{
+      "1":"                                 Perihelio",
+      "2":"n  Aphelion    Mean",
+      "3":"  Solar Constant (W/m^2)         14462    ",
+      "4":"   6278        9126",
+      "5":"  Maximum Planetary IR (W/m^2)   12700    ",
+      "6":"   5500        8000",
+      "7":"  Minimum Planetary IR (W/m^2)   6        ",
+      "8":"   6           6",
+      "Atmos. pressure (bar)":"< 5x10^-15",
+      "Core radius (km)":"~1600",
+      "Density (g cm^-3)":"5.427",
+      "Equ. gravity  m/s^2":"3.701",
+      "Equatorial radius, Re":"2440.53 km",
+      "Escape vel. km/s":"4.435",
+      "GM (km^3/s^2)":"22031.86855",
+      "GM 1-sigma (km^3/s^2)":"",
+      "Geometric Albedo":"0.106",
+      "Hill's sphere rad. Rp":"94.4",
+      "Mass ratio (Sun/plnt)":"6023682",
+      "Mass x10^23 (kg)":"3.302",
+      "Max. angular diam.":"11.0\"",
+      "Mean Orbit vel.  km/s":"47.362",
+      "Mean Temperature (K)":"440",
+      "Mean solar day":"175.9421 d",
+      "Mom. of Inertia":"0.33",
+      "Obliquity to orbit[1]":"2.11' +/- 0.1'",
+      "Sid. rot. rate (rad/s)":"0.00000124001",
+      "Sidereal orb. per.":"87.969257  d",
+      "Sidereal rot. period":"58.6463 d",
+      "Surface emissivity":"0.77+-0.06",
+      "Visual mag. V(1,0)":"-0.42",
+      "Vol. Mean Radius (km)":"2439.4+-0.1",
+      "Volume (x10^10 km^3)":"6.085"
+    }
+  },{
+    "density":5243.0,
+    "equatorialRadius":6051893.0,
+    "id":299,
+    "magnitude":27.102125660478,
+    "mass":4.86732e+24,
+    "name":"Venus",
+    "parent":"Venus Barycenter",
+    "radius":6051800.0,
+    "vars":{
+      "1":"                                 Periheli",
+      "2":"on  Aphelion    Mean",
+      "3":"  Solar Constant (W/m^2)         2759    ",
+      "4":"     2614       2650",
+      "5":"  Maximum Planetary IR (W/m^2)    153    ",
+      "6":"     153         153",
+      "7":"  Minimum Planetary IR (W/m^2)    153    ",
+      "8":"     153         153",
+      "Atmos. pressure (bar)":"90",
+      "Core radius (km)":"~3200",
+      "Density (g/cm^3)":"5.204",
+      "Equ. gravity  m/s^2":"8.870",
+      "Equatorial Radius, Re":"6051.893 km",
+      "Escape speed, km/s":"10.361",
+      "GM (km^3/s^2)":"324858.592",
+      "GM 1-sigma (km^3/s^2)":"+-0.006",
+      "Geometric Albedo":"0.65",
+      "Hill's sphere rad.,Rp":"167.1",
+      "Mass ratio (Sun/Venus)":"408523.72",
+      "Mass x10^23 (kg)":"48.685",
+      "Max. angular diam.":"60.2\"",
+      "Mean Temperature (K)":"735",
+      "Mean solar day":"116.7490 d",
+      "Mom. of Inertia":"0.33",
+      "Obliquity to orbit":"177.3 deg",
+      "Orbit speed, km/s":"35.021",
+      "Potential Love # k2":"~0.25",
+      "Sid. Rot. Rate (rad/s)":"-0.00000029924",
+      "Sidereal orb. per., d":"224.70079922",
+      "Sidereal orb. per., y":"0.61519726",
+      "Sidereal rot. period":"243.018484 d",
+      "Visual mag. V(1,0)":"-4.40",
+      "Vol. Mean Radius (km)":"6051.84+-0.01",
+      "Volume (x10^10 km^3)":"92.843"
+    }
+  },{
+    "albedo":0.12,
+    "density":3344000000000.0,
+    "id":301,
+    "magnitude":31.782835830079,
+    "mass":7.3476730924574e+22,
+    "name":"Moon",
+    "parent":"Earth Barycenter",
+    "radius":1737500.0,
+    "vars":{
+      "1":"                                 Perihelion",
+      "10":"*************************************",
+      "11":" Select ... [E]phemeris, [F]tp, [M]ail, [R]",
+      "12":"edisplay, ?, <cr>:[[[my input:e]]]",
+      "13":" e",
+      "14":"",
+      "15":" Observe, Elements, Vectors  [o,e,v,?] :[[[",
+      "16":"my input:v]]]",
+      "17":" v",
+      "18":"",
+      "19":"my input:]]]",
+      "2":"  Aphelion    Mean",
+      "20":" Reference plane [eclip, frame, body ] :[[[",
+      "21":"my input:frame]]]",
+      "22":" frame",
+      "23":"",
+      "24":"my input:2025-Dec-14 14:43]]]",
+      "25":" 2025-Dec-14 14:43",
+      "26":"",
+      "27":"my input:2025-Dec-14 14:44]]]",
+      "28":" 2025-Dec-14 14:44",
+      "29":"",
+      "3":"  Solar Constant (W/m^2)         1414+-7   ",
+      "30":" Output interval [ex: 10m, 1h, 1d, ? ] :[[[",
+      "31":"my input:]]]",
+      "32":" Current output table defaults --",
+      "33":"",
+      "34":"",
+      "35":"",
+      "36":"",
+      "37":"",
+      "38":"",
+      "39":"LT, range, range-rate)",
+      "4":"  1323+-7     1368+-7",
+      "40":"",
+      "41":"my input:]]]",
+      "42":" Working ...   \b\b - ",
+      "43":"",
+      "5":"  Maximum Planetary IR (W/m^2)   1314      ",
+      "6":"  1226        1268",
+      "7":"  Minimum Planetary IR (W/m^2)      5.2    ",
+      "8":"     5.2         5.2",
+      "9":"*******************************************",
+      "Accept default output [ cr":"(y), n, ?] :[[[",
+      "Apsidal period":"3231.50 d",
+      "CSV format":"NO",
+      "Corrections":"NONE",
+      "Density, g/cm^3":"3.3437",
+      "Earth/Moon mass ratio":"81.3005690769",
+      "Eccentricity":"0.05490",
+      "Ending   TDB [<":"9999-Dec-30 12:00] :[[[",
+      "Farside crust. thick.":"~80 - 90 km",
+      "GM 1-sigma, km^3/s^2":"+-0.0001",
+      "GM, km^3/s^2":"4902.800066",
+      "Geometric Albedo":"0.12",
+      "Heat flow, Apollo 15":"3.1+-.6 mW/m^2",
+      "Heat flow, Apollo 17":"2.2+-.5 mW/m^2",
+      "Inclination":"5.145 deg",
+      "Mass, x10^22 kg":"7.349",
+      "Mean angular diameter":"31'05.2\"",
+      "Mean crustal density":"2.97+-.07 g/cm^3",
+      "Mean motion, rad/s":"2.6616995x10^-6",
+      "Mean solar day":"29.5306 d",
+      "Nearside crust. thick.":"58+-8 km",
+      "Nodal period":"6798.38 d",
+      "Obliquity to orbit":"6.67 deg",
+      "Orbit period":"27.321582 d",
+      "Output delta-T":"NO",
+      "Radius (IAU), km":"1737.4",
+      "Radius (gravity), km":"1738.0",
+      "Ref. Frame":"ICRF",
+      "Semi-major axis, a":"384400 km",
+      "Sid. rot. rate, rad/s":"0.0000026617",
+      "Starting TDB [>":"9999BC-Mar-21 00:01] :[[[",
+      "Surface accel., m/s^2":"1.62",
+      "Surface emissivity":"0.92",
+      "Table type":"3 (position, velocity,",
+      "Units":"KM-D",
+      "Use previous center  [ cr":"(y), n, ? ] :[[[",
+      "V(1,0)":"+0.21",
+      "Vector label":"YES",
+      "Vol. mean radius, km":"1737.53+-0.03"
+    }
+  },{
+    "density":5513.4,
+    "id":399,
+    "inverseFlattening":298.257223563,
+    "magnitude":27.712125660478,
+    "mass":5.97219e+24,
+    "name":"Earth",
+    "parent":"Earth Barycenter",
+    "radius":6371000.0,
+    "vars":{
+      "'s sphere radius":"234.9",
+      "1":"Mass layers:",
+      "2":"Surface area:",
+      "3":"414 (perihelion), 1322 (aphelion)",
+      "4":" HELIOCENTRIC ORBIT CHARACTERISTICS:",
+      "5":"",
+      "Atm. pressure":"1.0 bar",
+      "Atmos":"5.1   x 10^18 kg",
+      "Density, g/cm^3":"5.51",
+      "Equ. radius, km":"6378.137",
+      "Escape velocity":"11.186 km/s",
+      "Flattening":"1/298.257223563",
+      "Fluid core rad":"3480 km",
+      "GM 1-sigma, km^3/s^2":"0.0014",
+      "GM, km^3/s^2":"398600.435436",
+      "Geometric albedo":"0.367",
+      "Inner core rad":"1215 km",
+      "J2 (IERS 2010)":"0.00108262545",
+      "Love no., k2":"0.299",
+      "Magnetic moment":"0.61 gauss Rp^3",
+      "Mass x10^24 (kg)":"5.97219+-0.0006",
+      "Mean daily motion, deg/d":"0.9856474   Hill",
+      "Mean effect. temp (Te), K":"255",
+      "Mean sidereal day, hr":"23.9344695944",
+      "Mean solar day 1820.0, s":"86400.0",
+      "Mean solar day 2000.0, s":"86400.002",
+      "Mean surface temp (Ts), K":"287.6",
+      "Moment of inertia":"0.3308",
+      "Obliquity to orbit, deg":"23.4392911  Side",
+      "Orbital speed, km/s":"29.79       Side",
+      "Polar axis, km":"6356.752",
+      "Rot. Rate (rad/s)":"0.00007292115",
+      "Solar Constant (W/m^2)":"1367.6 (mean), 1",
+      "Vis. mag. V(1,0)":"-3.86",
+      "Vol. Mean Radius (km)":"6371.01+-0.02",
+      "Volume, km^3":"1.08321 x 10^12",
+      "crust":"2.6   x 10^22 kg",
+      "g_e, m/s^2  (equatorial)":"9.7803267715",
+      "g_o, m/s^2":"9.82022",
+      "g_p, m/s^2  (polar)":"9.8321863685",
+      "inner core":"9.675 x 10^22 kg",
+      "land":"1.48 x 10^8 km",
+      "mantle":"4.043 x 10^24 kg",
+      "oceans":"1.4   x 10^21 kg",
+      "outer core":"1.835 x 10^24 kg",
+      "real orb period":"365.25636 d",
+      "sea":"3.62 x 10^8 km"
+    }
+  },{
+    "albedo":0.071,
+    "density":1872000000000.0,
+    "id":401,
+    "magnitude":42.057650005369,
+    "mass":1.0658529896187e+16,
+    "name":"Phobos",
+    "parent":"Mars Barycenter",
+    "radius":11100.0,
+    "vars":{
+      "1":"                                 (+- 0.1)   ",
+      "2":"",
+      "Density (g cm^-3)":"1.90 +- 0.08",
+      "Eccentricity, e":"0.0151",
+      "Geometric Albedo":"0.06",
+      "Inclination, i  (deg)":"1.082",
+      "Mass (10^20 kg )":"1.08 (10^-4)",
+      "Radius (km)":"13.1 x11.1 x9.3",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+11.8"
+    }
+  },{
+    "albedo":0.068,
+    "density":1471000000000.0,
+    "id":402,
+    "magnitude":43.107650005369,
+    "mass":1.4761884066007e+15,
+    "name":"Deimos",
+    "parent":"Mars Barycenter",
+    "radius":6200.0,
+    "vars":{
+      "1":"                               (+- 0.15)    ",
+      "2":"",
+      "Density (g cm^-3)":"1.76 +- 0.30",
+      "Eccentricity, e":"0.00033",
+      "Geometric Albedo":"0.06",
+      "Inclination, i  (deg)":"1.791",
+      "Mass (10^20 kg )":"1.80 (10^-5)",
+      "Radius (km)":"7.8 x 6.0 x 5.1",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+12.89"
+    }
+  },{
+    "density":3934.0,
+    "equatorialRadius":3396190.0,
+    "id":499,
+    "inverseFlattening":169.779,
+    "magnitude":30.052125660478,
+    "mass":6.41693e+23,
+    "name":"Mars",
+    "parent":"Mars Barycenter",
+    "radius":3389500.0,
+    "vars":{
+      "1":"                                      ",
+      "2":"                                 Perihelio",
+      "3":"n  Aphelion    Mean",
+      "4":"  Solar Constant (W/m^2)         717      ",
+      "5":"   493         589",
+      "6":"  Maximum Planetary IR (W/m^2)   470      ",
+      "7":"   315         390",
+      "8":"  Minimum Planetary IR (W/m^2)    30      ",
+      "9":"    30          30",
+      "Atmos. pressure (bar)":"0.0056",
+      "Core radius (km)":"~1700",
+      "Density (g/cm^3)":"3.933(5+-4)",
+      "Equ. gravity  m/s^2":"3.71",
+      "Equatorial radius (km)":"3396.19",
+      "Escape speed, km/s":"5.027",
+      "Flattening, f":"1/169.779",
+      "GM (km^3/s^2)":"42828.375662",
+      "GM 1-sigma (km^3/s^2)":"+- 0.00028",
+      "Geometric Albedo":"0.150",
+      "Hill's sphere rad. Rp":"319.8",
+      "Mass of atmosphere, kg":"~ 2.5 x 10^16",
+      "Mass ratio (Sun/Mars)":"3098703.59",
+      "Mass x10^23 (kg)":"6.4171",
+      "Max. angular diam.":"17.9\"",
+      "Mean sidereal orb per":"686.98 d",
+      "Mean solar day (sol)":"88775.24415 s",
+      "Mean temperature (K)":"210",
+      "Obliquity to orbit":"25.19 deg",
+      "Orbital speed,  km/s":"24.13",
+      "Polar gravity m/s^2":"3.758",
+      "Sid. rot. rate, rad/s":"0.0000708822",
+      "Sidereal rot. period":"24.622962 hr",
+      "Visual mag. V(1,0)":"-1.52",
+      "Vol. mean radius (km)":"3389.92+-0.04",
+      "Volume (x10^10 km^3)":"16.318"
+    }
+  },{
+    "albedo":0.63,
+    "density":3528000000000.0,
+    "id":501,
+    "magnitude":33.010933873836,
+    "mass":8.9319379731109e+22,
+    "name":"Io",
+    "parent":"Jupiter Barycenter",
+    "radius":1821600.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-",
+      "2":"1.5):",
+      "3":"  Semi-major axis, a (km)~ 422,000           ",
+      "4":"Orbital period    ~ 1.77 d",
+      "5":"  Eccentricity, e        ~ 0.00472           ",
+      "6":"  Inclination, i  (deg)  ~ 0.0375",
+      "7":"",
+      "Density (g cm^-3)":"3.528 +- 0.006",
+      "GM (km^3/s^2)":"5959.9155+- 0.004",
+      "Geometric Albedo":"0.63  +- 0.02",
+      "Mean radius (km)":"1821.49",
+      "Rotational period":"Synchronous"
+    }
+  },{
+    "albedo":0.67,
+    "density":3013000000000.0,
+    "id":502,
+    "magnitude":33.280933873836,
+    "mass":4.7998438387493e+22,
+    "name":"Europa",
+    "parent":"Jupiter Barycenter",
+    "radius":1560800.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-1",
+      "2":".5):",
+      "3":"  Semi-major axis, a (km) ~ 671,000           ",
+      "4":"Orbital period   ~ 3.55 d",
+      "5":"  Eccentricity, e         ~ 0.00981        Rot",
+      "6":"  Inclination, i  (deg)   ~ 0.462",
+      "7":"",
+      "Density (g cm^-3)":"3.013 +- 0.005",
+      "GM   (km^3/s^2)":"3202.7121+- 0.0054",
+      "Geometric Albedo":"0.67 +/- 0.03",
+      "Mean radius (km)":"1560.8   +- 0.3",
+      "ational period":"Synchronous"
+    }
+  },{
+    "albedo":0.43,
+    "density":1942000000000.0,
+    "id":503,
+    "magnitude":32.600933873836,
+    "mass":1.4818584687505e+23,
+    "name":"Ganymede",
+    "parent":"Jupiter Barycenter",
+    "radius":2631200.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-1",
+      "2":".5):",
+      "3":"  Semi-major axis, a (km) ~ 1,070,000         ",
+      "4":"Orbital period   ~ 7.155 d",
+      "5":"  Eccentricity, e         ~ 0.00146           ",
+      "6":"  Inclination, i  (deg)   ~ 0.207 ",
+      "7":"",
+      "Density (g cm^-3)":"1.942 +- 0.005",
+      "GM (km^3/s^2)":"9887.8328+- 0.0074",
+      "Geometric Albedo":"0.43  +- 0.02",
+      "Mean radius (km)":"2631.2   +- 1.7",
+      "Rotational period":"Synchronous"
+    }
+  },{
+    "albedo":0.17,
+    "density":1834000000000.0,
+    "id":504,
+    "magnitude":33.640933873836,
+    "mass":1.0759373796382e+23,
+    "name":"Callisto",
+    "parent":"Jupiter Barycenter",
+    "radius":2410300.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-1",
+      "2":".5):",
+      "3":"  Semi-major axis, a (km)~ 1,883,000          ",
+      "4":"Orbital period   ~ 16.691    d",
+      "5":"  Eccentricity, e        ~ 0.00744            ",
+      "6":"  Inclination, i  (deg)  ~ 0.200 ",
+      "7":"",
+      "Density (g cm^-3)":"1.834 +- 0.004",
+      "GM (km^3/s^2)":"7179.2834 +- 0.0097",
+      "Geometric Albedo":"0.17  +- 0.02",
+      "Mean radius (km)":"2410.3 +- 1.5",
+      "Rotational period":"Synchronous"
+    }
+  },{
+    "albedo":0.09,
+    "density":849000000000.0,
+    "id":505,
+    "magnitude":42.090933873836,
+    "mass":2.0681624376741e+18,
+    "name":"Amalthea",
+    "parent":"Jupiter Barycenter",
+    "radius":83450.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-",
+      "2":"1.5):",
+      "3":"  Semi-major axis, a (km) ~ 182,000         O",
+      "4":"rbital period     ~ 0.501 d",
+      "5":"  Eccentricity, e         ~ 0.00613         R",
+      "6":"  Inclination, i  (deg)   ~ 0.376",
+      "7":"",
+      "Density (g cm^-3)":"0.849 +- 0.199",
+      "GM (km^3/s^2)":"0.1646  +- 0.026",
+      "Geometric Albedo":"0.090 +- 0.005",
+      "Mean radius (km)":"83.5    +- 3",
+      "otational period":"Synchronous"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":506,
+    "magnitude":42.190933873836,
+    "mass":6.7440079489374e+18,
+    "name":"Himalia",
+    "parent":"Jupiter Barycenter",
+    "radius":85000.0,
+    "vars":{
+      "1":"                                             ",
+      "2":"  Eccentricity, e         ~   0.166          ",
+      "3":"  Inclination, i  (deg)   ~  30.18 (equator)",
+      "4":"",
+      "Density (g cm^-3)":"",
+      "GM (km^3/s^2)":"0.151552",
+      "Geometric Albedo":"0.04",
+      "Radius (km)":"85 +- 10",
+      "Rotational period":"0.4 d",
+      "V(1,0)":"+8.14"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":507,
+    "magnitude":43.990933873836,
+    "mass":8.6922769119637e+17,
+    "name":"Elara",
+    "parent":"Jupiter Barycenter",
+    "radius":43000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.207",
+      "Geometric Albedo":"0.03",
+      "Inclination, i  (deg)":"28",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"40 +- 10",
+      "Rotational period":"0.5 d",
+      "V(1,0)":"+10.07"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":508,
+    "magnitude":44.790933873836,
+    "mass":2.9973368661944e+17,
+    "name":"Pasiphae",
+    "parent":"Jupiter Barycenter",
+    "radius":30000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.378",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"148",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"18",
+      "Rotational period":"",
+      "V(1,0)":"+10.33"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":509,
+    "magnitude":46.190933873836,
+    "mass":7.493342165486e+16,
+    "name":"Sinope",
+    "parent":"Jupiter Barycenter",
+    "radius":19000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.275",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"153",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"14",
+      "Rotational period":"",
+      "V(1,0)":"+11.6"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":510,
+    "magnitude":46.090933873836,
+    "mass":6.2944074190082e+16,
+    "name":"Lysithea",
+    "parent":"Jupiter Barycenter",
+    "radius":18000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.107",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"29",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"12",
+      "Rotational period":"",
+      "V(1,0)":"+11.7"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":511,
+    "magnitude":46.090933873836,
+    "mass":1.3188282211255e+17,
+    "name":"Carme",
+    "parent":"Jupiter Barycenter",
+    "radius":23000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.207",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"163",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"15",
+      "Rotational period":"",
+      "V(1,0)":"+11.3"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":512,
+    "magnitude":47.090933873836,
+    "mass":2.9973368661944e+16,
+    "name":"Ananke",
+    "parent":"Jupiter Barycenter",
+    "radius":14000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.169",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"147",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"10",
+      "Rotational period":"",
+      "V(1,0)":"+12.2"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":513,
+    "magnitude":47.190933873836,
+    "mass":1.094027956161e+16,
+    "name":"Leda",
+    "parent":"Jupiter Barycenter",
+    "radius":10000.0,
+    "vars":{
+      "1":"                                            ",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.148",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"27",
+      "Local invar ref. pln":"Sun",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"5",
+      "Rotational period":"",
+      "V(1,0)":"+13.5"
+    }
+  },{
+    "albedo":0.047,
+    "density":3000000000000.0,
+    "id":514,
+    "magnitude":43.990933873836,
+    "mass":1.4986684330972e+18,
+    "name":"Thebe",
+    "parent":"Jupiter Barycenter",
+    "radius":49300.0,
+    "vars":[]
+  },{
+    "albedo":0.1,
+    "density":3000000000000.0,
+    "id":515,
+    "magnitude":46.690933873836,
+    "mass":7.493342165486e+15,
+    "name":"Adrastea",
+    "parent":"Jupiter Barycenter",
+    "radius":8200.0,
+    "vars":{
+      "1":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-1",
+      "2":".5):",
+      "3":"  Semi-major axis, a (km) ~ 130,000           ",
+      "4":"  Eccentricity, e         ~  0.007            ",
+      "5":"  Inclination, i  (deg)   ~  0.007",
+      "6":"",
+      "Density (g cm^-3)":"",
+      "GM (km^3/s^2)":"0.0001 +/- 0.0006",
+      "Geometric Albedo":"0.1 +/- 0.045",
+      "Orbital period":"0.30240 d",
+      "Radius (km)":"8.2 +/- 2",
+      "Rotational period":"Synchronous"
+    }
+  },{
+    "albedo":0.061,
+    "density":3000000000000.0,
+    "id":516,
+    "magnitude":45.490933873836,
+    "mass":1.1989347464778e+17,
+    "name":"Metis",
+    "parent":"Jupiter Barycenter",
+    "radius":21500.0,
+    "vars":{
+      "1":"                                             ",
+      "2":" SATELLITE ORBIT (at J2000.0 epoch, 2000-Jan-",
+      "3":"1.5):",
+      "4":"  Semi-major axis, a (km) ~ 128,900          ",
+      "5":"  Eccentricity, e         ~  0.006           ",
+      "6":"  Inclination, i  (deg)   ~  0.006",
+      "7":"",
+      "Density (g cm^-3)":"",
+      "GM (km^3/s^2)":"0.0025 +/- 0.0048",
+      "Geometric Albedo":"0.061 +/- 0.003",
+      "Orbital period":"0.298930 d",
+      "Radius (km)":"21.5 +/- 2.0",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+10.8"
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":517,
+    "magnitude":48.790933873836,
+    "mass":8.6922769119637e+14,
+    "name":"Callirrhoe",
+    "parent":"Jupiter Barycenter",
+    "radius":4300.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":518,
+    "magnitude":48.990933873836,
+    "mass":6.8938747922471e+14,
+    "name":"Themisto",
+    "parent":"Jupiter Barycenter",
+    "radius":4000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":519,
+    "magnitude":49.690933873836,
+    "mass":2.0981358063361e+14,
+    "name":"Megaclite",
+    "parent":"Jupiter Barycenter",
+    "radius":2700.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":520,
+    "magnitude":49.890933873836,
+    "mass":1.6485352764069e+14,
+    "name":"Taygete",
+    "parent":"Jupiter Barycenter",
+    "radius":2500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":521,
+    "magnitude":50.490933873836,
+    "mass":74933421654860.0,
+    "name":"Chaldene",
+    "parent":"Jupiter Barycenter",
+    "radius":1900.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":522,
+    "magnitude":50.190933873836,
+    "mass":1.1989347464778e+14,
+    "name":"Harpalyke",
+    "parent":"Jupiter Barycenter",
+    "radius":2200.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":523,
+    "magnitude":49.790933873836,
+    "mass":1.9482689630264e+14,
+    "name":"Kalyke",
+    "parent":"Jupiter Barycenter",
+    "radius":2600.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":524,
+    "magnitude":49.790933873836,
+    "mass":1.9482689630264e+14,
+    "name":"Iocaste",
+    "parent":"Jupiter Barycenter",
+    "radius":2600.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":525,
+    "magnitude":50.790933873836,
+    "mass":44960052992916.0,
+    "name":"Erinome",
+    "parent":"Jupiter Barycenter",
+    "radius":1600.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":526,
+    "magnitude":50.490933873836,
+    "mass":74933421654860.0,
+    "name":"Isonoe",
+    "parent":"Jupiter Barycenter",
+    "radius":1900.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":527,
+    "magnitude":49.190933873836,
+    "mass":4.3461384559819e+14,
+    "name":"Praxidike",
+    "parent":"Jupiter Barycenter",
+    "radius":3400.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":528,
+    "magnitude":49.990933873836,
+    "mass":89920105985832.0,
+    "name":"Autonoe",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"",
+      "Geometric Albedo":"",
+      "Inclination, i  (deg)":"",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"",
+      "Rotational period":"",
+      "V(1,0)":""
+    }
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":529,
+    "magnitude":50.290933873836,
+    "mass":89920105985832.0,
+    "name":"Thyone",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":530,
+    "magnitude":50.090933873836,
+    "mass":89920105985832.0,
+    "name":"Hermippe",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":531,
+    "magnitude":50.690933873836,
+    "mass":44960052992916.0,
+    "name":"Aitne",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":532,
+    "magnitude":50.690933873836,
+    "mass":44960052992916.0,
+    "name":"Eurydome",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":533,
+    "magnitude":50.790933873836,
+    "mass":44960052992916.0,
+    "name":"Euanthe",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":534,
+    "magnitude":51.090933873836,
+    "mass":14986684330972.0,
+    "name":"Euporie",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":535,
+    "magnitude":51.090933873836,
+    "mass":14986684330972.0,
+    "name":"Orthosie",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":536,
+    "magnitude":50.990933873836,
+    "mass":14986684330972.0,
+    "name":"Sponde",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":537,
+    "magnitude":50.990933873836,
+    "mass":14986684330972.0,
+    "name":"Kale",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":538,
+    "magnitude":51.190933873836,
+    "mass":14986684330972.0,
+    "name":"Pasithee",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":539,
+    "magnitude":50.790933873836,
+    "mass":44960052992916.0,
+    "name":"Hegemone",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":540,
+    "magnitude":51.290933873836,
+    "mass":14986684330972.0,
+    "name":"Mneme",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":541,
+    "magnitude":50.490933873836,
+    "mass":89920105985832.0,
+    "name":"Aoede",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":542,
+    "magnitude":51.490933873836,
+    "mass":14986684330972.0,
+    "name":"Thelxinoe",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":543,
+    "magnitude":50.790933873836,
+    "mass":44960052992916.0,
+    "name":"Arche",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":544,
+    "magnitude":51.690933873836,
+    "mass":14986684330972.0,
+    "name":"Kallichore",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":545,
+    "magnitude":50.590933873836,
+    "mass":89920105985832.0,
+    "name":"Helike",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":546,
+    "magnitude":50.990933873836,
+    "mass":44960052992916.0,
+    "name":"Carpo",
+    "parent":"Jupiter Barycenter",
+    "radius":1500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":547,
+    "magnitude":50.590933873836,
+    "mass":89920105985832.0,
+    "name":"Eukelade",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":548,
+    "magnitude":51.190933873836,
+    "mass":14986684330972.0,
+    "name":"Cyllene",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":549,
+    "magnitude":51.590933873836,
+    "mass":14986684330972.0,
+    "name":"Kore",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":550,
+    "magnitude":51.390933873836,
+    "mass":14986684330972.0,
+    "name":"Herse (2003J17)",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":551,
+    "magnitude":51.190933873836,
+    "mass":14986684330972.0,
+    "name":"2010J1",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":552,
+    "magnitude":51.990933873836,
+    "mass":14986684330972.0,
+    "name":"2010J2",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":553,
+    "magnitude":50.390933873836,
+    "mass":14986684330972.0,
+    "name":"Dia (2000J11)",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "id":554,
+    "name":"2016J1",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":555,
+    "magnitude":51.390933873836,
+    "mass":14986684330972.0,
+    "name":"2003J18",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":556,
+    "magnitude":51.490933873836,
+    "mass":14986684330972.0,
+    "name":"2011J2",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":557,
+    "magnitude":50.390933873836,
+    "mass":89920105985832.0,
+    "name":"Eirene (2003J5)",
+    "parent":"Jupiter Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":558,
+    "magnitude":51.490933873836,
+    "mass":14986684330972.0,
+    "name":"Philophrosyne (2003J15)",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "id":559,
+    "name":"2017J1",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":560,
+    "magnitude":51.390933873836,
+    "mass":14986684330972.0,
+    "name":"Eupheme (2003J3)",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":561,
+    "magnitude":51.690933873836,
+    "mass":14986684330972.0,
+    "name":"2003J19",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "id":562,
+    "name":"Valetudo",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":563,
+    "name":"2017J2",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":564,
+    "name":"2017J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":565,
+    "name":"Pandia (2017J4)",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":566,
+    "name":"2017J5",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":567,
+    "name":"2017J6",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":568,
+    "name":"2017J7",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":569,
+    "name":"2017J8",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":570,
+    "name":"2017J9",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":571,
+    "name":"Ersa (2018J1)",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":572,
+    "magnitude":51.690933873836,
+    "mass":14986684330972.0,
+    "name":"2011J1",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55501,
+    "magnitude":51.190933873836,
+    "mass":14986684330972.0,
+    "name":"2003J2",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55502,
+    "magnitude":50.990933873836,
+    "mass":14986684330972.0,
+    "name":"2003J4",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55503,
+    "magnitude":51.690933873836,
+    "mass":1498668433097.2,
+    "name":"2003J9",
+    "parent":"Jupiter Barycenter",
+    "radius":500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55504,
+    "magnitude":51.590933873836,
+    "mass":14986684330972.0,
+    "name":"2003J10",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55505,
+    "magnitude":51.890933873836,
+    "mass":1498668433097.2,
+    "name":"2003J12",
+    "parent":"Jupiter Barycenter",
+    "radius":500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55506,
+    "magnitude":51.290933873836,
+    "mass":14986684330972.0,
+    "name":"2003J16",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2600000000000.0,
+    "id":55507,
+    "magnitude":51.590933873836,
+    "mass":14986684330972.0,
+    "name":"2003J23",
+    "parent":"Jupiter Barycenter",
+    "radius":1000.0,
+    "vars":[]
+  },{
+    "id":55508,
+    "name":"2003J24",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55509,
+    "name":"2011J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55510,
+    "name":"2018J2",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55511,
+    "name":"2018J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55512,
+    "name":"2021J1",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55513,
+    "name":"2021J2",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55514,
+    "name":"2021J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55515,
+    "name":"2021J4",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55516,
+    "name":"2021J5",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55517,
+    "name":"2021J6",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55518,
+    "name":"2016J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55519,
+    "name":"2016J4",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55520,
+    "name":"2018J4",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55521,
+    "name":"2022J1",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55522,
+    "name":"2022J2",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55523,
+    "name":"2022J3",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55525,
+    "name":"2017J10",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "id":55526,
+    "name":"2017J11",
+    "parent":"Jupiter Barycenter",
+    "vars":[]
+  },{
+    "density":1326.2,
+    "id":599,
+    "inverseFlattening":15.41544627717,
+    "magnitude":22.172125660478,
+    "mass":1.89813e+27,
+    "name":"Jupiter",
+    "parent":"Jupiter Barycenter",
+    "radius":69911000.0,
+    "vars":{
+      "1":"",
+      "10":"  13.4         13.6",
+      "2":"",
+      "3":"                                 Perihelion ",
+      "4":"  Aphelion     Mean",
+      "5":"  Solar Constant (W/m^2)         56         ",
+      "6":"  46           51",
+      "7":"  Maximum Planetary IR (W/m^2)   13.7       ",
+      "8":"  13.4         13.6",
+      "9":"  Minimum Planetary IR (W/m^2)   13.7       ",
+      "A_roche(ice)/Rp":"2.76",
+      "Atmos. temp. (1 bar)":"165+-5 K",
+      "Density (g/cm^3)":"1.3262 +- .0003",
+      "Equ. grav, ge (m/s^2)":"24.79",
+      "Equat. radius (1 bar)":"71492+-4 km",
+      "Escape speed, km/s":"59.5",
+      "Flattening":"0.06487",
+      "GM (km^3/s^2)":"126686531.900",
+      "GM 1-sigma (km^3/s^2)":"+- 1.2732",
+      "Geometric Albedo":"0.52",
+      "Hill's sphere rad. Rp":"740",
+      "Mass x 10^26 (kg)":"18.9819",
+      "Mean daily motion":"0.0831294 deg/d",
+      "Mean orbit speed, km/s":"13.0697",
+      "Mean solar day, hrs":"~9.9259",
+      "Obliquity to orbit":"3.13 deg",
+      "Pol. grav, gp (m/s^2)":"28.34",
+      "Polar radius (km)":"66854+-10",
+      "Rocky core mass (Mc/M)":"0.0261",
+      "Sid. rot. period (III)":"9h 55m 29.711 s",
+      "Sid. rot. rate (rad/s)":"0.00017585",
+      "Sidereal orbit period":"4332.589 d",
+      "Vis. mag. (opposition)":"-2.70",
+      "Vis. magnitude V(1,0)":"-9.40",
+      "Vol. Mean Radius (km)":"69911+-6"
+    }
+  },{
+    "albedo":0.962,
+    "density":1150000000000.0,
+    "id":601,
+    "magnitude":39.478288025018,
+    "mass":3.750567620669e+19,
+    "name":"Mimas",
+    "parent":"Saturn Barycenter",
+    "radius":198200.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.152 +- 0.027",
+      "Eccentricity, e":"0.0196          R",
+      "GM (km^3/s^2)":"2.503489",
+      "Geometric Albedo":"0.6",
+      "Inclination, i  (deg)":"1.572",
+      "Mass (10^19 kg)":"3.75",
+      "Mean Radius (km)":"198.8   +- 1.5",
+      "V(1,0)":"+3.3",
+      "otational period":"Synchronous"
+    }
+  },{
+    "albedo":1.375,
+    "density":1608000000000.0,
+    "id":602,
+    "magnitude":38.478288025018,
+    "mass":1.0794459123069e+20,
+    "name":"Enceladus",
+    "parent":"Saturn Barycenter",
+    "radius":252100.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.606 +- 0.012",
+      "Eccentricity, e":"0.0047          R",
+      "GM (km^3/s^2)":"7.210367",
+      "Geometric Albedo":"1.04",
+      "Inclination, i  (deg)":"0.009",
+      "Mass (10^19 kg)":"10.805",
+      "Mean Radius (km)":"252.3   +- 0.6",
+      "V(1,0)":"+2.2",
+      "otational period":"Synchronous"
+    }
+  },{
+    "albedo":1.229,
+    "density":973000000000.0,
+    "id":603,
+    "magnitude":36.878288025018,
+    "mass":6.1755180522106e+20,
+    "name":"Tethys",
+    "parent":"Saturn Barycenter",
+    "radius":533000.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"0.956+- 0.008",
+      "Eccentricity, e":"0.0001",
+      "GM (km^3/s^2)":"41.21 +- 0.007",
+      "Geometric Albedo":"0.80",
+      "Inclination, i  (deg)":"1.091",
+      "Mass (10^19 kg)":"61.76 +- 0.11",
+      "Mean Radius (km)":"536.3  +- 1.5",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+0.7"
+    }
+  },{
+    "albedo":0.998,
+    "density":1476000000000.0,
+    "id":604,
+    "magnitude":37.078288025018,
+    "mass":1.0957454301853e+21,
+    "name":"Dione",
+    "parent":"Saturn Barycenter",
+    "radius":561700.0,
+    "vars":{
+      "(1,0)":"+0.8",
+      "1":"",
+      "Density (g/cm^3)":"1.469 +- 0.012",
+      "Eccentricity, e":"0.0022          R",
+      "GM (km^3/s^2)":"73.116 +- 0.02 V",
+      "Geometric Albedo":"0.6",
+      "Inclination, i  (deg)":"0.028",
+      "Mass (10^19 kg)":"109.572",
+      "Mean Radius (km)":"562.5   +- 5",
+      "otational period":"Synchronous"
+    }
+  },{
+    "albedo":0.949,
+    "density":1233000000000.0,
+    "id":605,
+    "magnitude":36.278288025018,
+    "mass":2.3070891512891e+21,
+    "name":"Rhea",
+    "parent":"Saturn Barycenter",
+    "radius":764300.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.233 +- 0.010",
+      "Eccentricity, e":"0.001",
+      "GM (km^3/s^2)":"153.94 +- 0.16",
+      "Geometric Albedo":"0.6",
+      "Inclination, i  (deg)":"0.331",
+      "Mass (10^19 kg)":"230.9",
+      "Mean Radius (km)":"764.5  +- 2",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+0.1"
+    }
+  },{
+    "albedo":0.2,
+    "density":1882000000000.0,
+    "id":606,
+    "magnitude":35.078288025018,
+    "mass":1.3455252308324e+23,
+    "name":"Titan",
+    "parent":"Saturn Barycenter",
+    "radius":2574730.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.880 +- 0.004",
+      "Eccentricity, e":"0.0288          Ro",
+      "GM (km^3/s^2)":"8978.14  +-  0.06",
+      "Geometric Albedo":"0.2",
+      "Inclination, i  (deg)":"0.28",
+      "Mass (10^19 kg)":"13455.3",
+      "Mean Radius (km)":"2575.5   +-  2.0",
+      "V(1,0)":"-1.2",
+      "tational period":""
+    }
+  },{
+    "albedo":0.3,
+    "density":544000000000.0,
+    "id":607,
+    "magnitude":41.078288025018,
+    "mass":5.5855372501532e+18,
+    "name":"Hyperion",
+    "parent":"Saturn Barycenter",
+    "radius":135000.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"0.569 +- 0.108",
+      "Eccentricity, e":"0.0232",
+      "GM (km^3/s^2)":"0.3705 +- 0.02",
+      "Geometric Albedo":"0.25",
+      "Inclination, i  (deg)":"0.615",
+      "Mass (10^19 kg)":"1.08 +- 0.52",
+      "Mean Radius (km)":"133    +- 8",
+      "Rotational period":"Chaotic",
+      "V(1,0)":"+4.8"
+    }
+  },{
+    "albedo":0.6,
+    "density":1083000000000.0,
+    "id":608,
+    "magnitude":37.678288025018,
+    "mass":1.8059524112826e+21,
+    "name":"Iapetus",
+    "parent":"Saturn Barycenter",
+    "radius":735600.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.088 +- 0.018",
+      "Eccentricity, e":"0.0283",
+      "GM (km^3/s^2)":"120.52   +- 0.03",
+      "Geometric Albedo":"0.6",
+      "Inclination, i  (deg)":"7.489",
+      "Mass (10^19 kg)":"180.59",
+      "Radius (km)":"734.5    +- 4.0",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+1.5 (.7-2.5)"
+    }
+  },{
+    "albedo":0.081,
+    "density":1638000000000.0,
+    "id":609,
+    "magnitude":43.078288025018,
+    "mass":8.2906337718937e+18,
+    "name":"Phoebe",
+    "parent":"Saturn Barycenter",
+    "radius":106500.0,
+    "vars":{
+      "1":"",
+      "Density (g/cm^3)":"1.633 +- 0.049",
+      "Eccentricity, e":"0.1635",
+      "GM (km^3/s^2)":"0.5548 +- 0.0006",
+      "Geometric Albedo":"0.081 +- 0.002",
+      "Inclination, i  (deg)":"175.986",
+      "Mass (10^19 kg)":"0.8289",
+      "Radius (km)":"106.6    +- 1.1",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+1.5 (.7-2.5)"
+    }
+  },{
+    "albedo":0.71,
+    "density":630000000000.0,
+    "id":610,
+    "magnitude":41.078288025018,
+    "mass":1.8928182310018e+18,
+    "name":"Janus",
+    "parent":"Saturn Barycenter",
+    "radius":89500.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "3":" NOTE: The IAU rotational spin-pole model (d",
+      "4":"efining latitude and logitude) is ",
+      "5":"       valid only near the time of the 1981 ",
+      "6":"Voyager 1 & 2 flybys; an updated",
+      "7":"       Cassini-based coordinate grid model i",
+      "8":"s not yet published by the IAU.",
+      "Density (g cm^-3)":"0.65 +- 0.08",
+      "Eccentricity, e":"0.007",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"0.14",
+      "Mass (10^20 kg )":"0.0198 +-0.0012",
+      "Radius (km)":"101.7x93.0x76.3",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+4.9"
+    }
+  },{
+    "albedo":0.73,
+    "density":640000000000.0,
+    "id":611,
+    "magnitude":42.278288025018,
+    "mass":5.2603262001711e+17,
+    "name":"Epimetheus",
+    "parent":"Saturn Barycenter",
+    "radius":58100.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "3":" NOTE: The IAU rotational spin-pole model (d",
+      "4":"efining latitude and logitude) is ",
+      "5":"       valid only near the time of the 1981 ",
+      "6":"Voyager 1 & 2 flybys; an updated",
+      "7":"       Cassini-based coordinate grid model i",
+      "8":"s not yet published by the IAU.",
+      "Density (g cm^-3)":"0.63 +- 0.11",
+      "Eccentricity, e":"0.009",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"0.34",
+      "Mass (10^20 kg )":"0.0055 +-0.0003",
+      "Radius (km)":"64.9x57.3x53",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+6.1"
+    }
+  },{
+    "albedo":1.67,
+    "density":500000000000.0,
+    "id":612,
+    "magnitude":45.078288025018,
+    "mass":1.1389880091539e+16,
+    "name":"Helene",
+    "parent":"Saturn Barycenter",
+    "radius":17600.0,
+    "vars":{
+      "1":"",
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "3":"efining latitude and logitude) is ",
+      "4":"       valid only near the time of the 1981 ",
+      "5":"Voyager 1 & 2 flybys; an updated",
+      "6":"       Cassini-based coordinate grid model i",
+      "7":"s not yet published by the IAU.",
+      "8":"       Trajectory is valid only for the inte",
+      "9":"rval spanned by Cassini data.",
+      "Density (g cm^-3)":"1.5",
+      "Eccentricity, e":"0.0071",
+      "GM (km^3/s^2)":"0.00047574",
+      "Geometric Albedo":"0.6",
+      "Inclination, i  (deg)":"0.213",
+      "Mass (10^22 g  )":"0.002547",
+      "Radius (km),mean":"16 +- 4",
+      "Rotational period":"",
+      "V(1,0)":"+8.8"
+    }
+  },{
+    "albedo":1.0,
+    "density":500000000000.0,
+    "id":613,
+    "magnitude":45.178288025018,
+    "mass":4.0464047693624e+15,
+    "name":"Telesto",
+    "parent":"Saturn Barycenter",
+    "radius":12400.0,
+    "vars":{
+      "1":"",
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "3":"efining latitude and logitude) is ",
+      "4":"       valid only near the time of the 1981 ",
+      "5":"Voyager flybys; an updated",
+      "6":"       Cassini-based coordinate grid model i",
+      "7":"s not yet published by the IAU.",
+      "8":"      Trajectory is valid only for the inter",
+      "9":"val spanned by Cassini data.",
+      "Density (g cm^-3)":"1.0",
+      "Eccentricity, e":"0.001",
+      "GM (km^3/s^2)":"0.00048",
+      "Geometric Albedo":"1.0",
+      "Inclination, i  (deg)":"1.2",
+      "Mass (10^22 g)":"0.0007194",
+      "Radius (km)":"16.3x11.8x9.8",
+      "Rotational period":"",
+      "V(1,0)":"+9.1"
+    }
+  },{
+    "albedo":1.34,
+    "density":500000000000.0,
+    "id":614,
+    "magnitude":45.378288025018,
+    "mass":2.5477363362652e+15,
+    "name":"Calypso",
+    "parent":"Saturn Barycenter",
+    "radius":10700.0,
+    "vars":{
+      "1":"",
+      "2":" NOTE: The IAU rotational spin-pole model (d",
+      "3":"efining latitude and logitude) is ",
+      "4":"       valid only near the time of the 1981 ",
+      "5":"Voyager 1 & 2 flybys; an updated",
+      "6":"       Cassini-based coordinate grid model i",
+      "7":"s not yet published by the IAU.",
+      "8":"      Trajectory is valid only for the inter",
+      "9":"val spanned by Cassini data.",
+      "Density (g cm^-3)":"1.0",
+      "Eccentricity, e":"0.001",
+      "GM (km^3/s^2)":"0.00024",
+      "Geometric Albedo":"0.7",
+      "Inclination, i  (deg)":"1.5",
+      "Mass (10^22 g)":"0.0003597",
+      "Radius (km)":"15.3 x 9.3 x 6.3",
+      "Rotational period":"",
+      "V(1,0)":"+9.4"
+    }
+  },{
+    "albedo":0.4,
+    "density":460000000000.0,
+    "id":615,
+    "magnitude":45.678288025018,
+    "mass":6.5941411056276e+15,
+    "name":"Atlas",
+    "parent":"Saturn Barycenter",
+    "radius":15100.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"~0",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"~0",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"20.5x17.8x9.4",
+      "Rotational period":"",
+      "V(1,0)":"+9.5"
+    }
+  },{
+    "albedo":0.6,
+    "density":480000000000.0,
+    "id":616,
+    "magnitude":42.478288025018,
+    "mass":1.6095698971464e+17,
+    "name":"Prometheus",
+    "parent":"Saturn Barycenter",
+    "radius":43100.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"0.27 +- 0.16",
+      "Eccentricity, e":"0.0024",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"0.0",
+      "Mass (10^20 kg )":"0.0014",
+      "Radius (km)":"68.2x41.6x28.2",
+      "Rotational period":"",
+      "V(1,0)":"+6.2"
+    }
+  },{
+    "albedo":0.5,
+    "density":490000000000.0,
+    "id":617,
+    "magnitude":43.078288025018,
+    "mass":1.3847696321818e+17,
+    "name":"Pandora",
+    "parent":"Saturn Barycenter",
+    "radius":40700.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"0.42 +- 0.28",
+      "Eccentricity, e":"0.0042",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"0.0",
+      "Mass (10^20 kg )":"0.0013",
+      "Radius (km)":"52.2x40.8x31.5",
+      "Rotational period":"",
+      "V(1,0)":"+6.9"
+    }
+  },{
+    "albedo":0.5,
+    "density":420000000000.0,
+    "id":618,
+    "magnitude":46.078288025018,
+    "mass":4.9456058292207e+15,
+    "name":"Pan",
+    "parent":"Saturn Barycenter",
+    "radius":14100.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"",
+      "Geometric Albedo":"0.5",
+      "Inclination, i  (deg)":"",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"17.2x15.4x10.4",
+      "Rotational period":"",
+      "V(1,0)":""
+    }
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":619,
+    "magnitude":48.578288025018,
+    "mass":4.9456058292207e+15,
+    "name":"Ymir",
+    "parent":"Saturn Barycenter",
+    "radius":9000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":620,
+    "magnitude":47.778288025018,
+    "mass":8.2426763820346e+15,
+    "name":"Paaliaq",
+    "parent":"Saturn Barycenter",
+    "radius":11000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":621,
+    "magnitude":49.378288025018,
+    "mass":2.6976031795749e+15,
+    "name":"Tarvos",
+    "parent":"Saturn Barycenter",
+    "radius":7500.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":622,
+    "magnitude":49.278288025018,
+    "mass":1.1989347464778e+15,
+    "name":"Ijiraq",
+    "parent":"Saturn Barycenter",
+    "radius":6000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":623,
+    "magnitude":50.578288025018,
+    "mass":2.0981358063361e+14,
+    "name":"Suttungr",
+    "parent":"Saturn Barycenter",
+    "radius":3500.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":624,
+    "magnitude":48.778288025018,
+    "mass":3.2970705528138e+15,
+    "name":"Kiviuq",
+    "parent":"Saturn Barycenter",
+    "radius":8000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":625,
+    "magnitude":50.478288025018,
+    "mass":2.0981358063361e+14,
+    "name":"Mundilfari",
+    "parent":"Saturn Barycenter",
+    "radius":3500.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":626,
+    "magnitude":47.178288025018,
+    "mass":2.0981358063361e+16,
+    "name":"Albiorix",
+    "parent":"Saturn Barycenter",
+    "radius":16000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":627,
+    "magnitude":50.278288025018,
+    "mass":3.1472037095041e+14,
+    "name":"Skathi",
+    "parent":"Saturn Barycenter",
+    "radius":4000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":628,
+    "magnitude":50.078288025018,
+    "mass":7.6432090087957e+14,
+    "name":"Erriapus",
+    "parent":"Saturn Barycenter",
+    "radius":5000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":629,
+    "magnitude":46.578288025018,
+    "mass":3.8965379260527e+16,
+    "name":"Siarnaq",
+    "parent":"Saturn Barycenter",
+    "radius":20000.0,
+    "vars":[]
+  },{
+    "albedo":0.06,
+    "density":2300000000000.0,
+    "id":630,
+    "magnitude":50.578288025018,
+    "mass":2.0981358063361e+14,
+    "name":"Thrymr",
+    "parent":"Saturn Barycenter",
+    "radius":3500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":631,
+    "magnitude":50.478288025018,
+    "mass":3.4469373961235e+14,
+    "name":"Narvi",
+    "parent":"Saturn Barycenter",
+    "radius":3500.0,
+    "vars":[]
+  },{
+    "albedo":0,
+    "density":500000000000.0,
+    "id":632,
+    "magnitude":26.678288025018,
+    "mass":8992010598583.2,
+    "name":"Methone",
+    "parent":"Saturn Barycenter",
+    "radius":1600.0,
+    "vars":[]
+  },{
+    "albedo":0,
+    "density":500000000000.0,
+    "id":633,
+    "magnitude":26.678288025018,
+    "mass":32970705528138.0,
+    "name":"Pallene",
+    "parent":"Saturn Barycenter",
+    "radius":2500.0,
+    "vars":[]
+  },{
+    "albedo":0,
+    "density":500000000000.0,
+    "id":634,
+    "magnitude":26.678288025018,
+    "mass":4496005299291.6,
+    "name":"Polydeuces",
+    "parent":"Saturn Barycenter",
+    "radius":1300.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":636,
+    "magnitude":51.078288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Aegir",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":637,
+    "magnitude":50.778288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Bebhionn",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":638,
+    "magnitude":50.878288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Bergelmir",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":639,
+    "magnitude":50.478288025018,
+    "mass":4.130670740695e+23,
+    "name":"Bestla",
+    "parent":"Saturn Barycenter",
+    "radius":3500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":640,
+    "magnitude":51.378288025018,
+    "mass":1.5053464798451e+23,
+    "name":"Farbauti",
+    "parent":"Saturn Barycenter",
+    "radius":2500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":641,
+    "magnitude":51.678288025018,
+    "mass":7.707373976807e+22,
+    "name":"Fenrir",
+    "parent":"Saturn Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":642,
+    "magnitude":51.278288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Fornjot",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":643,
+    "magnitude":51.078288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Hati",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":644,
+    "magnitude":50.178288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Hyrrokkin",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":645,
+    "magnitude":50.578288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Kari",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":646,
+    "magnitude":51.278288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Loge",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":647,
+    "magnitude":51.178288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Skoll",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":648,
+    "magnitude":51.478288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Surtur",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0,
+    "density":500000000000.0,
+    "id":649,
+    "magnitude":26.678288025018,
+    "mass":1498668433097.2,
+    "name":"Anthe",
+    "parent":"Saturn Barycenter",
+    "radius":900.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":650,
+    "magnitude":51.378288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Jarnsaxa",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":651,
+    "magnitude":51.078288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Greip",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":652,
+    "magnitude":50.578288025018,
+    "mass":2.6012387171723e+23,
+    "name":"Tarqeq",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0,
+    "density":500000000000.0,
+    "id":653,
+    "magnitude":26.678288025018,
+    "mass":59946737323.888,
+    "name":"Aegaeon",
+    "parent":"Saturn Barycenter",
+    "radius":300.0,
+    "vars":[]
+  },{
+    "id":654,
+    "name":"Gridr (2004S20)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":655,
+    "name":"Angrboda (2004S22)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":656,
+    "name":"Skrymir (2004S23)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":657,
+    "name":"Gerd (2004S25)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":658,
+    "name":"2004S26",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":659,
+    "name":"Eggther (2004S27)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":660,
+    "name":"2004S29",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":661,
+    "name":"Beli (2004S30)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":662,
+    "name":"(Gunnlod) 2004S32",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":663,
+    "name":"Thiazzi (2004S33)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":664,
+    "name":"2004S34",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":665,
+    "name":"Alvaldi (2004S35)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":666,
+    "name":"Geirrod (2004S38)",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65067,
+    "name":"2004S31",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65070,
+    "name":"2004S24",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65077,
+    "name":"2004S28",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65079,
+    "name":"2004S21",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65081,
+    "name":"2004S36",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65082,
+    "name":"2004S37",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65084,
+    "name":"2004S39",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65085,
+    "magnitude":51.178288025018,
+    "mass":2.6012387171723e+23,
+    "name":"2004S7",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65086,
+    "magnitude":51.478288025018,
+    "mass":1.5053464798451e+23,
+    "name":"2004S12",
+    "parent":"Saturn Barycenter",
+    "radius":2500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65087,
+    "magnitude":51.178288025018,
+    "mass":2.6012387171723e+23,
+    "name":"2004S13",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65088,
+    "magnitude":51.878288025018,
+    "mass":7.707373976807e+22,
+    "name":"2004S17",
+    "parent":"Saturn Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "id":65089,
+    "name":"2006S1",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65090,
+    "magnitude":51.278288025018,
+    "mass":1.5053464798451e+23,
+    "name":"2006S3",
+    "parent":"Saturn Barycenter",
+    "radius":2500.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65091,
+    "magnitude":51.078288025018,
+    "mass":2.6012387171723e+23,
+    "name":"2007S2",
+    "parent":"Saturn Barycenter",
+    "radius":3000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":2300000000000.0,
+    "id":65092,
+    "magnitude":51.578288025018,
+    "mass":7.707373976807e+22,
+    "name":"2007S3",
+    "parent":"Saturn Barycenter",
+    "radius":2000.0,
+    "vars":[]
+  },{
+    "id":65093,
+    "name":"2019S1",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65094,
+    "name":"2019S2",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65095,
+    "name":"2019S3",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65096,
+    "name":"2020S1",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65097,
+    "name":"2020S2",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65098,
+    "name":"2004S40",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65100,
+    "name":"2006S9",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65101,
+    "name":"2007S5",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65102,
+    "name":"2020S3",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65103,
+    "name":"2019S4",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65104,
+    "name":"2004S41",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65105,
+    "name":"2020S4",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65106,
+    "name":"2020S5",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65107,
+    "name":"2007S6",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65108,
+    "name":"2004S42",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65109,
+    "name":"2006S10",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65110,
+    "name":"2019S5",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65111,
+    "name":"2004S43",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65112,
+    "name":"2004S44",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65113,
+    "name":"2004S45",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65114,
+    "name":"2006S11",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65115,
+    "name":"2006S12",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65116,
+    "name":"2019S6",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65117,
+    "name":"2006S13",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65118,
+    "name":"2019S7",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65119,
+    "name":"2019S8",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65120,
+    "name":"2019S9",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65121,
+    "name":"2004S46",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65122,
+    "name":"2019S10",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65123,
+    "name":"2004S47",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65124,
+    "name":"2019S11",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65125,
+    "name":"2006S14",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65126,
+    "name":"2019S12",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65127,
+    "name":"2020S6",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65128,
+    "name":"2019S13",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65129,
+    "name":"2005S4",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65130,
+    "name":"2007S7",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65131,
+    "name":"2007S8",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65132,
+    "name":"2020S7",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65133,
+    "name":"2019S14",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65134,
+    "name":"2019S15",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65135,
+    "name":"2005S5",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65136,
+    "name":"2006S15",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65137,
+    "name":"2006S16",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65138,
+    "name":"2006S17",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65139,
+    "name":"2004S48",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65140,
+    "name":"2020S8",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65141,
+    "name":"2004S49",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65142,
+    "name":"2004S50",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65143,
+    "name":"2006S18",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65144,
+    "name":"2019S16",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65145,
+    "name":"2019S17",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65146,
+    "name":"2019S18",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65147,
+    "name":"2019S19",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65148,
+    "name":"2019S20",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65149,
+    "name":"2006S19",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65150,
+    "name":"2004S51",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65151,
+    "name":"2020S9",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65152,
+    "name":"2004S52",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65153,
+    "name":"2007S9",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65154,
+    "name":"2004S53",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65155,
+    "name":"2020S10",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65156,
+    "name":"2019S21",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65157,
+    "name":"2006S20",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65158,
+    "name":"2004S54",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65159,
+    "name":"2004S55",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65160,
+    "name":"2004S56",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65161,
+    "name":"2004S57",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65162,
+    "name":"2004S58",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65163,
+    "name":"2004S59",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65164,
+    "name":"2004S60",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65165,
+    "name":"2004S61",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65166,
+    "name":"2005S06",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65167,
+    "name":"2005S07",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65168,
+    "name":"2006S21",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65169,
+    "name":"2006S22",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65170,
+    "name":"2006S23",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65171,
+    "name":"2006S24",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65172,
+    "name":"2006S25",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65173,
+    "name":"2006S26",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65174,
+    "name":"2006S27",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65175,
+    "name":"2006S28",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65176,
+    "name":"2006S29",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65177,
+    "name":"2007S10",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65178,
+    "name":"2007S11",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65179,
+    "name":"2019S22",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65180,
+    "name":"2019S23",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65181,
+    "name":"2019S24",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65182,
+    "name":"2019S25",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65183,
+    "name":"2019S26",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65184,
+    "name":"2019S27",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65185,
+    "name":"2019S28",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65186,
+    "name":"2019S29",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65187,
+    "name":"2019S30",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65188,
+    "name":"2019S31",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65189,
+    "name":"2019S32",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65190,
+    "name":"2019S33",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65191,
+    "name":"2019S34",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65192,
+    "name":"2019S35",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65193,
+    "name":"2019S36",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65194,
+    "name":"2019S37",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65195,
+    "name":"2019S38",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65196,
+    "name":"2019S39",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65197,
+    "name":"2019S40",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65198,
+    "name":"2019S41",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65199,
+    "name":"2019S42",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65200,
+    "name":"2019S43",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65201,
+    "name":"2019S44",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65202,
+    "name":"2020S11",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65203,
+    "name":"2020S12",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65204,
+    "name":"2020S13",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65205,
+    "name":"2020S14",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65206,
+    "name":"2020S15",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65207,
+    "name":"2020S16",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65208,
+    "name":"2020S17",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65209,
+    "name":"2020S18",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65210,
+    "name":"2020S19",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65211,
+    "name":"2020S20",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65212,
+    "name":"2020S21",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65213,
+    "name":"2020S22",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65214,
+    "name":"2020S23",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65215,
+    "name":"2020S24",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65216,
+    "name":"2020S25",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65217,
+    "name":"2020S26",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65218,
+    "name":"2020S27",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65219,
+    "name":"2020S28",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65220,
+    "name":"2020S29",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65221,
+    "name":"2020S30",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65222,
+    "name":"2020S31",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65223,
+    "name":"2020S32",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65224,
+    "name":"2020S33",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65225,
+    "name":"2020S34",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65226,
+    "name":"2020S35",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65227,
+    "name":"2020S36",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65228,
+    "name":"2020S37",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65229,
+    "name":"2020S38",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65230,
+    "name":"2020S39",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65231,
+    "name":"2020S40",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65232,
+    "name":"2020S41",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65233,
+    "name":"2020S42",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65234,
+    "name":"2020S43",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65235,
+    "name":"2020S44",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65236,
+    "name":"2023S01",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65237,
+    "name":"2023S02",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65238,
+    "name":"2023S03",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65239,
+    "name":"2023S04",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65240,
+    "name":"2023S05",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65241,
+    "name":"2023S06",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65242,
+    "name":"2023S07",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65243,
+    "name":"2023S08",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65244,
+    "name":"2023S09",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65245,
+    "name":"2023S10",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65246,
+    "name":"2023S11",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65247,
+    "name":"2023S12",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65248,
+    "name":"2023S13",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65249,
+    "name":"2023S14",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65250,
+    "name":"2023S15",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65251,
+    "name":"2023S16",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65252,
+    "name":"2023S17",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65253,
+    "name":"2023S18",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65254,
+    "name":"2023S19",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65255,
+    "name":"2023S20",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65256,
+    "name":"2023S21",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65257,
+    "name":"2023S22",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65258,
+    "name":"2023S23",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65259,
+    "name":"2023S24",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65260,
+    "name":"2023S25",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65261,
+    "name":"2023S26",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65262,
+    "name":"2023S27",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65263,
+    "name":"2023S28",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65264,
+    "name":"2023S29",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65265,
+    "name":"2023S30",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65266,
+    "name":"2023S31",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65267,
+    "name":"2023S32",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65268,
+    "name":"2023S33",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65269,
+    "name":"2023S34",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65270,
+    "name":"2023S35",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65271,
+    "name":"2023S36",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65272,
+    "name":"2023S37",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65273,
+    "name":"2023S38",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65274,
+    "name":"2023S39",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65275,
+    "name":"2023S40",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65276,
+    "name":"2023S41",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65277,
+    "name":"2023S42",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65278,
+    "name":"2023S43",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65279,
+    "name":"2023S44",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65280,
+    "name":"2023S45",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65281,
+    "name":"2023S46",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65282,
+    "name":"2023S47",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65283,
+    "name":"2023S48",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65284,
+    "name":"2023S49",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "id":65285,
+    "name":"2023S50",
+    "parent":"Saturn Barycenter",
+    "vars":[]
+  },{
+    "density":687.1,
+    "id":699,
+    "inverseFlattening":10.208248264598,
+    "magnitude":22.692125660478,
+    "mass":5.68319e+26,
+    "name":"Saturn",
+    "parent":"Saturn Barycenter",
+    "radius":58232000.0,
+    "vars":{
+      "1":"",
+      "10":"    4.5         4.6",
+      "2":"",
+      "3":"                                 Perihelio",
+      "4":"n  Aphelion    Mean",
+      "5":"  Solar Constant (W/m^2)         16.8     ",
+      "6":"   13.6        15.1",
+      "7":"  Maximum Planetary IR (W/m^2)    4.7     ",
+      "8":"    4.5         4.6",
+      "9":"  Minimum Planetary IR (W/m^2)    4.7     ",
+      "Aroche(ice)/Rp":"2.71",
+      "Atmos. temp. (1 bar)":"134+-4 K",
+      "Density (g/cm^3)":"0.687+-.001",
+      "Equ. grav, ge (m/s^2)":"10.44",
+      "Equat. radius (1 bar)":"60268+-4 km",
+      "Escape speed, km/s":"35.5",
+      "Flattening":"0.09796",
+      "GM (km^3/s^2)":"37931206.234",
+      "GM 1-sigma (km^3/s^2)":"+- 98",
+      "Geometric Albedo":"0.47",
+      "Hill's sphere rad. Rp":"1100",
+      "Mass x10^26 (kg)":"5.6834",
+      "Mean daily motion":"0.0334979 deg/d",
+      "Mean orbit velocity":"9.68 km/s",
+      "Mean solar day, hrs":"~10.656",
+      "Obliquity to orbit":"26.73 deg",
+      "Pol. grav, gp (m/s^2)":"12.14+-0.01",
+      "Polar radius (km)":"54364+-10",
+      "Rocky core mass (Mc/M)":"0.1027",
+      "Sid. rot. period (III)":"10h 39m 22.4s",
+      "Sid. rot. rate (rad/s)":"0.000163785",
+      "Sidereal orbit period":"10755.698 d",
+      "Vis. mag. (opposition)":"+0.67",
+      "Vis. magnitude V(1,0)":"-8.88",
+      "Vol. Mean Radius (km)":"58232+-6"
+    }
+  },{
+    "albedo":0.39,
+    "density":1592000000000.0,
+    "id":701,
+    "magnitude":38.85465893359,
+    "mass":1.294849526196e+21,
+    "name":"Ariel",
+    "parent":"Uranus Barycenter",
+    "radius":578900.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"1.54 +- 0.026",
+      "Eccentricity, e":"0.0034",
+      "GM (km^3/s^2)":"83.43 +- 1.40",
+      "Geometric Albedo":"0.34",
+      "Inclination, i  (deg)":"179.69",
+      "Radius (km)":"581.1x577.9x577.7",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+1.45"
+    }
+  },{
+    "albedo":0.21,
+    "density":1459000000000.0,
+    "id":702,
+    "magnitude":39.62465893359,
+    "mass":1.2214147729742e+21,
+    "name":"Umbriel",
+    "parent":"Uranus Barycenter",
+    "radius":584700.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"1.52 +- 0.04",
+      "Eccentricity, e":"0.0050",
+      "GM (km^3/s^2)":"85.40 +- 1.9",
+      "Geometric Albedo":"0.18",
+      "Inclination, i  (deg)":"179.64",
+      "Radius (km)":"584.7  +- 2.8",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+2.10"
+    }
+  },{
+    "albedo":0.27,
+    "density":1662000000000.0,
+    "id":703,
+    "magnitude":38.64465893359,
+    "mass":3.4199613643278e+21,
+    "name":"Titania",
+    "parent":"Uranus Barycenter",
+    "radius":788900.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"1.65 +- 0.03",
+      "Eccentricity, e":"0.0022",
+      "GM (km^3/s^2)":"222.8  +- 4.1",
+      "Geometric Albedo":"0.27",
+      "Inclination, i  (deg)":"179.90",
+      "Radius (km)":"788.9  +- 1.8",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+1.02"
+    }
+  },{
+    "albedo":0.23,
+    "density":1559000000000.0,
+    "id":704,
+    "magnitude":38.85465893359,
+    "mass":2.883438065279e+21,
+    "name":"Oberon",
+    "parent":"Uranus Barycenter",
+    "radius":761400.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"1.66 +- 0.05",
+      "Eccentricity, e":"0.0008",
+      "GM (km^3/s^2)":"205.34 +- 5.8",
+      "Geometric Albedo":"0.24",
+      "Inclination, i  (deg)":"179.90",
+      "Radius (km)":"761.4  +- 2.6",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+1.23"
+    }
+  },{
+    "albedo":0.32,
+    "density":1214000000000.0,
+    "id":705,
+    "magnitude":40.94465893359,
+    "mass":6.5941411056277e+19,
+    "name":"Miranda",
+    "parent":"Uranus Barycenter",
+    "radius":235800.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"1.18 +- 0.05",
+      "Eccentricity, e":"0.0027",
+      "GM (km^3/s^2)":"4.3   +- 0.2",
+      "Geometric Albedo":"0.27",
+      "Inclination, i  (deg)":"175.78",
+      "Radius (km)":"240x234.2x232.9",
+      "Rotational period":"Synchronous",
+      "V(1,0)":"+3.6"
+    }
+  },{
+    "albedo":0.07,
+    "density":1300000000000.0,
+    "id":706,
+    "magnitude":48.77465893359,
+    "mass":4.4960052992916e+16,
+    "name":"Cordelia",
+    "parent":"Uranus Barycenter",
+    "radius":20100.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.0",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.9",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"13 +- 2",
+      "Rotational period":"",
+      "V(1,0)":"+11.4"
+    }
+  },{
+    "albedo":0.07,
+    "density":1300000000000.0,
+    "id":707,
+    "magnitude":48.41465893359,
+    "mass":5.3952063591499e+16,
+    "name":"Ophelia",
+    "parent":"Uranus Barycenter",
+    "radius":21400.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.01",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.9",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"16 +- 2",
+      "Rotational period":"",
+      "V(1,0)":"+11.1"
+    }
+  },{
+    "albedo":0.065,
+    "density":1300000000000.0,
+    "id":708,
+    "magnitude":47.67465893359,
+    "mass":9.2917442852026e+16,
+    "name":"Bianca",
+    "parent":"Uranus Barycenter",
+    "radius":27000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.001",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.8",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"22 +- 3",
+      "Rotational period":"",
+      "V(1,0)":"+10.3"
+    }
+  },{
+    "albedo":0.069,
+    "density":1300000000000.0,
+    "id":709,
+    "magnitude":46.73465893359,
+    "mass":3.4319507117926e+17,
+    "name":"Cressida",
+    "parent":"Uranus Barycenter",
+    "radius":41000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"180.0",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"33 +- 4",
+      "Rotational period":"",
+      "V(1,0)":"+9.5"
+    }
+  },{
+    "albedo":0.084,
+    "density":1300000000000.0,
+    "id":710,
+    "magnitude":47.14465893359,
+    "mass":1.7834154353857e+17,
+    "name":"Desdemona",
+    "parent":"Uranus Barycenter",
+    "radius":35000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.8",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"29 +- 3",
+      "Rotational period":"",
+      "V(1,0)":"+9.8"
+    }
+  },{
+    "albedo":0.075,
+    "density":1300000000000.0,
+    "id":711,
+    "magnitude":46.27465893359,
+    "mass":5.5750465711216e+17,
+    "name":"Juliet",
+    "parent":"Uranus Barycenter",
+    "radius":53000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.001",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.9",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"42 +- 5",
+      "Rotational period":"",
+      "V(1,0)":"+8.8"
+    }
+  },{
+    "albedo":0.069,
+    "density":1300000000000.0,
+    "id":712,
+    "magnitude":45.57465893359,
+    "mass":1.6815059819351e+18,
+    "name":"Portia",
+    "parent":"Uranus Barycenter",
+    "radius":70000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.9",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"55 +- 6",
+      "Rotational period":"",
+      "V(1,0)":"+8.3"
+    }
+  },{
+    "albedo":0.072,
+    "density":1300000000000.0,
+    "id":713,
+    "magnitude":46.94465893359,
+    "mass":2.5477363362652e+17,
+    "name":"Rosalind",
+    "parent":"Uranus Barycenter",
+    "radius":36000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.7",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"29 +- 4",
+      "Rotational period":"",
+      "V(1,0)":"+9.8"
+    }
+  },{
+    "albedo":0.067,
+    "density":1300000000000.0,
+    "id":714,
+    "magnitude":46.62465893359,
+    "mass":3.5668308707713e+17,
+    "name":"Belinda",
+    "parent":"Uranus Barycenter",
+    "radius":45000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"180.0",
+      "Mass (10^20 kg )":"",
+      "Radius (km)":"34 +- 4",
+      "Rotational period":"",
+      "V(1,0)":"+9.4"
+    }
+  },{
+    "albedo":0.104,
+    "density":1300000000000.0,
+    "id":715,
+    "magnitude":44.90465893359,
+    "mass":2.8939287443107e+18,
+    "name":"Puck",
+    "parent":"Uranus Barycenter",
+    "radius":81000.0,
+    "vars":{
+      "1":"                                            ",
+      "2":"",
+      "Density (g cm^-3)":"",
+      "Eccentricity, e":"0.000",
+      "GM (km^3/s^2)":"",
+      "Geometric Albedo":"0.07",
+      "Inclination, i  (deg)":"179.7",
+      "Radius (km)":"77 +- 3",
+      "Rotational period":"",
+      "V(1,0)":"+7.5"
+    }
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":716,
+    "magnitude":47.55465893359,
+    "mass":2.9973368661944e+17,
+    "name":"Caliban",
+    "parent":"Uranus Barycenter",
+    "radius":36000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":717,
+    "magnitude":45.95465893359,
+    "mass":2.6976031795749e+18,
+    "name":"Sycorax",
+    "parent":"Uranus Barycenter",
+    "radius":75000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":718,
+    "magnitude":48.35465893359,
+    "mass":9.8912116584415e+16,
+    "name":"Prospero (1999U3)",
+    "parent":"Uranus Barycenter",
+    "radius":25000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":719,
+    "magnitude":48.45465893359,
+    "mass":8.6922769119637e+16,
+    "name":"Setebos (1999U1)",
+    "parent":"Uranus Barycenter",
+    "radius":24000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":720,
+    "magnitude":49.25465893359,
+    "mass":2.5477363362652e+16,
+    "name":"Stephano (1999U2)",
+    "parent":"Uranus Barycenter",
+    "radius":16000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":721,
+    "magnitude":50.55465893359,
+    "mass":4.6458721426013e+15,
+    "name":"Trinculo",
+    "parent":"Uranus Barycenter",
+    "radius":9000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":722,
+    "magnitude":50.15465893359,
+    "mass":8.3925432253443e+15,
+    "name":"Francisco",
+    "parent":"Uranus Barycenter",
+    "radius":11000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":723,
+    "magnitude":50.35465893359,
+    "mass":6.2944074190082e+15,
+    "name":"Margaret",
+    "parent":"Uranus Barycenter",
+    "radius":10000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":724,
+    "magnitude":50.25465893359,
+    "mass":6.2944074190082e+15,
+    "name":"Ferdinand",
+    "parent":"Uranus Barycenter",
+    "radius":10000.0,
+    "vars":[]
+  },{
+    "albedo":0.07,
+    "density":1300000000000.0,
+    "id":725,
+    "magnitude":48.75465893359,
+    "mass":1.7984021197166e+16,
+    "name":"Perdita",
+    "parent":"Uranus Barycenter",
+    "radius":13000.0,
+    "vars":[]
+  },{
+    "albedo":0.103,
+    "density":1300000000000.0,
+    "id":726,
+    "magnitude":49.75465893359,
+    "mass":8.9920105985832e+15,
+    "name":"Mab",
+    "parent":"Uranus Barycenter",
+    "radius":12000.0,
+    "vars":[]
+  },{
+    "albedo":0.07,
+    "density":1300000000000.0,
+    "id":727,
+    "magnitude":50.95465893359,
+    "mass":2.9973368661944e+15,
+    "name":"Cupid",
+    "parent":"Uranus Barycenter",
+    "radius":9000.0,
+    "vars":[]
+  },{
+    "density":1270.0,
+    "id":799,
+    "inverseFlattening":43.610989969472,
+    "magnitude":24.382125660478,
+    "mass":8.68103e+25,
+    "name":"Uranus",
+    "parent":"Uranus Barycenter",
+    "radius":25362000.0,
+    "vars":{
+      "1":"",
+      "10":"    0.55        0.63",
+      "2":"",
+      "3":"                                 Perihelio",
+      "4":"n   Aphelion    Mean",
+      "5":"  Solar Constant (W/m^2)         4.09     ",
+      "6":"    3.39        3.71",
+      "7":"  Maximum Planetary IR (W/m^2)   0.72     ",
+      "8":"    0.55        0.63",
+      "9":"  Minimum Planetary IR (W/m^2)   0.72     ",
+      "Aroche(ice)/Rp":"2.20",
+      "Atmos. temp. (1 bar)":"76+-2 K",
+      "Density (g/cm^3)":"1.271",
+      "Equ. grav, ge (m/s^2)":"8.87",
+      "Equat. radius (1 bar)":"25559+-4 km",
+      "Escape speed, km/s":"21.3",
+      "Flattening":"0.02293",
+      "GM (km^3/s^2)":"5793950.6103",
+      "GM 1-sigma (km^3/s^2)":"+-4.3",
+      "Geometric Albedo":"0.51",
+      "Hill's sphere rad., Rp":"2700",
+      "Mass x10^24 (kg)":"86.813",
+      "Mean daily motion":"0.01176904 dg/d",
+      "Mean orbit velocity":"6.8 km/s",
+      "Mean solar day, h":"~17.24",
+      "Obliquity to orbit":"97.77 deg",
+      "Pol. grav, gp (m/s^2)":"9.19+-0.02",
+      "Polar radius (km)":"24973+-20",
+      "Rocky core mass (Mc/M)":"0.0012",
+      "Sid. rot. period (III)":"17.24+-0.01 h",
+      "Sid. rot. rate (rad/s)":"-0.000101237",
+      "Sidereal orbit period":"30685.4 d",
+      "Vis. mag. (opposition)":"+5.52",
+      "Visual magnitude V(1,0)":"-7.11",
+      "Vol. Mean Radius (km)":"25362+-12"
+    }
+  },{
+    "id":75051,
+    "name":"2023U1",
+    "parent":"Uranus Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.719,
+    "density":2059000000000.0,
+    "id":801,
+    "magnitude":37.720207660369,
+    "mass":2.1394990550896e+22,
+    "name":"Triton",
+    "parent":"Neptune Barycenter",
+    "radius":1353400.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported measurements through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.000            Rotational period   = Synchronous",
+      "GM (km^3/s^2)":"1428.495 +- 0.62 Geometric Albedo   = 0.7",
+      "Inclination, i  (deg)":"157.3",
+      "Mean radius (km)":"1352.6 +- 2.4    Mean dens (g cm^-3)= 2.065 +-0.011",
+      "V(1,0)":"-1.24"
+    }
+  },{
+    "albedo":0.155,
+    "density":1500000000000.0,
+    "id":802,
+    "magnitude":43.380207660369,
+    "mass":3.0872569721802e+19,
+    "name":"Nereid",
+    "parent":"Neptune Barycenter",
+    "radius":170000.0,
+    "vars":[]
+  },{
+    "albedo":0.072,
+    "density":1300000000000.0,
+    "id":803,
+    "magnitude":48.090207660369,
+    "mass":1.9482689630264e+17,
+    "name":"Naiad",
+    "parent":"Neptune Barycenter",
+    "radius":33000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported data through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.0              Rotational period  =",
+      "GM (km^3/s^2)":"0.00853 +- 0.005 Geometric Albedo   =  0.06",
+      "Inclination, i  (deg)":"4.7",
+      "Mean radius (km)":"29 +- 6          Mean dens (g cm^-3)= 1.251 +- 1.05",
+      "V(1,0)":"+10.0"
+    }
+  },{
+    "albedo":0.091,
+    "density":1300000000000.0,
+    "id":804,
+    "magnitude":47.500207660369,
+    "mass":3.746671082743e+17,
+    "name":"Thalassa",
+    "parent":"Neptune Barycenter",
+    "radius":41000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported data through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.0              Rotational period  =",
+      "GM (km^3/s^2)":"0.02359 +- 0.005 Geometric Albedo   =  0.06",
+      "Inclination, i  (deg)":"0.2",
+      "Mean radius (km)":"40 +- 8         Mean dens (g cm^-3)= 1.3184 +- 0.84",
+      "V(1,0)":"+9.1"
+    }
+  },{
+    "albedo":0.09,
+    "density":1300000000000.0,
+    "id":805,
+    "magnitude":46.180207660369,
+    "mass":2.0981358063361e+18,
+    "name":"Despina",
+    "parent":"Neptune Barycenter",
+    "radius":75000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported data through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.0             Rotational period  =",
+      "GM (km^3/s^2)":"0.11673 +- 0.25 Geometric Albedo   = 0.06",
+      "Inclination, i  (deg)":"0.0",
+      "Mean radius (km)":"74 +- 10        Mean dens (g cm^-3)= 1.0304 +- 2.27",
+      "V(1,0)":"+7.9"
+    }
+  },{
+    "albedo":0.079,
+    "density":1300000000000.0,
+    "id":806,
+    "magnitude":46.030207660369,
+    "mass":3.746671082743e+18,
+    "name":"Galatea",
+    "parent":"Neptune Barycenter",
+    "radius":88000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported data through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.0             Rotational period  =",
+      "GM (km^3/s^2)":"0.18990 +- 0.76 Geometric Albedo   = 0.06",
+      "Inclination, i  (deg)":"0.0",
+      "Mean radius (km)":"79 +- 12        Mean dens (g cm^-3)= 1.3777 +- 5.57",
+      "V(1,0)":"+7.6"
+    }
+  },{
+    "albedo":0.091,
+    "density":1300000000000.0,
+    "id":807,
+    "magnitude":45.670207660369,
+    "mass":4.9456058292207e+18,
+    "name":"Larissa",
+    "parent":"Neptune Barycenter",
+    "radius":97000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fit to all reported data through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.001           Rotational period   =",
+      "GM (km^3/s^2)":"0.25484 +- 3.12 Geometric albedo    =  0.06",
+      "Inclination, i  (deg)":"0.2",
+      "Mean radius (km)":"96 +- 7        Mean dens (g cm^-3)= 1.0303 +- 12.6",
+      "V(1,0)":"+7.3"
+    }
+  },{
+    "albedo":0.096,
+    "density":1300000000000.0,
+    "id":808,
+    "magnitude":43.930207660369,
+    "mass":5.0355259352066e+19,
+    "name":"Proteus",
+    "parent":"Neptune Barycenter",
+    "radius":210000.0,
+    "vars":{
+      "1":"",
+      "2":"",
+      "3":"",
+      "4":"",
+      "5":"",
+      "6":"",
+      "7":" Fir to all reported measurements through 2020 (Voyager 2, ground, HST)",
+      "Eccentricity, e":"0.0            Rotational period   =",
+      "GM (km^3/s^2)":"2.58 +- 2.42   Geometric Albedo      = 0.06",
+      "Inclination, i  (deg)":"0.55",
+      "Mean radius (km)":"208 +- 8       Mean density (g cm^-3)= 1.03 +- 0.97",
+      "V(1,0)":"+5.6"
+    }
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":809,
+    "magnitude":48.680207660369,
+    "mass":1.7984021197166e+17,
+    "name":"Halimede",
+    "parent":"Neptune Barycenter",
+    "radius":31000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":810,
+    "magnitude":49.680207660369,
+    "mass":4.9456058292207e+16,
+    "name":"Psamathe",
+    "parent":"Neptune Barycenter",
+    "radius":20000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":811,
+    "magnitude":49.680207660369,
+    "mass":6.7440079489374e+16,
+    "name":"Sao",
+    "parent":"Neptune Barycenter",
+    "radius":22000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":812,
+    "magnitude":49.680207660369,
+    "mass":5.8448068890791e+16,
+    "name":"Laomedeia",
+    "parent":"Neptune Barycenter",
+    "radius":21000.0,
+    "vars":[]
+  },{
+    "albedo":0.04,
+    "density":1500000000000.0,
+    "id":813,
+    "magnitude":48.780207660369,
+    "mass":1.6485352764069e+17,
+    "name":"Neso",
+    "parent":"Neptune Barycenter",
+    "radius":30000.0,
+    "vars":[]
+  },{
+    "albedo":0.1,
+    "density":1300000000000.0,
+    "id":814,
+    "magnitude":50.680207660369,
+    "mass":4.4960052992916e+15,
+    "name":"Hippocamp",
+    "parent":"Neptune Barycenter",
+    "radius":9000.0,
+    "vars":[]
+  },{
+    "density":1638.0,
+    "id":899,
+    "inverseFlattening":58.479532163743,
+    "magnitude":24.702125660478,
+    "mass":1.0241e+26,
+    "name":"Neptune",
+    "parent":"Neptune Barycenter",
+    "radius":24622000.0,
+    "vars":{
+      "1":"",
+      "10":"   0.52        0.52",
+      "2":"",
+      "3":"                                 Perihelio",
+      "4":"n  Aphelion    Mean",
+      "5":"  Solar Constant (W/m^2)         1.54     ",
+      "6":"   1.49        1.51",
+      "7":"  Maximum Planetary IR (W/m^2)   0.52     ",
+      "8":"   0.52        0.52",
+      "9":"  Minimum Planetary IR (W/m^2)   0.52     ",
+      "Aroche(ice)/Rp":"2.98",
+      "Atmos. temp. (1 bar)":"72+-2 K",
+      "Density (g/cm^3)":"1.638",
+      "Equ. grav, ge (m/s^2)":"11.15",
+      "Equat. radius (1 bar)":"24766+-15 km",
+      "Escape speed (1 bar)":"23.5 km/s",
+      "Flattening":"0.0171",
+      "GM (km^3/s^2)":"6835099.97",
+      "GM 1-sigma (km^3/s^2)":"+-10",
+      "Geometric Albedo":"0.41",
+      "Hill's sphere rad., Rp":"4700",
+      "Mass x10^24 (kg)":"102.409",
+      "Mean daily motion":"0.006020076dg/d",
+      "Mean orbit velocity":"5.43 km/s",
+      "Mean solar day, h":"~16.11 h",
+      "Obliquity to orbit":"28.32 deg",
+      "Pol. grav, gp (m/s^2)":"11.41+-0.03",
+      "Polar radius (km)":"24342+-30",
+      "Sid. rot. period (III)":"16.11+-0.01 hr",
+      "Sid. rot. rate (rad/s)":"0.000108338",
+      "Sidereal orbit period":"60189 d",
+      "Vis. mag. (opposition)":"+7.84",
+      "Visual magnitude V(1,0)":"-6.87",
+      "Vol. mean radius (km)":"24624+-21",
+      "Volume, 10^10 km^3":"6254"
+    }
+  },{
+    "id":85051,
+    "name":"2002N5",
+    "parent":"Neptune Barycenter",
+    "vars":[]
+  },{
+    "id":85052,
+    "name":"2021N1",
+    "parent":"Neptune Barycenter",
+    "vars":[]
+  },{
+    "albedo":0.372,
+    "density":1664000000000.0,
+    "id":901,
+    "magnitude":40.835664720909,
+    "mass":1.5331378070584e+21,
+    "name":"Charon",
+    "parent":"Pluto Barycenter",
+    "radius":603600.0,
+    "vars":[]
+  },{
+    "albedo":0.35,
+    "density":2100000000000.0,
+    "id":902,
+    "magnitude":46.975664720909,
+    "mass":1.9482689630264e+16,
+    "name":"Nix",
+    "parent":"Pluto Barycenter",
+    "radius":23000.0,
+    "vars":[]
+  },{
+    "albedo":0.35,
+    "density":800000000000.0,
+    "id":903,
+    "magnitude":46.475664720909,
+    "mass":9.7413448151318e+16,
+    "name":"Hydra",
+    "parent":"Pluto Barycenter",
+    "radius":30500.0,
+    "vars":[]
+  },{
+    "albedo":0.35,
+    "density":1400000000000.0,
+    "id":904,
+    "magnitude":49.675664720909,
+    "mass":1.6485352764069e+16,
+    "name":"Kerberos",
+    "parent":"Pluto Barycenter",
+    "radius":14000.0,
+    "vars":[]
+  },{
+    "albedo":0.35,
+    "density":0.0,
+    "id":905,
+    "magnitude":50.575664720909,
+    "mass":0.0,
+    "name":"Styx",
+    "parent":"Pluto Barycenter",
+    "radius":10000.0,
+    "vars":[]
+  },{
+    "density":2050.0,
+    "id":999,
+    "magnitude":30.572125660478,
+    "mass":1.309e+22,
+    "name":"Pluto",
+    "fullNameWhichSucks":"134340 Pluto",
+    "parent":"Pluto Barycenter",
+    "radius":1151000.0,
+    "vars":[]
+  }];
