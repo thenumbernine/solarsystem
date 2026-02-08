@@ -1,4 +1,4 @@
-import {Canvas, Input, Span, Br, Button, Div} from '/js/dom.js'
+import {appendChildren, Canvas, Input, Span, Br, Button, Div} from '/js/dom.js'
 import {show, hide, toggleHidden, removeFromParent, animate} from '/js/util.js';
 import {GLUtil} from '/js/gl-util.js';
 import {makeGradient} from '/js/gl-util-Gradient.js';
@@ -37,7 +37,7 @@ const displayMethods = [
 	'Total'
 ];
 
-function resize() {
+const resize = () => {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 
@@ -90,9 +90,9 @@ function resize() {
 	glutil.scene.projMat[14] = -1;
 	glutil.scene.projMat[15] = 0;
 	/**/
-}
+};
 
-function showSidePanel(sidePanelID) {
+const showSidePanel = (sidePanelID) => {
 	if (currentOpenSidePanelID !== undefined) {
 		hideSidePanel(currentOpenSidePanelID, true);
 	}
@@ -114,9 +114,9 @@ function showSidePanel(sidePanelID) {
 		},
 	});
 	currentOpenSidePanelID = sidePanelID;
-}
+};
 
-function hideSidePanel(sidePanelID, dontMoveOpenButton) {
+const hideSidePanel = (sidePanelID, dontMoveOpenButton) => {
 	if (sidePanelID === currentOpenSidePanelID) currentOpenSidePanelID = undefined;
 	let sidePanel = ids[sidePanelID];
 	if (!dontMoveOpenButton) {
@@ -140,12 +140,12 @@ function hideSidePanel(sidePanelID, dontMoveOpenButton) {
 			hide(sidePanel);
 		},
 	});
-}
+};
 
 let ui = new function() {
 	this.init = function() {
 		this.showBodyInfo = false;
-		
+
 		//keep track of what menu is open
 		//if none are open, open the main menu
 		//if any are ... if it's not main
@@ -248,51 +248,60 @@ let ui = new function() {
 
 	this.initSidePanel = function() {
 		metricInfos.forEach((metricInfo, metricIndex) => {
-			let radio = Input({
-				type : 'radio',
-				name : 'calculationMetric',
-				value : metricIndex,
-				events : {
-					click : e => {
-						cfg.metric = new metricInfo.classObj();
-						calcTides.invalidateForces();
+			appendChildren(
+				ids.overlaySidePanelMetric,
+				Input({
+					type : 'radio',
+					name : 'calculationMetric',
+					value : metricIndex,
+					events : {
+						click : e => {
+							cfg.metric = new metricInfo.classObj();
+							calcTides.invalidateForces();
+						},
 					},
-				},
-				attrs : {
-					name : 'metric',
-				},
-				appendTo : ids.overlaySidePanelMetric,
-			})
-			if (cfg.metric instanceof metricInfo.classObj) radio.checked = true;
-			Span({innerText:metricInfo.name, appendTo:ids.overlaySidePanelMetric});
-			Br({appendTo:ids.overlaySidePanelMetric});
+					attrs : {
+						name : 'metric',
+					},
+					checked : cfg.metric instanceof metricInfo.classObj,
+				}),
+				Span({innerText:metricInfo.name}),
+				Br()
+			);
 		});
-
-		Span({innerText:'Overlay:', appendTo:ids.overlaySidePanelContents});
-		Br({appendTo:ids.overlaySidePanelContents});
+		appendChildren(
+			ids.overlaySidePanelContents,
+			Span({innerText:'Overlay:'}),
+			Br()
+		);
 		displayMethods.forEach((thisDisplayMethod,displayMethodIndex) => {
-			const radio = Input({
-				type : 'radio',
-				name : 'displayMethods',
-				value : displayMethodIndex,
-				events : {
-					click : e => {
-						cfg.displayMethod = thisDisplayMethod;
-						calcTides.invalidateForces();
+			appendChildren(
+				ids.overlaySidePanelContents,
+				Input({
+					type : 'radio',
+					name : 'displayMethods',
+					value : displayMethodIndex,
+					events : {
+						click : e => {
+							cfg.displayMethod = thisDisplayMethod;
+							calcTides.invalidateForces();
+						},
 					},
-				},
-				attrs : {
-					name : 'display',
-				},
-				appendTo : ids.overlaySidePanelContents,
-			})
-			if (thisDisplayMethod == cfg.displayMethod) radio.checked = true;
-			Span({innerText:thisDisplayMethod, appendTo:ids.overlaySidePanelContents});
-			Br({appendTo:ids.overlaySidePanelContents});
+					attrs : {
+						name : 'display',
+					},
+					checked : thisDisplayMethod == cfg.displayMethod,
+				}),
+				Span({innerText:thisDisplayMethod}),
+				Br()
+			);
 		});
-		Br({appendTo:ids.overlaySidePanelContents});
-		Span({innerText:'Influencing Planets:', appendTo:ids.overlaySidePanelContents});
-		Br({appendTo:ids.overlaySidePanelContents});
+		appendChildren(
+			ids.overlaySidePanelContents,
+			Br(),
+			Span({innerText:'Influencing Planets:'}),
+			Br()
+		);
 
 		//add radio buttons hierarchically ...
 		let overlayControlsForPlanets = {};
@@ -307,83 +316,78 @@ let ui = new function() {
 				... and anything else that can be referenced through this.args
 			*/
 			constructor(args) {
+				const thiz = this;
+
 				this.args = args;
 				this.childControls = [];
 				this.div = Div({
 					style : {paddingLeft:'5px'},
+					children : [
+						(this.checkbox = Input({
+							type : 'checkbox',
+							events : {
+								change : e => {
+									//refresh all parent controls' moon checkboxes -- to whiteout or grey them
+									for (let c = thiz.parentControls; c; c = c.parentControls) {
+										c.recomputeMoonCheckbox();
+									}
+
+									args.change.call(thiz);
+								},
+							},
+							checked : args.isChecked,
+						})),
+						Span({
+							innerText : args.title,
+							css : {
+								textDecoration : 'underline',
+								cursor : 'pointer',
+							},
+							click : e => {
+								args.clickTitle.call(thiz);
+							},
+						}),
+						(this.toggleChildDiv = Span({
+							style : {
+								paddingLeft : '10px',
+								cursor : 'pointer',
+							},
+							children : [
+
+								(this.moonCheckbox = Input({
+									type : 'checkbox',
+									events : {
+										change : e => {
+											//select / deselect all children
+											thiz.setAllChildren(thiz.moonCheckbox.checked);
+										},
+									},
+									checked : true,
+								})),
+
+								Span({
+									style : {
+										cursor : 'pointer'
+									},
+									innerText : '...',
+									events : {
+										click : e => { toggleHidden(thiz.childDiv); },
+									},
+								}),
+							],	// this.toggleChildDiv.children
+						})),
+						Br(),
+						(this.childDiv = Div()),
+					],	// this.div.children
 				});
-
-				let thiz = this;
-				this.checkbox = Input({
-					type : 'checkbox',
-					events : {
-						change : e => {
-							//refresh all parent controls' moon checkboxes -- to whiteout or grey them
-							for (let c = thiz.parentControls; c; c = c.parentControls) {
-								c.recomputeMoonCheckbox();
-							}
-
-							args.change.call(thiz);
-						},
-					},
-					checked : args.isChecked,
-					appendTo : this.div,
-				});
-
-				Span({
-					innerText : args.title,
-					css : {
-						textDecoration : 'underline',
-						cursor : 'pointer',
-					},
-					click : e => {
-						args.clickTitle.call(thiz);
-					},
-					appendTo : this.div,
-				});
-
-				this.toggleChildDiv = Span({
-					style : {
-						paddingLeft : '10px',
-						cursor : 'pointer',
-					},
-					appendTo:this.div,
-				});
-
-				this.moonCheckbox = Input({
-					type : 'checkbox',
-					events : {
-						change : e => {
-							//select / deselect all children
-							thiz.setAllChildren(thiz.moonCheckbox.checked);
-						},
-					},
-					checked : true,
-					appendTo : this.toggleChildDiv,
-				});
-
-				Span({
-					style : {
-						cursor : 'pointer'
-					},
-					innerText : '...',
-					events : {
-						click : e => { toggleHidden(thiz.childDiv); },
-					},
-					appendTo : this.toggleChildDiv,
-				});
-
-				Br({appendTo:this.div});
-
-				this.childDiv = Div({appendTo:this.div});
 			}
-			
+
 			addChild(childControl) {
 				this.childDiv.appendChild(childControl.div);
 				childControl.parentControls = this;
 				this.childControls.push(childControl);
 			}
-			
+
 			setAllChildren(checked) {
 				for (let i = 0; i < this.childControls.length; ++i) {
 					let ch = this.childControls[i].checkbox;
@@ -395,7 +399,7 @@ let ui = new function() {
 					this.childControls[i].setAllChildren(checked);
 				}
 			}
-			
+
 			recomputeMoonCheckbox() {
 				let numChecked = 0;
 				let total = 0;
@@ -433,10 +437,10 @@ let ui = new function() {
 		//TODO add star systems
 		const solarSystem = starSystemsExtra.solarSystem;
 		solarSystem.planets.forEach((planet, planetIndex) => {
-			
+
 			//if any other planet doesn't have recorded mass then skip it
 			if (planet.mass === undefined) return;
-			
+
 			//and if it's a barycenter then skip it ... or at least process its children?
 			if (planet.isBarycenter) return;
 
@@ -453,7 +457,7 @@ let ui = new function() {
 				title : planet.name,
 				isChecked : true,
 				change : function() {
-					cfg.planetInfluences[this.args.planetIndex] = this.checkbox.is(':checked');
+					cfg.planetInfluences[this.args.planetIndex] = this.checkbox.checked;
 					calcTides.invalidateForces();
 				},
 				clickTitle : function() {
@@ -493,7 +497,7 @@ let ui = new function() {
 			}
 		}
 
-		Br({appendTo:ids.overlaySidePanelContents});
+		ids.overlaySidePanelContents.appendChild(Br());
 
 
 		// display options side panel
@@ -531,7 +535,7 @@ let ui = new function() {
 			if (cfg[toggle]) checkbox.checked = true;
 			checkbox.addEventListener('change', e => {
 				cfg[toggle] = checkbox.checked;
-				
+
 				let found = false;
 				for (let i = 0; i < radioGroups.length; ++i) {
 					const group = radioGroups[i];
@@ -593,7 +597,7 @@ let ui = new function() {
 				title : planet.name,
 				isChecked : !planet.hide,
 				change : function() {
-					solarSystem.planets[this.args.planetIndex].hide = !this.checkbox.is(':checked');
+					solarSystem.planets[this.args.planetIndex].hide = !this.checkbox.checked;
 				},
 				clickTitle : function() {
 					cfg.setOrbitTarget(solarSystem.planets[solarSystem.indexes[planet.name]]);
@@ -631,7 +635,7 @@ let ui = new function() {
 			}
 		}
 
-		Br({appendTo:ids.celestialBodiesVisiblePlanets});
+		ids.celestialBodiesVisiblePlanets.appendChild(Br());
 
 		//these are added to the end of the result
 		//they should get greyed upon new query (search, prev, next click)
@@ -645,8 +649,8 @@ let ui = new function() {
 		let searchLastID = 0;	//uid to inc so if we search twice, the first can be invalidated
 
 		//dataSource = 'remote' for remote queries, 'local' for the currently-selected planets
-		let processSearch = function(pageIndex, dataSource) {
-console.log("small-bodies got a search request...");			
+		let processSearch = (pageIndex, dataSource) => {
+console.log("small-bodies got a search request...");
 			let button = ids.celestialBodiesSearch;
 			let searchText = ids.celestialBodiesSearchText;
 			let searchStr = searchText.val();
@@ -659,7 +663,7 @@ console.log("small-bodies got a search request...");
 
 			let searchID = ++searchLastID;
 
-			let processResults = function(results) {
+			let processResults = (results) => {
 				if (searchID < searchLastID-1) return;	//someone else has searched
 
 				searchText.val(searchStr);
@@ -676,53 +680,55 @@ console.log("small-bodies got a search request...");
 				let resultsDiv = ids.celestialBodiesSearchResults;
 				resultsDiv.innerHTML = '';
 				results.rows.forEach((row,i) => {
-					let rowDiv = Div({appendTo:resultsDiv});
-
 					let name = row.name;
 
-					let titleSpan;
-					let checkbox = Input({
-						type : 'checkbox',
-						events : {
-							change : e => {
-								if (!checkbox.checked) {	//uncheck checkbox => remove planet
-									solarSystem.removeSmallBody(row);
-									titleSpan.css({textDecoration:'', cursor:''});
-								} else {	//check checkbox => add planet
-									solarSystem.addSmallBody(row);
-									titleSpan.css({textDecoration:'underline', cursor:'pointer'});
-								}
-							},
-						},
-						checked : solarSystem.indexes[name] !== undefined,
-						appendTo : rowDiv,
-					})
+					let titleSpan, checkbox;
+					let rowDiv = Div({
+						appendTo : resultsDiv,
+						children : [
+							(checkbox = Input({
+								type : 'checkbox',
+								events : {
+									change : e => {
+										if (!checkbox.checked) {	//uncheck checkbox => remove planet
+											solarSystem.removeSmallBody(row);
+											titleSpan.css({textDecoration:'', cursor:''});
+										} else {	//check checkbox => add planet
+											solarSystem.addSmallBody(row);
+											titleSpan.css({textDecoration:'underline', cursor:'pointer'});
+										}
+									},
+								},
+								checked : solarSystem.indexes[name] !== undefined,
+							})),
+							(titleSpan = Span({
+								innerText : name,
+								events : {
+									click : e => {
+										let targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
+										if (targetPlanet !== undefined) cfg.setOrbitTarget(targetPlanet);
+									},
+								},
+							})),
 
-					titleSpan = Span({
-						innerText : name,
-						events : {
-							click : e => {
-								let targetPlanet = solarSystem.planets[solarSystem.indexes[name]];
-								if (targetPlanet !== undefined) cfg.setOrbitTarget(targetPlanet);
-							},
-						},
-						appendTo : rowDiv,
+							//TODO put an 'add' button next to each
+							//on clicking it, add the body to the planet list
+							//and repopulate the 'extra' div
+
+						],	//rowDiv.children
 					});
-					//TODO put an 'add' button next to each
-					//on clicking it, add the body to the planet list
-					//and repopulate the 'extra' div
 
 					searchResults.push({
-						checkbox : checkbox,
+						name : name,
 						div : rowDiv,
+						checkbox : checkbox,
 						data : row,
-						name : name
 					});
 				});
 
 				//and add prev/next/pages if there is
 				if (pageMax > 0) {
-					let changePage = function(dir) {
+					let changePage = (dir) => {
 						//TODO remove or grey out results as well?
 						if (nextButton) nextButton.disabled = true;
 						if (prevButton) prevButton.disabled = true;
@@ -780,14 +786,14 @@ console.log("search error", arguments);
 
 					let warning = Div({innerText:'Connection Failed!', style:{color:'red'}});
 					ids.celestialBodiesSearchWarning.after(warning);
-					setTimeout(function() {
+					setTimeout(() => {
 						//after five seconds, fade away
 						warning.animate({
 							height : 0,
 							opacity : 0
 						}, {
 							duration : 500,
-							complete : function() {
+							complete : () => {
 								warning.remove();
 							}
 						});
@@ -810,7 +816,7 @@ console.log("search error", arguments);
 						}
 					}
 				}
-				
+
 /*hack for debugging* /
 rows = [];
 if (false) {
@@ -831,7 +837,7 @@ if (false) {
 //target C1/2013 Siding Spring data: on 2014-11-15 10:30:00
 //position m: 	64031628815.774, -196629902235.24, 57392197050.865
 //velocity m/day: -1916173862.297, -455287182.34414, 2315832701.4279
-	
+
 	//test case for elliptical
 	rows.push({
 		"perihelionDistance" : 87661077532.81,
@@ -865,7 +871,7 @@ if (true) {	//recent asteroid passing by
 	});
 }
 /**/
-				
+
 				processResults({rows:rows, count:rows.length});
 			} else {
 				throw "got an unknown data source request " + dataSource;
@@ -904,73 +910,48 @@ if (true) {	//recent asteroid passing by
 				ids.celestialBodiesSearchVisible.checked ? 'local' : 'remote'
 			);
 		});
-		
+
 //		ids.celestialBodiesSearch.dispatchEvent(new Event('click'));	//fire one off
 
-		
+
 		// constellations
 
 
 
 		let constellationsResults = ids.constellationsResults;
-		
-		
-		//TODO - slider / min/max for filtering stars by ... (a) app. mag, or (b) abs mag
-		// (or (c) app. mag from custom location?)
-		Span({
-			innerText : 'selected min:',
-			appendTo : constellationsResults,
-		});
-		ids.constellationsSelMinMag = Span({
-			id : 'constellationsSelMinMag',
-			appendTo : constellationsResults,
-		});
-		Br({appendTo : constellationsResults});
-		
-		Span({
-			innerText : 'selected max:',
-			appendTo : constellationsResults,
-		});
-		ids.constellationsSelMaxMag = Span({
-			id : 'constellationsSelMaxMag',
-			appendTo : constellationsResults,
-		});
-		Br({appendTo : constellationsResults});
-	
-/* TODO finish me
-		Span({
-			innerText : 'filter min:',
-			appendTo : constellationsResults,
-		});
-		ids.constellationsMinMag = Span({
-			id : 'constellationsMinMag'
-			appendTo : constellationsResults,
-		});
-		Br({appendTo : constellationsResults});
-		
-		Span({
-			innerText : 'filter max:'
-			appendTo : constellationsResults,
-		});
-		ids.constellationsMaxMag = Span({
-			id : 'constellationsMaxMag',
-			appendTo : constellationsResults,
-		});
-		Br({appendTo : constellationsResults});
-*/
 
+		appendChildren(
+			constellationsResults ,
+			//TODO - slider / min/max for filtering stars by ... (a) app. mag, or (b) abs mag
+			// (or (c) app. mag from custom location?)
+			Span({innerText : 'selected min:'}),
+			(ids.constellationsSelMinMag = Span({id : 'constellationsSelMinMag'})),
+			Br(),
+			Span({innerText : 'selected max:'}),
+			(ids.constellationsSelMaxMag = Span({id : 'constellationsSelMaxMag'})),
+			Br()
+
+/* TODO finish me
+		Span({innerText : 'filter min:'}),
+		(ids.constellationsMinMag = Span({id : 'constellationsMinMag'})),
+		Br(),
+		Span({innerText : 'filter max:'}),
+		(ids.constellationsMaxMag = Span({id : 'constellationsMaxMag'})),
+		Br(),
+*/
+		);
 
 		let sortedConstellationNames = [];
 		constellations.forEach((con,i) => {
 			sortedConstellationNames.push(con.name);
 		});
 		sortedConstellationNames.sort();
-		
+
 		constellations.forEach((con,i) => {
 			constellationIndexForName[con.name] = i;
 		});
 
-		let updateMagMinMax = function() {
+		let updateMagMinMax = () => {
 			let magmin = Infinity;
 			let magmax = -Infinity;
 			for (let k = 0; k < constellations.length; ++k) {
@@ -984,23 +965,21 @@ if (true) {	//recent asteroid passing by
 		};
 
 		sortedConstellationNames.forEach((name,i) => {
-			Input({
-				type : 'checkbox',
-				events : {
-					change : function() {
-						let index = constellationIndexForName[name];
-						displayConstellations[index] = !displayConstellations[index];
-						updateMagMinMax();
+			appendChildren(
+				constellationsResults,
+				Input({
+					type : 'checkbox',
+					events : {
+						change : (e) => {
+							let index = constellationIndexForName[name];
+							displayConstellations[index] = !displayConstellations[index];
+							updateMagMinMax();
+						},
 					},
-				},
-				appendTo : constellationsResults,
-			});
-		
-			Span({
-				innerText : name,
-				appendTo : constellationsResults,
-			});
-			Br({appendTo : constellationsResults});
+				}),
+				Span({innerText : name}),
+				Br()
+			);
 		});
 
 		updateMagMinMax();
