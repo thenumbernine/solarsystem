@@ -339,12 +339,14 @@ let ui = new function() {
 						})),
 						Span({
 							innerText : args.title,
-							css : {
+							style : {
 								textDecoration : 'underline',
 								cursor : 'pointer',
 							},
-							click : e => {
-								args.clickTitle.call(thiz);
+							events : {
+								click : e => {
+									args.clickTitle.call(thiz);
+								},
 							},
 						}),
 						(this.toggleChildDiv = Span({
@@ -394,7 +396,7 @@ let ui = new function() {
 					if (checked) {
 						if (!ch.checked) { ch.checked = true; ch.dispatchEvent(new Event('change')); }
 					} else {
-						if (ch.checked) { ch.checked = fale; ch.dispatchEvent(new Event('change')); }
+						if (ch.checked) { ch.checked = false; ch.dispatchEvent(new Event('change')); }
 					}
 					this.childControls[i].setAllChildren(checked);
 				}

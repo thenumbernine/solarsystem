@@ -5,6 +5,7 @@ instructions:
 2) parse.lua				-- parses mass, radius, etc variables from the recorded telnet session.  writes static-vars.json
 3) get_from_ssd.lua			-- fills in the blanks that parse didn't using more reliable websites.  modifies static-vars.json
 4) trim-dynamic-vars.lua	-- gets rid of entries in one set but not the other (typically in dynamic but not static)
+5) copy dynamic-vars.json to dynamic-vars-orig.json and run ./xform-eclip-to-equat.lua
 
 results:
 dynamic-vars.json	- list of dynamic data for each body (position and velocity) and julian timestamp
