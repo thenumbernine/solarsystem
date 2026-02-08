@@ -14,7 +14,7 @@ import {Planet} from './planet.js';
 import {overlayTexts} from './overlaytexts.js';
 import {metersPerUnits} from './units.js';
 import {ui} from './ui.js';
-import {starSystemsExtra} from './starsystems.js';
+import {starSystemsExtra, getPlanetLatLonObj} from './starsystems.js';
 import {calcTides} from './calctides.js';
 import {milkyWay} from './milkyway.js';
 import {starfield} from './starfield.js';
@@ -523,6 +523,7 @@ assert(earth);
 
 					//show latitude and longitude lines
 					if (cfg.showLatAndLonLines && !picking) {
+						const planetLatLonObj = getPlanetLatLonObj();
 						vec3.copy(planetLatLonObj.pos, planet.sceneObj.uniforms.pos);
 						quat.copy(planetLatLonObj.angle, planet.sceneObj.uniforms.angle);
 						planetLatLonObj.uniforms.equatorialRadius = planet.equatorialRadius !== undefined ? planet.equatorialRadius : planet.radius;

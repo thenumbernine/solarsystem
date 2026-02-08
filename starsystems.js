@@ -20,6 +20,9 @@ let solarSystem;	//the one and only.  don't construct until after WebGL init so 
 let starSystemsExtra;
 
 let planetLatLonObj;
+const getPlanetLatLonObj = () => {
+	return planetLatLonObj;
+};
 
 let latitudeMin = -90;
 let latitudeMax = 90;
@@ -1180,4 +1183,4 @@ void main() {
 
 starSystemsExtra = new StarSystems();
 
-export {starSystems, starSystemsExtra, StarSystems}
+export {starSystems, starSystemsExtra, StarSystems, getPlanetLatLonObj}
