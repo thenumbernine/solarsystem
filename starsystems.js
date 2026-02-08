@@ -4,7 +4,8 @@ kind of like starfield
 but that's just a point cloud
 */
 import {vec3, mat4, quat} from '/js/gl-matrix-3.4.1/index.js';
-import {DOM, mathRad, assertExists, merge} from '/js/util.js';
+import {Div} from '/js/dom.js';
+import {mathRad, assertExists, merge} from '/js/util.js';
 import {cfg} from './globals.js';
 import {SolarSystem} from './solarsystem.js';
 import {ui} from './ui.js';
@@ -1159,16 +1160,18 @@ void main() {
 	initStarsControls() {
 		//TODO maybe some pages or something for this, like the asteroid/smallbody search?
 		starSystems.forEach(starSystem => {
-			DOM('div', {
-				css : {
+			Div({
+				style : {
 					textDecoration : 'underline',
 					cursor : 'pointer',
 					paddingLeft : '10px',
 				},
-				click : e => {
-					cfg.setOrbitTarget(starSystem);
+				events : {
+					click : e => {
+						cfg.setOrbitTarget(starSystem);
+					},
 				},
-				text : starSystem.name,
+				innerText : starSystem.name,
 				appendTo : ids.starSystemContents,
 			});
 		});

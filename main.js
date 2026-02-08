@@ -1,7 +1,8 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
 glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix
 import {quatZAxis} from '/js/gl-util.js';
-import {DOM, show, hide, assert, animate, mathClamp, mathDeg} from '/js/util.js';
+import {Br, Hr, Div} from '/js/dom.js';
+import {show, hide, assert, animate, mathClamp, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
 import {SmallBody, SmallBodies} from './smallbodies.js';
 import {Galaxy, Galaxies} from './galaxies.js';
@@ -1338,57 +1339,57 @@ cfg.setOrbitTarget = function(newTarget) {
 
 	ids.orbitTargetText.innerText = cfg.orbitTarget.name;
 	ids.infoDiv.innerHTML = '';
-	ids.infoDiv.appendChild(DOM('hr'));
-	ids.infoDiv.appendChild(DOM('div', {text:'Type: '+cfg.orbitTarget.type}));
+	ids.infoDiv.appendChild(Hr());
+	ids.infoDiv.appendChild(Div({innerText:'Type: '+cfg.orbitTarget.type}));
 	if (cfg.orbitTarget.mass !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Mass: '+cfg.orbitTarget.mass+' kg'}));
+		ids.infoDiv.appendChild(Div({innerText:'Mass: '+cfg.orbitTarget.mass+' kg'}));
 	}
 	if (cfg.orbitTarget.equatorialRadius !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Equatorial Radius: '+distanceToStr(cfg.orbitTarget.equatorialRadius)}));
+		ids.infoDiv.appendChild(Div({innerText:'Equatorial Radius: '+distanceToStr(cfg.orbitTarget.equatorialRadius)}));
 	} else if (cfg.orbitTarget.radius !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Radius: '+distanceToStr(cfg.orbitTarget.radius)}));
+		ids.infoDiv.appendChild(Div({innerText:'Radius: '+distanceToStr(cfg.orbitTarget.radius)}));
 	}
 	if (cfg.orbitTarget.inverseFlattening !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Inverse Flattening: '+cfg.orbitTarget.inverseFlattening}));
+		ids.infoDiv.appendChild(Div({innerText:'Inverse Flattening: '+cfg.orbitTarget.inverseFlattening}));
 	}
 	if (cfg.orbitTarget.rotationPeriod !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Rotation Period: '+timeToStr(cfg.orbitTarget.rotationPeriod)}));
+		ids.infoDiv.appendChild(Div({innerText:'Rotation Period: '+timeToStr(cfg.orbitTarget.rotationPeriod)}));
 	}
 	if (cfg.orbitTarget.ringRadiusRange !== undefined) {
-		ids.infoDiv.appendChild(DOM('div', {text:'Ring Min Radius: '+distanceToStr(cfg.orbitTarget.ringRadiusRange[0])}));
-		ids.infoDiv.appendChild(DOM('div', {text:'Ring Max Radius: '+distanceToStr(cfg.orbitTarget.ringRadiusRange[1])}));
+		ids.infoDiv.appendChild(Div({innerText:'Ring Min Radius: '+distanceToStr(cfg.orbitTarget.ringRadiusRange[0])}));
+		ids.infoDiv.appendChild(Div({innerText:'Ring Max Radius: '+distanceToStr(cfg.orbitTarget.ringRadiusRange[1])}));
 	}
 	if (cfg.orbitTarget.keplerianOrbitalElements) {
 		if (cfg.orbitTarget.keplerianOrbitalElements.semiMajorAxis) {
-			ids.infoDiv.appendChild(DOM('div', {text:'Semi-Major Axis: '+distanceToStr(cfg.orbitTarget.keplerianOrbitalElements.semiMajorAxis)}));
+			ids.infoDiv.appendChild(Div({innerText:'Semi-Major Axis: '+distanceToStr(cfg.orbitTarget.keplerianOrbitalElements.semiMajorAxis)}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.orbitType) {
-			ids.infoDiv.appendChild(DOM('div', {text:'Orbit Type: '+cfg.orbitTarget.keplerianOrbitalElements.orbitType}));
+			ids.infoDiv.appendChild(Div({innerText:'Orbit Type: '+cfg.orbitTarget.keplerianOrbitalElements.orbitType}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.eccentricity) {
-			ids.infoDiv.appendChild(DOM('div', {text:'Eccentricity: '+cfg.orbitTarget.keplerianOrbitalElements.eccentricity}));
+			ids.infoDiv.appendChild(Div({innerText:'Eccentricity: '+cfg.orbitTarget.keplerianOrbitalElements.eccentricity}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Eccentric Anomaly: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly)+'&deg;'}));
+			ids.infoDiv.appendChild(Div({innerHTML:'Eccentric Anomaly: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.eccentricAnomaly)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Longitude of Ascending Node: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
+			ids.infoDiv.appendChild(Div({innerHTML:'Longitude of Ascending Node: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.longitudeOfAscendingNode)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Argument of Pericenter: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis)+'&deg;'}));
+			ids.infoDiv.appendChild(Div({innerHTML:'Argument of Pericenter: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.argumentOfPeriapsis)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.inclination) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Inclination: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
+			ids.infoDiv.appendChild(Div({innerHTML:'Inclination: '+mathDeg(cfg.orbitTarget.keplerianOrbitalElements.inclination)+'&deg;'}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing) {
-			ids.infoDiv.appendChild(DOM('div', {html:'Time of Periapsis Crossing: '+timeToStr(cfg.orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing)}));
+			ids.infoDiv.appendChild(Div({innerHTML:'Time of Periapsis Crossing: '+timeToStr(cfg.orbitTarget.keplerianOrbitalElements.timeOfPeriapsisCrossing)}));
 		}
 		if (cfg.orbitTarget.keplerianOrbitalElements.orbitalPeriod) {
-			ids.infoDiv.appendChild(DOM('div', {text:'Orbital Period: '+timeToStr(cfg.orbitTarget.keplerianOrbitalElements.orbitalPeriod)}));
+			ids.infoDiv.appendChild(Div({innerText:'Orbital Period: '+timeToStr(cfg.orbitTarget.keplerianOrbitalElements.orbitalPeriod)}));
 		}
 	}
-	ids.infoDiv.appendChild(DOM('br'));
-	ids.infoDiv.appendChild(DOM('br'));
+	ids.infoDiv.appendChild(Br());
+	ids.infoDiv.appendChild(Br());
 
 	setTimeout(() => {
 		//refresh offset if the infoPanel is hidden
