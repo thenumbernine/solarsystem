@@ -4,7 +4,7 @@ local gl = require 'gl'
 local glreport = require 'gl.report'
 local vec2f = require 'vec-ffi.vec2f'
 local vec3f = require 'vec-ffi.vec3f'
-local vector = require 'ffi.cpp.vector'
+local vector = require 'stl.vector'
 local math = require 'ext.math'
 local table = require 'ext.table'
 

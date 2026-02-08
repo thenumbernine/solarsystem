@@ -18,7 +18,7 @@ local vec3d = require 'vec-ffi.vec3d'
 local vec4f = require 'vec-ffi.vec4f'
 local quatd = require 'vec-ffi.quatd'
 local vec4x4f = require 'vec-ffi.vec4x4f'
-local vector = require 'ffi.cpp.vector'
+local vector = require 'stl.vector'
 
 --[[
 set = directory to use if you don't specify individual files:
