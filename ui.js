@@ -1,7 +1,7 @@
 import {appendChildren, Canvas, Input, Span, Br, Button, Div} from '/js/dom.js'
 import {show, hide, toggleHidden, removeFromParent, animate} from '/js/util.js';
-import {GLUtil} from '/js/gl-util.js';
-import {makeGradient} from '/js/gl-util-Gradient.js';
+import {GLUtil} from '/js/gl/gl.js';
+import {makeGradient} from '/js/gl/Gradient.js';
 import {ids, cfg} from './globals.js';
 import {metricInfos} from './metric.js';
 import {starSystemsExtra} from './starsystems.js';

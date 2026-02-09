@@ -1,6 +1,6 @@
 import {vec3, mat4, quat, glMatrix} from '/js/gl-matrix-3.4.1/index.js';
 glMatrix.setMatrixArrayType(Array);	//use double rather than float precision with gl-matrix
-import {quatZAxis} from '/js/gl-util.js';
+import {quatZAxis} from '/js/gl/gl.js';
 import {Br, Hr, Div} from '/js/dom.js';
 import {show, hide, assert, animate, mathClamp, mathDeg} from '/js/util.js';
 import {ids, cfg, urlparams, floatToGLSL} from './globals.js';
