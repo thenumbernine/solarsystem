@@ -403,7 +403,7 @@ print'filtering out unnamed...'
 
 		if cmdline.nolumnans then
 print'filtering out luminosity nans...'
-			pts = pts:filter(|pt| math.isfinite(pt.obj.lum))
+			pts = pts:filteri(|pt| math.isfinite(pt.obj.lum))
 			print('nolumnans filtered down to '..#pts)
 		end
 
@@ -424,7 +424,7 @@ print'adding sun point...'
 
 		if cmdline.lummin then
 print('filtering out luminosity min '..cmdline.lummin)
-			pts = pts:filter(|pt| pt.obj.lum >= cmdline.lummin)
+			pts = pts:filteri(|pt| pt.obj.lum >= cmdline.lummin)
 			print('lummin filtered down to '..#pts)
 		end
 		if cmdline.lumhicount then
@@ -447,7 +447,7 @@ print('filtering out only the closest '..cmdline.rlowcount..' objects...')
 		end
 		if cmdline.rmax then
 print('filtering out only objects of distance '..cmdline.rmax..' or less...')
-			pts = pts:filter(|pt| pt.obj.pos:length() <= cmdline.rmax)
+			pts = pts:filteri(|pt| pt.obj.pos:length() <= cmdline.rmax)
 			print('rmin filtered down to '..#pts)
 		end
 
